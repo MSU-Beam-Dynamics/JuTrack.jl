@@ -3,6 +3,9 @@ uuid = "e0df4a49-1e16-4cdd-8109-614ef0534f02"
 authors = ["Jinyu Wan <wan@frib.msu.edu>"]
 version = "1.0.0-DEV"
 
+[deps]
+Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
+
 [compat]
 julia = "1"
 
