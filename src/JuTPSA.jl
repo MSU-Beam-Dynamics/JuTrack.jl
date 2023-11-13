@@ -6,24 +6,39 @@ module JuTPSA
 # Email: wan@frib.msu.edu
 # Version: 1.0
 # Created Date: 11-01-2023
-# Modified Date: 11-07-2023
-export CTPS, cst, findindex, findpower, redegree!, assign!, element, evaluate, derivative, integrate
+# Modified Date: 11-13-2023
+export CTPS, cst, findindex, findpower, redegree, assign!, element, evaluate, derivative, integrate, pow, PolyMap, getindexmap
 include("polymap.jl")
 using Zygote
 
-mutable struct CTPS{T, TPS_Dim, Max_TPS_Degree}
+struct CTPS{T, TPS_Dim, Max_TPS_Degree}
     degree::Int
     terms::Int64
     map::Vector{T}
-    polymap::PolyMap 
+    polymap::Ref{PolyMap}
+end
+
+const polyMapCache = Dict{Tuple{Int, Int}, PolyMap}()
+# Get or create a PolyMap 
+function getOrCreatePolyMap(TPS_Dim::Int, Max_TPS_Degree::Int)
+    key = (TPS_Dim, Max_TPS_Degree)
+    if haskey(polyMapCache, key)
+        return polyMapCache[key]
+    else
+        newPolyMap = PolyMap(TPS_Dim, Max_TPS_Degree)
+        polyMapCache[key] = newPolyMap
+        return newPolyMap
+    end
 end
 
 function CTPS(T::Type, TPS_Dim::Int, Max_TPS_Degree::Int) 
-    return CTPS{T, TPS_Dim, Max_TPS_Degree}(0, 1, [zero(T)], PolyMap(TPS_Dim, Max_TPS_Degree)) 
+    polymap = getOrCreatePolyMap(TPS_Dim, Max_TPS_Degree)
+    return CTPS{T, TPS_Dim, Max_TPS_Degree}(0, 1, [zero(T)], Ref(polymap)) 
 end
 
 function CTPS(a::T, TPS_Dim::Int, Max_TPS_Degree::Int) where T
-    return CTPS{T, TPS_Dim, Max_TPS_Degree}(0, 1, [a], PolyMap(TPS_Dim, Max_TPS_Degree)) 
+    polymap = getOrCreatePolyMap(TPS_Dim, Max_TPS_Degree)
+    return CTPS{T, TPS_Dim, Max_TPS_Degree}(0, 1, [a], Ref(polymap)) 
 end
 
 function CTPS(a::T, n::Int, TPS_Dim::Int, Max_TPS_Degree::Int) where T
@@ -37,14 +52,15 @@ function CTPS(a::T, n::Int, TPS_Dim::Int, Max_TPS_Degree::Int) where T
         map_buffer[n+1] = one(T)
         map_buffer[1] = a
         map = copy(map_buffer)
-        return CTPS{T, TPS_Dim, Max_TPS_Degree}(1, terms, map, PolyMap(TPS_Dim, Max_TPS_Degree)) 
+        polymap = getOrCreatePolyMap(TPS_Dim, Max_TPS_Degree)
+        return CTPS{T, TPS_Dim, Max_TPS_Degree}(1, terms, map, Ref(polymap)) 
     else
         throw(ArgumentError("Num of var out of range in CTPS"))
     end
 end
 
 function CTPS(M::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
-    return CTPS{T, TPS_Dim, Max_TPS_Degree}(M.degree, M.terms, copy(M.map), copy(M.polymap))
+    return CTPS{T, TPS_Dim, Max_TPS_Degree}(M.degree, M.terms, copy(M.map), M.polymap)
 end
 
 function cst(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
@@ -64,12 +80,17 @@ function findindex(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, indexmap::Vector{Int}
         throw(DimensionMismatch("Index map does not have correct length"))
     end
     sum = copy(indexmap)
+    sum_buffer = Zygote.Buffer(sum) # Buffer for Zygote
+    for i in 1:length(sum_buffer)
+        sum_buffer[i] = sum[i]
+    end
     for i in 2:dim+1
         if indexmap[i] < 0
             throw(ArgumentError("The index map has invalid component"))
         end
-        sum[i] = sum[i-1] - indexmap[i]
+        sum_buffer[i] = sum_buffer[i-1] - indexmap[i]
     end
+    sum = copy(sum_buffer)
     result = Int(1)
     for i in dim:-1:1
         if sum[dim - i + 1] == 0
@@ -82,31 +103,61 @@ end
 
 function findpower(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, n::Int64) where {T, TPS_Dim, Max_TPS_Degree}
     if n < ctps.terms
-        return getindexmap(ctps.polymap, n)
+        return getindexmap(ctps.polymap[], n)
     else
         throw(ArgumentError("The index is out of range"))
     end
 end
 
-function redegree!(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, degree::Int) where {T, TPS_Dim, Max_TPS_Degree}
-    ctps.degree = min(degree, Max_TPS_Degree)
-    ctps.terms = binomial(TPS_Dim + ctps.degree, ctps.degree)
-    new_map = [i <= length(ctps.map) ? ctps.map[i] : zero(T) for i in 1:ctps.terms]
-    ctps.map = new_map
+# function redegree!(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, degree::Int) where {T, TPS_Dim, Max_TPS_Degree}
+#     ctps.degree = min(degree, Max_TPS_Degree)
+#     ctps.terms = binomial(TPS_Dim + ctps.degree, ctps.degree)
+#     new_map = [i <= length(ctps.map) ? ctps.map[i] : zero(T) for i in 1:ctps.terms]
+#     ctps.map = new_map
+# end
+function redegree(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, degree::Int) where {T, TPS_Dim, Max_TPS_Degree}
+    degree = min(degree, Max_TPS_Degree)
+    terms = binomial(TPS_Dim + degree, degree)
+    new_map = [i <= length(ctps.map) ? ctps.map[i] : zero(T) for i in 1:terms]
+    # polymap = getOrCreatePolyMap(TPS_Dim, Max_TPS_Degree)
+    ctps_new = CTPS{T, TPS_Dim, Max_TPS_Degree}(degree, terms, new_map, ctps.polymap)
+    return ctps_new
 end
-
-function assign!(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::T, n_var::Int) where {T, TPS_Dim, Max_TPS_Degree}
+# function redegree(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, degree::Int) where {T, TPS_Dim, Max_TPS_Degree}
+#     degree = min(degree, Max_TPS_Degree)
+#     terms = binomial(TPS_Dim + degree, degree)
+#     new_map = zeros(T, terms)
+#     new_map_buffer = Zygote.Buffer(new_map)
+#     for i in 1:ctps.terms
+#         new_map_buffer[i] = ctps.map[i]
+#     end
+#     for i in ctps.terms+1:terms
+#         new_map_buffer[i] = zero(T)
+#     end
+#     new_map = copy(new_map_buffer)
+#     ctps_new = CTPS{T, TPS_Dim, Max_TPS_Degree}(degree, terms, new_map, PolyMap(TPS_Dim, Max_TPS_Degree))
+#     return ctps_new
+# end
+function assign(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::T, n_var::Int) where {T, TPS_Dim, Max_TPS_Degree}
     if n_var <= TPS_Dim && n_var > 0
-        ctps.degree = 1
-        ctps.terms = Int64(TPS_Dim) + 1
-        map = fill(zero(T), ctps.terms)
+        degree = 1
+        terms = Int64(TPS_Dim) + 1
+        map = fill(zero(T), terms)
+
+        # ctps.degree = 1
+        # ctps.terms = Int64(TPS_Dim) + 1
+        # map = fill(zero(T), ctps.terms)
+
         map_buffer = Zygote.Buffer(map) # Buffer for Zygote
         for i in 1:terms
             map_buffer[i] = zero(T) # Explicitly set each value to zero
         end
         map_buffer[n_var+1] = one(T)
         map_buffer[1] = a
-        ctps.map = copy(map_buffer)
+        map = copy(map_buffer)
+        # polymap = getOrCreatePolyMap(TPS_Dim, Max_TPS_Degree)
+        ctps_new = CTPS{T, TPS_Dim, Max_TPS_Degree}(degree, terms, map, ctps.polymap)
+        return ctps_new
         # ctps.map = fill(zero(T), ctps.terms)
         # ctps.map[n_var] = one(T)
         # ctps.map[1] = a
@@ -115,10 +166,13 @@ function assign!(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::T, n_var::Int) where
     end
 end
 
-function assign!(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::T) where {T, TPS_Dim, Max_TPS_Degree}
-    ctps.degree = 0
-    ctps.terms = 1
-    ctps.map = [a]
+function assign(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::T) where {T, TPS_Dim, Max_TPS_Degree}
+    degree = 0
+    terms = 1
+    map = [a]
+    # polymap = getOrCreatePolyMap(TPS_Dim, Max_TPS_Degree)
+    ctps_new = CTPS{T, TPS_Dim, Max_TPS_Degree}(degree, terms, map, ctps.polymap)
+    return ctps_new
 end
 
 function element(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, ind::Int64) where {T, TPS_Dim, Max_TPS_Degree}
@@ -139,7 +193,7 @@ function evaluate(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, inivalue::Vector{U}) w
     end
     sum = U(ctps.map[1])
     for i in 2:ctps.terms
-        temp = getindexmap(ctps.polymap, i)
+        temp = getindexmap(ctps.polymap[], i)
         product = U(1)
         for j in 1:TPS_Dim
             dimpower = U(inivalue[j])^temp[j+1]
@@ -159,9 +213,9 @@ function derivative(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, ndim::Int, order::In
     end
     if ndim <= TPS_Dim && ndim > 0
         derivative_ctps = CTPS(T, TPS_Dim, Max_TPS_Degree)
-        redegree!(derivative_ctps, ctps.degree - order)
+        derivative_ctps = redegree(derivative_ctps, ctps.degree - order)
         for i in 2:ctps.terms
-            temp = getindexmap(ctps.polymap, i)
+            temp = getindexmap(ctps.polymap[], i)
             if temp[ndim + 1] >= order
                 thisdim = temp[ndim + 1]
                 buf = Zygote.Buffer(temp)  # Buffer for Zygote
@@ -177,7 +231,8 @@ function derivative(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, ndim::Int, order::In
                     derivative_ctps_map_buffer[j] = derivative_ctps.map[j]
                 end
                 derivative_ctps_map_buffer[index] = factorial(new_temp[ndim + 1] + order) / factorial(new_temp[ndim + 1]) * ctps.map[i]
-                derivative_ctps.map = copy(derivative_ctps_map_buffer)
+                derivative_ctps = CTPS{T, TPS_Dim, Max_TPS_Degree}(derivative_ctps.degree, derivative_ctps.terms, copy(derivative_ctps_map_buffer), derivative_ctps.polymap)
+                # derivative_ctps.map = copy(derivative_ctps_map_buffer)
                 # derivative_ctps.map[index] = factorial(new_temp[ndim + 1] + order) / factorial(new_temp[ndim + 1]) * ctps.map[i]
             end
         end
@@ -190,9 +245,13 @@ end
 function integrate(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, ndim::Int, a0::T) where {T, TPS_Dim, Max_TPS_Degree}
     if ndim <= TPS_Dim && ndim > 0
         temp = CTPS(a0, TPS_Dim, Max_TPS_Degree)
-        redegree!(temp, ctps.degree + 1)
+        temp = redegree(temp, ctps.degree + 1)
+        map_buffer = Zygote.Buffer(temp.map)
+        for i in 1:temp.terms
+            map_buffer[i] = temp.map[i]
+        end
         for i in 1:ctps.terms
-            indexlist = getindexmap(ctps.polymap, i)
+            indexlist = getindexmap(ctps.polymap[], i)
             thisdim = indexlist[ndim+1]
             indexlist_buffer = Zygote.Buffer(indexlist) 
             for j in 1:length(indexlist_buffer)
@@ -202,8 +261,10 @@ function integrate(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, ndim::Int, a0::T) whe
             indexlist_buffer[1] += 1
             indexlist = copy(indexlist_buffer)
             new_i = findindex(ctps, indexlist)
-            temp.map[new_i] = ctps.map[i] / (thisdim + 1)
+            map_buffer[new_i] = ctps.map[i] / (thisdim + 1)
         end
+        temp = CTPS{T, TPS_Dim, Max_TPS_Degree}(temp.degree, temp.terms, copy(map_buffer), temp.polymap)
+        # temp.map = copy(map_buffer)
         return temp
     else
         throw(ArgumentError("Inconsistent dimension to integrate"))
@@ -214,13 +275,10 @@ end
 import Base: +, -, *, /, sin, cos, tan, sinh, cosh, asin, acos, sqrt, ^, inv, exp, log
 
 # +
-function +(ctps1::CTPS{T, TPS_Dim, Max_TPS_Degree1}, ctps2::CTPS{T, TPS_Dim, Max_TPS_Degree2}) where {T, TPS_Dim, Max_TPS_Degree1, Max_TPS_Degree2}
-    if Max_TPS_Degree1 != Max_TPS_Degree2
-        throw(ArgumentError("Max_TPS_Degree not equal in CTPS"))
-    end
+function +(ctps1::CTPS{T, TPS_Dim, Max_TPS_Degree}, ctps2::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
     ctps_new = CTPS(ctps1)
     if ctps1.degree < ctps2.degree
-        redegree!(ctps_new, ctps2.degree)
+        ctps_new = redegree(ctps_new, ctps2.degree)
     end
     ctps_map_buffer = Zygote.Buffer(ctps_new.map)
     for i in 1:ctps_new.terms
@@ -229,30 +287,29 @@ function +(ctps1::CTPS{T, TPS_Dim, Max_TPS_Degree1}, ctps2::CTPS{T, TPS_Dim, Max
     for i in 1:ctps2.terms
         ctps_map_buffer[i] += ctps2.map[i]
     end
-    ctps_new.map = copy(ctps_map_buffer)
+    ctps_new = CTPS{T, TPS_Dim, Max_TPS_Degree}(ctps_new.degree, ctps_new.terms, copy(ctps_map_buffer), ctps_new.polymap)
+    # ctps_new.map = copy(ctps_map_buffer)
     return ctps_new
 end
+
 function +(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::Number) where {T, TPS_Dim, Max_TPS_Degree}
     ctps_map_buffer = Zygote.Buffer(ctps.map)
-    ctps_new = CTPS(ctps)
-    for i in 1:ctps_new.terms
+    for i in 1:ctps.terms
         ctps_map_buffer[i] = ctps.map[i]
     end
     ctps_map_buffer[1] += a
-    ctps_new.map = copy(ctps_map_buffer)
+    map = copy(ctps_map_buffer)
+    ctps_new = CTPS{T, TPS_Dim, Max_TPS_Degree}(ctps.degree, ctps.terms, map, ctps.polymap)
     return ctps_new
 end
 function +(a::Number, ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
     return ctps + a
 end
 # -
-function -(ctps1::CTPS{T, TPS_Dim1, Max_TPS_Degree1}, ctps2::CTPS{T, TPS_Dim2, Max_TPS_Degree2}) where {T, TPS_Dim1, Max_TPS_Degree1, TPS_Dim2, Max_TPS_Degree2}
-    if Max_TPS_Degree1 != Max_TPS_Degree2
-        throw(ArgumentError("Max_TPS_Degree not equal in CTPS"))
-    end
+function -(ctps1::CTPS{T, TPS_Dim, Max_TPS_Degree}, ctps2::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
     ctps_new = CTPS(ctps1)
     if ctps1.degree < ctps2.degree
-        redegree!(ctps_new, ctps2.degree)
+        ctps_new = redegree(ctps_new, ctps2.degree)
     end
     ctps_map_buffer = Zygote.Buffer(ctps_new.map)
     for i in 1:ctps_new.terms
@@ -261,57 +318,57 @@ function -(ctps1::CTPS{T, TPS_Dim1, Max_TPS_Degree1}, ctps2::CTPS{T, TPS_Dim2, M
     for i in 1:ctps2.terms
         ctps_map_buffer[i] -= ctps2.map[i]
     end
-    ctps_new.map = copy(ctps_map_buffer)
+    map = copy(ctps_map_buffer)
+    ctps_new = CTPS{T, TPS_Dim, Max_TPS_Degree}(ctps_new.degree, ctps_new.terms, map, ctps_new.polymap)
     return ctps_new
 end
 function -(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::Number) where {T, TPS_Dim, Max_TPS_Degree}
-    ctps_new = CTPS(ctps)
-    ctps_map_buffer = Zygote.Buffer(ctps_new.map)
-    for i in 1:ctps_new.terms
-        ctps_map_buffer[i] = ctps_new.map[i]
+    ctps_map_buffer = Zygote.Buffer(ctps.map)
+    for i in 1:ctps.terms
+        ctps_map_buffer[i] = ctps.map[i]
     end
     ctps_map_buffer[1] -= a
-    ctps_new.map = copy(ctps_map_buffer)
+    map = copy(ctps_map_buffer)
+    ctps_new = CTPS{T, TPS_Dim, Max_TPS_Degree}(ctps.degree, ctps.terms, map, ctps.polymap)
     return ctps_new
 end
 function -(a::Number, ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
-    ctps_new = CTPS(ctps)
-    ctps_map_buffer = Zygote.Buffer(ctps_new.map)
-    for i in 1:ctps_new.terms
-        ctps_map_buffer[i] = ctps_new.map[i]
+    ctps_map_buffer = Zygote.Buffer(ctps.map)
+    for i in 1:ctps.terms
+        ctps_map_buffer[i] = ctps.map[i]
     end
     ctps_map_buffer[1] = a - ctps.map[1]
-    ctps_new.map = copy(ctps_map_buffer)
+    for i in 2:ctps.terms
+        ctps_map_buffer[i] = -ctps.map[i]
+    end
+    map = copy(ctps_map_buffer)
+    ctps_new = CTPS{T, TPS_Dim, Max_TPS_Degree}(ctps.degree, ctps.terms, map, ctps.polymap)
     return ctps_new
 end
 function -(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
-    ctps_new = CTPS(ctps)
-    ctps_map_buffer = Zygote.Buffer(ctps_new.map)
-    for i in 1:ctps_new.terms
-        ctps_map_buffer[i] = -ctps_new.map[i]
+    ctps_map_buffer = Zygote.Buffer(ctps.map)
+    for i in 1:ctps.terms
+        ctps_map_buffer[i] = -ctps.map[i]
     end
-    ctps_new.map = copy(ctps_map_buffer)
+    map = copy(ctps_map_buffer)
+    ctps_new = CTPS{T, TPS_Dim, Max_TPS_Degree}(ctps.degree, ctps.terms, map, ctps.polymap)
     return ctps_new
 end
 
 # *
-function *(ctps1::CTPS{T, TPS_Dim, Max_TPS_Degree1}, ctps2::CTPS{T, TPS_Dim, Max_TPS_Degree2}) where {T, TPS_Dim, Max_TPS_Degree1, Max_TPS_Degree2}
-    if Max_TPS_Degree1 != Max_TPS_Degree2
-        throw(ArgumentError("Max_TPS_Degree not equal in CTPS"))
-    end
-    
+function *(ctps1::CTPS{T, TPS_Dim, Max_TPS_Degree}, ctps2::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
     if ctps2.degree == 0
-        ctps_new = CTPS(ctps1)
-        ctps_new.map = ctps_new.map * ctps2.map[1]
+        map = ctps1.map * ctps2.map[1]
+        ctps_new = CTPS{T, TPS_Dim, Max_TPS_Degree}(ctps1.degree, ctps1.terms, map, ctps1.polymap)
         return ctps_new
     elseif ctps1.degree == 0
-        ctps_new = CTPS(ctps2)
-        ctps_new.map = ctps_new.map * ctps1.map[1]
+        map = ctps2.map * ctps1.map[1]
+        ctps_new = CTPS{T, TPS_Dim, Max_TPS_Degree}(ctps2.degree, ctps2.terms, map, ctps2.polymap)
         return ctps_new
     end
 
     ctps_new = CTPS(ctps1)
-    redegree!(ctps_new, ctps1.degree + ctps2.degree)
+    ctps_new = redegree(ctps_new, ctps1.degree + ctps2.degree)
     ctps_map_buffer = Zygote.Buffer(ctps_new.map)
     for i in 1:ctps_new.terms
         ctps_map_buffer[i] = zero(T)
@@ -321,28 +378,29 @@ function *(ctps1::CTPS{T, TPS_Dim, Max_TPS_Degree1}, ctps2::CTPS{T, TPS_Dim, Max
         if ctps1.map[i] == zero(T)
             continue
         end
-        temp1 = getindexmap(ctps1.polymap, i)
-        j_max = min(ctps2.terms, binomial(TPS_Dim + Max_TPS_Degree1 - temp1[1], TPS_Dim))
+        temp1 = getindexmap(ctps1.polymap[], i)
+        j_max = min(ctps2.terms, binomial(TPS_Dim + Max_TPS_Degree - temp1[1], TPS_Dim))
         for j in 1:j_max
             if ctps2.map[j] == zero(T)
                 continue
             end 
-            temp2 = getindexmap(ctps2.polymap, j)
+            temp2 = getindexmap(ctps2.polymap[], j)
             temp = temp1 + temp2
             index = findindex(ctps_new, temp)
             ctps_map_buffer[index] += ctps1.map[i] * ctps2.map[j]
         end
     end
-    ctps_new.map = copy(ctps_map_buffer)
+    map = copy(ctps_map_buffer)
+    ctps_new = CTPS{T, TPS_Dim, Max_TPS_Degree}(ctps_new.degree, ctps_new.terms, map, ctps_new.polymap)
     return ctps_new
 end
 function *(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::Number) where {T, TPS_Dim, Max_TPS_Degree}
-    ctps_new = CTPS(ctps)
-    ctps_map_buffer = Zygote.Buffer(ctps_new.map)
-    for i in 1:ctps_new.terms
-        ctps_map_buffer[i] = ctps_new.map[i] * a
+    ctps_map_buffer = Zygote.Buffer(ctps.map)
+    for i in 1:ctps.terms
+        ctps_map_buffer[i] = ctps.map[i] * a
     end
-    ctps_new.map = copy(ctps_map_buffer)
+    map = copy(ctps_map_buffer)
+    ctps_new = CTPS{T, TPS_Dim, Max_TPS_Degree}(ctps.degree, ctps.terms, map, ctps.polymap)
     return ctps_new
 end
 function *(a::Number, ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
@@ -367,18 +425,14 @@ function inv(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_
     return sum
 end
 
-function /(ctps1::CTPS{T, TPS_Dim, Max_TPS_Degree1}, ctps2::CTPS{T, TPS_Dim, Max_TPS_Degree2}) where {T, TPS_Dim, Max_TPS_Degree1, Max_TPS_Degree2}
-    if Max_TPS_Degree1 != Max_TPS_Degree2
-        throw(ArgumentError("Max_TPS_Degree not equal in CTPS"))
-    end
-
+function /(ctps1::CTPS{T, TPS_Dim, Max_TPS_Degree}, ctps2::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
     if cst(ctps2) == zero(T)
         throw(DivideError("Divide by zero in CTPS"))
     end
 
     if ctps2.degree == 0
-        ctps_new = CTPS(ctps1)
-        ctps_new.map = ctps_new.map / ctps2.map[1]
+        map = ctps1.map / ctps2.map[1]
+        ctps_new = CTPS{T, TPS_Dim, Max_TPS_Degree}(ctps1.degree, ctps1.terms, map, ctps1.polymap)
         return ctps_new
     end
 
@@ -388,12 +442,12 @@ function /(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::Number) where {T, TPS_Dim,
     if a == zero(T)
         throw(DivideError("Divide by zero in CTPS"))
     end
-    ctps_new = CTPS(ctps)
-    ctps_map_buffer = Zygote.Buffer(ctps_new.map)
-    for i in 1:ctps_new.terms
-        ctps_map_buffer[i] = ctps_new.map[i] / a
+    ctps_map_buffer = Zygote.Buffer(ctps.map)
+    for i in 1:ctps.terms
+        ctps_map_buffer[i] = ctps.map[i] / a
     end
-    ctps_new.map = copy(ctps_map_buffer)
+    map = copy(ctps_map_buffer)
+    ctps_new = CTPS{T, TPS_Dim, Max_TPS_Degree}(ctps.degree, ctps.terms, map, ctps.polymap)
     return ctps_new
 end
 function /(a::Number, ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
@@ -466,7 +520,7 @@ function pow(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, b::Number) where {T, TPS_Di
     end
 
     temp = CTPS(ctps)
-    index = b
+    index = T(b)
     if cst(ctps) == zero(T)
         if mod(b, 1.0) == 0 && b > 1
             sum = CTPS(ctps)
@@ -488,7 +542,7 @@ function pow(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, b::Number) where {T, TPS_Di
         index -= 1
         term_by_oder = term_by_oder * temp
         sum = sum + (term_by_oder * factor)
-        if index == 0.0
+        if index == 0
             break
         end
     end
