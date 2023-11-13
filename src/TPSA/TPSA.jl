@@ -1,4 +1,3 @@
-module JuTPSA
 # ==============================================================================
 # This file is part of the TPSA (Truncated Power Series Algebra) Julia package.
 #
@@ -7,7 +6,6 @@ module JuTPSA
 # Version: 1.0
 # Created Date: 11-01-2023
 # Modified Date: 11-13-2023
-export CTPS, cst, findindex, findpower, redegree, assign!, element, evaluate, derivative, integrate, pow, PolyMap, getindexmap
 include("polymap.jl")
 using Zygote
 
@@ -662,6 +660,4 @@ function cosh(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS
     end
     sum = sum + cosh_a0
     return sum
-end
-
 end

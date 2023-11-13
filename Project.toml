@@ -1,4 +1,4 @@
-name = "JuTPSA"
+name = "JuTrack"
 uuid = "e0df4a49-1e16-4cdd-8109-614ef0534f02"
 authors = ["Jinyu Wan <wan@frib.msu.edu>"]
 version = "1.0.0-DEV"

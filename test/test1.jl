@@ -1,36 +1,26 @@
-include("../src/JuTPSA.jl")
-using .JuTPSA
-using Test
+include("../src/JuTrack.jl")
+using .JuTrack
 # using Enzyme
 using Zygote
 
-function f(k1, k2)
-    ctps1 = CTPS(k1, 1, 3, 3) 
-    ctps2 = k2*CTPS(1.0, 2, 3, 3)
-    ctps3 = ctps1 * sinh(ctps2)
-    # result = k2*(pow(ctps2, k1))
-    result = derivative(ctps3, 1, 1)
-    map = result.map
-    nterm = result.terms
-    return map
-end
-k1 = 3.0
-k2 = 1.0
-println(f(k1 ,k2))
-# grad_g = Zygote.jacobian(f, k1)
-grad_g = Zygote.jacobian(f, k1, k2)
+x = CTPS(0.0, 1, 6, 2)
+px = CTPS(0.0, 2, 6, 2)
+y = CTPS(0.0, 3, 6, 2)
+py = CTPS(0.0, 4, 6, 2)
+dp = 0.0
 
-println(grad_g)
+delta = CTPS(dp, 5, 6, 2)
+z = CTPS(0.0, 6, 6, 2)
 
-# function f(x, y)
-#     k1 = x[1] 
-#     ctps1 = CTPS(1.0, 1, 3, 3) 
-#     result = integrate(ctps1, 1, k1)
-#     y[1] = result.map[1]
-#     return Nothing
-# end
-# x  = [3.0]
-# bx = [0.0]
-# y  = [0.0]
-# by = [1.0]
-# Enzyme.autodiff(Reverse, FODO_track_result, Duplicated(x, bx), Duplicated(y, by))
+D1 = Drift("D1", 0.5)
+Q1 = Quad("Q1", 1.0, -3.0, 0)
+D2 = Drift("D2", 0.5)
+Q2 = Quad("Q2", 1.0, 2.0, 0)
+seq = [Q1, D1, Q2, D2]
+
+rin = [x, px, y, py, delta, z]
+rout = track(seq, rin)
+println(rout[1].map)
+println(rout[2].map)
+println(rout[3].map)
+println(rout[4].map)
