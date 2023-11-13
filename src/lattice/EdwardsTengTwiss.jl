@@ -1,6 +1,6 @@
 include("../TPSA/TPSA.jl")
 include("../tracking/TPSAtranfermap.jl")
-
+include("../lattice/elements.jl")
 using LinearAlgebra
 abstract type AbstractTwiss end
 
@@ -233,16 +233,16 @@ function findm66(seq::Vector{AbstractElement}, dp::Float64=0.0, isring=false)
 	py = CTPS(0.0, 4, 6, 2)
 	delta = CTPS(dp, 5, 6, 2)
 	z = CTPS(0.0, 6, 6, 2)
-	r = [x, px, y, py, delta, z]
+	# r = [x, px, y, py, delta, z]
 	# no radiation, cavity off
-	r = track(seq, r)
+	x, px, y, py, delta, z = track(seq, x, px, y, py, delta, z)
 
-	Map66 = [r[1].map[2], r[1].map[3], r[1].map[4], r[1].map[5], r[1].map[6], r[1].map[7],
-			 r[2].map[2], r[2].map[3], r[2].map[4], r[2].map[5], r[2].map[6], r[2].map[7],
-			 r[3].map[2], r[3].map[3], r[3].map[4], r[3].map[5], r[3].map[6], r[3].map[7],
-			 r[4].map[2], r[4].map[3], r[4].map[4], r[4].map[5], r[4].map[6], r[4].map[7],
-			 r[5].map[2], r[5].map[3], r[5].map[4], r[5].map[5], r[5].map[6], r[5].map[7],
-			 r[6].map[2], r[6].map[3], r[6].map[4], r[6].map[5], r[6].map[6], r[6].map[7]]
+	Map66 = [x.map[2] x.map[3] x.map[4] x.map[5] x.map[6] x.map[7];
+			px.map[2] px.map[3] px.map[4] px.map[5] px.map[6] px.map[7];
+			y.map[2] y.map[3] y.map[4] y.map[5] y.map[6] y.map[7];
+			py.map[2] py.map[3] py.map[4] py.map[5] py.map[6] py.map[7];
+			delta.map[2] delta.map[3] delta.map[4] delta.map[5] delta.map[6] delta.map[7];
+			z.map[2] z.map[3] z.map[4] z.map[5] z.map[6] z.map[7]]
 	return Map66
 end
 
@@ -251,7 +251,7 @@ function twissPropagate(tin::EdwardsTengTwiss,seq::Vector{AbstractElement}, dp::
     ret = tin
     ss = 0.0
 	for (index,mag) in enumerate(seq)
-		M=findm66([mag], dp, false)
+		M=findm66(seq[index:index], dp, false)
 		ret=twissPropagate(ret,M)
 		ss=mag.len + ss
 		names=mag.name
