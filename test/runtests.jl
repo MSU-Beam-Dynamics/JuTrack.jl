@@ -1,6 +1,6 @@
 # in Julia REPL, run ] to enter package mode
-# activate JuTPSA
-# test JuTPSA
+# activate JuTrack
+# test JuTrack
 
 using JuTrack
 using Test
