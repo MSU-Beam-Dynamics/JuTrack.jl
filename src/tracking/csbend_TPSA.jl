@@ -1,18 +1,21 @@
 using Zygote
 include("../lattice/canonical_elements.jl")
+include("../TPSA/TPSA.jl")
 
-function exactDrift(part, np, length)
-    return [
-        [
-            coord[1] + coord[2] * length,
-            coord[2],
-            coord[3] + coord[4] * length,
-            coord[4],
-            coord[5] + length * sqrt(1 + coord[2]^2 + coord[4]^2),
-            coord[6]
-        ]
-        for coord in part
-    ]
+function exactDrift(x::CTPS, xp::CTPS, y::CTPS, yp::CTPS, z::CTPS, delta::CTPS, np::Number, length::Number)
+    # single particle trakcing for TPS
+    return x + length * xp, xp, y + length * yp, yp, z + length * sqrt(1 + xp^2 + yp^2), delta
+    # [
+    #     [
+    #         coord[1] + coord[2] * length,
+    #         coord[2],
+    #         coord[3] + coord[4] * length,
+    #         coord[4],
+    #         coord[5] + length * sqrt(1 + coord[2]^2 + coord[4]^2),
+    #         coord[6]
+    #     ]
+    #     for coord in part
+    # ]
 end
 
 
@@ -232,7 +235,7 @@ function determine_bend_flags(elem, edge1_effects::Int, edge2_effects::Int)
     return bend_flags
 end
 
-function apply_edge_effects(x, xp, y, yp, rho, n, beta, he, psi, which_edge)
+function apply_edge_effects(x::CTPS, xp::CTPS, y::CTPS, yp::CTPS, rho::CTPS, n, beta, he, psi, which_edge)
     h = 1 / rho
     tan_beta = tan(beta)
     R21 = h * tan_beta
@@ -301,24 +304,24 @@ function computeCSBENDFields(x, y, Fx_xy, Fy_xy, expansionOrder1)
     return sumFX, sumFY
 end
 
-function convertToDipoleCanonicalCoordinates(Qi, rho)
-    f = (1 + Qi[6]) / sqrt((1 + Qi[1] / rho)^2 + Qi[2]^2 + Qi[4]^2)
-    new_Qi = [Qi[1], Qi[2]*f, Qi[3], Qi[4]*f, Qi[5], Qi[6]]
-    return new_Qi 
+function convertToDipoleCanonicalCoordinates(x, xp, y, yp, s0, dp, rho)
+    f = (1 + dp) / sqrt((1 + x / rho)^2 + xp^2 + yp^2)
+    # new_Qi = [Qi[1], Qi[2]*f, Qi[3], Qi[4]*f, Qi[5], Qi[6]]
+    return xp * f, yp * f
 end
-function convertFromDipoleCanonicalCoordinates(Qi, rho)
-    f = (1 + Qi[1]/rho)/sqrt((1+Qi[6])^2-Qi[2]^2-Qi[4]^2);
-    new_Qi = [Qi[1], Qi[2]*f, Qi[3], Qi[4]*f, Qi[5], Qi[6]]
-    return new_Qi
+function convertFromDipoleCanonicalCoordinates(x, px, y, py, s0, dp, rho)
+    f = (1 + x/rho)/sqrt((1+dp)^2-px^2-py^2);
+    # new_Qi = [Qi[1], Qi[2]*f, Qi[3], Qi[4]*f, Qi[5], Qi[6]]
+    return px * f, py * f
 end
 
-function dipoleFringe(vec, h, inFringe, higherOrder)
+function dipoleFringe(x, px, y, py, s0, delta, h, inFringe, higherOrder)
     # vec = [x, qx, y, qy, s, delta]
-    x = vec[1]
-    px = vec[2]
-    y = vec[3]
-    py = vec[4]
-    delta = vec[6]
+    # x = vec[1]
+    # px = vec[2]
+    # y = vec[3]
+    # py = vec[4]
+    # delta = vec[6]
     dx = dpx = dy = dpy = ds = 0
 
     a = inFringe * h / (8 * (1 + delta))
@@ -382,13 +385,13 @@ function dipoleFringe(vec, h, inFringe, higherOrder)
 
     ds = (a / (1 + delta)) * (2 * py * x * y - px * x^2 - 3 * px * y^2)
 
-    new_vec = [vec[1]+dx, vec[2]+dpx, vec[3]+dy, vec[4]+dpy, vec[5]+ds, vec[6]]
+    # new_vec = [vec[1]+dx, vec[2]+dpx, vec[3]+dy, vec[4]+dpy, vec[5]+ds, vec[6]]
     # vec[1] += dx
     # vec[2] += dpx
     # vec[3] += dy
     # vec[4] += dpy
     # vec[5] += ds
-    return new_vec
+    return x + dx, xp + dpx, y + dy, yp + dpy, s0 + ds, delta
 end
 
 function addRadiationKick(Qx, Qy, dPoP, sigmaDelta2,
@@ -446,7 +449,7 @@ function addRadiationKick(Qx, Qy, dPoP, sigmaDelta2,
     return Qx, Qy, dPoP, sigmaDelta2
 end
 
-function integrate_csbend_ord4(Qi, sigmaDelta2, s, n, rho0, p0, Fx_xy, Fy_xy, rho_actual, rad_coef, isrConstant, expansionOrder)
+function integrate_csbend_ord4(x::CTPS, px::CTPS, y::CTPS, py::CTPS, s0, dp::CTPS, sigmaDelta2, s, n, rho0, p0, Fx_xy, Fy_xy, rho_actual, rad_coef, isrConstant, expansionOrder)
     BETA = 1.25992104989487316477
     particle_lost = false
     s_lost = 0.0
@@ -455,214 +458,181 @@ function integrate_csbend_ord4(Qi, sigmaDelta2, s, n, rho0, p0, Fx_xy, Fy_xy, rh
         error("invalid number of steps (integrate_csbend_ord4)")
     end
 
-    Qf = [Qi[i] for i in 1:6]
-    Qf_Buffer = Zygote.Buffer(Qf)
-    for i in 1:6
-        Qf_Buffer[i] = Qf[i]
-    end
+    # Qf = [Qi[i] for i in 1:6]
+    # Qf_Buffer = Zygote.Buffer(Qf)
+    # for i in 1:6
+    #     Qf_Buffer[i] = Qf[i]
+    # end
 
     dist = 0.0
     s /= n
     for i in 1:n
         # First drift
         dsh = s / 2 / (2 - BETA)
-        f = (1 + Qf_Buffer[6])^2 - Qf_Buffer[4]^2
-        if f <= 0
-            particle_lost = true
-            s_lost = dist
-            Qf = copy(Qf_Buffer)
-            return Qf, particle_lost, s_lost
-        end
+        f = (1 +dp)^2 - py^2
+        # if f <= 0
+        #     particle_lost = true
+        #     s_lost = dist
+        #     Qf = copy(Qf_Buffer)
+        #     return Qf, particle_lost, s_lost
+        # end
         f = sqrt(f)
-        if abs(Qf_Buffer[2]/f) > 1
-            particle_lost = true
-            s_lost = dist
-            Qf = copy(Qf_Buffer)
-            return Qf, particle_lost, s_lost
-        end
-        sin_phi = Qf_Buffer[2] / f
+        # if abs(Qf_Buffer[2]/f) > 1
+        #     particle_lost = true
+        #     s_lost = dist
+        #     Qf = copy(Qf_Buffer)
+        #     return Qf, particle_lost, s_lost
+        # end
+        sin_phi = px / f
         phi = asin(sin_phi)
         sine = sin(dsh / rho0 + phi)
         cosi = cos(dsh / rho0 + phi)
-        if cosi == 0
-            particle_lost = true
-            s_lost = dist
-            Qf = copy(Qf_Buffer)
-            return Qf, particle_lost, s_lost
-        end
+        # if cosi == 0
+        #     particle_lost = true
+        #     s_lost = dist
+        #     Qf = copy(Qf_Buffer)
+        #     return Qf, particle_lost, s_lost
+        # end
         tang = sine / cosi
         cos_phi = cos(phi)
-        Qf_Buffer[2] = f * sine
-        factor = (rho0+Qf_Buffer[1])*cos_phi/f*(tang-sin_phi/cos_phi)
-        Qf_Buffer[3] += Qf_Buffer[4] * factor
-        dist += factor * (1 + Qf_Buffer[6])
+        px = f * sine
+        factor = (rho0+x)*cos_phi/f*(tang-sin_phi/cos_phi)
+        y += py * factor
+        dist += factor * (1 + dp)
         f = cos_phi / cosi
-        Qf_Buffer[1] = rho0 * (f - 1) + f * Qf_Buffer[1]
+        x = rho0 * (f - 1) + f * x
 
         # First kick
         ds = s / (2 - BETA)
         # Assuming computeCSBENDFields and addRadiationKick are defined in Julia
-        x = Qf_Buffer[1]
-        y = Qf_Buffer[3]
+        # x = Qf_Buffer[1]
+        # y = Qf_Buffer[3]
         Fx, Fy = computeCSBENDFields(x, y, Fx_xy, Fy_xy, expansionOrder+1)
 
-        Qf_Buffer[2] += -ds * (1 + Qf_Buffer[1]/rho0) * Fy / rho_actual
-        Qf_Buffer[4] += ds * (1 + Qf_Buffer[1]/rho0) * Fx / rho_actual
+        px += -ds * (1 + x/rho0) * Fy / rho_actual
+        py += ds * (1 + x/rho0) * Fx / rho_actual
         if rad_coef != 0 || isrConstant != 0
-            Qx, Qy, dPoP, sigmaDelta2 = addRadiationKick(Qf_Buffer[2], Qf_Buffer[4], Qf_Buffer[6], sigmaDelta2,
-                                        Qf_Buffer[1], 1/rho0, Fx, Fy, ds, rad_coef, s/3, 0, 0, 0, 0, 0, 0)
-            Qf_Buffer[2] = Qx
-            Qf_Buffer[4] = Qy
-            Qf_Buffer[6] = dPoP
+            px, py, dp, sigmaDelta2 = addRadiationKick(px, py, dp, sigmaDelta2,
+                                        x, 1/rho0, Fx, Fy, ds, rad_coef, s/3, 0, 0, 0, 0, 0, 0)
+            # Qf_Buffer[2] = Qx
+            # Qf_Buffer[4] = Qy
+            # Qf_Buffer[6] = dPoP
         end
 
         # second drift
         dsh = s*(1 - BETA)/(2 - BETA)/2
-        f = (1 + Qf_Buffer[6])^2 - Qf_Buffer[4]^2
-        if f <= 0
-            particle_lost = true
-            s_lost = dist
-            Qf = copy(Qf_Buffer)
-            return Qf, particle_lost, s_lost
-        end
+        f = (1 + dp)^2 - py^2
+        # if f <= 0
+        #     particle_lost = true
+        #     s_lost = dist
+        #     Qf = copy(Qf_Buffer)
+        #     return Qf, particle_lost, s_lost
+        # end
         f = sqrt(f)
-        if abs(Qf_Buffer[2]/f) > 1
-            particle_lost = true
-            s_lost = dist
-            Qf = copy(Qf_Buffer)
-            return Qf, particle_lost, s_lost
-        end
-        sin_phi = Qf_Buffer[2] / f
+        # if abs(Qf_Buffer[2]/f) > 1
+        #     particle_lost = true
+        #     s_lost = dist
+        #     Qf = copy(Qf_Buffer)
+        #     return Qf, particle_lost, s_lost
+        # end
+        sin_phi = px / f
         phi = asin(sin_phi)
         sine = sin(dsh / rho0 + phi)
         cosi = cos(dsh / rho0 + phi)
-        if cosi == 0
-            particle_lost = true
-            s_lost = dist
-            Qf = copy(Qf_Buffer)
-            return Qf, particle_lost, s_lost
-        end
+        # if cosi == 0
+        #     particle_lost = true
+        #     s_lost = dist
+        #     Qf = copy(Qf_Buffer)
+        #     return Qf, particle_lost, s_lost
+        # end
         tang = sine / cosi
         cos_phi = cos(phi)
-        Qf_Buffer[2] = f * sine
-        factor = (rho0+Qf_Buffer[1])*cos_phi/f*(tang-sin_phi/cos_phi)
-        Qf_Buffer[3] += Qf_Buffer[4] * factor
-        dist += factor * (1 + Qf_Buffer[6])
+        px = f * sine
+        factor = (rho0+x)*cos_phi/f*(tang-sin_phi/cos_phi)
+        y += py * factor
+        dist += factor * (1 + dp)
         f = cos_phi / cosi
-        Qf_Buffer[1] = rho0 * (f - 1) + f * Qf_Buffer[1]
+        x = rho0 * (f - 1) + f * x
 
         # second kick
         ds = -s*BETA/(2 - BETA)
-        x = Qf_Buffer[1]
-        y = Qf_Buffer[3]
+        # x = Qf_Buffer[1]
+        # y = Qf_Buffer[3]
         Fx, Fy = computeCSBENDFields(x, y, Fx_xy, Fy_xy, expansionOrder+1)
 
-        Qf_Buffer[2] += -ds * (1 + Qf_Buffer[1]/rho0) * Fy / rho_actual
-        Qf_Buffer[4] += ds * (1 + Qf_Buffer[1]/rho0) * Fx / rho_actual
+        px += -ds * (1 + x/rho0) * Fy / rho_actual
+        py += ds * (1 + x/rho0) * Fx / rho_actual
         if rad_coef != 0 || isrConstant != 0
-            Qx, Qy, dPoP, sigmaDelta2 = addRadiationKick(Qf_Buffer[2], Qf_Buffer[4], Qf_Buffer[6], sigmaDelta2,
-                                        Qf_Buffer[1], 1/rho0, Fx, Fy, ds, rad_coef, s/3, 0, 0, 0, 0, 0, 0)
-            Qf_Buffer[2] = Qx
-            Qf_Buffer[4] = Qy
-            Qf_Buffer[6] = dPoP
+            px, py, dp, sigmaDelta2 = addRadiationKick(px, py, dp, sigmaDelta2,
+                                        x, 1/rho0, Fx, Fy, ds, rad_coef, s/3, 0, 0, 0, 0, 0, 0)
         end
 
         # third drift
         dsh = s*(1 - BETA)/(2 - BETA)/2
-        f = (1 + Qf_Buffer[6])^2 - Qf_Buffer[4]^2
-        if f <= 0
-            particle_lost = true
-            s_lost = dist
-            Qf = copy(Qf_Buffer)
-            return Qf, particle_lost, s_lost
-        end
+        f = (1 + dp)^2 - py^2
+
         f = sqrt(f)
-        if abs(Qf_Buffer[2]/f) > 1
-            particle_lost = true
-            s_lost = dist
-            Qf = copy(Qf_Buffer)
-            return Qf, particle_lost, s_lost
-        end
-        sin_phi = Qf_Buffer[2] / f
+
+        sin_phi = px / f
         phi = asin(sin_phi)
         sine = sin(dsh / rho0 + phi)
         cosi = cos(dsh / rho0 + phi)
-        if cosi == 0
-            particle_lost = true
-            s_lost = dist
-            Qf = copy(Qf_Buffer)
-            return Qf, particle_lost, s_lost
-        end
+
         tang = sine / cosi
         cos_phi = cos(phi)
-        Qf_Buffer[2] = f * sine
-        factor = (rho0+Qf_Buffer[1])*cos_phi/f*(tang-sin_phi/cos_phi)
-        Qf_Buffer[3] += Qf_Buffer[4] * factor 
-        dist += factor * (1 + Qf_Buffer[6])
+        px = f * sine
+        factor = (rho0+x)*cos_phi/f*(tang-sin_phi/cos_phi)
+        y += py * factor 
+        dist += factor * (1 + dp)
         f = cos_phi / cosi
-        Qf_Buffer[1] = rho0 * (f - 1) + f * Qf_Buffer[1]
+        x = rho0 * (f - 1) + f * x
 
         # third kick
         ds = s / (2 - BETA)
-        Qf_Buffer[2] += -ds * (1 + Qf_Buffer[1]/rho0) * Fy / rho_actual
-        Qf_Buffer[4] += ds * (1 + Qf_Buffer[1]/rho0) * Fx / rho_actual
+        px += -ds * (1 + x/rho0) * Fy / rho_actual
+        py += ds * (1 + x/rho0) * Fx / rho_actual
         if rad_coef != 0 || isrConstant != 0
-            Qx, Qy, dPoP, sigmaDelta2 = addRadiationKick(Qf_Buffer[2], Qf_Buffer[4], Qf_Buffer[6], sigmaDelta2,
-                                                        Qf_Buffer[1], 1/rho0, Fx, Fy, ds, rad_coef, s/3, 0, 0, 0, 0, 0, 0)
-            Qf_Buffer[2] = Qx
-            Qf_Buffer[4] = Qy
-            Qf_Buffer[6] = dPoP
+            px, py, dp, sigmaDelta2 = addRadiationKick(px, py, dp, sigmaDelta2,
+                                                        x, 1/rho0, Fx, Fy, ds, rad_coef, s/3, 0, 0, 0, 0, 0, 0)
         end
 
         # fourth drift
         dsh = s / 2 / (2 - BETA)
-        f = (1 + Qf_Buffer[6])^2 - Qf_Buffer[4]^2
-        if f <= 0
-            particle_lost = true
-            s_lost = dist
-            Qf = copy(Qf_Buffer)
-            return Qf, particle_lost, s_lost
-        end
+        f = (1 + dp)^2 - py^2
+
         f = sqrt(f)
-        if abs(Qf_Buffer[2]/f) > 1
-            particle_lost = true
-            s_lost = dist
-            Qf = copy(Qf_Buffer)
-            return Qf, particle_lost, s_lost
-        end
-        sin_phi = Qf_Buffer[2] / f
+
+        sin_phi = px / f
         phi = asin(sin_phi)
         sine = sin(dsh / rho0 + phi)
         cosi = cos(dsh / rho0 + phi)
-        if cosi == 0
-            particle_lost = true
-            s_lost = dist
-            Qf = copy(Qf_Buffer)
-            return Qf, particle_lost, s_lost
-        end
+
         tang = sine / cosi
         cos_phi = cos(phi)
-        Qf_Buffer[2] = f * sine
-        factor = (rho0+Qf_Buffer[1])*cos_phi/f*(tang-sin_phi/cos_phi)
-        Qf_Buffer[3] += Qf_Buffer[4] * factor
-        dist += factor * (1 + Qf_Buffer[6])
+        px = f * sine
+        factor = (rho0+x)*cos_phi/f*(tang-sin_phi/cos_phi)
+        y += py * factor
+        dist += factor * (1 + dp)
         f = cos_phi / cosi
-        Qf_Buffer[1] = rho0 * (f - 1) + f * Qf_Buffer[1]
+        x = rho0 * (f - 1) + f * x
     end
-    Qf_Buffer[5] += dist
-    Qf = copy(Qf_Buffer)
-    return Qf #, particle_lost, s_lost, sigmaDelta2
+    s0 += dist
+    # Qf = copy(Qf_Buffer)
+    return x, px, y, py, s0, dp, sigmaDelta2
 end
 
-function track_one_part(coord, n, he1, he2, e1, e2, dxf, dyf, dzf, sin_ttilt, cos_ttilt, dcoord_etilt, psi1, psi2, csbend, Po, rho0, rho_actual, rad_coef, isrConstant, 
+function track_one_part(x_in::CTPS, xp_in::CTPS, y_in::CTPS, yp_in::CTPS, z_in::CTPS, delta_in::CTPS, n, he1, he2, e1, e2, dxf, dyf, dzf, 
+                        sin_ttilt, cos_ttilt, dcoord_etilt, psi1, psi2, csbend, Po, rho0, rho_actual, rad_coef, isrConstant, 
                         sigmaDelta2, Fx_xy, Fy_xy, e1_kick_limit, e2_kick_limit, expansionOrder)
-    x = coord[1]*cos_ttilt + coord[3]*sin_ttilt
-    y = coord[3]*cos_ttilt - coord[1]*sin_ttilt
-    xp = coord[2]*cos_ttilt + coord[4]*sin_ttilt
-    yp = coord[4]*cos_ttilt - coord[2]*sin_ttilt
-    s = coord[5]
-    dp = coord[6]
+    x = x_in*cos_ttilt + y_in*sin_ttilt
+    y = y_in*cos_ttilt - x_in*sin_ttilt
+    xp = xp_in*cos_ttilt + yp_in*sin_ttilt
+    yp = yp_in*cos_ttilt - xp_in*sin_ttilt
+    s = z_in
+    dp = delta_in
     dp0 = dp
+    s0 = 0.0
+    # s0 = CTPS(0.0)
 
     if csbend.edge1_effects != 0
         rho = (1+dp)*rho_actual
@@ -681,19 +651,20 @@ function track_one_part(coord, n, he1, he2, e1, e2, dxf, dyf, dzf, sin_ttilt, co
     xp *= (1+x/rho0)
     yp *= (1+x/rho0)
 
-    Qi = [x, xp, y, yp, 0, dp]
+    # Qi = [x, xp, y, yp, 0, dp]
 
     if csbend.edge1_effects !=0 && e1!=0 && rad_coef!=0
         Fx, Fy = computeCSBENDFields(x, y, Fx_xy, Fy_xy, expansionOrder+1)
         dp_prime = -rad_coef * (Fx^2 + Fy^2) * (1 + dp)^2 * sqrt((1+x/rho0)^2 + xp^2 + yp^2)
-        Qi = [Qi[1], Qi[2], Qi[3], Qi[4], Qi[5], Qi[6] - dp_prime*x*tan(e1)]
+        dp = dp - dp_prime*x*tan(e1)
+        # Qi = [Qi[1], Qi[2], Qi[3], Qi[4], Qi[5], Qi[6] - dp_prime*x*tan(e1)]
         # Qi[6] -= dp_prime*x*tan(e1)
     end
 
-    Qi = convertToDipoleCanonicalCoordinates(Qi, rho0)
+    px, py = convertToDipoleCanonicalCoordinates(x, xp, y, yp, s0, dp, rho0)
 
     if csbend.edge1_effects > 1
-        Qi = dipoleFringe(Qi, rho0, -1, csbend.edge1_effects-2)
+        x, px, y, py, s0, dp = dipoleFringe(x, px, y, py, s0, dp, rho0, -1, csbend.edge1_effects-2)
     end
 
     particle_lost = 0
@@ -701,7 +672,7 @@ function track_one_part(coord, n, he1, he2, e1, e2, dxf, dyf, dzf, sin_ttilt, co
         if csbend.integration_order == 4
             # Qf, particle_lost, s_lost, sigmaDelta2 = integrate_csbend_ord4(Qi, sigmaDelta2, csbend.length, csbend.nSlice, 
                                                 # rho0, Po, Fx_xy, Fy_xy, rho_actual, rad_coef, isrConstant, expansionOrder)
-            Qf = integrate_csbend_ord4(Qi, sigmaDelta2, csbend.length, csbend.nSlice, 
+            x, px, y, py, s0, dp, sigmaDelta2 = integrate_csbend_ord4(x, px, y, py, s0, dp, sigmaDelta2, csbend.length, csbend.nSlice, 
                                                 rho0, Po, Fx_xy, Fy_xy, rho_actual, rad_coef, isrConstant, expansionOrder)
         else
             error("invalid integration order (track_through_csbend)")
@@ -709,23 +680,19 @@ function track_one_part(coord, n, he1, he2, e1, e2, dxf, dyf, dzf, sin_ttilt, co
     end
 
     if csbend.edge2_effects > 1
-        Qf = dipoleFringe(Qf, rho0, 1, csbend.edge2_effects-2)
+        x, px, y, py, s0, dp = dipoleFringe(x, px, y, py, s0, dp, rho0, 1, csbend.edge2_effects-2)
     end
-    Qf = convertFromDipoleCanonicalCoordinates(Qf, rho0)
+    xp, yp = convertFromDipoleCanonicalCoordinates(x, px, y, py, s0, dp, rho0)
 
     ######
     # if particle_lost
     #####
 
     if csbend.edge2_effects !=0 && e2!=0 && rad_coef!=0
-        x = Qf[1]
-        xp = Qf[2]
-        y = Qf[3]
-        yp = Qf[4]
-        dp = Qf[6]
         Fx, Fy = computeCSBENDFields(x, y, Fx_xy, Fy_xy, expansionOrder+1)
         dp_prime = -rad_coef * (Fx^2 + Fy^2) * (1 + dp)^2 * sqrt((1+x/rho0)^2 + xp^2 + yp^2)
-        Qf = [Qf[1], Qf[2], Qf[3], Qf[4], Qf[5], Qf[6] - dp_prime*Qf[1]*tan(e2)]
+        dp = dp - dp_prime*x*tan(e2)
+        # Qf = [Qf[1], Qf[2], Qf[3], Qf[4], Qf[5], Qf[6] - dp_prime*Qf[1]*tan(e2)]
         # Qf[6] -= dp_prime*Qf[1]*tan(e2)
     end
 
@@ -733,17 +700,12 @@ function track_one_part(coord, n, he1, he2, e1, e2, dxf, dyf, dzf, sin_ttilt, co
     if rad_coef !=0 || isrConstant != 0
         p0 = Po*(1+dp0)
         beta0 = p0/sqrt(p0^2+1)
-        p1 = Po*(1+Qf[6])
+        p1 = Po*(1+dp)
         beta1 = p1/sqrt(p1^2+1)
-        s = beta1*s/beta0 + Qf[5]
+        s = beta1*s/beta0 + s0
     else
-        s += Qf[5]
+        s += s0
     end
-    x = Qf[1]
-    xp = Qf[2]
-    y = Qf[3]
-    yp = Qf[4]
-    dp = Qf[6]
 
     xp /= (1+x/rho0)
     yp /= (1+x/rho0)
@@ -762,12 +724,12 @@ function track_one_part(coord, n, he1, he2, e1, e2, dxf, dyf, dzf, sin_ttilt, co
         end
     end
 
-    new_coord = [x*cos_ttilt - y*sin_ttilt + dcoord_etilt[1] + dxf + dzf*coord[2],
-                xp*cos_ttilt - yp*sin_ttilt + dcoord_etilt[2],
-                y*cos_ttilt + x*sin_ttilt + dcoord_etilt[3] + dyf + dzf*coord[4],
-                yp*cos_ttilt + xp*sin_ttilt + dcoord_etilt[4],
-                s + dzf*sqrt(1+coord[2]^2+coord[4]^2),
-                dp]
+    # new_coord = [x*cos_ttilt - y*sin_ttilt + dcoord_etilt[1] + dxf + dzf*coord[2],
+    #             xp*cos_ttilt - yp*sin_ttilt + dcoord_etilt[2],
+    #             y*cos_ttilt + x*sin_ttilt + dcoord_etilt[3] + dyf + dzf*coord[4],
+    #             yp*cos_ttilt + xp*sin_ttilt + dcoord_etilt[4],
+    #             s + dzf*sqrt(1+coord[2]^2+coord[4]^2),
+    #             dp]
     # coord[1] = x*cos_ttilt - y*sin_ttilt + dcoord_etilt[1]
     # coord[2] = xp*cos_ttilt - yp*sin_ttilt + dcoord_etilt[2]
     # coord[3] = y*cos_ttilt + x*sin_ttilt + dcoord_etilt[3]
@@ -778,10 +740,15 @@ function track_one_part(coord, n, he1, he2, e1, e2, dxf, dyf, dzf, sin_ttilt, co
     # coord[1] += dxf + dzf*coord[2]
     # coord[3] += dyf + dzf*coord[4]
     # coord[5] += dzf*sqrt(1+coord[2]^2+coord[4]^2)
-    return new_coord
+    return x*cos_ttilt - y*sin_ttilt + dcoord_etilt[1] + dxf + dzf*yp,
+            xp*cos_ttilt - yp*sin_ttilt + dcoord_etilt[2],
+            y*cos_ttilt + x*sin_ttilt + dcoord_etilt[3] + dyf + dzf*yp,
+            yp*cos_ttilt + xp*sin_ttilt + dcoord_etilt[4],
+            s + dzf*sqrt(1+xp^2+yp^2),
+            dp
 end
 
-function track_through_csbend(part, n_part, csbend, p_error, Po, accepted, z_start, sigmaDelta2)
+function track_through_csbend(x, xp, y, yp, z, delta, n_part, csbend, p_error, Po, sigmaDelta2)
     # constants
     particleMass = 9.1093897e-31 # Electron mass (kg)
     particleCharge = 1.60217733e-19 # Electron charge (C)
@@ -792,8 +759,8 @@ function track_through_csbend(part, n_part, csbend, p_error, Po, accepted, z_sta
 
     largeRhoWarning = 0
     if csbend.angle == 0
-        part1 = exactDrift(part, n_part, csbend.length)
-        return part1
+        x, xp, y, yp, z, delta = exactDrift(x, xp, y, yp, z, delta, n_part, csbend.length)
+        return x, xp, y, yp, z, delta
     end
 
     rho0 = csbend.length / csbend.angle
@@ -827,8 +794,8 @@ function track_through_csbend(part, n_part, csbend, p_error, Po, accepted, z_sta
     if rho0 > 1e6
         largeRhoWarning = 1
         println("CSBEND Warning: large bend radius, rho0 = $rho0. Treated as drift.")
-        part1 = exactDrift(part, n_part, csbend.length)
-        return part1
+        x, xp, y, yp, z, delta = exactDrift(x, xp, y, yp, z, delta, n_part, csbend.length)
+        return x, xp, y, yp, z, delta
     end
 
     fse = csbend.fse
@@ -908,79 +875,83 @@ function track_through_csbend(part, n_part, csbend, p_error, Po, accepted, z_sta
     end
 
     if dxi != 0 || dyi != 0 || dzi != 0
-        part1 = [
-            [
-                part[ip][1] + dxi + dzi * part[ip][2],
-                part[ip][2],
-                part[ip][3] + dyi + dzi * part[ip][4],
-                part[ip][4],
-                part[ip][5] + dzi * sqrt(1 + part[ip][2]^2 + part[ip][4]^2),
-                part[ip][6]
-            ] 
-            for ip in 1:n_part
-        ]
-    else 
-        part1 = copy(part)
+        # single particle of TPS
+        x = x + dxi + dzi * xp
+        y = y + dyi + dzi * yp
+        z = z + dzi * sqrt(1 + xp^2 + yp^2)
+        # part1 = [
+        #     [
+        #         part[ip][1] + dxi + dzi * part[ip][2],
+        #         part[ip][2],
+        #         part[ip][3] + dyi + dzi * part[ip][4],
+        #         part[ip][4],
+        #         part[ip][5] + dzi * sqrt(1 + part[ip][2]^2 + part[ip][4]^2),
+        #         part[ip][6]
+        #     ] 
+        #     for ip in 1:n_part
+        # ]
+    # else 
+    #     part1 = copy(part)
     end 
-    # for i in 1:i_top+1
-    #     coord = [part[i][1]+dxi+dzi*part[i][2], part[i][2], part[i][3]+dyi+dzi*part[i][4], part[i][4], 
-    #                 part[i][5]+dzi*sqrt(1+part[i][2]^2+part[i][4]^2), part[i][6]]
-    #     coord, particle_lost, s_lost, sigmaDelta2 = track_one_part(coord, n, he1, he2, e1, e2, dxf, dyf, dzf, sin_ttilt, cos_ttilt, 
-    #                                                                 dcoord_etilt, psi1, csbend, Po, rho0, rho_actual, rad_coef, 
-    #                                                                 isrConstant, sigmaDelta2, Fx_xy, Fy_xy, e1_kick_limit, 
-    #                                                                 e2_kick_limit, expansionOrder)
-    #     part[i] = coord
-    # end
-    new_parts_Buffer = Zygote.Buffer(part1[1], n_part, 6)
 
-    for i in 1:n_part
-        coord = track_one_part(part1[i], n, he1, he2, e1, e2, dxf, dyf, dzf, sin_ttilt, cos_ttilt, 
+
+    x, xp, y, yp, z, delta = track_one_part(x, xp, y, yp, z, delta, n, he1, he2, e1, e2, dxf, dyf, dzf, sin_ttilt, cos_ttilt, 
                                             dcoord_etilt, psi1, psi2, csbend, Po, rho0, rho_actual, rad_coef, 
                                             isrConstant, sigmaDelta2, Fx_xy, Fy_xy, e1_kick_limit, 
                                             e2_kick_limit, expansionOrder)
-        for j in 1:6
-            new_parts_Buffer[i, j] = coord[j]
-        end
-    end
-    new_parts = copy(new_parts_Buffer)
-    new_parts_list = [new_parts[i,:] for i in 1:n_part]
 
-    # new_parts = [
-    #         track_one_part(part1[i], n, he1, he2, e1, e2, dxf, dyf, dzf, sin_ttilt, cos_ttilt, 
-    #                                         dcoord_etilt, psi1, psi2, csbend, Po, rho0, rho_actual, rad_coef, 
-    #                                         isrConstant, sigmaDelta2, Fx_xy, Fy_xy, e1_kick_limit, 
-    #                                         e2_kick_limit, expansionOrder)
-  
-    #     for i in 1:i_top + 1
-    # ]
 
-    # new_parts = [result[1] for result in results]
-    # particle_lost_array = [result[2] for result in results]
-    # s_lost_array = [result[3] for result in results]
-    # sigmaDelta2 = results[end][4]
+
 
     if !isnothing(sigmaDelta2) 
         sigmaDelta2 /= i_top+1
     end
-    return new_parts_list
+    return x, xp, y, yp, z, delta
 
 end
 
 
 
-# function f(L, Angle)
-#     CSB = CSBEND(L, Angle, 0.01, 0.02, 0.5, 0.0, 0.0 ,0.0 ,0.0 ,0.0, 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,
-#             0.0, 0.0, 0.0, 1, 1, 1, -1.0, -1.0, 0.0, 1, 0, 0, 0, 1, 0, 1, 0.0, 0.0, 0.0, 0.0, 0.0, 4, 4, 0)
-#     particle = [Float64[0.001, 0.0001, 0.0005, 0.0002, 0.0, 0.0], Float64[0.001, 0.0, 0.0, 0.0, 0.0, 0.0]]
+# x = CTPS(0.0, 1, 6, 2)
+# xp = CTPS(0.0, 2, 6, 2)
+# y = CTPS(0.0, 3, 6, 2)
+# yp = CTPS(0.0, 4, 6, 2)
+# delta = CTPS(0.0, 5, 6, 2)
+# z = CTPS(0.0, 6, 6, 2)
 
-#     n_part = 2
-#     rout = track_through_csbend(particle, n_part, CSB, 0.0, 1000.0, 0.0, 0.0, nothing)
-#     # println(rout)
-#     return rout[1]
+# CSB = CSBEND(0.72, 0.1571, 0.01, 0.02, 0.5, 0.0, 0.0 ,0.0 ,0.0 ,0.0, 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,
+# 0.0, 0.0, 0.0, 1, 1, 1, -1.0, -1.0, 0.0, 1, 0, 0, 0, 1, 0, 1, 0.0, 0.0, 0.0, 0.0, 0.0, 4, 4, 0)
+
+# n_part = 1
+# xout, xpout, yout, ypout, zout, dpout = track_through_csbend(x, xp, y, yp, z, delta, n_part, 
+#                             CSB, 0.0, 1000.0, nothing)
+# println(xout)
+# xvalue = evaluate(xout, [0.001, 0.0001, 0.0005, 0.0002, 0.0, 0.0])
+# yvalue = evaluate(yout, [0.001, 0.0001, 0.0005, 0.0002, 0.0, 0.0])
+# println(xvalue)
+# println(yvalue)
+# Map66 = [xout.map[2] xout.map[3] xout.map[4] xout.map[5] xout.map[6] xout.map[7];
+#             xpout.map[2] xpout.map[3] xpout.map[4] xpout.map[5] xpout.map[6] xpout.map[7];
+# 			yout.map[2] yout.map[3] yout.map[4] yout.map[5] yout.map[6] yout.map[7];
+# 			ypout.map[2] ypout.map[3] ypout.map[4] ypout.map[5] ypout.map[6] ypout.map[7];
+# 			dpout.map[2] dpout.map[3] dpout.map[4] dpout.map[5] dpout.map[6] dpout.map[7];
+# 			zout.map[2] zout.map[3] zout.map[4] zout.map[5] zout.map[6] zout.map[7]]
+# println(Map66)
+
+# function f(L, angle)
+#     CSB = CSBEND(L, angle, 0.01, 0.02, 0.5, 0.0, 0.0 ,0.0 ,0.0 ,0.0, 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,
+#         0.0, 0.0, 0.0, 1, 1, 1, -1.0, -1.0, 0.0, 1, 0, 0, 0, 1, 0, 1, 0.0, 0.0, 0.0, 0.0, 0.0, 4, 4, 0)
+#         x = CTPS(0.0, 1, 6, 2)
+#         xp = CTPS(0.0, 2, 6, 2)
+#         y = CTPS(0.0, 3, 6, 2)
+#         yp = CTPS(0.0, 4, 6, 2)
+#         delta = CTPS(0.0, 5, 6, 2)
+#         z = CTPS(0.0, 6, 6, 2)
+#         xout, xpout, yout, ypout, zout, dpout = track_through_csbend(x, xp, y, yp, z, delta, 1, 
+#         CSB, 0.0, 1000.0, nothing)
+#         output = [xout.map[2] xout.map[3] xout.map[4] xout.map[5] xout.map[6] xout.map[7]]
+#         return output
 # end
-# println(f(0.72, 0.1571))
-
-# grad = Zygote.jacobian(f, 0.72, 0.1571) 
-# @time grad1 = Zygote.jacobian(f, 0.72, 0.1571) 
-
+# grad = Zygote.jacobian(f, 0.72, 0.1571)
+# @time grad = Zygote.jacobian(f, 0.72, 0.1571)
 # println(grad)

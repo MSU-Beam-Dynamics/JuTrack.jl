@@ -102,7 +102,8 @@ function offsetBeamCoordinates(coord, np, dx, dy, dz)
             coord[ip][2],
             coord[ip][3] - dy + dz * coord[ip][4],
             coord[ip][4],
-            coord[ip][5] + dz * sqrt(1 + coord[ip][2]^2 + coord[ip][4]^2)
+            coord[ip][5] + dz * sqrt(1 + coord[ip][2]^2 + coord[ip][4]^2),
+            coord[ip][6]
         ] 
         for ip in 1:np
     ]
