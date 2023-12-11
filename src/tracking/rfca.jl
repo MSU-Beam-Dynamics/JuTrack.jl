@@ -1,5 +1,6 @@
 include("EDrift.jl")
-
+include("../lattice/canonical_elements.jl")
+using Zygote
  
 const c_mks = 2.99792458e8
 
@@ -17,15 +18,16 @@ function add_to_particle_energy(coord, timeOfFlight, Po, dgamma)
         gamma1 = 1+1e-7
     end
     P1 = sqrt(gamma1^2 - 1)
-    coord[6] = P1/Po - 1
-    coord[5] = timeOfFlight * c_mks * P1 / gamma1
+    coord_6 = P1/Po - 1
+    coord_5 = timeOfFlight * c_mks * P1 / gamma1
 
     Pz = P/sqrt(1+coord[2]^2+coord[4]^2)
     Pz1 = sqrt(Pz^2 + gamma1^2 - gamma^2)
     PRatio = Pz/Pz1
-    coord[2] *= PRatio
-    coord[4] *= PRatio
-    return coord
+    coord_2 = coord[2]*PRatio
+    coord_4 = coord[4]*PRatio
+    coord_new = [coord[1], coord_2, coord[3], coord_4, coord_5, coord_6]
+    return coord_new
 end
 
 function do_match_energy(part, np, P_central, change_beam)
@@ -40,9 +42,11 @@ function do_match_energy(part, np, P_central, change_beam)
         P_average /= np
         if abs((P_average - P_central)/P_central) > 1e-14
             if active == 1
-                for ip in 1:np
-                    part[ip][6] = ((1+part[ip][6])*P_central - P_average)/P_average
-                end
+                part_new =[[part[ip][1], part[ip][2], part[ip][3], part[ip][4], part[ip][5],
+                ((1 + part[ip][6]) * P_central - P_average) / P_average] for ip in 1:np]
+                # for ip in 1:np
+                #     part[ip][6] = ((1+part[ip][6])*P_central - P_average)/P_average
+                # end
             end
             P_central = P_average
         end
@@ -60,12 +64,14 @@ function do_match_energy(part, np, P_central, change_beam)
                 P = (1+part[ip][6])*P_central
                 t = part[ip][5]/(P/sqrt(P^2+1))
                 P += dP_centroid
-                part[ip][6] = (P-P_central)/P_central
-                part[ip][5] = t*(P/sqrt(P^2+1))
+                part_new = [[part[ip][1], part[ip][2], part[ip][3], part[ip][4], t*(P/sqrt(P^2+1)), 
+                                (P-P_central)/P_central] for ip in 1:np]
+                # part[ip][6] = (P-P_central)/P_central
+                # part[ip][5] = t*(P/sqrt(P^2+1))
             end
         end
     end
-    return part, P_central
+    return part_new, P_central
 end
 
 function get_phase_reference(rfca_phase_reference, reference_ref_number, reference_phase, reference_flags, n_references)
@@ -150,18 +156,29 @@ function set_phase_reference(phase_ref_number, phase, reference_ref_number, refe
     if phase_ref_number == 0
         return 0, reference_ref_number, reference_phase, reference_flags
     end
+    reference_ref_number_Buffer = Zygote.Buffer(reference_ref_number)
+    reference_phase_Buffer = Zygote.Buffer(reference_phase)
+    reference_flags_Buffer = Zygote.Buffer(reference_flags)
+    for i in 1:length(reference_ref_number_Buffer)
+        reference_ref_number_Buffer[i] = reference_ref_number[i]
+        reference_phase_Buffer[i] = reference_phase[i]
+        reference_flags_Buffer[i] = reference_flags[i]
+    end
     for i in 1:n_references
         if reference_ref_number[i] == phase_ref_number
-            reference_phase[i] = phase
-            reference_flags[i] = 1
-            return 1, reference_ref_number, reference_phase, reference_flags
+            reference_phase_Buffer[i] = phase
+            reference_flags_Buffer[i] = 1
+            return 1, reference_ref_number, copy(reference_phase_Buffer), copy(reference_flags_Buffer), phase
         end
     end
-    reference_ref_number[n_references] = phase_ref_number
-    reference_phase[n_references] = phase
-    reference_flags[n_references] = 1
+    reference_ref_number_Buffer[n_references] = phase_ref_number
+    reference_phase_Buffer[n_references] = phase
+    reference_flags_Buffer[n_references] = 1
+    # reference_ref_number[n_references] = phase_ref_number
+    # reference_phase[n_references] = phase
+    # reference_flags[n_references] = 1
     n_references += 1
-    return 1, reference_ref_number, reference_phase, reference_flags, n_references
+    return 1, copy(reference_ref_number_Buffer), copy(reference_phase_Buffer), copy(reference_flags_Buffer), phase
 end
 function trackRfCavityWithWakes(part, np, rfca, P_central, zEnd, wake, trwake, LSCKick, wakesAtEnd,
     fiducial_seen, rfca_phase_reference, reference_ref_number, reference_phase, reference_flags, n_references)
@@ -247,7 +264,7 @@ function trackRfCavityWithWakes(part, np, rfca, P_central, zEnd, wake, trwake, L
             phase_fiducial = -omega*t0
             fiducial_seen = 1
         end
-        set_phase_reference_flag, reference_ref_number, reference_phase, reference_flags = set_phase_reference(rfca_phase_reference, 
+        set_phase_reference_flag, reference_ref_number, reference_phase, reference_flags, phase = set_phase_reference(rfca_phase_reference, 
                         phase_fiducial, reference_ref_number, reference_phase, reference_flags, n_references)
     end
 
@@ -301,19 +318,32 @@ function trackRfCavityWithWakes(part, np, rfca, P_central, zEnd, wake, trwake, L
             dgammaAve = volt*sin(omega*(tAve-timeOffset)+phase)
         end
     end
-    for ip in 1:np
-        coord = part[ip]
-        coord[1] -= rfca.dx
-        coord[3] -= rfca.dy
-    end
 
+    # part_new = [[part[ip][1]-rfca.dx, part[ip][2], part[ip][3]-rfca.dy, part[ip][4], part[ip][5], part[ip][6]] for ip in 1:np]
+    # for ip in 1:np
+    #     coord = part[ip]
+    #     coord[1] -= rfca.dx
+    #     coord[3] -= rfca.dy
+    # end
+    part_Buffer = Zygote.Buffer(part)
+    for ip in 1:np
+        part_Buffer[ip] = part[ip]
+    end
     if matrixMethod==0
         inverseF = zeros(np)
+        inverseF_Buffer = Zygote.Buffer(inverseF)
         for ik in 0:nKicks-1
             dgammaOverGammaAve = 0
             dgammaOverGammaNp = 0
             for ip in 1:np
-                coord = part[ip]
+                coord = part_Buffer[ip]
+                coord_Buffer = Zygote.Buffer(coord)
+                for i in 1:6
+                    coord_Buffer[i] = coord[i]
+                end
+                # dx, dy
+                coord_Buffer[1] -= rfca.dx
+                coord_Buffer[3] -= rfca.dy
                 if coord[6] == -1
                     continue
                 end
@@ -329,7 +359,7 @@ function trackRfCavityWithWakes(part, np, rfca, P_central, zEnd, wake, trwake, L
                 beta_i = P/gamma
                 t = (coord[5]+dc4)/(beta_i*c_mks) - timeOffset
                 if ik==0 && timeOffset!=0 && rfca.change_t!=0
-                    coord[5] = t*beta_i*c_mks - dc4
+                    coord_Buffer[5] = t*beta_i*c_mks - dc4
                 end
                 dt = t-t0
                 if dt < 0
@@ -350,24 +380,29 @@ function trackRfCavityWithWakes(part, np, rfca, P_central, zEnd, wake, trwake, L
                 if length != 0
                     if rfca.end1Focus!=0 && ik==0
                         # focus kick
-                        inverseF[ip] = dgamma/(2*gamma*length)
-                        coord[2] -= coord[1]*inverseF[ip]
-                        coord[4] -= coord[3]*inverseF[ip]
+                        inverseF_Buffer[ip] = dgamma/(2*gamma*length)
+                        coord_Buffer[2] -= coord_Buffer[1]*inverseF_Buffer[ip]
+                        coord_Buffer[4] -= coord_Buffer[3]*inverseF_Buffer[ip]
+                    else
+                        inverseF_Buffer[ip] = 0
                     end
                     # initial drift
-                    coord[1] += coord[2]*length/2
-                    coord[3] += coord[4]*length/2
-                    coord[5] += length/2*sqrt(1+coord[2]^2+coord[4]^2)
+                    coord_Buffer[1] += coord_Buffer[2]*length/2
+                    coord_Buffer[3] += coord_Buffer[4]*length/2
+                    coord_Buffer[5] += length/2*sqrt(1+coord_Buffer[2]^2+coord_Buffer[4]^2)
+                else
+                    inverseF_Buffer[ip] = 0
                 end
+                coord = copy(coord_Buffer)
                 # energy kick
                 coord = add_to_particle_energy(coord, t, P_central, dgamma)
                 gamma1 = gamma+dgamma
                 if gamma1<=1
-                    coord[6] = -1
+                    coord = [coord[1], coord[2], coord[3], coord[4], coord[5], -1]
                 else
-                    inverseF[ip] = -dgamma/(2*gamma1*length)
+                    inverseF_Buffer[ip] = -dgamma/(2*gamma1*length)
                 end
-                part[ip] = coord
+                part_Buffer[ip] = coord
             end
 
             if wakesAtEnd==0
@@ -387,15 +422,20 @@ function trackRfCavityWithWakes(part, np, rfca, P_central, zEnd, wake, trwake, L
             end
             if length!=0
                 for ip in 1:np
-                    coord = part[ip]
-                    coord[1] += coord[2]*length/2
-                    coord[3] += coord[4]*length/2
-                    coord[5] += length/2*sqrt(1+coord[2]^2+coord[4]^2)
+                    coord = part_Buffer[ip]
+                    coord = [coord[1]+coord[2]*length/2, coord[2], coord[3]+coord[4]*length/2, coord[4], 
+                                coord[5]+length/2*sqrt(1+coord[2]^2+coord[4]^2), coord[6]]
+                    # coord[1] += coord[2]*length/2
+                    # coord[3] += coord[4]*length/2
+                    # coord[5] += length/2*sqrt(1+coord[2]^2+coord[4]^2)
                     if rfca.end2Focus!=0 && ik==nKicks-1
                         # focus kick
-                        coord[2] -= coord[1]*inverseF[ip]
-                        coord[4] -= coord[3]*inverseF[ip]
+                        coord = [coord[1], coord[2]-coord[1]*inverseF_Buffer[ip], coord[3], coord[4]-coord[3]*inverseF_Buffer[ip], 
+                                    coord[5], coord[6]]
+                        # coord[2] -= coord[1]*inverseF_Buffer[ip]
+                        # coord[4] -= coord[3]*inverseF_Buffer[ip]
                     end
+                    part_Buffer[ip] = coord
                 end
             end
             if wakesAtEnd!=0
@@ -423,8 +463,8 @@ function trackRfCavityWithWakes(part, np, rfca, P_central, zEnd, wake, trwake, L
             dgammaOverGammaAve = 0
             dgammaOverGammaNp = 0
             for ip in 1:np
-                coord = part[ip]
-
+                coord = part_Buffer[ip]
+                coord_Buffer = Zygote.Buffer(coord)
                 # use matrix to propagate particles
                 P = P_central*(1 + coord[6])
                 gamma = sqrt(P^2 + 1)
@@ -432,7 +472,7 @@ function trackRfCavityWithWakes(part, np, rfca, P_central, zEnd, wake, trwake, L
                 ds1 = length/2*sqrt(1+coord[2]^2+coord[4]^2)
                 t = (coord[5]+ds1)/(beta_i*c_mks) - timeOffset
                 if timeOffset!=0 && rfca.change_t!=0
-                    coord[5] = t*beta_i*c_mks - ds1
+                    coord_Buffer[5] = t*beta_i*c_mks - ds1
                 end
                 dt = t-t0
                 if dt < 0
@@ -455,8 +495,8 @@ function trackRfCavityWithWakes(part, np, rfca, P_central, zEnd, wake, trwake, L
                 if rfca.end1Focus!=0 && ik==0 && length!=0
                     # focus kick
                     inverseF = dgamma/(2*gamma*length)
-                    coord[2] -= coord[1]*inverseF[ip]
-                    coord[4] -= coord[3]*inverseF[ip]
+                    coord_Buffer[2] -= coord_Buffer[1]*inverseF[ip]
+                    coord_Buffer[4] -= coord_Buffer[3]*inverseF[ip]
                 end
 
                 dP = sqrt((gamma+dgamma)^2 - 1) - P
@@ -485,30 +525,30 @@ function trackRfCavityWithWakes(part, np, rfca, P_central, zEnd, wake, trwake, L
                     end
                 end
 
-                coord[5] += ds1
-                x = coord[1]
-                xp = coord[2]
-                coord[1] = R11*x + R12*xp
-                coord[2] = R21*x + R22*xp
-                x = coord[3]
-                xp = coord[4]
-                coord[3] = R11*x + R12*xp
-                coord[4] = R21*x + R22*xp
-                coord[5] += length/2*sqrt(1+coord[2]^2+coord[4]^2)
-                coord[6] = (P+dP-P_central)/P_central
+                coord_Buffer[5] += ds1
+                x = coord_Buffer[1]
+                xp = coord_Buffer[2]
+                coord_Buffer[1] = R11*x + R12*xp
+                coord_Buffer[2] = R21*x + R22*xp
+                x = coord_Buffer[3]
+                xp = coord_Buffer[4]
+                coord_Buffer[3] = R11*x + R12*xp
+                coord_Buffer[4] = R21*x + R22*xp
+                coord_Buffer[5] += length/2*sqrt(1+coord_Buffer[2]^2+coord_Buffer[4]^2)
+                coord_Buffer[6] = (P+dP-P_central)/P_central
 
                 gamma += dgamma
                 if gamma <= 1
-                    coord[6] = -1
+                    coord_Buffer[6] = -1
                 end
                 if rfca.end2Focus!=0 && ik==nKicks-1 && length!=0
                     # focus kick
                     inverseF = -dgamma/(2*gamma*length)
-                    coord[2] -= coord[1]*inverseF
-                    coord[4] -= coord[3]*inverseF
+                    coord_Buffer[2] -= coord_Buffer[1]*inverseF
+                    coord_Buffer[4] -= coord_Buffer[3]*inverseF
                 end
-                coord[5] = (P+dP)/gamma*coord[5]/beta_i
-                part[ip] = coord
+                coord_Buffer[5] = (P+dP)/gamma*coord_Buffer[5]/beta_i
+                part_Buffer[ip] = coord
             end
             if wakesAtEnd==0
                 if !isnothing(wake)
@@ -528,40 +568,31 @@ function trackRfCavityWithWakes(part, np, rfca, P_central, zEnd, wake, trwake, L
         end
     end
     for ip in 1:np
-        coord = part[ip]
-        coord[1] += rfca.dx
-        coord[3] += rfca.dy
+        coord = part_Buffer[ip]
+        coord = [coord[1]+rfca.dx, coord[2], coord[3]+rfca.dy, coord[4], coord[5], coord[6]]
+        part_Buffer[ip] = coord
+        # coord[1] += rfca.dx
+        # coord[3] += rfca.dy
     end
+    part = copy(part_Buffer)
     if rfca.change_p0 != 0
         part, P_central = do_match_energy(part, np, P_central, 0)
     end
     return part, fiducial_seen, P_central, n_references, reference_ref_number, reference_phase, reference_flags, n_references
 end
 
-struct RFCA
-    name::String
-    freq::Float64
-    volt::Float64
-    phase::Float64
-    phase_reference::Int64
-    phase_fiducial::Float64
-    fiducial_mode # nothing: default, 1: light, 2: tmean, 3: first, 4: pmaximum
-    tReference::Float64
-    Q::Float64
-    len::Float64
-    nKicks::Int64
-    dx::Float64
-    dy::Float64
-    change_p0::Int64
-    change_t::Int64
-    linearize::Int64
-    lockPhase::Int64
-    end1Focus::Int64
-    end2Focus::Int64
-    bodyFocusModel::String
-end
 
-rfca = RFCA("rfca", 500e6, 1e6, 90.0, 0, 0, nothing, -1.0, 0, 0.1, 1, 0, 0, 0, 0, 0, 0, 0, 0, "none")
-parts = [Float64[0.001, 0.0001, 0.0005, 0.0002, 0.0, 0.0], Float64[0.001, 0.0, 0.0, 0.0, 0.0, 0.0]]
-pout = simple_rf_cavity(parts, 2, rfca, 19569.507622969009, 0.0)
-println(pout)
+# test with Zygote
+# function f(volt, freq)
+# rfca = RFCA("rfca", freq, volt, 90.0, 0, 0, nothing, -1.0, 0, 0.1, 10, 0, 0, 0, 0, 0, 0, 0, 0, "none")
+# parts = [Float64[0.001, 0.0001, 0.0005, 0.0002, 0.0, 0.0], Float64[0.001, 0.0, 0.0, 0.0, 0.0, 0.0]]
+# pout, fiducial_seen, P_central, n_references, reference_ref_number, reference_phase, reference_flags, n_references= simple_rf_cavity(parts, 
+#                         2, rfca, 19569.507622969009, 0.0)
+# # println(pout)
+# return pout[1]
+# end
+# volt = 1e6
+# freq = 500e6
+# println(f(volt, freq))
+# grad = Zygote.jacobian(f, volt, freq)
+# println(grad)

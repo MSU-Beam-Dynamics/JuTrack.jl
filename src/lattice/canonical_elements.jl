@@ -171,3 +171,26 @@ function CSBEND(name, length, angle; e1=0.0, e2=0.0, fint=0.5, hgap=0.0,
     nSlice=1, expansionOrder=0)
     CSBEND(name, length, angle, e1, e2, fint, hgap, k1, k2, k3, k4, k5, k6, k7, k8, b1, b2, b3, b4, b5, b6, b7, b8, dx, dy, dz, edge1_effects, edge2_effects, edge_order, e1_kick_limit, e2_kick_limit, kick_limit_scaling, nonlinear, use_bn, synch_rad, isr, isr1Particle, distributionBasedRadiation, includeOpeningAngle, tilt, etilt, fse, h1, h2, integration_order, nSlice, expansionOrder)
 end
+
+struct RFCA <: AbstractElement
+    name::String
+    freq::Float64
+    volt::Float64
+    phase::Float64
+    phase_reference::Int64
+    phase_fiducial::Float64
+    fiducial_mode # nothing: default, 1: light, 2: tmean, 3: first, 4: pmaximum
+    tReference::Float64
+    Q::Float64
+    len::Float64
+    nKicks::Int64
+    dx::Float64
+    dy::Float64
+    change_p0::Int64
+    change_t::Int64
+    linearize::Int64
+    lockPhase::Int64
+    end1Focus::Int64
+    end2Focus::Int64
+    bodyFocusModel::String
+end
