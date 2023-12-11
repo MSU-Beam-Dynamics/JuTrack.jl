@@ -4,12 +4,6 @@ using Zygote
  
 const c_mks = 2.99792458e8
 
-function simple_rf_cavity(part, np, rfca, Po, zEnd)
-    return trackRfCavityWithWakes(part, np, rfca, Po, zEnd, 
-                                    nothing, nothing, nothing, nothing, 
-                                    0, 0, 0, 0, 0, 0)
-end
-
 function add_to_particle_energy(coord, timeOfFlight, Po, dgamma)
     P = Po * (1 + coord[6])
     gamma = sqrt(P^2 + 1)
@@ -168,7 +162,7 @@ function set_phase_reference(phase_ref_number, phase, reference_ref_number, refe
         if reference_ref_number[i] == phase_ref_number
             reference_phase_Buffer[i] = phase
             reference_flags_Buffer[i] = 1
-            return 1, reference_ref_number, copy(reference_phase_Buffer), copy(reference_flags_Buffer), phase
+            return 1, reference_ref_number, copy(reference_phase_Buffer), copy(reference_flags_Buffer), phase, n_references
         end
     end
     reference_ref_number_Buffer[n_references] = phase_ref_number
@@ -178,8 +172,16 @@ function set_phase_reference(phase_ref_number, phase, reference_ref_number, refe
     # reference_phase[n_references] = phase
     # reference_flags[n_references] = 1
     n_references += 1
-    return 1, copy(reference_ref_number_Buffer), copy(reference_phase_Buffer), copy(reference_flags_Buffer), phase
+    return 1, copy(reference_ref_number_Buffer), copy(reference_phase_Buffer), copy(reference_flags_Buffer), phase, n_references
 end
+
+function simple_rf_cavity(part, np, rfca, Po, zEnd, fiducial_seen, rfca_phase_reference,
+     reference_ref_number, reference_phase, reference_flags, n_references)
+    return trackRfCavityWithWakes(part, np, rfca, Po, zEnd, 
+            nothing, nothing, nothing, nothing, 
+            fiducial_seen,  rfca_phase_reference, reference_ref_number, reference_phase, reference_flags, n_references)
+end
+
 function trackRfCavityWithWakes(part, np, rfca, P_central, zEnd, wake, trwake, LSCKick, wakesAtEnd,
     fiducial_seen, rfca_phase_reference, reference_ref_number, reference_phase, reference_flags, n_references)
     particleMassMV = 0.51099906
@@ -264,7 +266,7 @@ function trackRfCavityWithWakes(part, np, rfca, P_central, zEnd, wake, trwake, L
             phase_fiducial = -omega*t0
             fiducial_seen = 1
         end
-        set_phase_reference_flag, reference_ref_number, reference_phase, reference_flags, phase = set_phase_reference(rfca_phase_reference, 
+        set_phase_reference_flag, reference_ref_number, reference_phase, reference_flags, phase, n_references = set_phase_reference(rfca_phase_reference, 
                         phase_fiducial, reference_ref_number, reference_phase, reference_flags, n_references)
     end
 
@@ -578,16 +580,16 @@ function trackRfCavityWithWakes(part, np, rfca, P_central, zEnd, wake, trwake, L
     if rfca.change_p0 != 0
         part, P_central = do_match_energy(part, np, P_central, 0)
     end
-    return part, fiducial_seen, P_central, n_references, reference_ref_number, reference_phase, reference_flags, n_references
+    return part, fiducial_seen, P_central, n_references, reference_ref_number, reference_phase, reference_flags
 end
 
 
 # test with Zygote
 # function f(volt, freq)
 # rfca = RFCA("rfca", freq, volt, 90.0, 0, 0, nothing, -1.0, 0, 0.1, 10, 0, 0, 0, 0, 0, 0, 0, 0, "none")
-# parts = [Float64[0.001, 0.0001, 0.0005, 0.0002, 0.0, 0.0], Float64[0.001, 0.0, 0.0, 0.0, 0.0, 0.0]]
-# pout, fiducial_seen, P_central, n_references, reference_ref_number, reference_phase, reference_flags, n_references= simple_rf_cavity(parts, 
-#                         2, rfca, 19569.507622969009, 0.0)
+# parts = [Float64[0.001, 0.0001, 0.0005, 0.0002, 1.0, 0.0], Float64[0.001, 0.0, 0.0, 0.0, 0.0, 0.0]]
+# pout, fiducial_seen, P_central, n_references, reference_ref_number, reference_phase, reference_flags= simple_rf_cavity(parts, 
+#                         2, rfca, 19569.507622969009, 0.0, 0, 0, 0, [0.0], [0], 0)
 # # println(pout)
 # return pout[1]
 # end

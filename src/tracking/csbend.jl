@@ -1,14 +1,14 @@
 using Zygote
 include("../lattice/canonical_elements.jl")
 
-function exactDrift(part, np, length)
+function exactDrift(part, np, len)
     return [
         [
-            coord[1] + coord[2] * length,
+            coord[1] + coord[2] * len,
             coord[2],
-            coord[3] + coord[4] * length,
+            coord[3] + coord[4] * len,
             coord[4],
-            coord[5] + length * sqrt(1 + coord[2]^2 + coord[4]^2),
+            coord[5] + len * sqrt(1 + coord[2]^2 + coord[4]^2),
             coord[6]
         ]
         for coord in part
@@ -846,10 +846,10 @@ function track_one_part(coord, n, he1, he2, e1, e2, dxf, dyf, dzf, sin_ttilt, co
         if csbend.integration_order == 4
             # Qf, particle_lost, s_lost, sigmaDelta2 = integrate_csbend_ord4(Qi, sigmaDelta2, csbend.length, csbend.nSlice, 
                                                 # rho0, Po, Fx_xy, Fy_xy, rho_actual, rad_coef, isrConstant, expansionOrder)
-            Qf, particle_lost, s_lost, sigmaDelta2 = integrate_csbend_ord4(Qi, sigmaDelta2, csbend.length, csbend.nSlice, 
+            Qf, particle_lost, s_lost, sigmaDelta2 = integrate_csbend_ord4(Qi, sigmaDelta2, csbend.len, csbend.nSlice, 
                                                 rho0, Po, Fx_xy, Fy_xy, rho_actual, rad_coef, isrConstant, expansionOrder)
         elseif csbend.integration_order == 2
-            Qf, particle_lost, s_lost, sigmaDelta2 = integrate_csbend_ord2(Qi, sigmaDelta2, csbend.length, csbend.nSlice, 
+            Qf, particle_lost, s_lost, sigmaDelta2 = integrate_csbend_ord2(Qi, sigmaDelta2, csbend.len, csbend.nSlice, 
                                                 rho0, Po, Fx_xy, Fy_xy, rho_actual, rad_coef, isrConstant, expansionOrder)
         else
             error("invalid integration order (track_through_csbend)")
@@ -940,11 +940,11 @@ function track_through_csbend(part, n_part, csbend, p_error, Po, sigmaDelta2)
 
     largeRhoWarning = 0
     if csbend.angle == 0
-        part1 = exactDrift(part, n_part, csbend.length)
+        part1 = exactDrift(part, n_part, csbend.len)
         return part1
     end
 
-    rho0 = csbend.length / csbend.angle
+    rho0 = csbend.len / csbend.angle
     if csbend.use_bn != 0
         b = [csbend.b1, csbend.b2, csbend.b3, csbend.b4, csbend.b5, csbend.b6, csbend.b7, csbend.b8]
     else
@@ -961,7 +961,7 @@ function track_through_csbend(part, n_part, csbend, p_error, Po, sigmaDelta2)
         e2 = -csbend.e2
         etilt = csbend.etilt
         tilt = csbend.tilt + pi
-        rho0 = csbend.length / angle
+        rho0 = csbend.len / angle
         b = [i % 2 == 1 ? -b[i] : b[i] for i in 1:8]
     else
         angle = csbend.angle
@@ -969,13 +969,13 @@ function track_through_csbend(part, n_part, csbend, p_error, Po, sigmaDelta2)
         e2 = csbend.e2
         etilt = csbend.etilt
         tilt = csbend.tilt
-        rho0 = csbend.length / angle
+        rho0 = csbend.len / angle
     end
 
     if rho0 > 1e6
         largeRhoWarning = 1
         println("CSBEND Warning: large bend radius, rho0 = $rho0. Treated as drift.")
-        part1 = exactDrift(part, n_part, csbend.length)
+        part1 = exactDrift(part, n_part, csbend.len)
         return part1
     end
 
@@ -1107,12 +1107,12 @@ end
 
 
 # function f(L, Angle)
-#     CSB = CSBEND(L, Angle, 0.01, 0.02, 0.5, 0.0, 0.0 ,0.0 ,0.0 ,0.0, 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,
+#     CSB = CSBEND("CSB",L, Angle, 0.01, 0.02, 0.5, 0.0, 0.0 ,0.0 ,0.0 ,0.0, 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,
 #             0.0, 0.0, 0.0, 1, 1, 1, -1.0, -1.0, 0.0, 1, 0, 0, 0, 1, 0, 1, 0.0, 0.0, 0.0, 0.0, 0.0, 2, 4, 0)
 #     particle = [Float64[0.001, 0.0001, 0.0005, 0.0002, 0.0, 0.0], Float64[0.001, 0.0, 0.0, 0.0, 0.0, 0.0]]
 
 #     n_part = 2
-#     rout = track_through_csbend(particle, n_part, CSB, 0.0, 1000.0, 0.0, 0.0, nothing)
+#     rout = track_through_csbend(particle, n_part, CSB, 0.0, 1000.0, 0.0)
 #     # println(rout)
 #     return rout[1]
 # end

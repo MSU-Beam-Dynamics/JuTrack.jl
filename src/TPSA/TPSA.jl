@@ -16,7 +16,7 @@ struct CTPS{T, TPS_Dim, Max_TPS_Degree}
     polymap::Ref{PolyMap}
 end
 
-const polyMapCache = Dict{Tuple{Int, Int}, PolyMap}()
+global polyMapCache = Dict{Tuple{Int, Int}, PolyMap}()
 # Get or create a PolyMap 
 function getOrCreatePolyMap(TPS_Dim::Int, Max_TPS_Degree::Int)
     key = (TPS_Dim, Max_TPS_Degree)

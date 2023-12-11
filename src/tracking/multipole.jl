@@ -513,6 +513,8 @@ function multipole_tracking2(particle, n_part, elem, Po)
         else
             particle_new3 = particle_new2
         end
+    else
+        particle_new3 = particle_new2
     end
 
     # for i_part in 1:i_top+1
@@ -551,25 +553,27 @@ function multipole_tracking2(particle, n_part, elem, Po)
         else
             particles_new5 = particles_new4
         end
+    else
+        particles_new5 = particles_new4
     end
     expandHamiltonian = 0
     return particles_new5
 end
 
 # double precision
-# particle = [Float64[0.001, 0.0001, 0.0005, 0.0002, 0.0, 0.0], Float64[0.001, 0.0, 0.0, 0.0, 0.0, 0.0]]
-# Quad = KQUAD(1.0, 1.0, 0.0, 
+# particle = [Float64[0.001, 0.0001, 0.0005, 0.0002, 0.0, 0.0], Float64[0.001, 0.0, 0.0, 0.0, 1.0, 0.0]]
+# Quad = KQUAD("Q",1.0, 1.0, 0.0, 
 #                 0.0, 0.0, 0.0, 0.0, 0.0, 1, 
 #                 1, 1, 1.0, 1, 1.0, [1.0, 0.1, 0.0, 0.0, 0.0], [1.0, 0.1, 0.0, 0.0, 0.0], 0, 4, 4, 0.0, 0.0, 0, 0)
 
-# Sext = KSEXT(1.0, 1.0, 0.0, 
+# Sext = KSEXT("S",1.0, 1.0, 0.0, 
 #                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4, 4, 0.0, 0.0, 0.0, 0.0)
 
-# Oct = KOCT(1.0, 1.0, 0.0, 
+# Oct = KOCT("O",1.0, 1.0, 0.0, 
 #                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4, 4, 0.0, 0.0, 0.0, 0.0)
 
 # n_part = 2
-# rout = multipole_tracking2(particle, n_part, Quad, 1.0)
+# rout = multipole_tracking2(particle, n_part, Sext, 1.0)
 # println(rout)
 
 # function f(k)
