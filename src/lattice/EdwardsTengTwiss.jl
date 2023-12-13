@@ -1,6 +1,6 @@
 include("../TPSA/TPSA.jl")
-include("../tracking/TPSAtranfermap.jl")
-include("../lattice/elements.jl")
+include("../tracking/track.jl")
+# include("../lattice/canonical_elements.jl")
 using LinearAlgebra
 abstract type AbstractTwiss end
 
@@ -235,7 +235,8 @@ function findm66(seq::Vector{AbstractElement}, dp::Float64=0.0, isring=false)
 	z = CTPS(0.0, 6, 6, 2)
 	# r = [x, px, y, py, delta, z]
 	# no radiation, cavity off
-	x, px, y, py, delta, z = track(seq, x, px, y, py, delta, z)
+	Po, p_error, sigmaDelta2 = sqrt((3500/0.51099906)^2-1), 0.0, 0.0
+	x, px, y, py, delta, z = linepass(seq, x, px, y, py, delta, z, Po, p_error, sigmaDelta2)
 
 	Map66 = [x.map[2] x.map[3] x.map[4] x.map[5] x.map[6] x.map[7];
 			px.map[2] px.map[3] px.map[4] px.map[5] px.map[6] px.map[7];
@@ -250,17 +251,28 @@ function twissPropagate(tin::EdwardsTengTwiss,seq::Vector{AbstractElement}, dp::
 	# obtain M through tracking
     ret = tin
     ss = 0.0
-	for (index,mag) in enumerate(seq)
-		M=findm66(seq[index:index], dp, false)
-		ret=twissPropagate(ret,M)
-		ss=mag.len + ss
-		names=mag.name
-		if index == endindex
-			break
-		end
-	end
+	used_seq = seq[1:endindex]
+	M = findm66(used_seq, dp, false)
+	ret = twissPropagate(ret, M)
+	ss = sum([mag.len for mag in used_seq])
+	names = [mag.name for mag in used_seq]
 	return ss,names,ret
 end
+# function twissPropagate(tin::EdwardsTengTwiss,seq::Vector{AbstractElement}, dp::Float64=0.0, endindex::Int=1)
+# 	# obtain M through tracking
+#     ret = tin
+#     ss = 0.0
+# 	for (index,mag) in enumerate(seq)
+# 		M=findm66(seq[index:index], dp, false)
+# 		ret=twissPropagate(ret,M)
+# 		ss=mag.len + ss
+# 		names=mag.name
+# 		if index == endindex
+# 			break
+# 		end
+# 	end
+# 	return ss,names,ret
+# end
 function periodicEdwardsTengTwiss(M::Matrix{Float64})
 	A=@view M[1:2,1:2]
 	B=@view M[1:2,3:4]

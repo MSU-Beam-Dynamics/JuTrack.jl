@@ -53,7 +53,7 @@ function CTPS(a::T, n::Int, TPS_Dim::Int, Max_TPS_Degree::Int) where T
         polymap = getOrCreatePolyMap(TPS_Dim, Max_TPS_Degree)
         return CTPS{T, TPS_Dim, Max_TPS_Degree}(1, terms, map, Ref(polymap)) 
     else
-        throw(ArgumentError("Num of var out of range in CTPS"))
+        error("Num of var out of range in CTPS")
     end
 end
 
@@ -75,7 +75,7 @@ function findindex(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, indexmap::Vector{Int}
         return findindex(ctps, newindexmap)
     end
     if length(indexmap) != (dim + 1)
-        throw(DimensionMismatch("Index map does not have correct length"))
+        error("Index map does not have correct length")
     end
     sum = copy(indexmap)
     sum_buffer = Zygote.Buffer(sum) # Buffer for Zygote
@@ -84,7 +84,7 @@ function findindex(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, indexmap::Vector{Int}
     end
     for i in 2:dim+1
         if indexmap[i] < 0
-            throw(ArgumentError("The index map has invalid component"))
+            error("The index map has invalid component")
         end
         sum_buffer[i] = sum_buffer[i-1] - indexmap[i]
     end
@@ -103,7 +103,7 @@ function findpower(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, n::Int64) where {T, T
     if n < ctps.terms
         return getindexmap(ctps.polymap[], n)
     else
-        throw(ArgumentError("The index is out of range"))
+        error("The index is out of range")
     end
 end
 
@@ -160,7 +160,7 @@ function assign(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::T, n_var::Int) where 
         # ctps.map[n_var] = one(T)
         # ctps.map[1] = a
     else
-        throw(ArgumentError("Num of var out of range in CTPS"))
+        error("Num of var out of range in CTPS")
     end
 end
 
@@ -175,7 +175,7 @@ end
 
 function element(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, ind::Int64) where {T, TPS_Dim, Max_TPS_Degree}
     if ind < 1 || ind > ctps.terms
-        throw(ArgumentError("Element index out of range in CTPS"))
+        error("Element index out of range in CTPS")
     end
     return ctps.map[ind]
 end
@@ -187,7 +187,7 @@ end
 
 function evaluate(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, inivalue::Vector{U}) where {T, TPS_Dim, Max_TPS_Degree, U}
     if length(inivalue) != TPS_Dim
-        throw(DimensionMismatch("Inconsistent dimension to evaluate CTPS"))
+        error("Inconsistent dimension to evaluate CTPS")
     end
     sum = U(ctps.map[1])
     for i in 2:ctps.terms
@@ -236,7 +236,7 @@ function derivative(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, ndim::Int, order::In
         end
         return derivative_ctps
     else
-        throw(ArgumentError("The dimension is out of range"))
+        error("The dimension is out of range")
     end
 end
 
@@ -265,7 +265,7 @@ function integrate(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, ndim::Int, a0::T) whe
         # temp.map = copy(map_buffer)
         return temp
     else
-        throw(ArgumentError("Inconsistent dimension to integrate"))
+        error("Inconsistent dimension to integrate")
     end
 end
 
@@ -408,7 +408,7 @@ end
 # /
 function inv(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
     if cst(ctps) == zero(T)
-        throw(DivideError("Divide by zero in CTPS"))
+        error("Divide by zero in CTPS")
     end
     temp = CTPS(ctps)
     sum = CTPS(zero(T), TPS_Dim, Max_TPS_Degree)
@@ -425,7 +425,7 @@ end
 
 function /(ctps1::CTPS{T, TPS_Dim, Max_TPS_Degree}, ctps2::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
     if cst(ctps2) == zero(T)
-        throw(DivideError("Divide by zero in CTPS"))
+        error("Divide by zero in CTPS")
     end
 
     if ctps2.degree == 0
@@ -438,7 +438,7 @@ function /(ctps1::CTPS{T, TPS_Dim, Max_TPS_Degree}, ctps2::CTPS{T, TPS_Dim, Max_
 end
 function /(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::Number) where {T, TPS_Dim, Max_TPS_Degree}
     if a == zero(T)
-        throw(DivideError("Divide by zero in CTPS"))
+        error("Divide by zero in CTPS")
     end
     ctps_map_buffer = Zygote.Buffer(ctps.map)
     for i in 1:ctps.terms
@@ -450,7 +450,7 @@ function /(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::Number) where {T, TPS_Dim,
 end
 function /(a::Number, ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
     if cst(ctps) == zero(T)
-        throw(DivideError("Divide by zero in CTPS"))
+        error("Divide by zero in CTPS")
     end
     return a * inv(ctps)
 end
@@ -476,7 +476,7 @@ end
 # logarithm
 function log(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
     if cst(ctps) == zero(T)
-        throw(DomainError("Log of zero in CTPS"))
+        error("Log of zero in CTPS")
     end
     temp = CTPS(ctps)
     temp = temp - cst(temp)
@@ -493,7 +493,7 @@ end
 # square root
 function sqrt(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
     if cst(ctps) < zero(T)
-        throw(DomainError("Square root of negative number in CTPS"))
+        error("Square root of negative number in CTPS")
     end
     a0 = Base.sqrt(cst(ctps))
     temp = CTPS(ctps)
@@ -527,7 +527,7 @@ function pow(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, b::Number) where {T, TPS_Di
             end
             return sum
         else
-            throw(DomainError("Divide by zero, in CTPS::pow"))
+            error("Divide by zero, in CTPS::pow")
         end
     end
     temp = temp - cst(temp)

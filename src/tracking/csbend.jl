@@ -846,10 +846,10 @@ function track_one_part(coord, n, he1, he2, e1, e2, dxf, dyf, dzf, sin_ttilt, co
         if csbend.integration_order == 4
             # Qf, particle_lost, s_lost, sigmaDelta2 = integrate_csbend_ord4(Qi, sigmaDelta2, csbend.length, csbend.nSlice, 
                                                 # rho0, Po, Fx_xy, Fy_xy, rho_actual, rad_coef, isrConstant, expansionOrder)
-            Qf, particle_lost, s_lost, sigmaDelta2 = integrate_csbend_ord4(Qi, sigmaDelta2, csbend.len, csbend.nSlice, 
+            Qf, particle_lost, s_lost, sigmaDelta2 = integrate_csbend_ord4(Qi, sigmaDelta2, csbend.len, csbend.nSlices, 
                                                 rho0, Po, Fx_xy, Fy_xy, rho_actual, rad_coef, isrConstant, expansionOrder)
         elseif csbend.integration_order == 2
-            Qf, particle_lost, s_lost, sigmaDelta2 = integrate_csbend_ord2(Qi, sigmaDelta2, csbend.len, csbend.nSlice, 
+            Qf, particle_lost, s_lost, sigmaDelta2 = integrate_csbend_ord2(Qi, sigmaDelta2, csbend.len, csbend.nSlices, 
                                                 rho0, Po, Fx_xy, Fy_xy, rho_actual, rad_coef, isrConstant, expansionOrder)
         else
             error("invalid integration order (track_through_csbend)")
@@ -1003,7 +1003,7 @@ function track_through_csbend(part, n_part, csbend, p_error, Po, sigmaDelta2)
     psi2 = Kg/rho_actual/cos(e2)*(1+sin(e2)^2)
     # rad_coef is d((P-Po)/Po)/ds for the on-axis, on-momentum particle, where po is the momentum of the central particle.
     if csbend.synch_rad !=0
-        rad_coef = particleCharge^2*Po^3*(1+fse)^2/(6*PI*epsilon_o*c_mks^2*particleMass*rho0^2)
+        rad_coef = particleCharge^2*Po^3*(1+fse)^2/(6*pi*epsilon_o*c_mks^2*particleMass*rho0^2)
     else
         rad_coef = 0
     end
@@ -1107,12 +1107,11 @@ end
 
 
 # function f(L, Angle)
-#     CSB = CSBEND("CSB",L, Angle, 0.01, 0.02, 0.5, 0.0, 0.0 ,0.0 ,0.0 ,0.0, 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,
-#             0.0, 0.0, 0.0, 1, 1, 1, -1.0, -1.0, 0.0, 1, 0, 0, 0, 1, 0, 1, 0.0, 0.0, 0.0, 0.0, 0.0, 2, 4, 0)
+#     CSB = CSBEND(name="CSB",len=L, angle=Angle, nSlices=1, synch_rad=1, integration_order=2)
 #     particle = [Float64[0.001, 0.0001, 0.0005, 0.0002, 0.0, 0.0], Float64[0.001, 0.0, 0.0, 0.0, 0.0, 0.0]]
 
 #     n_part = 2
-#     rout = track_through_csbend(particle, n_part, CSB, 0.0, 1000.0, 0.0)
+#     rout = track_through_csbend(particle, n_part, CSB, 0.0, 19569.50762296901, 0.0)
 #     # println(rout)
 #     return rout[1]
 # end

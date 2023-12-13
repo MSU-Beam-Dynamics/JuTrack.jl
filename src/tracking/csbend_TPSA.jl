@@ -672,7 +672,7 @@ function track_one_part(x_in::CTPS, xp_in::CTPS, y_in::CTPS, yp_in::CTPS, z_in::
         if csbend.integration_order == 4
             # Qf, particle_lost, s_lost, sigmaDelta2 = integrate_csbend_ord4(Qi, sigmaDelta2, csbend.length, csbend.nSlice, 
                                                 # rho0, Po, Fx_xy, Fy_xy, rho_actual, rad_coef, isrConstant, expansionOrder)
-            x, px, y, py, s0, dp, sigmaDelta2 = integrate_csbend_ord4(x, px, y, py, s0, dp, sigmaDelta2, csbend.length, csbend.nSlice, 
+            x, px, y, py, s0, dp, sigmaDelta2 = integrate_csbend_ord4(x, px, y, py, s0, dp, sigmaDelta2, csbend.len, csbend.nSlices, 
                                                 rho0, Po, Fx_xy, Fy_xy, rho_actual, rad_coef, isrConstant, expansionOrder)
         else
             error("invalid integration order (track_through_csbend)")
@@ -759,11 +759,11 @@ function track_through_csbend(x, xp, y, yp, z, delta, n_part, csbend, p_error, P
 
     largeRhoWarning = 0
     if csbend.angle == 0
-        x, xp, y, yp, z, delta = exactDrift(x, xp, y, yp, z, delta, n_part, csbend.length)
+        x, xp, y, yp, z, delta = exactDrift(x, xp, y, yp, z, delta, n_part, csbend.len)
         return x, xp, y, yp, z, delta
     end
 
-    rho0 = csbend.length / csbend.angle
+    rho0 = csbend.len / csbend.angle
     if csbend.use_bn != 0
         b = [csbend.b1, csbend.b2, csbend.b3, csbend.b4, csbend.b5, csbend.b6, csbend.b7, csbend.b8]
     else
@@ -780,7 +780,7 @@ function track_through_csbend(x, xp, y, yp, z, delta, n_part, csbend, p_error, P
         e2 = -csbend.e2
         etilt = csbend.etilt
         tilt = csbend.tilt + pi
-        rho0 = csbend.length / angle
+        rho0 = csbend.len / angle
         b = [i % 2 == 1 ? -b[i] : b[i] for i in 1:8]
     else
         angle = csbend.angle
@@ -788,13 +788,13 @@ function track_through_csbend(x, xp, y, yp, z, delta, n_part, csbend, p_error, P
         e2 = csbend.e2
         etilt = csbend.etilt
         tilt = csbend.tilt
-        rho0 = csbend.length / angle
+        rho0 = csbend.len / angle
     end
 
     if rho0 > 1e6
         largeRhoWarning = 1
         println("CSBEND Warning: large bend radius, rho0 = $rho0. Treated as drift.")
-        x, xp, y, yp, z, delta = exactDrift(x, xp, y, yp, z, delta, n_part, csbend.length)
+        x, xp, y, yp, z, delta = exactDrift(x, xp, y, yp, z, delta, n_part, csbend.len)
         return x, xp, y, yp, z, delta
     end
 
@@ -822,7 +822,7 @@ function track_through_csbend(x, xp, y, yp, z, delta, n_part, csbend, p_error, P
     psi2 = Kg/rho_actual/cos(e2)*(1+sin(e2)^2)
     # rad_coef is d((P-Po)/Po)/ds for the on-axis, on-momentum particle, where po is the momentum of the central particle.
     if csbend.synch_rad !=0
-        rad_coef = particleCharge^2*Po^3*(1+fse)^2/(6*PI*epsilon_o*c_mks^2*particleMass*rho0^2)
+        rad_coef = particleCharge^2*Po^3*(1+fse)^2/(6*pi*epsilon_o*c_mks^2*particleMass*rho0^2)
     else
         rad_coef = 0
     end
@@ -919,19 +919,17 @@ end
 # delta = CTPS(0.0, 5, 6, 2)
 # z = CTPS(0.0, 6, 6, 2)
 
-# CSB = CSBEND(0.72, 0.1571, 0.01, 0.02, 0.5, 0.0, 0.0 ,0.0 ,0.0 ,0.0, 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,
-# 0.0, 0.0, 0.0, 1, 1, 1, -1.0, -1.0, 0.0, 1, 0, 0, 0, 1, 0, 1, 0.0, 0.0, 0.0, 0.0, 0.0, 4, 4, 0)
-
+# CSB = CSBEND(name="CSB",angle=pi/20/2,len=0.72,e1=pi/20/2,e2=0.0)
+# Po = sqrt((3500/0.51099906)^2-1)
 # n_part = 1
-# xout, xpout, yout, ypout, zout, dpout = track_through_csbend(x, xp, y, yp, z, delta, n_part, 
-#                             CSB, 0.0, 1000.0, nothing)
+# xout, xpout, yout, ypout, zout, dpout = track_through_csbend(x, xp, y, yp, z, delta, n_part, CSB, 0.0, Po, nothing)
 # println(xout)
 # xvalue = evaluate(xout, [0.001, 0.0001, 0.0005, 0.0002, 0.0, 0.0])
 # yvalue = evaluate(yout, [0.001, 0.0001, 0.0005, 0.0002, 0.0, 0.0])
 # println(xvalue)
 # println(yvalue)
 # Map66 = [xout.map[2] xout.map[3] xout.map[4] xout.map[5] xout.map[6] xout.map[7];
-#             xpout.map[2] xpout.map[3] xpout.map[4] xpout.map[5] xpout.map[6] xpout.map[7];
+# xpout.map[2] xpout.map[3] xpout.map[4] xpout.map[5] xpout.map[6] xpout.map[7];
 # 			yout.map[2] yout.map[3] yout.map[4] yout.map[5] yout.map[6] yout.map[7];
 # 			ypout.map[2] ypout.map[3] ypout.map[4] ypout.map[5] ypout.map[6] ypout.map[7];
 # 			dpout.map[2] dpout.map[3] dpout.map[4] dpout.map[5] dpout.map[6] dpout.map[7];

@@ -18,3 +18,7 @@ function EDrift(part, np, length)
         for coord in part
     ]
 end
+
+function EDrift(x, xp, y, yp, z, delta, length)
+    return x + xp * length, xp, y + yp * length, yp, z + length * sqrt(1 + xp^2 + yp^2), delta
+end

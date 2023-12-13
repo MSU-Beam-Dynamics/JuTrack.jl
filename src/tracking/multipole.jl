@@ -1,5 +1,6 @@
 include("quadFringe.jl") 
 include("../lattice/canonical_elements.jl")
+using Zygote
 
 # function fillPowerArray(x::Float64, order::Int)
 #     xpow = Vector{Float64}(undef, order + 1)
@@ -150,7 +151,7 @@ function integrate_kick_multipole_ordn(coord, dx, dy, xkick, ykick,
     n_parts, drift,
     integration_order,
     multData, steeringMultData,
-    apData, dzLoss,
+    apData, sigmaDelta2,
     radial, refTilt)
 
     BETA = 1.25992104989487316477
@@ -296,18 +297,18 @@ function integrate_kick_multipole_ordn(coord, dx, dy, xkick, ykick,
                 delta_qy = 0.0
                 dsFactor = sqrt(1 + xp^2 + yp^2)
                 dsISRFactor = dsFactor*drift/(nSubsteps-1)
-                dsFactor = dsFactor * kickFrac[step]
+                dsFactor = dsFactor * drift * kickFrac[step]
                 if rad_coef != 0
                     dp = dp - rad_coef*deltaFactor*F2*dsFactor
                 end
-                if isr_coef != 0
-                    srGaussianLimit = 3.0
-                    dp = dp - isr_coef * deltaFactor * F2^0.75 *
-                        sqrt(dsISRFactor)*gauss_rn_lim(0.0, 1.0, srGaussianLimit, random_2)
+
+                if isr_coef > 0
+                    warning("Warning: ISR is not developed yet")
+                    dp -= isr_coef*deltaFactor*F2^0.75*sqrt(dsISRFactor)*gauss_rn_lim(0.0, 1.0, srGaussianLimit, random_2)
                 end
-                # if sigmaDelta2 != 0
-                #     sigmaDelta2 = sigmaDelta2 + (isr_coef * deltaFactor)^2 * F2^1.5 * dsISRFactor
-                # end
+                if sigmaDelta2 != 0
+                    sigmaDelta2 = sigmaDelta2 + (isr_coef * deltaFactor)^2 * F2^1.5 * dsISRFactor
+                end
                 qx = qx * (1 + dp)
                 qy = qy * (1 + dp)
                 xp, yp = convertMomentaToSlopes(qx, qy, dp)
@@ -341,11 +342,11 @@ function integrate_kick_multipole_ordn(coord, dx, dy, xkick, ykick,
         coord5 = coord[5] + s
     end
     coord_new = [x, xp, y, yp, coord5, dp]
-    return coord_new
+    return coord_new, dzLoss, sigmaDelta2
 end
 
 
-function multipole_tracking2(particle, n_part, elem, Po)
+function multipole_tracking2(particle, n_part, elem, Po, sigmaDelta2)
     # constants
     particleMass = 9.1093897e-31 # Electron mass (kg)
     particleCharge = 1.60217733e-19 # Electron charge (C)
@@ -354,13 +355,13 @@ function multipole_tracking2(particle, n_part, elem, Po)
     me_mev = 0.51099906 # Electron mass (MeV)
     particleRadius = particleCharge^2 / (4 * pi * epsilon_o * particleMass * c_mks^2) # Classical electron radius (m)
     
-    skew = zeros(Int16, 3)
+    skew = zeros(Int64, 3)
     dx = dy = dz = 0.0 
     nSlices = integ_order = 0
     i_part = i_top = 0
     coord = []
     drift = 0.0
-    tilt = pitch = yaw = rad_coef = isr_coef = xkick = ykick = dzLoss = 0.0
+    tilt = pitch = yaw = rad_coef = isr_coef = xkick = ykick = 0.0
     sextWarning = quadWarning = octWarning = false
     multData = steeringMultData = apData = nothing
 
@@ -387,10 +388,9 @@ function multipole_tracking2(particle, n_part, elem, Po)
         integ_order = elem.integration_order
 
         if elem.synch_rad != 0
-            rad_coef = particleCharge^2 * Po^3 / (6 * pi * epsilon_o * sqrt(c_mks) * particleMass)
+            rad_coef = particleCharge^2 * Po^3 / (6 * pi * epsilon_o * (c_mks^2) * particleMass)
         end
-        # isr is not implemented yet
-        # isr_coef = particleRadius *sqrt(55.0 / (24 * sqrt(3)) * Po^5 * 137.0359895)
+        isr_coef = particleRadius *sqrt(55.0 / (24 * sqrt(3)) * Po^5 * 137.0359895)
         if elem.isr == 0 || (elem.isr1Particle == 0 && n_part == 1 )
             # Minus sign indicates we accumulate into sigmaDelta^2 only, don't perturb particles
             isr_coef *= -1
@@ -424,11 +424,10 @@ function multipole_tracking2(particle, n_part, elem, Po)
         integ_order = elem.integration_order
 
         if elem.synch_rad != 0
-            rad_coef = particleCharge^2 * Po^3 / (6 * pi * epsilon_o * sqrt(c_mks) * particleMass)
+            rad_coef = particleCharge^2 * Po^3 / (6 * pi * epsilon_o * (c_mks^2) * particleMass)
         end
 
-        # isr is not implemented
-        # isr_coef = particleRadius *sqrt(55.0 / (24 * sqrt(3)) * Po^5 * 137.0359895)
+        isr_coef = particleRadius *sqrt(55.0 / (24 * sqrt(3)) * Po^5 * 137.0359895)
         if elem.isr == 0 || (elem.isr1Particle == 0 && n_part == 1 )
             # Minus sign indicates we accumulate into sigmaDelta^2 only, don't perturb particles
             isr_coef *= -1
@@ -463,11 +462,10 @@ function multipole_tracking2(particle, n_part, elem, Po)
         integ_order = elem.integration_order
 
         if elem.synch_rad != 0
-            rad_coef = particleCharge^2 * Po^3 / (6 * pi * epsilon_o * sqrt(c_mks) * particleMass)
+            rad_coef = particleCharge^2 * Po^3 / (6 * pi * epsilon_o * (c_mks^2) * particleMass)
         end
 
-        # isr is not implemented
-        # isr_coef = particleRadius *sqrt(55.0 / (24 * sqrt(3)) * Po^5 * 137.0359895)
+        isr_coef = particleRadius *sqrt(55.0 / (24 * sqrt(3)) * Po^5 * 137.0359895)
         if elem.isr == 0 || (elem.isr1Particle == 0 && n_part == 1 )
             # Minus sign indicates we accumulate into sigmaDelta^2 only, don't perturb particles
             isr_coef *= -1
@@ -531,20 +529,43 @@ function multipole_tracking2(particle, n_part, elem, Po)
     #                                             steeringMultData, apData, dzLoss, 0, tilt)
     #     end
     # end
-    particles_new4 = [
-    if elem isa KQUAD
-        integrate_kick_multipole_ordn(particle_new3[i_part], dx, dy, xkick, ykick, Po, rad_coef, 
-                                      isr_coef, order, KnL, skew, nSlices, 
-                                      drift, integ_order, multData, 
-                                      steeringMultData, apData, dzLoss, elem.radial, tilt)
-    else
-        integrate_kick_multipole_ordn(particle_new3[i_part], dx, dy, xkick, ykick, Po, rad_coef, 
-                                      isr_coef, order, KnL, skew, nSlices, 
-                                      drift, integ_order, multData, 
-                                      steeringMultData, apData, dzLoss, 0, tilt)
+    if isnothing(sigmaDelta2)
+        sigmaDelta2 = 0
     end
-    for i_part in 1:i_top+1]
-
+    particle_new4_Buffer = Zygote.Buffer(particle_new3[1],n_part,6)
+    for i_part in 1:i_top+1
+        if elem isa KQUAD
+            part_out, dzLoss, sigmaDelta2 = integrate_kick_multipole_ordn(particle_new3[i_part], dx, dy, xkick, ykick, Po, rad_coef, 
+                                                isr_coef, order, KnL, skew, nSlices, 
+                                                drift, integ_order, multData, 
+                                                steeringMultData, apData, sigmaDelta2, elem.radial, tilt)
+        else
+            part_out, dzLoss, sigmaDelta2 = integrate_kick_multipole_ordn(particle_new3[i_part], dx, dy, xkick, ykick, Po, rad_coef, 
+                                                isr_coef, order, KnL, skew, nSlices, 
+                                                drift, integ_order, multData, 
+                                                steeringMultData, apData, sigmaDelta2, 0, tilt)
+        end
+        for j in 1:6
+            particle_new4_Buffer[i_part,j] = part_out[j]
+        end
+    end
+    particles_new4 = [[particle_new4_Buffer[i_part,j] for j in 1:6] for i_part in 1:i_top+1]
+    # particles_new4 = [
+    # if elem isa KQUAD
+    #     integrate_kick_multipole_ordn(particle_new3[i_part], dx, dy, xkick, ykick, Po, rad_coef, 
+    #                                   isr_coef, order, KnL, skew, nSlices, 
+    #                                   drift, integ_order, multData, 
+    #                                   steeringMultData, apData, sigmaDelta2, elem.radial, tilt)
+    # else
+    #     integrate_kick_multipole_ordn(particle_new3[i_part], dx, dy, xkick, ykick, Po, rad_coef, 
+    #                                   isr_coef, order, KnL, skew, nSlices, 
+    #                                   drift, integ_order, multData, 
+    #                                   steeringMultData, apData, sigmaDelta2, 0, tilt)
+    # end
+    # for i_part in 1:i_top+1]
+    if sigmaDelta2 != 0
+        sigmaDelta2 /= i_top + 1
+    end
 
     if elem isa KQUAD
         if elem.edge2_effects !=0
@@ -562,30 +583,19 @@ end
 
 # double precision
 # particle = [Float64[0.001, 0.0001, 0.0005, 0.0002, 0.0, 0.0], Float64[0.001, 0.0, 0.0, 0.0, 1.0, 0.0]]
-# Quad = KQUAD("Q",1.0, 1.0, 0.0, 
-#                 0.0, 0.0, 0.0, 0.0, 0.0, 1, 
-#                 1, 1, 1.0, 1, 1.0, [1.0, 0.1, 0.0, 0.0, 0.0], [1.0, 0.1, 0.0, 0.0, 0.0], 0, 4, 4, 0.0, 0.0, 0, 0)
-
-# Sext = KSEXT("S",1.0, 1.0, 0.0, 
-#                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4, 4, 0.0, 0.0, 0.0, 0.0)
-
-# Oct = KOCT("O",1.0, 1.0, 0.0, 
-#                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4, 4, 0.0, 0.0, 0.0, 0.0)
+# Quad = KQUAD(name="Q",len=1.0, k1=1.0, nSlices=4, synch_rad=1)
+# Po = 19569.50762296901
 
 # n_part = 2
-# rout = multipole_tracking2(particle, n_part, Sext, 1.0)
+# rout = multipole_tracking2(particle, n_part, Quad, Po, nothing)
 # println(rout)
 
 # function f(k)
-#     Sext = KSEXT(k, 1.0, 0.0, 
-#                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4, 4, 0.0, 0.0, 0.0, 0.0)
-#     Oct = KOCT(k, 1.0, 0.0, 
-#                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4, 4, 0.0, 0.0, 0.0, 0.0)
-#     Quad = KQUAD(k, 1.0, 0.0, 
-#                 0.0, 0.0, 0.0, 0.0, 0.0, 1, 
-#                 1, 1, 1.0, 1, 1.0, [1.0, 0.1, 0.0, 0.0, 0.0], [1.0, 0.1, 0.0, 0.0, 0.0], 0, 4, 4, 0.0, 0.0, 0, 0)
+#     Sext = KSEXT(name="Q",len=1.0, k2=k, nSlices=4)
+#     Quad = KQUAD(name="Q",len=1.0, k1=k, nSlices=4, synch_rad=1)
+
 #     particle = [Float64[0.001, 0.0001, 0.0005, 0.0002, 0.0, 0.0], Float64[0.001, 0.0, 0.0, 0.0, 0.0, 0.0]]
-#     rout = multipole_tracking2(particle, 2, Quad, 1.0)
+#     rout = multipole_tracking2(particle, 2, Quad, 19569.50762296901, nothing)
 #     return rout[1]
 # end
 # using Zygote

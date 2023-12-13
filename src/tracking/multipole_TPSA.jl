@@ -1,5 +1,6 @@
 include("quadFringe_TPSA.jl") 
 include("../lattice/canonical_elements.jl")
+include("../TPSA/TPSA.jl")
 
 # function fillPowerArray(x::Float64, order::Int)
 #     xpow = Vector{Float64}(undef, order + 1)
@@ -33,7 +34,9 @@ end
 
 
 
-function apply_canonical_multipole_kicks(qx, qy, x, y, order, KnL, skew)
+function apply_canonical_multipole_kicks(qx::CTPS{T, TPS_Dim, Max_TPS_Degree}, qy::CTPS{T, TPS_Dim, Max_TPS_Degree}, 
+    x::CTPS{T, TPS_Dim, Max_TPS_Degree}, y::CTPS{T, TPS_Dim, Max_TPS_Degree}, order::Int, KnL::Float64, skew::Int) where {T, TPS_Dim, Max_TPS_Degree}
+    # different from multi-particle tracking
     sum_Fx = sum_Fy = 0.0
     coef = expansion_coefficients(order)  
 
@@ -68,7 +71,7 @@ function convertSlopesToMomenta(xp, yp, delta)
     return qx, qy
 end
 
-function convertMomentaToSlopes(qx, qy, delta)
+function convertMomentaToSlopes(qx::CTPS{T, TPS_Dim, Max_TPS_Degree}, qy::CTPS{T, TPS_Dim, Max_TPS_Degree}, delta) where {T, TPS_Dim, Max_TPS_Degree}
     expandHamiltonian = 0
     if expandHamiltonian == 1
         xp = qx / (1 + delta)
@@ -273,11 +276,11 @@ function integrate_kick_multipole_ordn(x, xp, y, yp, z, delta, dx, dy, xkick, yk
                 delta_qy = 0.0
                 dsFactor = sqrt(1 + xp^2 + yp^2)
                 dsISRFactor = dsFactor*drift/(nSubsteps-1)
-                dsFactor = dsFactor * kickFrac[step]
+                dsFactor = dsFactor * drift * kickFrac[step]
                 if rad_coef != 0
                     dp = dp - rad_coef*deltaFactor*F2*dsFactor
                 end
-                if isr_coef != 0
+                if isr_coef > 0
                     srGaussianLimit = 3.0
                     dp = dp - isr_coef * deltaFactor * F2^0.75 *
                         sqrt(dsISRFactor)*gauss_rn_lim(0.0, 1.0, srGaussianLimit, random_2)
@@ -330,7 +333,7 @@ function multipole_tracking2(x, xp, y, yp, z, delta, n_part, elem, Po)
     me_mev = 0.51099906 # Electron mass (MeV)
     particleRadius = particleCharge^2 / (4 * pi * epsilon_o * particleMass * c_mks^2) # Classical electron radius (m)
     
-    skew = zeros(Int16, 3)
+    skew = zeros(Int64, 3)
     dx = dy = dz = 0.0 
     nSlices = integ_order = 0
     i_part = i_top = 0
@@ -363,10 +366,10 @@ function multipole_tracking2(x, xp, y, yp, z, delta, n_part, elem, Po)
         integ_order = elem.integration_order
 
         if elem.synch_rad != 0
-            rad_coef = particleCharge^2 * Po^3 / (6 * pi * epsilon_o * sqrt(c_mks) * particleMass)
+            rad_coef = particleCharge^2 * Po^3 / (6 * pi * epsilon_o * (c_mks^2) * particleMass)
         end
         # isr is not implemented yet
-        # isr_coef = particleRadius *sqrt(55.0 / (24 * sqrt(3)) * Po^5 * 137.0359895)
+        isr_coef = particleRadius *sqrt(55.0 / (24 * sqrt(3)) * Po^5 * 137.0359895)
         if elem.isr == 0 || (elem.isr1Particle == 0 && n_part == 1 )
             # Minus sign indicates we accumulate into sigmaDelta^2 only, don't perturb particles
             isr_coef *= -1
@@ -400,11 +403,11 @@ function multipole_tracking2(x, xp, y, yp, z, delta, n_part, elem, Po)
         integ_order = elem.integration_order
 
         if elem.synch_rad != 0
-            rad_coef = particleCharge^2 * Po^3 / (6 * pi * epsilon_o * sqrt(c_mks) * particleMass)
+            rad_coef = particleCharge^2 * Po^3 / (6 * pi * epsilon_o * (c_mks^2) * particleMass)
         end
 
         # isr is not implemented
-        # isr_coef = particleRadius *sqrt(55.0 / (24 * sqrt(3)) * Po^5 * 137.0359895)
+        isr_coef = particleRadius *sqrt(55.0 / (24 * sqrt(3)) * Po^5 * 137.0359895)
         if elem.isr == 0 || (elem.isr1Particle == 0 && n_part == 1 )
             # Minus sign indicates we accumulate into sigmaDelta^2 only, don't perturb particles
             isr_coef *= -1
@@ -439,11 +442,11 @@ function multipole_tracking2(x, xp, y, yp, z, delta, n_part, elem, Po)
         integ_order = elem.integration_order
 
         if elem.synch_rad != 0
-            rad_coef = particleCharge^2 * Po^3 / (6 * pi * epsilon_o * sqrt(c_mks) * particleMass)
+            rad_coef = particleCharge^2 * Po^3 / (6 * pi * epsilon_o * (c_mks^2) * particleMass)
         end
 
         # isr is not implemented
-        # isr_coef = particleRadius *sqrt(55.0 / (24 * sqrt(3)) * Po^5 * 137.0359895)
+        isr_coef = particleRadius *sqrt(55.0 / (24 * sqrt(3)) * Po^5 * 137.0359895)
         if elem.isr == 0 || (elem.isr1Particle == 0 && n_part == 1 )
             # Minus sign indicates we accumulate into sigmaDelta^2 only, don't perturb particles
             isr_coef *= -1
@@ -532,7 +535,6 @@ function multipole_tracking2(x, xp, y, yp, z, delta, n_part, elem, Po)
     return x, xp, y, yp, z, delta
 end
 
-# include("../TPSA/TPSA.jl")
 # x = CTPS(0.0, 1, 6, 2)
 # xp = CTPS(0.0, 2, 6, 2)
 # y = CTPS(0.0, 3, 6, 2)
@@ -540,18 +542,13 @@ end
 # delta = CTPS(0.0, 5, 6, 2)
 # z = CTPS(0.0, 6, 6, 2)
 
-# Quad = KQUAD(1.0, 1.0, 0.0, 
-#                 0.0, 0.0, 0.0, 0.0, 0.0, 1, 
-#                 1, 1, 1.0, 1, 1.0, [1.0, 0.1, 0.0, 0.0, 0.0], [1.0, 0.1, 0.0, 0.0, 0.0], 0, 4, 4, 0.0, 0.0, 0, 0)
-
-# Sext = KSEXT(1.0, 1.0, 0.0, 
-#                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4, 4, 0.0, 0.0, 0.0, 0.0)
-
-# Oct = KOCT(1.0, 1.0, 0.0, 
-#                 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4, 4, 0.0, 0.0, 0.0, 0.0)
+# Quad = KQUAD(name="Q",k1=1.0,len=1.0)
+# Sext = KSEXT(name="S",k2=2.0,len=1.0)
+# Oct = KOCT(name="O",k3=6.0,len=1.0)
+# CSB = CSBEND(name="CSB",angle=pi/20/2,len=0.72,e1=pi/20/2,e2=0.0)
 
 # n_part = 1
-# xout, xpout, yout, ypout, zout, dpout = multipole_tracking2(x, xp, y, yp, z, delta, n_part, Quad, 1.0)
+# xout, xpout, yout, ypout, zout, dpout = multipole_tracking2(x, xp, y, yp, z, delta, n_part, Quad, 1000.0)
 # println(xout)
 # xvalue = evaluate(xout, [0.001, 0.0001, 0.0005, 0.0002, 0.0, 0.0])
 # yvalue = evaluate(yout, [0.001, 0.0001, 0.0005, 0.0002, 0.0, 0.0])
