@@ -18,6 +18,13 @@ function exactDrift(x::CTPS, xp::CTPS, y::CTPS, yp::CTPS, z::CTPS, delta::CTPS, 
     # ]
 end
 
+function SIGN(x)
+    if x >= 0
+        return 1
+    else
+        return -1
+    end
+end
 
 function computeCSBENDFieldCoefficients(b, h, nonlinear, expansionOrder)
     if expansionOrder == 0
@@ -304,15 +311,20 @@ function computeCSBENDFields(x, y, Fx_xy, Fy_xy, expansionOrder1)
     return sumFX, sumFY
 end
 
-function convertToDipoleCanonicalCoordinates(x, xp, y, yp, s0, dp, rho)
+function convertToDipoleCanonicalCoordinates(x, xp, yp, dp, rho)
     f = (1 + dp) / sqrt((1 + x / rho)^2 + xp^2 + yp^2)
     # new_Qi = [Qi[1], Qi[2]*f, Qi[3], Qi[4]*f, Qi[5], Qi[6]]
-    return xp * f, yp * f
+    px = xp * f
+    py = yp * f
+    return px, py
 end
-function convertFromDipoleCanonicalCoordinates(x, px, y, py, s0, dp, rho)
+
+function convertFromDipoleCanonicalCoordinates(x, px, py, dp, rho)
     f = (1 + x/rho)/sqrt((1+dp)^2-px^2-py^2);
     # new_Qi = [Qi[1], Qi[2]*f, Qi[3], Qi[4]*f, Qi[5], Qi[6]]
-    return px * f, py * f
+    xp = px * f
+    yp = py * f
+    return xp, yp
 end
 
 function dipoleFringe(x, px, y, py, s0, delta, h, inFringe, higherOrder)
@@ -630,7 +642,7 @@ function track_one_part(x_in::CTPS, xp_in::CTPS, y_in::CTPS, yp_in::CTPS, z_in::
     yp = yp_in*cos_ttilt - xp_in*sin_ttilt
     s = z_in
     dp = delta_in
-    dp0 = dp
+    dp0 = CTPS(dp)
     s0 = 0.0
     # s0 = CTPS(0.0)
 
@@ -639,7 +651,7 @@ function track_one_part(x_in::CTPS, xp_in::CTPS, y_in::CTPS, yp_in::CTPS, z_in::
         if csbend.edge_order < 2 || csbend.edge1_effects > 1
             delta_xp = tan(e1)/rho*x
                 if e1_kick_limit > 0 && abs(delta_xp) > e1_kick_limit
-                    delta_xp = sign(delta_xp)*e1_kick_limit
+                    delta_xp = SIGN(cst(delta_xp))*e1_kick_limit
                 end
             xp += delta_xp
             yp -= tan(e1 - psi1/(1+dp))/rho*y
@@ -661,12 +673,11 @@ function track_one_part(x_in::CTPS, xp_in::CTPS, y_in::CTPS, yp_in::CTPS, z_in::
         # Qi[6] -= dp_prime*x*tan(e1)
     end
 
-    px, py = convertToDipoleCanonicalCoordinates(x, xp, y, yp, s0, dp, rho0)
-
+    px, py = convertToDipoleCanonicalCoordinates(x, xp, yp, dp, rho0)
     if csbend.edge1_effects > 1
         x, px, y, py, s0, dp = dipoleFringe(x, px, y, py, s0, dp, rho0, -1, csbend.edge1_effects-2)
     end
-
+    px, py = xp, yp
     particle_lost = 0
     if particle_lost == 0
         if csbend.integration_order == 4
@@ -682,7 +693,7 @@ function track_one_part(x_in::CTPS, xp_in::CTPS, y_in::CTPS, yp_in::CTPS, z_in::
     if csbend.edge2_effects > 1
         x, px, y, py, s0, dp = dipoleFringe(x, px, y, py, s0, dp, rho0, 1, csbend.edge2_effects-2)
     end
-    xp, yp = convertFromDipoleCanonicalCoordinates(x, px, y, py, s0, dp, rho0)
+    xp, yp = convertFromDipoleCanonicalCoordinates(x, px, py, dp, rho0)
 
     ######
     # if particle_lost
@@ -704,7 +715,7 @@ function track_one_part(x_in::CTPS, xp_in::CTPS, y_in::CTPS, yp_in::CTPS, z_in::
         beta1 = p1/sqrt(p1^2+1)
         s = beta1*s/beta0 + s0
     else
-        s += s0
+        s = s + s0
     end
 
     xp /= (1+x/rho0)
@@ -715,7 +726,7 @@ function track_one_part(x_in::CTPS, xp_in::CTPS, y_in::CTPS, yp_in::CTPS, z_in::
         if csbend.edge_order < 2 || csbend.edge2_effects > 1
             delta_xp = tan(e2)/rho*x
             if e2_kick_limit > 0 && abs(delta_xp) > e2_kick_limit
-                delta_xp = sign(delta_xp)*e2_kick_limit
+                delta_xp = SIGN(delta_xp)*e2_kick_limit
             end
             xp += delta_xp
             yp -= tan(e2 - psi2/(1+dp))/rho*y
@@ -936,20 +947,20 @@ end
 # 			zout.map[2] zout.map[3] zout.map[4] zout.map[5] zout.map[6] zout.map[7]]
 # println(Map66)
 
-# function f(L, angle)
-#     CSB = CSBEND(L, angle, 0.01, 0.02, 0.5, 0.0, 0.0 ,0.0 ,0.0 ,0.0, 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,
-#         0.0, 0.0, 0.0, 1, 1, 1, -1.0, -1.0, 0.0, 1, 0, 0, 0, 1, 0, 1, 0.0, 0.0, 0.0, 0.0, 0.0, 4, 4, 0)
-#         x = CTPS(0.0, 1, 6, 2)
-#         xp = CTPS(0.0, 2, 6, 2)
-#         y = CTPS(0.0, 3, 6, 2)
-#         yp = CTPS(0.0, 4, 6, 2)
-#         delta = CTPS(0.0, 5, 6, 2)
-#         z = CTPS(0.0, 6, 6, 2)
+# function ff(L, angle)
+#     CSB = CSBEND(name="CSB",angle=angle,len=L,e1=angle/2,e2=0.0, nSlices=1, synch_rad=1)
+#         x = CTPS(0.0, 1, 6, 4)
+#         xp = CTPS(0.0, 2, 6, 4)
+#         y = CTPS(0.0, 3, 6, 4)
+#         yp = CTPS(0.0, 4, 6, 4)
+#         delta = CTPS(0.0, 5, 6, 4)
+#         z = CTPS(0.0, 6, 6, 4)
 #         xout, xpout, yout, ypout, zout, dpout = track_through_csbend(x, xp, y, yp, z, delta, 1, 
 #         CSB, 0.0, 1000.0, nothing)
-#         output = [xout.map[2] xout.map[3] xout.map[4] xout.map[5] xout.map[6] xout.map[7]]
-#         return output
+#         # output = [xout.map[2] xout.map[3] xout.map[4] xout.map[5] xout.map[6] xout.map[7]]
+#         return xout.map[2]
 # end
-# grad = Zygote.jacobian(f, 0.72, 0.1571)
-# @time grad = Zygote.jacobian(f, 0.72, 0.1571)
+# println(ff(0.72, pi/20/2))
+# grad = Zygote.jacobian(ff, 0.72, 0.1571)
+# @time grad = Zygote.jacobian(ff, 0.72, 0.1571)
 # println(grad)

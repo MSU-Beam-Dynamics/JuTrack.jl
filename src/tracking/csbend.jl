@@ -15,6 +15,13 @@ function exactDrift(part, np, len)
     ]
 end
 
+function SIGN(x)
+    if x >= 0
+        return 1
+    else
+        return -1
+    end
+end
 
 function computeCSBENDFieldCoefficients(b, h, nonlinear, expansionOrder)
     if expansionOrder == 0
@@ -814,7 +821,7 @@ function track_one_part(coord, n, he1, he2, e1, e2, dxf, dyf, dzf, sin_ttilt, co
         if csbend.edge_order < 2 || csbend.edge1_effects > 1
             delta_xp = tan(e1)/rho*x
                 if e1_kick_limit > 0 && abs(delta_xp) > e1_kick_limit
-                    delta_xp = sign(delta_xp)*e1_kick_limit
+                    delta_xp = SIGN(delta_xp)*e1_kick_limit
                 end
             xp += delta_xp
             yp -= tan(e1 - psi1/(1+dp))/rho*y
@@ -901,7 +908,7 @@ function track_one_part(coord, n, he1, he2, e1, e2, dxf, dyf, dzf, sin_ttilt, co
         if csbend.edge_order < 2 || csbend.edge2_effects > 1
             delta_xp = tan(e2)/rho*x
             if e2_kick_limit > 0 && abs(delta_xp) > e2_kick_limit
-                delta_xp = sign(delta_xp)*e2_kick_limit
+                delta_xp = SIGN(delta_xp)*e2_kick_limit
             end
             xp += delta_xp
             yp -= tan(e2 - psi2/(1+dp))/rho*y

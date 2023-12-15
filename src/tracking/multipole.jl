@@ -77,7 +77,7 @@ function convertMomentaToSlopes(qx, qy, delta)
     else
         denom = (1 + delta)^2 - qx^2 - qy^2
         if denom < 0
-            warn("Warning: particle acquired undefined slopes when integrating through kick multipole")
+            println("Warning: particle acquired undefined slopes when integrating through kick multipole")
         end
         denom = sqrt(denom)
         xp = qx / denom
@@ -199,19 +199,20 @@ function integrate_kick_multipole_ordn(coord, dx, dy, xkick, ykick,
     dp = coord[6]
     p = Po*(1+dp)
     beta0 = p/sqrt(p^2+1)
+    dzLoss = 0
 
     if isnan(x) || isnan(xp) || isnan(y) || isnan(yp) || isnan(dp)
-        return 0
+        return [NaN, NaN, NaN, NaN, NaN, NaN], dzLoss, sigmaDelta2
     end
 
     if abs(x) > COORD_LIMIT || abs(y) > COORD_LIMIT || abs(xp) > SLOPE_LIMIT || abs(yp) > SLOPE_LIMIT
-        return 0
+        return [NaN, NaN, NaN, NaN, NaN, NaN], dzLoss, sigmaDelta2
     end
 
     qx, qy = convertSlopesToMomenta(xp, yp, dp)
     maxOrder = order
     xp, yp = convertMomentaToSlopes(qx, qy, dp)
-    dzLoss = 0
+    
     expandHamiltonian = 0
     for i_kick in 0:n_parts-1
         delta_qx = delta_qy = 0.0
