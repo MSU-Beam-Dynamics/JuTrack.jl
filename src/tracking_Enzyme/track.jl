@@ -1,12 +1,12 @@
 include("../lattice/canonical_elements.jl")
 include("EDrift_Enzyme.jl")
 include("multipole_Enzyme.jl")
-include("multipole_TPSA_Enzyme.jl")
+# include("multipole_TPSA_Enzyme.jl")
 include("csbend_Enzyme.jl")
-include("csbend_TPSA_Enzyme.jl")
+# include("csbend_TPSA_Enzyme.jl")
 include("rfca_Enzyme.jl")
-include("rfca_TPSA_Enzyme.jl")
-include("../TPSA_Enzyme/TPSA_fixedmap.jl")
+# include("rfca_TPSA_Enzyme.jl")
+# include("../TPSA_Enzyme/TPSA_fixedmap.jl")
 
 
 function linepass!(line, particles, Po, p_error)
@@ -47,17 +47,17 @@ function linepass!(line, particles, Po, p_error)
     # return particles
 end
 
-function linepass_TPSA(line, x, xp, y, yp, z, delta, Po, p_error)
-    nline = length(line)
-    # z = 0.0
-    see_rf = 0
-    sigmaDelta2 = 0.0
-    dzLoss = 0.0
-    for i in 1:nline
-        x, xp, y, yp, z, delta = pass_TPSA(x, xp, y, yp, z, delta, line[i], Po, sigmaDelta2)
-    end
-    return x, xp, y, yp, z, delta
-end
+# function linepass_TPSA(line, x, xp, y, yp, z, delta, Po, p_error)
+#     nline = length(line)
+#     # z = 0.0
+#     see_rf = 0
+#     sigmaDelta2 = 0.0
+#     dzLoss = 0.0
+#     for i in 1:nline
+#         x, xp, y, yp, z, delta = pass_TPSA(x, xp, y, yp, z, delta, line[i], Po, sigmaDelta2)
+#     end
+#     return x, xp, y, yp, z, delta
+# end
 
 # function test_f(x)
 #     D1 = EDRIFT(len=1.0)
