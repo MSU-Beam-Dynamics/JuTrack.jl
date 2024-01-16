@@ -1,17 +1,13 @@
 module JuTrack
-include("TPSA/TPSA.jl")
-# include("lattice/elements.jl")
+include("TPSA_Enzyme/TPSA_fixedmap.jl")
 include("lattice/canonical_elements.jl")
-include("lattice/EdwardsTengTwiss.jl")
-# include("tracking/TPSAtranfermap.jl")
-include("tracking/track.jl")
+# include("lattice/EdwardsTengTwiss.jl") # TPSA still not stable with Enzyme
+include("tracking_Enzyme/track.jl")
 
 
-export CTPS, cst, findindex, findpower, redegree, assign!, element, evaluate, derivative, integrate, pow, PolyMap, getindexmap
-# export Drift, Quad, ThinQuad, SBend, RBend, Bend, DipEdge, DipBody, ThinCrabCavity, Marker, Solenoid, LorentzBoost, RevLorentzBoost, AbstractElement
+export CTPS, cst, findindex, findpower, redegree, assign!,  pow, PolyMap, getindexmap # element, evaluate, derivative, integrate,
 export EDRIFT, KQUAD, KSEXT, KOCT, CSBEND, RFCA, AbstractElement
-export EdwardsTengTwiss, AbstractTwiss, twissPropagate, findm66, periodicEdwardsTengTwiss
-# export track, TransferMap
-export linepass
+# export EdwardsTengTwiss, AbstractTwiss, twissPropagate, findm66, periodicEdwardsTengTwiss
+export linepass!, linepass_TPSA
 
 end

@@ -7,18 +7,18 @@
 # Created Date: 11-01-2023
 # Modified Date: 11-06-2023
 
-function factorial(n::Int)
-    if n < 0
-        return 0
-    end
-    return [1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880, 3628800, 39916800, 479001600][n + 1]
-end
+# function factorial(n::Int)
+#     if n < 0
+#         return 0
+#     end
+#     return [1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880, 3628800, 39916800, 479001600][n + 1]
+# end
 
 function doublefactorial(n::Int)
     if n < 0
-        return 0
+        return 0.0
     end
-    return [1, 1, 2, 3, 8, 15, 48, 105, 384, 945, 3840, 10395, 46080, 135135, 645120, 2027025, 10321920, 34459425, 185794560][n + 1]
+    return [1.0, 1.0, 2.0, 6.0, 24.0, 120.0, 720.0, 5040.0, 40320.0, 362880.0, 3628800.0, 39916800.0, 479001600.0][n + 1]
 end
 
 function binomial(n::Int, m::Int)

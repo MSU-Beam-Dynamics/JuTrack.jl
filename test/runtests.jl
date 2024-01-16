@@ -4,7 +4,16 @@
 
 using JuTrack
 using Test
-using Zygote
+using Enzyme
+
+function f(x)
+    k1 = x[1]
+    k2 = x[2]
+    x1 = CTPS(1.0, 1, 6, 3)
+    x2 = CTPS(2.0, 2, 6, 3)
+    y = k1*x1^2 + k2*x2^2
+    return y.map
+end
 
 @testset "JuTrack.jl" begin
 ctps = CTPS(Float64, 6, 3)
@@ -17,7 +26,7 @@ ctps4 = inv(ctps2)
 ctps5 = exp(ctps2)
 ctps6 = log(ctps2)
 ctps7 = sqrt(ctps2)
-ctps8 = ctps2^ 2.0
+ctps8 = ctps2^ 2
 ctps9 = sin(ctps2)
 ctps10 = cos(ctps2)
 ctps11 = asin(CTPS(0.5, 1, 6, 3))
@@ -38,17 +47,12 @@ println(ctps11.map)
 println(ctps12.map)
 println(ctps13.map)
 println(ctps14.map)
-function f(k1, k2)
-    x1 = CTPS(1.0, 1, 6, 3)
-    x2 = CTPS(2.0, 2, 6, 3)
-    y = k1*x1^2 + k2*x2^2
-    return y.map
-end
+
 k1 = 3.0
 k2 = 1.5
-y = f(k1, k2)
+y = f([k1, k2])
 println(y)
-grad = Zygote.jacobian(f, k1, k2)
-println(grad)
+# grad = jacobian(Forward, f, [k1, k2])
+# println(grad)
 
 end

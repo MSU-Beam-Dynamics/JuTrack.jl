@@ -1,6 +1,7 @@
-include("quadFringe.jl") 
+include("quadFringe_Enzyme.jl") 
 include("../lattice/canonical_elements.jl")
-using Zygote
+include("../TPSA_Enzyme/mathfunc.jl")
+# using Zygote
 
 # function fillPowerArray(x::Float64, order::Int)
 #     xpow = Vector{Float64}(undef, order + 1)
@@ -29,12 +30,13 @@ end
 function expansion_coefficients(n::Int)
     # Calculate expansion coefficients with signs for (x+iy)^n/n!
     # avoid muatating arrays for the implementation of Zygote.jl
-    return [(isodd(div(i, 2)) ? -1.0 : 1.0) / (factorial(i) * factorial(n - i)) for i in 0:n]
+    return [(isodd(div(i, 2)) ? -1.0 : 1.0) / (doublefactorial(i) * doublefactorial(n - i)) for i in 0:n]
 end
 
 
 
-function apply_canonical_multipole_kicks(qx, qy, xpow, ypow, order, KnL, skew)
+function apply_canonical_multipole_kicks(qx::Float64, qy::Float64, xpow::Vector{Float64}, ypow::Vector{Float64}, 
+    order::Int, KnL::Float64, skew::Int)
     sum_Fx = sum_Fy = 0.0
     coef = expansion_coefficients(order)  
 
@@ -97,17 +99,11 @@ end
 #     return coord
 # end
 function offsetBeamCoordinates(coord, np, dx, dy, dz)
-    return [
-        [
-            coord[ip][1] - dx + dz * coord[ip][2],
-            coord[ip][2],
-            coord[ip][3] - dy + dz * coord[ip][4],
-            coord[ip][4],
-            coord[ip][5] + dz * sqrt(1 + coord[ip][2]^2 + coord[ip][4]^2),
-            coord[ip][6]
-        ] 
-        for ip in 1:np
-    ]
+    for ip in 1:np
+        coord[ip,1] = coord[ip,1] - dx + dz * coord[ip,2]
+        coord[ip,3] = coord[ip,3] - dy + dz * coord[ip,4]
+        coord[ip,5] += dz * sqrt(1 + coord[ip,2]^2 + coord[ip,4]^2)
+    end
 end
 
 function rotateBeamCoordinates(part, np, angle)
@@ -116,32 +112,23 @@ function rotateBeamCoordinates(part, np, angle)
     end
 
     if abs(abs(angle) - π) < 1e-12
-        cos_a, sin_a = -1, 0
+        cos_a, sin_a = -1.0, 0.0
     elseif abs(angle - π / 2) < 1e-12
-        cos_a, sin_a = 0, 1
+        cos_a, sin_a = 0.0, 1.0
     elseif abs(angle + π / 2) < 1e-12
-        cos_a, sin_a = 0, -1
+        cos_a, sin_a = 0.0, -1.0
     else
         cos_a, sin_a = cos(angle), sin(angle)
     end
 
-    # for i in 1:np
-    #     x, xp, y, yp = part[i][1], part[i][2], part[i][3], part[i][4]
-    #     part[i][1] = x * cos_a + y * sin_a
-    #     part[i][3] = -x * sin_a + y * cos_a
-    #     part[i][2] = xp * cos_a + yp * sin_a
-    #     part[i][4] = -xp * sin_a + yp * cos_a
-    # end
-    part_new = [
-        [
-            part[i][1] * cos_a + part[i][3] * sin_a,  # x
-            part[i][2] * cos_a + part[i][4] * sin_a,  # xp
-            -part[i][1] * sin_a + part[i][3] * cos_a, # y
-            -part[i][2] * sin_a + part[i][4] * cos_a  # yp
-        ]
-        for i in 1:np
-    ]
-    return part_new
+    for i in 1:np
+        x, xp, y, yp = part[i,1], part[i,2], part[i,3], part[i,4]
+        part[i,1] = x * cos_a + y * sin_a
+        part[i,3] = -x * sin_a + y * cos_a
+        part[i,2] = xp * cos_a + yp * sin_a
+        part[i,4] = -xp * sin_a + yp * cos_a
+    end
+
 end
 
 
@@ -161,14 +148,14 @@ function integrate_kick_multipole_ordn(coord, dx, dy, xkick, ykick,
     driftFrac2 = [0.5, 0.5]
     kickFrac2 = [1.0, 0.0]
 
-    driftFrac4 = [0.5 / (2 - BETA), (1 - BETA) / (2 - BETA) / 2, (1 - BETA) / (2 - BETA) / 2, 0.5 / (2 - BETA)]
-    kickFrac4 = [1.0 / (2 - BETA), -BETA / (2 - BETA), 1.0 / (2 - BETA), 0.0]
+    driftFrac4 = [0.5 / (2.0 - BETA), (1.0 - BETA) / (2.0 - BETA) / 2.0, (1.0 - BETA) / (2.0 - BETA) / 2.0, 0.5 / (2.0 - BETA)]
+    kickFrac4 = [1.0 / (2.0- BETA), -BETA / (2.0 - BETA), 1.0 / (2.0 - BETA), 0.0]
 
     # From AOP-TN-2020-064
     driftFrac6 = [0.39225680523878, 0.5100434119184585, -0.47105338540975655, 0.0687531682525181,
                     0.0687531682525181, -0.47105338540975655, 0.5100434119184585, 0.39225680523878]
     kickFrac6 = [0.784513610477560, 0.235573213359357, -1.17767998417887, 1.3151863206839063,
-                    -1.17767998417887,  0.235573213359357, 0.784513610477560, 0]
+                    -1.17767998417887,  0.235573213359357, 0.784513610477560, 0.0]
     nSubsteps = 0
     driftFrac = nothing
     kickFrac = nothing
@@ -195,19 +182,19 @@ function integrate_kick_multipole_ordn(coord, dx, dy, xkick, ykick,
     xp = coord[2]
     y = coord[3]
     yp = coord[4]
-    s  = 0
+    s = 0.0
     dp = coord[6]
     p = Po*(1+dp)
     beta0 = p/sqrt(p^2+1)
-    dzLoss = 0
+    dzLoss = 0.0
 
-    if isnan(x) || isnan(xp) || isnan(y) || isnan(yp) || isnan(dp)
-        return [NaN, NaN, NaN, NaN, NaN, NaN], dzLoss, sigmaDelta2
-    end
+    # if isnan(x) || isnan(xp) || isnan(y) || isnan(yp) || isnan(dp)
+    #     return [NaN, NaN, NaN, NaN, NaN, NaN], dzLoss, sigmaDelta2
+    # end
 
-    if abs(x) > COORD_LIMIT || abs(y) > COORD_LIMIT || abs(xp) > SLOPE_LIMIT || abs(yp) > SLOPE_LIMIT
-        return [NaN, NaN, NaN, NaN, NaN, NaN], dzLoss, sigmaDelta2
-    end
+    # if abs(x) > COORD_LIMIT || abs(y) > COORD_LIMIT || abs(xp) > SLOPE_LIMIT || abs(yp) > SLOPE_LIMIT
+    #     return [NaN, NaN, NaN, NaN, NaN, NaN], dzLoss, sigmaDelta2
+    # end
 
     qx, qy = convertSlopesToMomenta(xp, yp, dp)
     maxOrder = order
@@ -238,7 +225,7 @@ function integrate_kick_multipole_ordn(coord, dx, dy, xkick, ykick,
 
             if radial == 0 ## no radial now
                 for iOrder in 1:3
-                    if KnL[iOrder] != 0
+                    if KnL[iOrder] != 0.0
                         qx, qy, delta_qx, delta_qy = apply_canonical_multipole_kicks(qx, qy, xpow, ypow, 
                                                     order, KnL[iOrder]/n_parts*kickFrac[step], skew[iOrder])
                     end
@@ -256,32 +243,32 @@ function integrate_kick_multipole_ordn(coord, dx, dy, xkick, ykick,
                                             0, ykick*kickFrac[step], 1)
             end
 
-            if steeringMultData != nothing && steeringMultData.orders != 0
-                for imult in 1:steeringMultData.orders
-                    if steeringMultData.KnL[imult] != 0
-                        qx, qy, delta_qx, delta_qy = apply_canonical_multipole_kicks(qx, qy, xpow, ypow, 
-                                                    steeringMultData.order[imult], steeringMultData.KnL[imult]*xkick*kickFrac[step], 0)
-                    end
-                    if steeringMultData.JnL[imult] != 0
-                        qx, qy, delta_qx, delta_qy = apply_canonical_multipole_kicks(qx, qy, xpow, ypow, 
-                                                    steeringMultData.order[imult], steeringMultData.JnL[imult]*ykick*kickFrac[step], 1)
-                    end
-                end
-            end
+            # if steeringMultData != nothing && steeringMultData.orders != 0
+            #     for imult in 1:steeringMultData.orders
+            #         if steeringMultData.KnL[imult] != 0
+            #             qx, qy, delta_qx, delta_qy = apply_canonical_multipole_kicks(qx, qy, xpow, ypow, 
+            #                                         steeringMultData.order[imult], steeringMultData.KnL[imult]*xkick*kickFrac[step], 0)
+            #         end
+            #         if steeringMultData.JnL[imult] != 0
+            #             qx, qy, delta_qx, delta_qy = apply_canonical_multipole_kicks(qx, qy, xpow, ypow, 
+            #                                         steeringMultData.order[imult], steeringMultData.JnL[imult]*ykick*kickFrac[step], 1)
+            #         end
+            #     end
+            # end
 
-            if multData != nothing 
-                # do kicks for spurious multipole
-                for imult in 1:multData.orders
-                    if !isnothing(multData.KnL) && multData.KnL[imult] != 0
-                        qx, qy, delta_qx, delta_qy = apply_canonical_multipole_kicks(qx, qy, xpow, ypow, 
-                                                    multData.order[imult], multData.KnL[imult]*kickFrac[step]/n_parts, 0)
-                    end
-                    if !isnothing(multData.JnL) && multData.JnL[imult] != 0
-                        qx, qy, delta_qx, delta_qy = apply_canonical_multipole_kicks(qx, qy, xpow, ypow, 
-                                                    multData.order[imult], multData.JnL[imult]*kickFrac[step]/n_parts, 1)
-                    end
-                end
-            end
+            # if multData != nothing 
+            #     # do kicks for spurious multipole
+            #     for imult in 1:multData.orders
+            #         if !isnothing(multData.KnL) && multData.KnL[imult] != 0
+            #             qx, qy, delta_qx, delta_qy = apply_canonical_multipole_kicks(qx, qy, xpow, ypow, 
+            #                                         multData.order[imult], multData.KnL[imult]*kickFrac[step]/n_parts, 0)
+            #         end
+            #         if !isnothing(multData.JnL) && multData.JnL[imult] != 0
+            #             qx, qy, delta_qx, delta_qy = apply_canonical_multipole_kicks(qx, qy, xpow, ypow, 
+            #                                         multData.order[imult], multData.JnL[imult]*kickFrac[step]/n_parts, 1)
+            #         end
+            #     end
+            # end
 
             xp, yp = convertMomentaToSlopes(qx, qy, dp)
 
@@ -303,10 +290,10 @@ function integrate_kick_multipole_ordn(coord, dx, dy, xkick, ykick,
                     dp = dp - rad_coef*deltaFactor*F2*dsFactor
                 end
 
-                if isr_coef > 0
-                    warning("Warning: ISR is not developed yet")
-                    dp -= isr_coef*deltaFactor*F2^0.75*sqrt(dsISRFactor)*gauss_rn_lim(0.0, 1.0, srGaussianLimit, random_2)
-                end
+                # if isr_coef > 0
+                #     warning("Warning: ISR is not developed yet")
+                    # dp -= isr_coef*deltaFactor*F2^0.75*sqrt(dsISRFactor)*gauss_rn_lim(0.0, 1.0, srGaussianLimit, random_2)
+                # end
                 if sigmaDelta2 != 0
                     sigmaDelta2 = sigmaDelta2 + (isr_coef * deltaFactor)^2 * F2^1.5 * dsISRFactor
                 end
@@ -338,16 +325,21 @@ function integrate_kick_multipole_ordn(coord, dx, dy, xkick, ykick,
     if rad_coef != 0
         p = Po * (1 + dp)
         beta1 = p / sqrt(p^2 + 1)
-        coord5 = beta1 * (coord[5]/beta0 + 2*s/(beta0 + beta1))
+        coord[5] = beta1 * (coord[5]/beta0 + 2*s/(beta0 + beta1))
     else
-        coord5 = coord[5] + s
+        coord[5] = coord[5] + s
     end
-    coord_new = [x, xp, y, yp, coord5, dp]
-    return coord_new, dzLoss, sigmaDelta2
+    coord[1] = x
+    coord[2] = xp
+    coord[3] = y
+    coord[4] = yp
+    coord[6] = dp
+    return dzLoss, sigmaDelta2, coord
 end
 
 
-function multipole_tracking2(particle, n_part, elem, Po, sigmaDelta2)
+function pass!(particle::Matrix{Float64}, elem::KQUAD, Po::Float64, sigmaDelta2::Float64)
+    n_part = size(particle, 1)
     # constants
     particleMass = 9.1093897e-31 # Electron mass (kg)
     particleCharge = 1.60217733e-19 # Electron charge (C)
@@ -356,13 +348,12 @@ function multipole_tracking2(particle, n_part, elem, Po, sigmaDelta2)
     me_mev = 0.51099906 # Electron mass (MeV)
     particleRadius = particleCharge^2 / (4 * pi * epsilon_o * particleMass * c_mks^2) # Classical electron radius (m)
     
-    skew = zeros(Int64, 3)
+    skew = [0, 0, 0]
     dx = dy = dz = 0.0 
     nSlices = integ_order = 0
     i_part = i_top = 0
-    coord = []
     drift = 0.0
-    tilt = pitch = yaw = rad_coef = isr_coef = xkick = ykick = 0.0
+    tilt = rad_coef = isr_coef = xkick = ykick = 0.0
     sextWarning = quadWarning = octWarning = false
     multData = steeringMultData = apData = nothing
 
@@ -371,10 +362,10 @@ function multipole_tracking2(particle, n_part, elem, Po, sigmaDelta2)
         order = 1
         if elem.bore != 0
             KnL1 = elem.B / elem.bore * (particleCharge / (particleMass * c_mks * Po)) * elem.len * (1 + elem.fse)
-            KnL = [KnL1, 0, 0]
+            KnL = [KnL1, 0.0, 0.0]
         else
             KnL1 = elem.k1 * elem.len * (1 + elem.fse)
-            KnL = [KnL1, 0, 0]
+            KnL = [KnL1, 0.0, 0.0]
         end
     
         drift = elem.len
@@ -410,10 +401,10 @@ function multipole_tracking2(particle, n_part, elem, Po, sigmaDelta2)
         order = 2
         if elem.bore != 0
             KnL2 = 2 * elem.B / elem.bore^2 * (particleCharge / (particleMass * c_mks * Po)) * elem.len * (1 + elem.fse)
-            KnL = [0, KnL2, 0]
+            KnL = [0.0, KnL2, 0.0]
         else
             KnL2 = elem.k2 * elem.len * (1 + elem.fse)
-            KnL = [0, KnL2, 0]
+            KnL = [0.0, KnL2, 0.0]
         end
         drift = elem.len
         tilt = elem.tilt
@@ -447,10 +438,10 @@ function multipole_tracking2(particle, n_part, elem, Po, sigmaDelta2)
         order = 3
         if elem.bore != 0
             KnL3 = 6 * elem.B / elem.bore^3 * (particleCharge / (particleMass * c_mks * Po)) * elem.len * (1 + elem.fse)
-            KnL = [0, 0, KnL3]
+            KnL = [0.0, 0.0, KnL3]
         else
             KnL3 = elem.k3 * elem.len * (1 + elem.fse)
-            KnL = [0, 0, KnL3]
+            KnL = [0.0, 0.0, KnL3]
         end
 
         drift = elem.len
@@ -493,113 +484,278 @@ function multipole_tracking2(particle, n_part, elem, Po, sigmaDelta2)
 
 
     if dx != 0 || dy != 0 || dz != 0 
-        particle_new1 = offsetBeamCoordinates(particle, n_part, dx, dy, dz)
-    else
-        particle_new1 = particle
+        offsetBeamCoordinates(particle, n_part, dx, dy, dz)
     end
+
     if tilt != 0
-        particle_new2 = rotateBeamCoordinates(particle_new1, n_part, tilt)
-    else
-        particle_new2 = particle_new1
+        rotateBeamCoordinates(particle, n_part, tilt)
     end
     
 
 
-    if elem isa KQUAD
-        if elem.edge1_effects !=0
-            particle_new3 = quadFringe(particle_new2, n_part, elem.k1, elem.fringeIntM, elem.fringeIntP, 
-                                    false, -1, elem.edge1_effects, elem.edge1Linear, elem.edge1NonlinearFactor)
-        else
-            particle_new3 = particle_new2
-        end
-    else
-        particle_new3 = particle_new2
-    end
-
-    # for i_part in 1:i_top+1
-    #     coord = particle[i_part]
-    #     if elem isa KQUAD
-    #         coord = integrate_kick_multipole_ordn(coord, dx, dy, xkick, ykick, Po, rad_coef, 
-    #                                             isr_coef, order, KnL, skew, nSlices, 
-    #                                             drift, integ_order, multData, 
-    #                                             steeringMultData, apData, dzLoss, elem.radial, tilt)
-    #     else
-    #         coord = integrate_kick_multipole_ordn(coord, dx, dy, xkick, ykick, Po, rad_coef, 
-    #                                             isr_coef, order, KnL, skew, nSlices, 
-    #                                             drift, integ_order, multData, 
-    #                                             steeringMultData, apData, dzLoss, 0, tilt)
+    # if elem isa KQUAD
+    #     if elem.edge1_effects !=0
+    #         quadFringe(particle, n_part, elem.k1, elem.fringeIntM, elem.fringeIntP, 
+    #                                 false, -1, elem.edge1_effects, elem.edge1Linear, elem.edge1NonlinearFactor)
     #     end
     # end
-    if isnothing(sigmaDelta2)
-        sigmaDelta2 = 0
-    end
-    particle_new4_Buffer = Zygote.Buffer(particle_new3[1],n_part,6)
+
+    # if isnothing(sigmaDelta2)
+    #     sigmaDelta2 = 0.0
+    # end
+
+    dzLoss = 0.0
     for i_part in 1:i_top+1
         if elem isa KQUAD
-            part_out, dzLoss, sigmaDelta2 = integrate_kick_multipole_ordn(particle_new3[i_part], dx, dy, xkick, ykick, Po, rad_coef, 
+            dzLoss, sigmaDelta2, coord = integrate_kick_multipole_ordn(particle[i_part,:], dx, dy, xkick, ykick, Po, rad_coef, 
                                                 isr_coef, order, KnL, skew, nSlices, 
                                                 drift, integ_order, multData, 
                                                 steeringMultData, apData, sigmaDelta2, elem.radial, tilt)
+            particle[i_part,:] = coord
         else
-            part_out, dzLoss, sigmaDelta2 = integrate_kick_multipole_ordn(particle_new3[i_part], dx, dy, xkick, ykick, Po, rad_coef, 
+            dzLoss, sigmaDelta2, coord = integrate_kick_multipole_ordn(particle[i_part,:], dx, dy, xkick, ykick, Po, rad_coef, 
                                                 isr_coef, order, KnL, skew, nSlices, 
                                                 drift, integ_order, multData, 
                                                 steeringMultData, apData, sigmaDelta2, 0, tilt)
+            particle[i_part,:] = coord
         end
-        for j in 1:6
-            particle_new4_Buffer[i_part,j] = part_out[j]
-        end
-    end
-    particles_new4 = [[particle_new4_Buffer[i_part,j] for j in 1:6] for i_part in 1:i_top+1]
-    # particles_new4 = [
-    # if elem isa KQUAD
-    #     integrate_kick_multipole_ordn(particle_new3[i_part], dx, dy, xkick, ykick, Po, rad_coef, 
-    #                                   isr_coef, order, KnL, skew, nSlices, 
-    #                                   drift, integ_order, multData, 
-    #                                   steeringMultData, apData, sigmaDelta2, elem.radial, tilt)
-    # else
-    #     integrate_kick_multipole_ordn(particle_new3[i_part], dx, dy, xkick, ykick, Po, rad_coef, 
-    #                                   isr_coef, order, KnL, skew, nSlices, 
-    #                                   drift, integ_order, multData, 
-    #                                   steeringMultData, apData, sigmaDelta2, 0, tilt)
-    # end
-    # for i_part in 1:i_top+1]
-    if sigmaDelta2 != 0
-        sigmaDelta2 /= i_top + 1
+
     end
 
-    if elem isa KQUAD
-        if elem.edge2_effects !=0
-            particles_new5 = quadFringe(particles_new4, n_part, elem.k1, elem.fringeIntM, elem.fringeIntP, 
-                                    false, 1, elem.edge2_effects, elem.edge2Linear, elem.edge2NonlinearFactor)
-        else
-            particles_new5 = particles_new4
-        end
-    else
-        particles_new5 = particles_new4
-    end
-    expandHamiltonian = 0
-    return particles_new5
+    # if sigmaDelta2 != 0
+    #     sigmaDelta2 /= i_top + 1
+    # end
+
+    # if elem isa KQUAD
+    #     if elem.edge2_effects !=0
+    #         quadFringe(particle, n_part, elem.k1, elem.fringeIntM, elem.fringeIntP, 
+    #                                 false, 1, elem.edge2_effects, elem.edge2Linear, elem.edge2NonlinearFactor)
+    #     end
+    # end
+    # return dzLoss, sigmaDelta2
 end
 
-# double precision
-# particle = [Float64[0.001, 0.0001, 0.0005, 0.0002, 0.0, 0.0], Float64[0.001, 0.0, 0.0, 0.0, 1.0, 0.0]]
-# Quad = KQUAD(name="Q",len=1.0, k1=1.0, nSlices=4, synch_rad=1)
-# Po = 19569.50762296901
+function pass!(particle::Matrix{Float64}, elem::KSEXT, Po::Float64, sigmaDelta2::Float64)
+    n_part = size(particle, 1)
+    # constants
+    particleMass = 9.1093897e-31 # Electron mass (kg)
+    particleCharge = 1.60217733e-19 # Electron charge (C)
+    c_mks = 299792458.0 # Speed of light (m/s)
+    epsilon_o = 8.854187817e-12 # Permittivity of vacuum (F/m)
+    me_mev = 0.51099906 # Electron mass (MeV)
+    particleRadius = particleCharge^2 / (4 * pi * epsilon_o * particleMass * c_mks^2) # Classical electron radius (m)
+    
+    skew = [0, 0, 0]
+    dx = dy = dz = 0.0 
+    nSlices = integ_order = 0
+    i_part = i_top = 0
+    drift = 0.0
+    tilt = rad_coef = isr_coef = xkick = ykick = 0.0
+    sextWarning = quadWarning = octWarning = false
+    multData = steeringMultData = apData = nothing
 
-# n_part = 2
-# rout = multipole_tracking2(particle, n_part, Quad, Po, nothing)
-# println(rout)
+        nSlices = elem.nSlices
+        order = 2
+        if elem.bore != 0
+            KnL2 = 2 * elem.B / elem.bore^2 * (particleCharge / (particleMass * c_mks * Po)) * elem.len * (1 + elem.fse)
+            KnL = [0.0, KnL2, 0.0]
+        else
+            KnL2 = elem.k2 * elem.len * (1 + elem.fse)
+            KnL = [0.0, KnL2, 0.0]
+        end
+        drift = elem.len
+        tilt = elem.tilt
+        # pitch = elem.pitch
+        # yaw = elem.yaw
+        dx = elem.dx
+        dy = elem.dy
+        dz = elem.dz
+        integ_order = elem.integration_order
 
-# function f(k)
-#     Sext = KSEXT(name="Q",len=1.0, k2=k, nSlices=4)
-#     Quad = KQUAD(name="Q",len=1.0, k1=k, nSlices=4, synch_rad=1)
+        if elem.synch_rad != 0
+            rad_coef = particleCharge^2 * Po^3 / (6 * pi * epsilon_o * (c_mks^2) * particleMass)
+        end
 
-#     particle = [Float64[0.001, 0.0001, 0.0005, 0.0002, 0.0, 0.0], Float64[0.001, 0.0, 0.0, 0.0, 0.0, 0.0]]
-#     rout = multipole_tracking2(particle, 2, Quad, 19569.50762296901, nothing)
-#     return rout[1]
+        isr_coef = particleRadius *sqrt(55.0 / (24 * sqrt(3)) * Po^5 * 137.0359895)
+        if elem.isr == 0 || (elem.isr1Particle == 0 && n_part == 1 )
+            # Minus sign indicates we accumulate into sigmaDelta^2 only, don't perturb particles
+            isr_coef *= -1
+        end
+        if elem.len < 1e-6 && (elem.isr != 0 || elem.synch_rad != 0)
+            rad_coef = 0.0
+            isr_coef = 0.0 # avoid unphysical results
+            if sextWarning == false
+                println("Warning: one or more sextupoles with length < 1e-6 have had SYNCH_RAD=0 and ISR=0 forced to avoid unphysical results")
+                sextWarning = true
+            end 
+        end
+
+    if order < 0
+        error("Error: invalid order: $order")
+    end
+    if integ_order != 2 && integ_order != 4 && integ_order != 6
+        error("Error: invalid integration order: $integ_order")
+    end
+
+    i_top = n_part -1
+
+
+    if dx != 0 || dy != 0 || dz != 0 
+        offsetBeamCoordinates(particle, n_part, dx, dy, dz)
+    end
+
+    if tilt != 0
+        rotateBeamCoordinates(particle, n_part, tilt)
+    end
+    
+
+
+    # if elem isa KQUAD
+    #     if elem.edge1_effects !=0
+    #         quadFringe(particle, n_part, elem.k1, elem.fringeIntM, elem.fringeIntP, 
+    #                                 false, -1, elem.edge1_effects, elem.edge1Linear, elem.edge1NonlinearFactor)
+    #     end
+    # end
+
+    # if isnothing(sigmaDelta2)
+    #     sigmaDelta2 = 0.0
+    # end
+
+    dzLoss = 0.0
+    for i_part in 1:i_top+1
+
+            dzLoss, sigmaDelta2, coord = integrate_kick_multipole_ordn(particle[i_part,:], dx, dy, xkick, ykick, Po, rad_coef, 
+                                                isr_coef, order, KnL, skew, nSlices, 
+                                                drift, integ_order, multData, 
+                                                steeringMultData, apData, sigmaDelta2, 0, tilt)
+            particle[i_part,:] = coord
+
+    end
+
+    # if sigmaDelta2 != 0
+    #     sigmaDelta2 /= i_top + 1
+    # end
+
+    # if elem isa KQUAD
+    #     if elem.edge2_effects !=0
+    #         quadFringe(particle, n_part, elem.k1, elem.fringeIntM, elem.fringeIntP, 
+    #                                 false, 1, elem.edge2_effects, elem.edge2Linear, elem.edge2NonlinearFactor)
+    #     end
+    # end
+    # return dzLoss, sigmaDelta2
+end
+
+function pass!(particle::Matrix{Float64}, elem::KOCT, Po::Float64, sigmaDelta2::Float64)
+    n_part = size(particle, 1)
+    # constants
+    particleMass = 9.1093897e-31 # Electron mass (kg)
+    particleCharge = 1.60217733e-19 # Electron charge (C)
+    c_mks = 299792458.0 # Speed of light (m/s)
+    epsilon_o = 8.854187817e-12 # Permittivity of vacuum (F/m)
+    me_mev = 0.51099906 # Electron mass (MeV)
+    particleRadius = particleCharge^2 / (4 * pi * epsilon_o * particleMass * c_mks^2) # Classical electron radius (m)
+    
+    skew = [0, 0, 0]
+    dx = dy = dz = 0.0 
+    nSlices = integ_order = 0
+    i_part = i_top = 0
+    drift = 0.0
+    tilt = rad_coef = isr_coef = xkick = ykick = 0.0
+    sextWarning = quadWarning = octWarning = false
+    multData = steeringMultData = apData = nothing
+
+        nSlices = elem.nSlices
+        order = 3
+        if elem.bore != 0
+            KnL3 = 6 * elem.B / elem.bore^3 * (particleCharge / (particleMass * c_mks * Po)) * elem.len * (1 + elem.fse)
+            KnL = [0.0, 0.0, KnL3]
+        else
+            KnL3 = elem.k3 * elem.len * (1 + elem.fse)
+            KnL = [0.0, 0.0, KnL3]
+        end
+
+        drift = elem.len
+        tilt = elem.tilt
+        # pitch = elem.pitch
+        # yaw = elem.yaw
+        dx = elem.dx
+        dy = elem.dy
+        dz = elem.dz
+        integ_order = elem.integration_order
+
+        if elem.synch_rad != 0
+            rad_coef = particleCharge^2 * Po^3 / (6 * pi * epsilon_o * (c_mks^2) * particleMass)
+        end
+
+        isr_coef = particleRadius *sqrt(55.0 / (24 * sqrt(3)) * Po^5 * 137.0359895)
+        if elem.isr == 0 || (elem.isr1Particle == 0 && n_part == 1 )
+            # Minus sign indicates we accumulate into sigmaDelta^2 only, don't perturb particles
+            isr_coef *= -1
+        end
+        if elem.len < 1e-6 && (elem.isr != 0 || elem.synch_rad != 0)
+            rad_coef = 0.0
+            isr_coef = 0.0 # avoid unphysical results
+            if octWarning == false
+                println("Warning: one or more octupoles with length < 1e-6 have had SYNCH_RAD=0 and ISR=0 forced to avoid unphysical results")
+                octWarning = true
+            end 
+        end
+
+
+    if order < 0
+        error("Error: invalid order: $order")
+    end
+    if integ_order != 2 && integ_order != 4 && integ_order != 6
+        error("Error: invalid integration order: $integ_order")
+    end
+
+    i_top = n_part -1
+
+
+    if dx != 0 || dy != 0 || dz != 0 
+        offsetBeamCoordinates(particle, n_part, dx, dy, dz)
+    end
+
+    if tilt != 0
+        rotateBeamCoordinates(particle, n_part, tilt)
+    end
+
+    dzLoss = 0.0
+    for i_part in 1:i_top+1
+            dzLoss, sigmaDelta2, coord = integrate_kick_multipole_ordn(particle[i_part,:], dx, dy, xkick, ykick, Po, rad_coef, 
+                                                isr_coef, order, KnL, skew, nSlices, 
+                                                drift, integ_order, multData, 
+                                                steeringMultData, apData, sigmaDelta2, 0, tilt)
+            particle[i_part,:] = coord
+    end
+
+    # if sigmaDelta2 != 0
+    #     sigmaDelta2 /= i_top + 1
+    # end
+
+    # if elem isa KQUAD
+    #     if elem.edge2_effects !=0
+    #         quadFringe(particle, n_part, elem.k1, elem.fringeIntM, elem.fringeIntP, 
+    #                                 false, 1, elem.edge2_effects, elem.edge2Linear, elem.edge2NonlinearFactor)
+    #     end
+    # end
+    # return dzLoss, sigmaDelta2
+end
+
+# using Enzyme
+# function ff(xx)
+
+#     Quad = KQUAD(name="Q",len=xx[2], k1=xx[1], nSlices=10, synch_rad=1)
+#     particle = [0.001 0.0001 0.0005 0.0002 0.0 0.0; 0.001 0.0 0.0 0.0 0.0 0.0]
+#     pass!(particle, Quad, 19569.50762296901, 0.0)
+     
+#     return particle[1,:]
 # end
-# using Zygote
-# println(f(1.0))
-# grad = jacobian(f, 1.0)
-# println(grad)
+
+
+# using BenchmarkTools
+
+# x = [1.0, 1.0]
+# # grad = jacobian(Reverse, ff, x, Val(6))
+
+# @btime jacobian(Reverse, ff, x, Val(6))

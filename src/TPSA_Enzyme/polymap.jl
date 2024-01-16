@@ -8,12 +8,12 @@
 # Modified Date: 11-06-2023
 
 include("mathfunc.jl")
-using Zygote
+# using Zygote
 
 struct PolyMap
     dim::Int
     max_order::Int
-    map::Vector{Vector{Int}}
+    map::Matrix{Int}
 
     function PolyMap(dim::Int, order::Int)
         new(dim, order, setindexmap(dim, order))
@@ -24,30 +24,8 @@ function Base.copy(pm::PolyMap)
     return new_pm
 end
 
-# function decomposite(n::Int, dim::Int)
-#     result = zeros(Int, dim + 1)
-#     itemp = n + 1
-#     for i in dim:-1:1
-#         k = i - 1
-#         while binomial(k, i) < itemp
-#             k += 1
-#         end
-#         itemp -= binomial(k - 1, i)
-#         result[dim - i + 1] = k - i  
-#     end
-#     for i in dim:-1:2  
-#         result[i] = result[i - 1] - result[i]
-#     end
-#     return result
-# end
-
 function decomposite(n::Int, dim::Int)
-    result = zeros(Int, dim + 1)
-    result_buffer = Zygote.Buffer(result)
-    for i in 1:dim+1
-        result_buffer[i] = 0 # Initialize with zero
-    end
-    
+    result = zeros(dim + 1)
     itemp = n + 1
     for i in dim:-1:1
         k = i - 1
@@ -55,26 +33,37 @@ function decomposite(n::Int, dim::Int)
             k += 1
         end
         itemp -= binomial(k - 1, i)
-        result_buffer[dim - i + 1] = k - i  
+        result[dim - i + 1] = k - i  
     end
-    for i in dim:-1:1  
-        result_buffer[i+1] = result_buffer[i] - result_buffer[i+1]
+    for i in dim:-1:2  
+        result[i] = result[i - 1] - result[i]
     end
-    return copy(result_buffer)  # Convert buffer back to array
+    return result
 end
+
 
 function setindexmap(dim::Int, max_order::Int)
     totallength = binomial(max_order + dim, dim)
-    map = [decomposite(i, dim) for i in 0:totallength-1]
+    # map = [decomposite(i, dim) for i in 0:totallength-1]
+    # create map as a matrix
+    map = zeros(Int, totallength, dim + 1)
+    for i in 0:totallength-1
+        map[i + 1, :] = decomposite(i, dim)
+    end
     return map
 end
 
+# function getindexmap(p::PolyMap, i::Int)
+#     if i < 1 || i > length(p.map)
+#         error("index out of range")
+#     end
+#     return p.map[i]
+# end
 function getindexmap(p::PolyMap, i::Int)
     if i < 1 || i > length(p.map)
-        throw(BoundsError())
+        error("index out of range")
     end
-    return p.map[i]
+    return p.map[i,:]
 end
-
 # z = PolyMap(6, 2)
 # println(getindexmap(z, 1))

@@ -1,4 +1,4 @@
-function quadPartialFringeMatrix(K1::Float64, inFringe::Int, fringeInt::Array{Float64, 1}, part::Int)
+function quadPartialFringeMatrix(K1::Float64, inFringe::Int, fringeInt::Vector, part::Int)
     K1sqr = K1^2
 
     if part == 1
@@ -125,26 +125,26 @@ function calculate_fringe(x, xp, y, yp, z, delta, K1, inFringe, higherOrder, lin
     return x, xp, y, yp, z, delta
 end
 
-function swap_matrix(M1, M2)
-    M2_new = [
-        M1[2, 2] M1[1, 2] M1[1, 3] M1[1, 4] M1[1, 5] M1[1, 6];
-        M1[2, 1] M1[1, 1] M1[2, 3] M1[2, 4] M1[2, 5] M1[2, 6];
-        M1[3, 1] M1[3, 2] M1[4, 4] M1[3, 4] M1[3, 5] M1[3, 6];
-        M1[4, 1] M1[4, 2] M1[4, 3] M1[3, 3] M1[4, 5] M1[4, 6];
-        M1[5, 1] M1[5, 2] M1[5, 3] M1[5, 4] M1[5, 5] M1[5, 6];
-        M1[6, 1] M1[6, 2] M1[6, 3] M1[6, 4] M1[6, 5] M1[6, 6]
-        ]
+# function swap_matrix(M1, M2)
+#     M2_new = [
+#         M1[2, 2] M1[1, 2] M1[1, 3] M1[1, 4] M1[1, 5] M1[1, 6];
+#         M1[2, 1] M1[1, 1] M1[2, 3] M1[2, 4] M1[2, 5] M1[2, 6];
+#         M1[3, 1] M1[3, 2] M1[4, 4] M1[3, 4] M1[3, 5] M1[3, 6];
+#         M1[4, 1] M1[4, 2] M1[4, 3] M1[3, 3] M1[4, 5] M1[4, 6];
+#         M1[5, 1] M1[5, 2] M1[5, 3] M1[5, 4] M1[5, 5] M1[5, 6];
+#         M1[6, 1] M1[6, 2] M1[6, 3] M1[6, 4] M1[6, 5] M1[6, 6]
+#         ]
 
-    M1_new = [
-        M2[2, 2] M2[1, 2] M2[1, 3] M2[1, 4] M2[1, 5] M2[1, 6];
-        M2[2, 1] M2[1, 1] M2[2, 3] M2[2, 4] M2[2, 5] M2[2, 6];
-        M2[3, 1] M2[3, 2] M2[4, 4] M2[3, 4] M2[3, 5] M2[3, 6];
-        M2[4, 1] M2[4, 2] M2[4, 3] M2[3, 3] M2[4, 5] M2[4, 6];
-        M2[5, 1] M2[5, 2] M2[5, 3] M2[5, 4] M2[5, 5] M2[5, 6];
-        M2[6, 1] M2[6, 2] M2[6, 3] M2[6, 4] M2[6, 5] M2[6, 6]
-        ]
-    return M1_new, M2_new
-end
+#     M1_new = [
+#         M2[2, 2] M2[1, 2] M2[1, 3] M2[1, 4] M2[1, 5] M2[1, 6];
+#         M2[2, 1] M2[1, 1] M2[2, 3] M2[2, 4] M2[2, 5] M2[2, 6];
+#         M2[3, 1] M2[3, 2] M2[4, 4] M2[3, 4] M2[3, 5] M2[3, 6];
+#         M2[4, 1] M2[4, 2] M2[4, 3] M2[3, 3] M2[4, 5] M2[4, 6];
+#         M2[5, 1] M2[5, 2] M2[5, 3] M2[5, 4] M2[5, 5] M2[5, 6];
+#         M2[6, 1] M2[6, 2] M2[6, 3] M2[6, 4] M2[6, 5] M2[6, 6]
+#         ]
+#     return M1_new, M2_new
+# end
 
 function quadFringe(x, xp, y, yp, z, delta, np, K1, fringeIntM0, fringeIntP0, backtrack, 
                     inFringe, higherOrder, linearFlag, nonlinearFactor)
@@ -154,16 +154,16 @@ function quadFringe(x, xp, y, yp, z, delta, np, K1, fringeIntM0, fringeIntP0, ba
 
         
         if inFringe * (backtrack ? -1 : 1) == -1
-            # M1[1, 1], M1[2, 2] = M1[2, 2], M1[1, 1]
-            # M1[3, 3], M1[4, 4] = M1[4, 4], M1[3, 3]
-            # M2[1, 1], M2[2, 2] = M2[2, 2], M2[1, 1]
-            # M2[3, 3], M2[4, 4] = M2[4, 4], M2[3, 3]
-            # M1, M2 = M2, M1
+            M1[1, 1], M1[2, 2] = M1[2, 2], M1[1, 1]
+            M1[3, 3], M1[4, 4] = M1[4, 4], M1[3, 3]
+            M2[1, 1], M2[2, 2] = M2[2, 2], M2[1, 1]
+            M2[3, 3], M2[4, 4] = M2[4, 4], M2[3, 3]
+            M1, M2 = M2, M1
             
             # avoid muatating M1 and M2
-            M1_new, M2_new = swap_matrix(M1, M2)
-        else
-            M1_new, M2_new = M1, M2
+        #     M1_new, M2_new = swap_matrix(M1, M2)
+        # else
+        #     M1_new, M2_new = M1, M2
         end
 
         # backtrack is always false. Back track is not in use for now to avoid confusion
@@ -188,7 +188,7 @@ function quadFringe(x, xp, y, yp, z, delta, np, K1, fringeIntM0, fringeIntP0, ba
         # vec = calculate_fringe(coord[ip], K1, inFringe, higherOrder, linearFlag, nonlinearFactor, M1, M2)
         # coord[ip] = vec
     # end
-    x, xp, y, yp, z, delta = calculate_fringe(x, xp, y, yp, z, delta, K1, inFringe, higherOrder, linearFlag, nonlinearFactor, M1_new, M2_new)
+    x, xp, y, yp, z, delta = calculate_fringe(x, xp, y, yp, z, delta, K1, inFringe, higherOrder, linearFlag, nonlinearFactor, M1, M2)
     return x, xp, y, yp, z, delta
 end
 
