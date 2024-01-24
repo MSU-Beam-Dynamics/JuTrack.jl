@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 include("../lattice/canonical_elements.jl")
 include("EDrift_Enzyme.jl")
 include("multipole_Enzyme.jl")
@@ -5,6 +6,15 @@ include("multipole_Enzyme.jl")
 include("csbend_Enzyme.jl")
 # include("csbend_TPSA_Enzyme.jl")
 include("rfca_Enzyme.jl")
+=======
+# include("../lattice/canonical_elements.jl")
+# include("EDrift_Enzyme.jl")
+# include("multipole_Enzyme.jl")
+# include("multipole_TPSA_Enzyme.jl")
+# include("csbend_Enzyme.jl")
+# include("csbend_TPSA_Enzyme.jl")
+# include("rfca_Enzyme.jl")
+>>>>>>> Stashed changes
 # include("rfca_TPSA_Enzyme.jl")
 # include("../TPSA_Enzyme/TPSA_fixedmap.jl")
 
@@ -19,34 +29,24 @@ function linepass!(line, particles, Po, p_error)
     for i in 1:nline
         # ele = line[i]
         pass!(particles, line[i], Po, sigmaDelta2)        
-        # if ele isa EDRIFT
-        #     EDrift(particles, np, ele.len)
-        # elseif ele isa KQUAD || ele isa KSEXT || ele isa KOCT
-        #     multipole_tracking2(particles, np, ele, Po, sigmaDelta2)
-        # elseif ele isa CSBEND
-        #     particles = track_through_csbend(particles, np, ele, p_error, Po, sigmaDelta2)
-        # elseif ele isa RFCA
-        #     if see_rf == 0
-        #         fiducial_seen = 0
-        #         n_references = 0.0
-        #         reference_ref_number = 0
-        #         reference_phase = 0.0
-        #         reference_flags = 0
-        #         n_references = 0
-        #         rfca_phase_reference = ele.phase_reference
-        #         see_rf = 1
-        #     end
-        #     particles, fiducial_seen, Po, n_references, rfca_phase_reference, reference_ref_number, reference_phase, reference_flags = 
-        #         simple_rf_cavity(particles, np, ele, Po, z, fiducial_seen, rfca_phase_reference, reference_ref_number, 
-        #         reference_phase, reference_flags, n_references)
-        # else
-        #     error("Unknown element type")
-        # end
-        # z += line[i].len
     end
-    # return particles
 end
 
+<<<<<<< Updated upstream
+=======
+function ringpass!(line, particles, nturn, Po, p_error)
+    nline = length(line)
+    np = length(particles)
+    z = 0.0
+    see_rf = 0
+    sigmaDelta2 = 0.0
+    dzLoss = 0.0
+    for i in 1:nturn
+        # ele = line[i]
+        linepass!(line, particles, Po, p_error)      
+    end
+end
+>>>>>>> Stashed changes
 # function linepass_TPSA(line, x, xp, y, yp, z, delta, Po, p_error)
 #     nline = length(line)
 #     # z = 0.0

@@ -1,12 +1,11 @@
 # include("../lattice/canonical_elements.jl")
+# include("../TPSA_Enzyme/TPSA_fixedmap.jl")
+function exactDrift(x::CTPS, xp::CTPS, y::CTPS, yp::CTPS, z::CTPS, delta::CTPS, np::Int, len::Float64)
+    x = x + xp * len
+    y = y + yp * len
+    z = z + len * sqrt(1.0 + xp^2 + yp^2)
+    return x, xp, y, yp, z, delta
 
-function exactDrift!(part, np, len)
-    for i in 1:np
-        part[i, 1] += part[i, 2] * len
-        part[i, 3] += part[i, 4] * len
-        part[i, 5] += len * sqrt(1 + part[i, 2]^2 + part[i, 4]^2)
-    end
-    return nothing
 end
 
 function SIGN(x)
@@ -51,7 +50,7 @@ function computeCSBENDFieldCoefficients(b, h, nonlinear, expansionOrder)
     Fy_xy[1,1] = 1.0
     Fy_xy[2,1] = b[1]
 
-    if nonlinear !=0 && (b[1]+b[2]+b[3]+b[4]+b[5]+b[6]+b[7]+b[8]) != 0
+    if nonlinear !=0 && any(b .!= 0)
         Fx_xy[2,2] = b[2]
         Fx_xy[3,2] = b[3]/2
         Fx_xy[4,2] = b[4]/6
@@ -124,7 +123,7 @@ function rotate_coordinates!(coord, angle)
     epsilon = 1e-12
 
     if angle == 0 || abs(abs(angle) - 2*pi) < epsilon
-        return nothing
+        return
     end
 
     if abs(abs(angle) - pi) < epsilon
@@ -163,16 +162,16 @@ function computeEtiltCentroidOffset(rho0, angle, etilt, tilt)
         return dcoord_etilt
     end
 
-    q1a = (1.0 - cos(angle)) * rho0 * (cos(etilt) - 1.0)
-    q2a = 0.0
-    q3a = (1.0 - cos(angle)) * rho0 * sin(etilt)
+    q1a = (1 - cos(angle)) * rho0 * (cos(etilt) - 1)
+    q2a = 0
+    q3a = (1 - cos(angle)) * rho0 * sin(etilt)
     qp1 = sin(angle) * cos(etilt)
     qp2 = cos(angle)
     k = sqrt(qp1^2 + qp2^2)
     qp1 /= k
     qp2 /= k
     qp3 = sin(angle) * sin(etilt) / k
-    tan_alpha = 1.0 / tan(angle) / cos(etilt)
+    tan_alpha = 1 / tan(angle) / cos(etilt)
     q1b = q1a * tan_alpha / (tan(angle) + tan_alpha)
     q2b = -q1b * tan(angle)
     dz = sqrt((q1b - q1a)^2 + (q2b - q2a)^2)
@@ -182,8 +181,8 @@ function computeEtiltCentroidOffset(rho0, angle, etilt, tilt)
     dcoord_etilt[2] = tan(atan(tan_alpha) - (pi/2 - angle))
     dcoord_etilt[3] = q3b
     dcoord_etilt[4] = qp3
-    dcoord_etilt[5] = dz * sqrt(1.0 + qp3^2)
-    dcoord_etilt[6] = 0.0
+    dcoord_etilt[5] = dz * sqrt(1 + qp3^2)
+    dcoord_etilt[6] = 0
     # dcoord_etilt = [sqrt(q1b^2 + q2b^2), tan(atan(tan_alpha) - (pi/2 - angle)), q3b, qp3, dz * sqrt(1 + qp3^2), 0]
 
     # rotate by tilt to get into same frame as bend equations.
@@ -192,49 +191,7 @@ function computeEtiltCentroidOffset(rho0, angle, etilt, tilt)
 
 end
 
-function determine_bend_flags(elem, edge1_effects::Int, edge2_effects::Int)
-    bend_flags = 0
-
-    # Traversing predecessors
-    other = elem.pred
-    while other !== nothing
-        if other.type == elem.type && other.name == elem.name
-            bend_flags |= SAME_BEND_PRECEDES
-            break
-        end
-        if other.type == T_MARK || other.type == T_WATCH
-            other = other.pred
-        else
-            break
-        end
-    end
-
-    # Traversing successors
-    other = elem.succ
-    while other !== nothing
-        if other.type == elem.type && other.name == elem.name
-            bend_flags |= SAME_BEND_FOLLOWS
-            break
-        end
-        if other.type == T_MARK || other.type == T_WATCH
-            other = other.succ
-        else
-            break
-        end
-    end
-
-    if edge1_effects != 0 && (bend_flags & SAME_BEND_PRECEDES) == 0
-        bend_flags |= BEND_EDGE1_EFFECTS
-    end
-    if edge2_effects != 0 && (bend_flags & SAME_BEND_FOLLOWS) == 0
-        bend_flags |= BEND_EDGE2_EFFECTS
-    end
-
-    bend_flags |= BEND_EDGE_DETERMINED
-    return bend_flags
-end
-
-function apply_edge_effects(x, xp, y, yp, rho, n, beta, he, psi, which_edge)
+function apply_edge_effects(x::CTPS, xp::CTPS, y::CTPS, yp::CTPS, rho, n, beta, he, psi, which_edge)
     h = 1.0 / rho
     tan_beta = tan(beta)
     R21 = h * tan_beta
@@ -242,11 +199,11 @@ function apply_edge_effects(x, xp, y, yp, rho, n, beta, he, psi, which_edge)
 
     h2 = h^2
     tan2_beta = tan_beta^2
-    sec_beta = 1.0 / cos(beta)
+    sec_beta = 1 / cos(beta)
     sec2_beta = sec_beta^2
 
-    T111 = which_edge * h / 2.0 * tan2_beta
-    T133 = -which_edge * h / 2.0 * sec2_beta
+    T111 = which_edge * h / 2 * tan2_beta
+    T133 = -which_edge * h / 2 * sec2_beta
     T211 = which_edge == -1 ? -n * h2 * tan_beta : -h2 * (n + tan2_beta / 2) * tan_beta
     T331 = -which_edge * h * tan2_beta
     T221 = T331
@@ -257,13 +214,17 @@ function apply_edge_effects(x, xp, y, yp, rho, n, beta, he, psi, which_edge)
     T432 = which_edge * h * sec2_beta
 
     if he != 0
-        term = h / 2.0 * he * sec2_beta * sec_beta
+        term = h / 2 * he * sec2_beta * sec_beta
         T211 += term
         T233 -= term
-        T431 -= 2.0 * term
+        T431 -= 2 * term
     end
 
-    x0, xp0, y0, yp0 = x, xp, y, yp
+    x0 = CTPS(x)
+    xp0 = CTPS(xp)
+    y0 = CTPS(y)
+    yp0 = CTPS(yp)
+    # x0, xp0, y0, yp0 = x, xp, y, yp
     x = x0 + T111 * x0^2 + T133 * y0^2
     xp = xp0 + R21 * x0 + T211 * x0^2 + T221 * x0 * xp0 + T233 * y0^2 + T243 * y0 * yp0
     y = y0 + T331 * x0 * y0
@@ -271,22 +232,23 @@ function apply_edge_effects(x, xp, y, yp, rho, n, beta, he, psi, which_edge)
     return x, xp, y, yp
 end
 
-function computeCSBENDFields(x, y, Fx_xy, Fy_xy, expansionOrder1)
-    sumFX = 0.0
-    sumFY = 0.0
+function computeCSBENDFields(x::CTPS{T, TPS_Dim, Max_TPS_Degree}, y::CTPS{T, TPS_Dim, Max_TPS_Degree}, 
+                            Fx_xy, Fy_xy, expansionOrder1) where {T, TPS_Dim, Max_TPS_Degree}
+    sumFX = CTPS(0.0, TPS_Dim, Max_TPS_Degree)
+    sumFY = CTPS(0.0, TPS_Dim, Max_TPS_Degree)
 
     for i in 1:expansionOrder1
         for j in 2:2:(expansionOrder1 - i + 1)
-            # if Fx_xy[i, j] != 0.0
+            if Fx_xy[i, j] != 0
                 sumFX += Fx_xy[i, j] * x^(i - 1) * y^(j - 1)
-            # end
+            end
         end
     end
     for i in 1:expansionOrder1
         for j in 1:2:(expansionOrder1 - i + 1)
-            # if Fy_xy[i, j] != 0
+            if Fy_xy[i, j] != 0
                 sumFY += Fy_xy[i, j] * x^(i - 1) * y^(j - 1)
-            # end
+            end
         end
     end
     
@@ -295,28 +257,22 @@ function computeCSBENDFields(x, y, Fx_xy, Fy_xy, expansionOrder1)
     return sumFX, sumFY
 end
 
-function convertToDipoleCanonicalCoordinates!(Qi, rho)
-    f = (1.0 + Qi[6]) / sqrt((1.0 + Qi[1] / rho)^2 + Qi[2]^2 + Qi[4]^2)
-    Qi[2] *= f
-    Qi[4] *= f
-    # new_Qi = [Qi[1], Qi[2]*f, Qi[3], Qi[4]*f, Qi[5], Qi[6]]
-    return nothing 
+function convertToDipoleCanonicalCoordinates(x, xp, y, yp, z, dp, rho)
+    f = (1.0 + dp) / sqrt((1.0 + x / rho)^2 + xp^2 + yp^2)
+    return xp*f, yp*f
 end
-function convertFromDipoleCanonicalCoordinates!(Qi, rho)
-    f = (1.0 + Qi[1]/rho)/sqrt((1.0+Qi[6])^2-Qi[2]^2-Qi[4]^2)
-    Qi[2] *= f
-    Qi[4] *= f
-    # new_Qi = [Qi[1], Qi[2]*f, Qi[3], Qi[4]*f, Qi[5], Qi[6]]
-    return nothing
+function convertFromDipoleCanonicalCoordinates(x, xp, y, yp, z, dp, rho)
+    f = (1.0 +x/rho)/sqrt((1.0+dp)^2-xp^2-yp^2)
+    return xp*f, yp*f
 end
 
-function dipoleFringe(vec, h, inFringe, higherOrder)
+function dipoleFringe(x, xp, y, yp, z, dp, h, inFringe, higherOrder)
     # vec = [x, qx, y, qy, s, delta]
-    x = vec[1]
-    px = vec[2]
-    y = vec[3]
-    py = vec[4]
-    delta = vec[6]
+    # x = vec[1]
+    px = xp
+    # y = vec[3]
+    py = yp
+    delta = dp
     dx = dpx = dy = dpy = ds = 0.0
 
     a = inFringe * h / (8.0 * (1 + delta))
@@ -379,18 +335,26 @@ function dipoleFringe(vec, h, inFringe, higherOrder)
     end
 
     ds = (a / (1 + delta)) * (2 * py * x * y - px * x^2 - 3 * px * y^2)
-    vec[1] += dx
-    vec[2] += dpx
-    vec[3] += dy
-    vec[4] += dpy
-    vec[5] += ds
+    x += dx
+    xp += dpx
+    y += dy
+    yp += dpy
+    z += ds
+    # vec[1] += dx
+    # vec[2] += dpx
+    # vec[3] += dy
+    # vec[4] += dpy
+    # vec[5] += ds
 
     # new_vec = [vec[1]+dx, vec[2]+dpx, vec[3]+dy, vec[4]+dpy, vec[5]+ds, vec[6]]
 
-    return nothing
+    return x, xp, y, yp, z, dp
 end
 
-function addRadiationKick(Qx, Qy, dPoP, sigmaDelta2, x, h0, Fx, Fy, ds, radCoef)
+function addRadiationKick(Qx, Qy, dPoP, sigmaDelta2,
+    x, h0, Fx, Fy, ds, radCoef, synch_rad, dsISR, isrCoef,
+    distributionBased, includeOpeningAngle, meanPhotonsPerMeter,
+    normalizedCriticalEnergy0, Po)
 
     f = (1.0 + x * h0) / sqrt((1.0 + dPoP)^2 - Qx^2 - Qy^2)
     xp = Qx * f
@@ -398,16 +362,18 @@ function addRadiationKick(Qx, Qy, dPoP, sigmaDelta2, x, h0, Fx, Fy, ds, radCoef)
     dsFactor = sqrt((1.0 + x * h0)^2 + xp^2 + yp^2)
     F2 = Fx^2 + Fy^2
 
-    # if distributionBased == 0 # now must be 0
+    if distributionBased == 0 # now must be 0
         deltaFactor = (1.0 + dPoP)^2
         Qx /= (1.0 + dPoP)
         Qy /= (1.0 + dPoP)
-        dPoP -= radCoef * deltaFactor * F2 * ds * dsFactor 
+        if synch_rad == 1
+            dPoP -= radCoef * deltaFactor * F2 * ds * dsFactor
+        end
         # if isrCoef > 0
         # # gauss_rn_lim and random_2 are not defined yet
         #     dPoP -= isrCoef * deltaFactor * F2^0.75 * sqrt(dsISR * dsFactor) * gauss_rn_lim(0.0, 1.0, 3.0, random_2())
         # end
-        # if !isnothing(sigmaDelta2) 
+        # if !isnothing(sigmaDelta2) # F2^1.5 is not defined yet
         #     sigmaDelta2 += (isrCoef * deltaFactor)^2 * F2^1.5 * dsISR * dsFactor
         # end
         Qx *= (1.0 + dPoP)
@@ -435,143 +401,147 @@ function addRadiationKick(Qx, Qy, dPoP, sigmaDelta2, x, h0, Fx, Fy, ds, radCoef)
         # f = (1 + dPoP) / EXSQRT((1 + x * h0)^2 + xp^2 + yp^2, sqrtOrder)
         # Qx = xp * f
         # Qy = yp * f
-    # end
-
-    return Qx, Qy, dPoP
-end
-
-function integrate_csbend_ord2(Qi, sigmaDelta2, s, n, rho0, p0, Fx_xy, Fy_xy, rho_actual, 
-                                rad_coef, isrConstant, synch_rad, expansionOrder)
-    particle_lost = 0
-    s_lost = 0.0
-
-    if n < 1
-        error("invalid number of steps (integrate_csbend_ord4)")
     end
 
-    Qf = [Qi[i] for i in 1:6]
-
-    dist = 0.0
-    ds = s/n
-    dsh = ds/2
-    for i in 1:n
-        if i == 1
-            # First drift
-            f = (1 + Qf[6])^2 - Qf[4]^2
-            if f <= 0
-                particle_lost = 1
-                s_lost = dist
-                return Qf, particle_lost, s_lost, sigmaDelta2
-            end
-            f = sqrt(f)
-            if abs(Qf[2]/f) > 1
-                particle_lost = 1
-                s_lost = dist
-                return Qf, particle_lost, s_lost, sigmaDelta2
-            end
-            sin_phi = Qf[2] / f
-            phi = asin(sin_phi)
-            sine = sin(dsh / rho0 + phi)
-            cosi = cos(dsh / rho0 + phi)
-            if cosi == 0
-                particle_lost = 1
-                s_lost = dist
-                return Qf, particle_lost, s_lost, sigmaDelta2
-            end
-            tang = sine / cosi
-            cos_phi = cos(phi)
-            Qf[2] = f * sine
-            factor = (rho0+Qf[1])*cos_phi/f*(tang-sin_phi/cos_phi)
-            Qf[3] += Qf[4] * factor
-            dist += factor * (1 + Qf[6])
-            f = cos_phi / cosi
-            Qf[1] = rho0 * (f - 1) + f * Qf[1]
-        end
-
-        # First kick
-        x = Qf[1]
-        y = Qf[3]
-        Fx, Fy = computeCSBENDFields(x, y, Fx_xy, Fy_xy, expansionOrder+1)
-
-        Qf[2] += -ds * (1 + Qf[1]/rho0) * Fy / rho_actual
-        Qf[4] += ds * (1 + Qf[1]/rho0) * Fx / rho_actual
-        if synch_rad==1
-            Qx, Qy, dPoP = addRadiationKick(Qf[2], Qf[4], Qf[6], sigmaDelta2,
-                                        Qf[1], 1/rho0, Fx, Fy, ds, rad_coef)
-            Qf[2] = Qx
-            Qf[4] = Qy
-            Qf[6] = dPoP
-        end
-
-        # second drift
-        if i == n
-            f = (1 + Qf[6])^2 - Qf[4]^2
-            if f <= 0
-                particle_lost = 1
-                s_lost = dist
-                return Qf, particle_lost, s_lost, sigmaDelta2
-            end
-            f = sqrt(f)
-            if abs(Qf[2]/f) > 1
-                particle_lost = 1
-                s_lost = dist
-                return Qf, particle_lost, s_lost, sigmaDelta2
-            end
-            sin_phi = Qf[2] / f
-            phi = asin(sin_phi)
-            sine = sin(dsh / rho0 + phi)
-            cosi = cos(dsh / rho0 + phi)
-            if cosi == 0
-                particle_lost = 1
-                s_lost = dist
-                return Qf, particle_lost, s_lost, sigmaDelta2
-            end
-            tang = sine / cosi
-            cos_phi = cos(phi)
-            Qf[2] = f * sine
-            factor = (rho0+Qf[1])*cos_phi/f*(tang-sin_phi/cos_phi)
-            Qf[3] += Qf[4] * factor
-            dist += factor * (1 + Qf[6])
-            f = cos_phi / cosi
-            Qf[1] = rho0 * (f - 1) + f * Qf[1]
-        else
-            f = (1 + Qf[6])^2 - Qf[4]^2
-            if f <= 0
-                particle_lost = 1
-                s_lost = dist
-                return Qf, particle_lost, s_lost, sigmaDelta2
-            end
-            f = sqrt(f)
-            if abs(Qf[2]/f) > 1
-                particle_lost = 1
-                s_lost = dist
-                return Qf, particle_lost, s_lost, sigmaDelta2
-            end
-            sin_phi = Qf[2] / f
-            phi = asin(sin_phi)
-            sine = sin(ds / rho0 + phi)
-            cosi = cos(ds / rho0 + phi)
-            if cosi == 0
-                particle_lost = 1
-                s_lost = dist
-                return Qf, particle_lost, s_lost, sigmaDelta2
-            end
-            tang = sine / cosi
-            cos_phi = cos(phi)
-            Qf[2] = f * sine
-            factor = (rho0+Qf[1])*cos_phi/f*(tang-sin_phi/cos_phi)
-            Qf[3] += Qf[4] * factor
-            dist += factor * (1 + Qf[6])
-            f = cos_phi / cosi
-            Qf[1] = rho0 * (f - 1) + f * Qf[1]
-        end
-    end
-    Qf[5] += dist
-    return Qf, particle_lost, s_lost, sigmaDelta2
+    return Qx, Qy, dPoP, sigmaDelta2
 end
 
-function integrate_csbend_ord4(Qi, sigmaDelta2, s, n, rho0, p0, Fx_xy, Fy_xy, rho_actual, 
-                                rad_coef, isrConstant, synch_rad, expansionOrder)
+# function integrate_csbend_ord2(Qi, sigmaDelta2, s, n, rho0, p0, Fx_xy, Fy_xy, rho_actual, 
+#                                 rad_coef, isrConstant, synch_rad, expansionOrder)
+#     particle_lost = 0
+#     s_lost = 0.0
+
+#     if n < 1
+#         error("invalid number of steps (integrate_csbend_ord4)")
+#     end
+
+#     Qf = [Qi[i] for i in 1:6]
+
+#     dist = 0.0
+#     ds = s/n
+#     dsh = ds/2
+#     for i in 1:n
+#         if i == 1
+#             # First drift
+#             f = (1 + Qf[6])^2 - Qf[4]^2
+#             if f <= 0
+#                 particle_lost = 1
+#                 s_lost = dist
+#                 return Qf, particle_lost, s_lost, sigmaDelta2
+#             end
+#             f = sqrt(f)
+#             if abs(Qf[2]/f) > 1
+#                 particle_lost = 1
+#                 s_lost = dist
+#                 return Qf, particle_lost, s_lost, sigmaDelta2
+#             end
+#             sin_phi = Qf[2] / f
+#             phi = asin(sin_phi)
+#             sine = sin(dsh / rho0 + phi)
+#             cosi = cos(dsh / rho0 + phi)
+#             if cosi == 0
+#                 particle_lost = 1
+#                 s_lost = dist
+#                 return Qf, particle_lost, s_lost, sigmaDelta2
+#             end
+#             tang = sine / cosi
+#             cos_phi = cos(phi)
+#             Qf[2] = f * sine
+#             factor = (rho0+Qf[1])*cos_phi/f*(tang-sin_phi/cos_phi)
+#             Qf[3] += Qf[4] * factor
+#             dist += factor * (1 + Qf[6])
+#             f = cos_phi / cosi
+#             Qf[1] = rho0 * (f - 1) + f * Qf[1]
+#         end
+
+#         # First kick
+#         x = Qf[1]
+#         y = Qf[3]
+#         Fx, Fy = computeCSBENDFields(x, y, Fx_xy, Fy_xy, expansionOrder+1)
+
+#         Qf[2] += -ds * (1 + Qf[1]/rho0) * Fy / rho_actual
+#         Qf[4] += ds * (1 + Qf[1]/rho0) * Fx / rho_actual
+#         if synch_rad==1
+#             Qx, Qy, dPoP, sigmaDelta2 = addRadiationKick(Qf[2], Qf[4], Qf[6], sigmaDelta2,
+#                                         Qf[1], 1/rho0, Fx, Fy, ds, rad_coef, s/3, 0, 0, 0, 0, 0, p0)
+#             Qf[2] = Qx
+#             Qf[4] = Qy
+#             Qf[6] = dPoP
+#         end
+
+#         # second drift
+#         if i == n
+#             f = (1 + Qf[6])^2 - Qf[4]^2
+#             if f <= 0
+#                 particle_lost = 1
+#                 s_lost = dist
+#                 return Qf, particle_lost, s_lost, sigmaDelta2
+#             end
+#             f = sqrt(f)
+#             if abs(Qf[2]/f) > 1
+#                 particle_lost = 1
+#                 s_lost = dist
+#                 return Qf, particle_lost, s_lost, sigmaDelta2
+#             end
+#             sin_phi = Qf[2] / f
+#             phi = asin(sin_phi)
+#             sine = sin(dsh / rho0 + phi)
+#             cosi = cos(dsh / rho0 + phi)
+#             if cosi == 0
+#                 particle_lost = 1
+#                 s_lost = dist
+#                 return Qf, particle_lost, s_lost, sigmaDelta2
+#             end
+#             tang = sine / cosi
+#             cos_phi = cos(phi)
+#             Qf[2] = f * sine
+#             factor = (rho0+Qf[1])*cos_phi/f*(tang-sin_phi/cos_phi)
+#             Qf[3] += Qf[4] * factor
+#             dist += factor * (1 + Qf[6])
+#             f = cos_phi / cosi
+#             Qf[1] = rho0 * (f - 1) + f * Qf[1]
+#         else
+#             f = (1 + Qf[6])^2 - Qf[4]^2
+#             if f <= 0
+#                 particle_lost = 1
+#                 s_lost = dist
+#                 return Qf, particle_lost, s_lost, sigmaDelta2
+#             end
+#             f = sqrt(f)
+#             if abs(Qf[2]/f) > 1
+#                 particle_lost = 1
+#                 s_lost = dist
+#                 return Qf, particle_lost, s_lost, sigmaDelta2
+#             end
+#             sin_phi = Qf[2] / f
+#             phi = asin(sin_phi)
+#             sine = sin(ds / rho0 + phi)
+#             cosi = cos(ds / rho0 + phi)
+#             if cosi == 0
+#                 particle_lost = 1
+#                 s_lost = dist
+#                 return Qf, particle_lost, s_lost, sigmaDelta2
+#             end
+#             tang = sine / cosi
+#             cos_phi = cos(phi)
+#             Qf[2] = f * sine
+#             factor = (rho0+Qf[1])*cos_phi/f*(tang-sin_phi/cos_phi)
+#             Qf[3] += Qf[4] * factor
+#             dist += factor * (1 + Qf[6])
+#             f = cos_phi / cosi
+#             Qf[1] = rho0 * (f - 1) + f * Qf[1]
+#         end
+#     end
+#     Qf[5] += dist
+#     return Qf, particle_lost, s_lost, sigmaDelta2
+# end
+
+function integrate_csbend_ord4(x::CTPS{T, TPS_Dim, Max_TPS_Degree}, xp::CTPS{T, TPS_Dim, Max_TPS_Degree}, 
+                                y::CTPS{T, TPS_Dim, Max_TPS_Degree}, yp::CTPS{T, TPS_Dim, Max_TPS_Degree}, 
+                                z::CTPS{T, TPS_Dim, Max_TPS_Degree}, dp::CTPS{T, TPS_Dim, Max_TPS_Degree}, 
+                                sigmaDelta2::Float64, s::Float64, n::Int, rho0::Float64, p0::Float64, 
+                                Fx_xy::Matrix{Float64}, Fy_xy::Matrix{Float64}, rho_actual::Float64, rad_coef::Float64, 
+                                isrConstant::Float64, synch_rad::Int, expansionOrder::Int) where {T, TPS_Dim, Max_TPS_Degree}
     BETA = 1.25992104989487316477
     particle_lost = 0
     s_lost = 0.0
@@ -580,212 +550,212 @@ function integrate_csbend_ord4(Qi, sigmaDelta2, s, n, rho0, p0, Fx_xy, Fy_xy, rh
         error("invalid number of steps (integrate_csbend_ord4)")
     end
 
-    Qf = zeros(6)
-    for i in 1:6
-        Qf[i] = Qi[i]
-    end
+    # Qf = [Qi[i] for i in 1:6]
 
-    dist = 0.0
+    dist = CTPS(0.0, TPS_Dim, Max_TPS_Degree)
     s /= n
     for i in 1:n
         # First drift
         dsh = s / 2.0 / (2.0 - BETA)
-        f = (1 + Qf[6])^2 - Qf[4]^2
-        if f <= 0
-            particle_lost = 1
-            s_lost = dist
-            return Qf, particle_lost, s_lost, sigmaDelta2
-        end
+        f = (dp + 1.0)^2 - yp^2
+        # if f <= 0
+        #     particle_lost = 1
+        #     s_lost = dist
+        #     return Qf, particle_lost, s_lost, sigmaDelta2
+        # end
         f = sqrt(f)
-        if abs(Qf[2]/f) > 1
-            particle_lost = 1
-            s_lost = dist
+        # if abs(xp/f) > 1
+        #     particle_lost = 1
+        #     s_lost = dist
             
-            return Qf, particle_lost, s_lost, sigmaDelta2
-        end
-        sin_phi = Qf[2] / f
+        #     return Qf, particle_lost, s_lost, sigmaDelta2
+        # end
+        sin_phi = xp / f
         phi = asin(sin_phi)
         sine = sin(dsh / rho0 + phi)
         cosi = cos(dsh / rho0 + phi)
-        if cosi == 0
-            particle_lost = 1
-            s_lost = dist
+        # if cosi == 0
+        #     particle_lost = 1
+        #     s_lost = dist
             
-            return Qf, particle_lost, s_lost, sigmaDelta2
-        end
+        #     return Qf, particle_lost, s_lost, sigmaDelta2
+        # end
         tang = sine / cosi
         cos_phi = cos(phi)
-        Qf[2] = f * sine
-        factor = (rho0+Qf[1])*cos_phi/f*(tang-sin_phi/cos_phi)
-        Qf[3] += Qf[4] * factor
-        dist += factor * (1 + Qf[6])
+        xp = f * sine
+        factor = (rho0+x)*cos_phi/f*(tang-sin_phi/cos_phi)
+        y += yp * factor
+        dist += factor * (1.0 + dp)
         f = cos_phi / cosi
-        Qf[1] = rho0 * (f - 1) + f * Qf[1]
+        x = rho0 * (f - 1.0) + f * x
 
         # First kick
         ds = s / (2.0 - BETA)
-        x = Qf[1]
-        y = Qf[3]
+        # Assuming computeCSBENDFields and addRadiationKick are defined in Julia
+        # x = Qf[1]
+        # y = Qf[3]
         Fx, Fy = computeCSBENDFields(x, y, Fx_xy, Fy_xy, expansionOrder+1)
 
-        Qf[2] += -ds * (1.0 + Qf[1]/rho0) * Fy / rho_actual
-        Qf[4] += ds * (1.0 + Qf[1]/rho0) * Fx / rho_actual
+        xp += -ds * (1.0 + x/rho0) * Fy / rho_actual
+        yp += ds * (1.0 + x/rho0) * Fx / rho_actual
         if synch_rad == 1
-            Qx, Qy, dPoP = addRadiationKick(Qf[2], Qf[4], Qf[6], sigmaDelta2,
-                                        Qf[1], 1/rho0, Fx, Fy, ds, rad_coef)
-            Qf[2] = Qx
-            Qf[4] = Qy
-            Qf[6] = dPoP
+            xp, yp, dp, sigmaDelta2 = addRadiationKick(xp, yp, dp, sigmaDelta2,
+                                        x, 1/rho0, Fx, Fy, ds, rad_coef, synch_rad, s/3, 0.0, 0, 0, 0, 0, p0)
         end
 
         # second drift
         dsh = s*(1 - BETA)/(2 - BETA)/2
-        f = (1 + Qf[6])^2 - Qf[4]^2
-        if f <= 0
-            particle_lost = 1
-            s_lost = dist
+        f = (1.0 + dp)^2 - yp^2
+        # if f <= 0
+        #     particle_lost = 1
+        #     s_lost = dist
             
-            return Qf, particle_lost, s_lost, sigmaDelta2
-        end
+        #     return Qf, particle_lost, s_lost, sigmaDelta2
+        # end
         f = sqrt(f)
-        if abs(Qf[2]/f) > 1
-            particle_lost = 1
-            s_lost = dist
+        # if abs(xp/f) > 1
+        #     particle_lost = 1
+        #     s_lost = dist
             
-            return Qf, particle_lost, s_lost, sigmaDelta2
-        end
-        sin_phi = Qf[2] / f
+        #     return Qf, particle_lost, s_lost, sigmaDelta2
+        # end
+        sin_phi = xp / f
         phi = asin(sin_phi)
         sine = sin(dsh / rho0 + phi)
         cosi = cos(dsh / rho0 + phi)
-        if cosi == 0
-            particle_lost = 1
-            s_lost = dist
+        # if cosi == 0
+        #     particle_lost = 1
+        #     s_lost = dist
             
-            return Qf, particle_lost, s_lost, sigmaDelta2
-        end
+        #     return Qf, particle_lost, s_lost, sigmaDelta2
+        # end
         tang = sine / cosi
         cos_phi = cos(phi)
-        Qf[2] = f * sine
-        factor = (rho0+Qf[1])*cos_phi/f*(tang-sin_phi/cos_phi)
-        Qf[3] += Qf[4] * factor
-        dist += factor * (1 + Qf[6])
+        xp = f * sine
+        factor = (rho0+x)*cos_phi/f*(tang-sin_phi/cos_phi)
+        y += yp * factor
+        dist += factor * (1.0 + dp)
         f = cos_phi / cosi
-        Qf[1] = rho0 * (f - 1) + f * Qf[1]
+        x = rho0 * (f - 1.0) + f * x
 
         # second kick
         ds = -s*BETA/(2 - BETA)
-        x = Qf[1]
-        y = Qf[3]
+        # x = Qf[1]
+        # y = Qf[3]
         Fx, Fy = computeCSBENDFields(x, y, Fx_xy, Fy_xy, expansionOrder+1)
 
-        Qf[2] += -ds * (1 + Qf[1]/rho0) * Fy / rho_actual
-        Qf[4] += ds * (1 + Qf[1]/rho0) * Fx / rho_actual
+        xp += -ds * (1.0 + x/rho0) * Fy / rho_actual
+        yp += ds * (1.0 + x/rho0) * Fx / rho_actual
         if synch_rad == 1
-            Qx, Qy, dPoP = addRadiationKick(Qf[2], Qf[4], Qf[6], sigmaDelta2,
-                                        Qf[1], 1/rho0, Fx, Fy, ds, rad_coef)
-            Qf[2] = Qx
-            Qf[4] = Qy
-            Qf[6] = dPoP
+            xp, yp, dp, sigmaDelta2 = addRadiationKick(xp, yp, dp, sigmaDelta2,
+                                        x, 1/rho0, Fx, Fy, ds, rad_coef, synch_rad, s/3, 0.0, 0, 0, 0, 0, p0)
+            # xp = Qx
+            # yp = Qy
+            # dp = dPoP
         end
 
         # third drift
-        dsh = s*(1 - BETA)/(2 - BETA)/2
-        f = (1 + Qf[6])^2 - Qf[4]^2
-        if f <= 0
-            particle_lost = 1
-            s_lost = dist
+        dsh = s*(1.0 - BETA)/(2.0 - BETA)/2
+        f = (1.0 + dp)^2 - yp^2
+        # if f <= 0
+        #     particle_lost = 1
+        #     s_lost = dist
             
-            return Qf, particle_lost, s_lost, sigmaDelta2
-        end
+        #     return Qf, particle_lost, s_lost, sigmaDelta2
+        # end
         f = sqrt(f)
-        if abs(Qf[2]/f) > 1
-            particle_lost = 1
-            s_lost = dist
+        # if abs(Qf[2]/f) > 1
+        #     particle_lost = 1
+        #     s_lost = dist
             
-            return Qf, particle_lost, s_lost, sigmaDelta2
-        end
-        sin_phi = Qf[2] / f
+        #     return Qf, particle_lost, s_lost, sigmaDelta2
+        # end
+        sin_phi = xp / f
         phi = asin(sin_phi)
         sine = sin(dsh / rho0 + phi)
         cosi = cos(dsh / rho0 + phi)
-        if cosi == 0
-            particle_lost = 1
-            s_lost = dist
+        # if cosi == 0
+        #     particle_lost = 1
+        #     s_lost = dist
             
-            return Qf, particle_lost, s_lost, sigmaDelta2
-        end
+        #     return Qf, particle_lost, s_lost, sigmaDelta2
+        # end
         tang = sine / cosi
         cos_phi = cos(phi)
-        Qf[2] = f * sine
-        factor = (rho0+Qf[1])*cos_phi/f*(tang-sin_phi/cos_phi)
-        Qf[3] += Qf[4] * factor 
-        dist += factor * (1 + Qf[6])
+        xp = f * sine
+        factor = (rho0+x)*cos_phi/f*(tang-sin_phi/cos_phi)
+        y += yp * factor 
+        dist += factor * (1.0 + dp)
         f = cos_phi / cosi
-        Qf[1] = rho0 * (f - 1) + f * Qf[1]
+        x = rho0 * (f - 1.0) + f * x
 
         # third kick
-        ds = s / (2 - BETA)
-        Qf[2] += -ds * (1 + Qf[1]/rho0) * Fy / rho_actual
-        Qf[4] += ds * (1 + Qf[1]/rho0) * Fx / rho_actual
+        ds = s / (2.0 - BETA)
+        xp += -ds * (1.0 + x/rho0) * Fy / rho_actual
+        yp += ds * (1.0 + x/rho0) * Fx / rho_actual
         if synch_rad == 1 # rad_coef != 0 || isrConstant != 0 not work for Enzyme
-            Qx, Qy, dPoP = addRadiationKick(Qf[2], Qf[4], Qf[6], sigmaDelta2,
-                                                        Qf[1], 1/rho0, Fx, Fy, ds, rad_coef)
-            Qf[2] = Qx
-            Qf[4] = Qy
-            Qf[6] = dPoP
+            xp, yp, dp, sigmaDelta2 = addRadiationKick(xp, yp, dp, sigmaDelta2,
+                                                        x, 1/rho0, Fx, Fy, ds, rad_coef, synch_rad, s/3, 0.0, 0, 0, 0, 0, p0)
+            # xp = Qx
+            # yp = Qy
+            # dp = dPoP
         end
 
         # fourth drift
         dsh = s / 2 / (2 - BETA)
-        f = (1 + Qf[6])^2 - Qf[4]^2
-        if f <= 0
-            particle_lost = 1
-            s_lost = dist
+        f = (1.0 + dp)^2 - yp^2
+        # if f <= 0
+        #     particle_lost = 1
+        #     s_lost = dist
             
-            return Qf, particle_lost, s_lost, sigmaDelta2
-        end
+        #     return Qf, particle_lost, s_lost, sigmaDelta2
+        # end
         f = sqrt(f)
-        if abs(Qf[2]/f) > 1
-            particle_lost = 1
-            s_lost = dist
+        # if abs(xp/f) > 1
+        #     particle_lost = 1
+        #     s_lost = dist
             
-            return Qf, particle_lost, s_lost, sigmaDelta2
-        end
-        sin_phi = Qf[2] / f
+        #     return Qf, particle_lost, s_lost, sigmaDelta2
+        # end
+        sin_phi = xp / f
         phi = asin(sin_phi)
         sine = sin(dsh / rho0 + phi)
         cosi = cos(dsh / rho0 + phi)
-        if cosi == 0
-            particle_lost = 1
-            s_lost = dist
+        # if cosi == 0
+        #     particle_lost = 1
+        #     s_lost = dist
             
-            return Qf, particle_lost, s_lost, sigmaDelta2
-        end
+        #     return Qf, particle_lost, s_lost, sigmaDelta2
+        # end
         tang = sine / cosi
         cos_phi = cos(phi)
-        Qf[2] = f * sine
-        factor = (rho0+Qf[1])*cos_phi/f*(tang-sin_phi/cos_phi)
-        Qf[3] += Qf[4] * factor
-        dist += factor * (1 + Qf[6])
+        xp = f * sine
+        factor = (rho0+x)*cos_phi/f*(tang-sin_phi/cos_phi)
+        y += yp * factor
+        dist += factor * (1.0 + dp)
         f = cos_phi / cosi
-        Qf[1] = rho0 * (f - 1) + f * Qf[1]
+        x = rho0 * (f - 1.0) + f * x
     end
-    Qf[5] += dist
+    z += dist
     
-    return Qf, particle_lost, s_lost, sigmaDelta2
+    return x, xp, y, yp, z, dp, particle_lost, s_lost, sigmaDelta2
 end
 
-function track_one_part(coord, n, he1, he2, e1, e2, dxf, dyf, dzf, sin_ttilt, cos_ttilt, dcoord_etilt, 
+function track_one_part(x0::CTPS, xp0::CTPS, y0::CTPS, yp0::CTPS, z0::CTPS, delta0::CTPS, 
+                        n, he1, he2, e1, e2, dxf, dyf, dzf, sin_ttilt, cos_ttilt, dcoord_etilt, 
                         psi1, psi2, csbend, Po, rho0, rho_actual, rad_coef, isrConstant, synch_rad,
                         sigmaDelta2, Fx_xy, Fy_xy, e1_kick_limit, e2_kick_limit, expansionOrder)
-    x = coord[1]*cos_ttilt + coord[3]*sin_ttilt
-    y = coord[3]*cos_ttilt - coord[1]*sin_ttilt
-    xp = coord[2]*cos_ttilt + coord[4]*sin_ttilt
-    yp = coord[4]*cos_ttilt - coord[2]*sin_ttilt
-    s = coord[5]
-    dp = coord[6]
-    dp0 = dp
+    x = x0*cos_ttilt + y0*sin_ttilt
+    y = y0*cos_ttilt - x0*sin_ttilt
+    xp = xp0*cos_ttilt + yp0*sin_ttilt
+    yp = yp0*cos_ttilt - xp0*sin_ttilt
+    s = CTPS(z0)
+    z = CTPS(z0)
+    for i in eachindex(z.map)
+        z.map[i] = 0.0
+    end
+    dp = CTPS(delta0)
+    dp0 = CTPS(dp)
 
     if csbend.edge1_effects != 0
         rho = (1.0+dp)*rho_actual
@@ -804,104 +774,104 @@ function track_one_part(coord, n, he1, he2, e1, e2, dxf, dyf, dzf, sin_ttilt, co
     xp *= (1.0+x/rho0)
     yp *= (1.0+x/rho0)
 
-    Qi = zeros(6)
-    Qi[1] = x
-    Qi[2] = xp
-    Qi[3] = y
-    Qi[4] = yp
-    Qi[6] = dp
-
     if csbend.edge1_effects !=0 && e1!=0.0 && synch_rad==1
         Fx, Fy = computeCSBENDFields(x, y, Fx_xy, Fy_xy, expansionOrder+1)
         dp_prime = -rad_coef * (Fx^2 + Fy^2) * (1.0 + dp)^2 * sqrt((1.0+x/rho0)^2 + xp^2 + yp^2)
-        Qi[6] -= dp_prime*x*tan(e1)
+        dp -= dp_prime*x*tan(e1)
     end
 
-    convertToDipoleCanonicalCoordinates!(Qi, rho0)
+    px, py = convertToDipoleCanonicalCoordinates(x, xp, y, yp, 0.0, dp, rho0)
 
     if csbend.edge1_effects > 1
-        dipoleFringe(Qi, rho0, -1, csbend.edge1_effects-2)
+        x, px, y, py, z, dp = dipoleFringe(x, px, y, py, 0.0, dp, rho0, -1, csbend.edge1_effects-2)
     end
 
-    if csbend.integration_order == 4
-        Qf, particle_lost, s_lost, sigmaDelta2 = integrate_csbend_ord4(Qi, sigmaDelta2, csbend.len, csbend.nSlices, 
+    particle_lost = 0
+    if particle_lost == 0
+        if csbend.integration_order == 4
+            x, px, y, py, z, dp, particle_lost, s_lost, sigmaDelta2 = integrate_csbend_ord4(x, px, y, py, z, dp, sigmaDelta2, csbend.len, csbend.nSlices, 
                                                 rho0, Po, Fx_xy, Fy_xy, rho_actual, rad_coef, isrConstant, synch_rad, expansionOrder)
-    elseif csbend.integration_order == 2
-        Qf, particle_lost, s_lost, sigmaDelta2 = integrate_csbend_ord2(Qi, sigmaDelta2, csbend.len, csbend.nSlices, 
-                                                rho0, Po, Fx_xy, Fy_xy, rho_actual, rad_coef, isrConstant, synch_rad, expansionOrder)
-    else
-        error("invalid integration order (track_through_csbend)")
+        # elseif csbend.integration_order == 2
+        #     x, xp, y, yp, z, dp, particle_lost, s_lost, sigmaDelta2 = integrate_csbend_ord2(x, xp, y, yp, z, dp, sigmaDelta2, csbend.len, csbend.nSlices, 
+        #                                         rho0, Po, Fx_xy, Fy_xy, rho_actual, rad_coef, isrConstant, synch_rad, expansionOrder)
+        else
+            error("invalid integration order (track_through_csbend)")
+        end
     end
 
     if csbend.edge2_effects > 1
-        dipoleFringe(Qf, rho0, 1, csbend.edge2_effects-2)
+        x, px, y, py, z, dp = dipoleFringe(x, px, y, py, z, dp, rho0, 1, csbend.edge2_effects-2)
     end
-    convertFromDipoleCanonicalCoordinates!(Qf, rho0)
+    xp, yp = convertFromDipoleCanonicalCoordinates(x, px, y, py, z, dp, rho0)
 
     ######
     # if particle_lost
     #####
 
     if csbend.edge2_effects !=0 && e2!=0 && synch_rad==1
-        x = Qf[1]
-        xp = Qf[2]
-        y = Qf[3]
-        yp = Qf[4]
-        dp = Qf[6]
         Fx, Fy = computeCSBENDFields(x, y, Fx_xy, Fy_xy, expansionOrder+1)
-        dp_prime = -rad_coef * (Fx^2 + Fy^2) * (1 + dp)^2 * sqrt((1+x/rho0)^2 + xp^2 + yp^2)
-        Qf[6] -= dp_prime*Qf[1]*tan(e2)
+        dp_prime = -rad_coef * (Fx^2 + Fy^2) * (1.0 + dp)^2 * sqrt((1.0+x/rho0)^2 + xp^2 + yp^2)
+        dp -= dp_prime*x*tan(e2)
     end
 
     # final coordinates
     if synch_rad==1
-        p0 = Po*(1+dp0)
-        beta0 = p0/sqrt(p0^2+1)
-        p1 = Po*(1+Qf[6])
-        beta1 = p1/sqrt(p1^2+1)
-        s = beta1*s/beta0 + Qf[5]
+        p0 = Po*(1.0+dp0)
+        beta0 = p0/sqrt(p0^2+1.0)
+        p1 = Po*(1.0+dp)
+        beta1 = p1/sqrt(p1^2+1.0)
+        s = beta1*s/beta0 + z
     else
-        s += Qf[5]
+        s += z
     end
-    x = Qf[1]
-    xp = Qf[2]
-    y = Qf[3]
-    yp = Qf[4]
-    dp = Qf[6]
+    # x = Qf[1]
+    # xp = Qf[2]
+    # y = Qf[3]
+    # yp = Qf[4]
+    # dp = Qf[6]
 
-    xp /= (1+x/rho0)
-    yp /= (1+x/rho0)
+    xp /= (1.0+x/rho0)
+    yp /= (1.0+x/rho0)
 
     if csbend.edge2_effects != 0
-        rho = (1+dp)*rho_actual
+        rho = (1.0+dp)*rho_actual
         if csbend.edge_order < 2 || csbend.edge2_effects > 1
             delta_xp = tan(e2)/rho*x
             if e2_kick_limit > 0 && abs(delta_xp) > e2_kick_limit
                 delta_xp = SIGN(delta_xp)*e2_kick_limit
             end
             xp += delta_xp
-            yp -= tan(e2 - psi2/(1+dp))/rho*y
+            yp -= tan(e2 - psi2/(1.0+dp))/rho*y
         else
-        x, xp, y, yp = apply_edge_effects(x, xp, y, yp, rho, n, e2, he2, psi2*(1+dp), 1)
+        x, xp, y, yp = apply_edge_effects(x, xp, y, yp, rho, n, e2, he2, psi2*(1.0+dp), 1)
         end
     end
 
-    coord[1] = x*cos_ttilt - y*sin_ttilt + dcoord_etilt[1]
-    coord[2] = xp*cos_ttilt - yp*sin_ttilt + dcoord_etilt[2]
-    coord[3] = y*cos_ttilt + x*sin_ttilt + dcoord_etilt[3]
-    coord[4] = yp*cos_ttilt + xp*sin_ttilt + dcoord_etilt[4]
-    coord[5] = s
-    coord[6] = dp
+    x = x*cos_ttilt - y*sin_ttilt + dcoord_etilt[1]
+    y = y*cos_ttilt + x*sin_ttilt + dcoord_etilt[3]
+    xp = xp*cos_ttilt - yp*sin_ttilt + dcoord_etilt[2]
+    yp = yp*cos_ttilt + xp*sin_ttilt + dcoord_etilt[4]
 
-    coord[1] += dxf + dzf*coord[2]
-    coord[3] += dyf + dzf*coord[4]
-    coord[5] += dzf*sqrt(1.0+coord[2]^2+coord[4]^2)
+    x += dxf + dzf*xp
+    y += dyf + dzf*yp
+    s += dzf*sqrt(1.0+xp^2+yp^2)
+
+    # coord[1] = x*cos_ttilt - y*sin_ttilt + dcoord_etilt[1]
+    # coord[2] = xp*cos_ttilt - yp*sin_ttilt + dcoord_etilt[2]
+    # coord[3] = y*cos_ttilt + x*sin_ttilt + dcoord_etilt[3]
+    # coord[4] = yp*cos_ttilt + xp*sin_ttilt + dcoord_etilt[4]
+    # coord[5] = s
+    # coord[6] = dp
+
+    # coord[1] += dxf + dzf*coord[2]
+    # coord[3] += dyf + dzf*coord[4]
+    # coord[5] += dzf*sqrt(1.0+coord[2]^2+coord[4]^2)
 
 
-    return coord, sigmaDelta2
+    return x, xp, y, yp, s, dp, particle_lost, s_lost, sigmaDelta2
 end
 
-function pass!(part::Matrix{Float64}, csbend::CSBEND, Po::Float64, sigmaDelta2::Float64)
+function pass_TPSA(x::CTPS, xp::CTPS, y::CTPS, yp::CTPS, z::CTPS, delta::CTPS, csbend::CSBEND, Po::Float64, sigmaDelta2::Float64)
     # constants
     particleMass = 9.1093897e-31 # Electron mass (kg)
     particleCharge = 1.60217733e-19 # Electron charge (C)
@@ -910,11 +880,11 @@ function pass!(part::Matrix{Float64}, csbend::CSBEND, Po::Float64, sigmaDelta2::
     me_mev = 0.51099906 # Electron mass (MeV)
     particleRadius = particleCharge^2 / (4 * pi * epsilon_o * particleMass * c_mks^2) # Classical electron radius (m)
 
-    n_part = length(part[:,1])
+    n_part = 1
     largeRhoWarning = 0
     if csbend.angle == 0
-        exactDrift!(part, n_part, csbend.len)
-        return part
+        x, xp, y, yp, z, delta = exactDrift(x, xp, y, yp, z, delta, n_part, csbend.len)
+        return x, xp, y, yp, z, delta
     end
 
     rho0 = csbend.len / csbend.angle
@@ -951,12 +921,12 @@ function pass!(part::Matrix{Float64}, csbend::CSBEND, Po::Float64, sigmaDelta2::
     if rho0 > 1e6
         largeRhoWarning = 1
         println("CSBEND Warning: large bend radius, rho0 = $rho0. Treated as drift.")
-        exactDrift!(part, n_part, csbend.len)
-        return part
+        x, xp, y, yp, z, delta = exactDrift(x, xp, y, yp, z, delta, n_part, csbend.len)
+        return x, xp, y, yp, z, delta
     end
 
     fse = csbend.fse
-    h = 1 / rho0
+    h = 1.0 / rho0
     n = -b[1]/h
     if fse > -1
         rho_actual = 1/((1+fse)*h)
@@ -975,11 +945,11 @@ function pass!(part::Matrix{Float64}, csbend::CSBEND, Po::Float64, sigmaDelta2::
     hgap = csbend.hgap
     fint = csbend.fint
     Kg = 2.0*hgap * fint
-    psi1 = Kg/rho_actual/cos(e1)*(1+sin(e1)^2)
-    psi2 = Kg/rho_actual/cos(e2)*(1+sin(e2)^2)
+    psi1 = Kg/rho_actual/cos(e1)*(1.0+sin(e1)^2)
+    psi2 = Kg/rho_actual/cos(e2)*(1.0+sin(e2)^2)
     # rad_coef is d((P-Po)/Po)/ds for the on-axis, on-momentum particle, where po is the momentum of the central particle.
-    if csbend.synch_rad !=0
-        rad_coef = particleCharge^2*Po^3*(1+fse)^2/(6*pi*epsilon_o*c_mks^2*particleMass*rho0^2)
+    if csbend.synch_rad == 1
+        rad_coef = particleCharge^2*Po^3*(1.0+fse)^2/(6.0*pi*epsilon_o*c_mks^2*particleMass*rho0^2)
     else
         rad_coef = 0.0
     end
@@ -1026,46 +996,54 @@ function pass!(part::Matrix{Float64}, csbend::CSBEND, Po::Float64, sigmaDelta2::
     dzf = csbend.dx * sin(csbend.angle) - csbend.dz * cos(csbend.angle)
     dyf = csbend.dy
 
+    i_top = n_part-1
+    if !isnothing(sigmaDelta2) 
+        sigmaDelta2 = 0.0
+    end
 
     if dxi != 0 || dyi != 0 || dzi != 0
-        for i in 1:n_part
-            part[i, 1] += dxi + dzi * part[i, 2]
-            part[i, 3] += dyi + dzi * part[i, 4]
-            part[i, 5] += dzi * sqrt(1.0 + part[i, 2]^2 + part[i, 4]^2)
-        end
+        x += dxi + dzi * xp
+        y += dyi + dzi * yp
+        z += dzi * sqrt(1.0 + xp^2 + yp^2)
     end 
 
 
-    for i in 1:n_part
-        coord, sigmaDelta2 = track_one_part(part[i,:], n, he1, he2, e1, e2, dxf, dyf, dzf, sin_ttilt, cos_ttilt, 
+    # for i in 1:n_part
+        x, xp, y, yp, z, delta, particle_lost, s_lost, sigmaDelta2 = track_one_part(x, xp, y, yp, z, delta, n, he1, he2, e1, e2, dxf, dyf, dzf, sin_ttilt, cos_ttilt, 
                                             dcoord_etilt, psi1, psi2, csbend, Po, rho0, rho_actual, rad_coef, 
                                             isrConstant, csbend.synch_rad, sigmaDelta2, Fx_xy, Fy_xy, e1_kick_limit, 
                                             e2_kick_limit, expansionOrder)
-        part[i,:] = coord
+        # lost_list_Buffer[i] = particle_lost
+    # end
+
+    if !isnothing(sigmaDelta2) 
+        sigmaDelta2 /= i_top+1
     end
-
-
-    return nothing
+    return x, xp, y, yp, z, delta
 
 end
 
 
 
 # function f(xx)
+#     x = CTPS(0.0, 1, 6, 3)
+#     xp = CTPS(0.0, 2, 6, 3)
+#     y = CTPS(0.0, 3, 6, 3)
+#     yp = CTPS(0.0, 4, 6, 3)
+#     z = CTPS(0.0, 5, 6, 3)
+#     delta = CTPS(0.0, 6, 6, 3)
 #     L = xx[1]
 #     Angle = xx[2]
 #     CSB = CSBEND(name="CSB",len=L, angle=Angle, nSlices=4, synch_rad=1, integration_order=4)
-#     # particle = [0.001 0.0001 0.0005 0.0002 0.0 0.0; 0.001 0.0 0.0 0.0 0.0 0.0]
-#     particle = [xx[3] xx[4] xx[5] xx[6] 0.0 0.0; 0.001 0.0 0.0 0.0 0.0 0.0]
-#     pass!(particle, CSB, 19569.50762296901, 0.0)
+#     x,xp,y,yp,z,delta = pass_TPSA(x,xp,y,yp,z,delta, CSB, 19569.50762296901, 0.0)
 #     # println(rout)
-#     return particle[1,:]
+#     return x.map[2]
 # end
-# println(f([0.72, -0.1571, 0.001, 0.0001, 0.0005, 0.0002]))
+# # println(f([0.72, -0.1571]))
 # using Enzyme
 # using BenchmarkTools
-# @btime jacobian(Forward, f, [0.72, -0.1571, 0.001, 0.0001, 0.0005, 0.0002])
-
-    # f([0.72, -0.1571])
-# jacobian(Reverse, f, [0.72, -0.1571], Val(6))
+# @btime f([0.72, -0.1571])
+# @btime grad = jacobian(Reverse, f, [0.72, -0.1571], Val(7))
 # println(grad)
+
+# gradient(Forward, f, [0.72, -0.1571])

@@ -22,21 +22,11 @@ end
     edge1NonlinearFactor::Float64 = 1.0      
     edge2Linear::Int64 = 1                
     edge2NonlinearFactor::Float64 = 1.0   
-    fringeIntM::Vector = [0.0, 0.0, 0.0, 0.0, 0.0]
-    fringeIntP::Vector = [0.0, 0.0, 0.0, 0.0, 0.0]
-    # fringeIntM0::Float64 = 0.0   
-    # fringeIntP0::Float64 = 0.0    
-    # fringeIntM1::Float64 = 0.0   
-    # fringeIntP1::Float64 = 0.0  
-    # fringeIntM2::Float64 = 0.0   
-    # fringeIntP2::Float64 = 0.0  
-    # fringeIntM3::Float64 = 0.0   
-    # fringeIntP3::Float64 = 0.0  
-    # fringeIntM4::Float64 = 0.0   
-    # fringeIntP4::Float64 = 0.0    
+    fringeIntM::Array{Float64} = [0.0, 0.0, 0.0, 0.0, 0.0]
+    fringeIntP::Array{Float64} = [0.0, 0.0, 0.0, 0.0, 0.0]  
     radial::Int64 = 0                     
     integration_order::Int64 = 4          
-    nSlices::Int64 = 4                    
+    nSlices::Int64 = 1                    
     xkick::Float64 = 0.0                    
     ykick::Float64 = 0.0                    
     synch_rad::Int64 = 0                  
@@ -98,22 +88,22 @@ end
     dz::Float64                  = 0.0          # misalignment
     radial::Int64                = 0.0          # include radial dependence? not yet implemented
     integration_order::Int64     = 4            # integration order
-    nSlices::Int64               = 4            # number of integrator steps
+    nSlices::Int64               = 1            # number of integrator steps
     xkick::Float64               = 0.0          # kick in x
     ykick::Float64               = 0.0          # kick in y
     synch_rad::Int64             = 0            # include synchrotron radiation?
     isr::Int64                   = 0            # include incoherent synchrotron radiation (quantum excitation)? not implemented yet
-    fringeIntM::Vector = [0.0, 0.0, 0.0, 0.0, 0.0]
-    fringeIntP::Vector = [0.0, 0.0, 0.0, 0.0, 0.0]
+    fringeIntM::Array{Float64} = [0.0, 0.0, 0.0, 0.0, 0.0]
+    fringeIntP::Array{Float64} = [0.0, 0.0, 0.0, 0.0, 0.0]
 end
-function KSEXT(name, len, k2; bore=0.0, fse=0.0, tilt=0.0, dx=0.0, dy=0.0, dz=0.0, 
-    radial=0, integration_order=4, nSlices=4, xkick=0.0, ykick=0.0, synch_rad=0, isr=0, fringeIntM=zeros(Float64, 5), fringeIntP=zeros(Float64, 5) )
-    KSEXT(name, k2, len, bore, fse, tilt, dx, dy, dz, radial, integration_order, nSlices, xkick, ykick, synch_rad, isr, fringeIntM, fringeIntP) 
-end
-function KSEXT(name, len, k2, dx, dy, dz, nSlices; bore=0.0, fse=0.0, tilt=0.0, 
-    radial=0, integration_order=4, xkick=0.0, ykick=0.0, synch_rad=0, isr=0, fringeIntM=zeros(Float64, 5), fringeIntP=zeros(Float64, 5) )
-    KSEXT(name, k2, len, bore, fse, tilt, dx, dy, dz, radial, integration_order, nSlices, xkick, ykick, synch_rad, isr, fringeIntM, fringeIntP)
-end
+# function KSEXT(name, len, k2; bore=0.0, fse=0.0, tilt=0.0, dx=0.0, dy=0.0, dz=0.0, 
+#     radial=0, integration_order=4, nSlices=4, xkick=0.0, ykick=0.0, synch_rad=0, isr=0, fringeIntM=zeros(Float64, 5), fringeIntP=zeros(Float64, 5) )
+#     KSEXT(name, k2, len, bore, fse, tilt, dx, dy, dz, radial, integration_order, nSlices, xkick, ykick, synch_rad, isr, fringeIntM, fringeIntP) 
+# end
+# function KSEXT(name, len, k2, dx, dy, dz, nSlices; bore=0.0, fse=0.0, tilt=0.0, 
+#     radial=0, integration_order=4, xkick=0.0, ykick=0.0, synch_rad=0, isr=0, fringeIntM=zeros(Float64, 5), fringeIntP=zeros(Float64, 5) )
+#     KSEXT(name, k2, len, bore, fse, tilt, dx, dy, dz, radial, integration_order, nSlices, xkick, ykick, synch_rad, isr, fringeIntM, fringeIntP)
+# end
 
 @kwdef struct KOCT <: AbstractElement 
     name::String    = "KOct"               # element name
@@ -127,22 +117,22 @@ end
     dz::Float64     =0.0                   # misalignment
     radial::Int64   =0.0                   # include radial dependence? not yet implemented
     integration_order::Int64   = 4         # integration order
-    nSlices::Int64             = 4         # number of integrator steps
+    nSlices::Int64             = 1         # number of integrator steps
     xkick::Float64             = 0.0       # kick in x
     ykick::Float64             = 0.0       # kick in y
     synch_rad::Int64           = 0         # include synchrotron radiation?
     isr::Int64                 = 0         # include incoherent synchrotron radiation (quantum excitation)? not implemented yet
-    fringeIntM::Vector = [0.0, 0.0, 0.0, 0.0, 0.0]
-    fringeIntP::Vector = [0.0, 0.0, 0.0, 0.0, 0.0]
+    fringeIntM::Array{Float64} = [0.0, 0.0, 0.0, 0.0, 0.0]
+    fringeIntP::Array{Float64} = [0.0, 0.0, 0.0, 0.0, 0.0]
 end
-function KOCT(name, len, k3; bore=0.0, fse=0.0, tilt=0.0, dx=0.0, dy=0.0, dz=0.0, 
-    radial=0, integration_order=4, nSlices=4, xkick=0.0, ykick=0.0, synch_rad=0, isr=0, fringeIntM=zeros(Float64, 5), fringeIntP=zeros(Float64, 5) )
-    KOCT(name, k3, len, bore, fse, tilt, dx, dy, dz, radial, integration_order, nSlices, xkick, ykick, synch_rad, isr, fringeIntM, fringeIntP)
-end
-function KOCT(name, len, k3, dx, dy, dz, nSlices; bore=0.0, fse=0.0, tilt=0.0,
-    radial=0, integration_order=4, xkick=0.0, ykick=0.0, synch_rad=0, isr=0, fringeIntM=zeros(Float64, 5), fringeIntP=zeros(Float64, 5))
-    KOCT(name, k3, len, bore, fse, tilt, dx, dy, dz, radial, integration_order, nSlices, xkick, ykick, synch_rad, isr, fringeIntM, fringeIntP)
-end
+# function KOCT(name, len, k3; bore=0.0, fse=0.0, tilt=0.0, dx=0.0, dy=0.0, dz=0.0, 
+#     radial=0, integration_order=4, nSlices=4, xkick=0.0, ykick=0.0, synch_rad=0, isr=0, fringeIntM=zeros(Float64, 5), fringeIntP=zeros(Float64, 5) )
+#     KOCT(name, k3, len, bore, fse, tilt, dx, dy, dz, radial, integration_order, nSlices, xkick, ykick, synch_rad, isr, fringeIntM, fringeIntP)
+# end
+# function KOCT(name, len, k3, dx, dy, dz, nSlices; bore=0.0, fse=0.0, tilt=0.0,
+#     radial=0, integration_order=4, xkick=0.0, ykick=0.0, synch_rad=0, isr=0, fringeIntM=zeros(Float64, 5), fringeIntP=zeros(Float64, 5))
+#     KOCT(name, k3, len, bore, fse, tilt, dx, dy, dz, radial, integration_order, nSlices, xkick, ykick, synch_rad, isr, fringeIntM, fringeIntP)
+# end
 
 @kwdef struct CSBEND <: AbstractElement
     name::String = "CSBend"
@@ -190,28 +180,28 @@ end
     h1::Float64 = 0.0
     h2::Float64 = 0.0
     integration_order::Int64 = 4
-    nSlices::Int64 = 4
+    nSlices::Int64 = 1
     expansionOrder::Int64 = 0
 end
-function CSBEND(name, length, angle; e1=0.0, e2=0.0, fint=0.5, hgap=0.0, 
-    k1=0.0, k2=0.0, k3=0.0, k4=0.0, k5=0.0, k6=0.0, k7=0.0, k8=0.0, 
-    b1=0.0, b2=0.0, b3=0.0, b4=0.0, b5=0.0, b6=0.0, b7=0.0, b8=0.0, 
-    dx=0.0, dy=0.0, dz=0.0, edge1_effects=1, edge2_effects=1, edge_order=1, 
-    e1_kick_limit=-1.0, e2_kick_limit=-1.0, kick_limit_scaling=0.0, nonlinear=1, 
-    use_bn=0, synch_rad=0, isr=0, isr1Particle=1, distributionBasedRadiation=0, 
-    includeOpeningAngle=1, tilt=0.0, etilt=0.0, fse=0.0, h1=0.0, h2=0.0, integration_order=4, 
-    nSlices=4, expansionOrder=0)
-    CSBEND(name, length, angle, e1, e2, fint, hgap, k1, k2, k3, k4, k5, k6, k7, k8, b1, b2, b3, b4, b5, b6, b7, b8, dx, dy, dz, edge1_effects, edge2_effects, edge_order, e1_kick_limit, e2_kick_limit, kick_limit_scaling, nonlinear, use_bn, synch_rad, isr, isr1Particle, distributionBasedRadiation, includeOpeningAngle, tilt, etilt, fse, h1, h2, integration_order, nSlices, expansionOrder)
-end
-function CSBEND(name, length, angle, e1, e2, nSlices; fint=0.5, hgap=0.0, 
-    k1=0.0, k2=0.0, k3=0.0, k4=0.0, k5=0.0, k6=0.0, k7=0.0, k8=0.0, 
-    b1=0.0, b2=0.0, b3=0.0, b4=0.0, b5=0.0, b6=0.0, b7=0.0, b8=0.0, 
-    dx=0.0, dy=0.0, dz=0.0, edge1_effects=1, edge2_effects=1, edge_order=1, 
-    e1_kick_limit=-1.0, e2_kick_limit=-1.0, kick_limit_scaling=0.0, nonlinear=1, 
-    use_bn=0, synch_rad=0, isr=0, isr1Particle=1, distributionBasedRadiation=0, 
-    includeOpeningAngle=1, tilt=0.0, etilt=0.0, fse=0.0, h1=0.0, h2=0.0, integration_order=4, expansionOrder=0)
-    CSBEND(name, length, angle, e1, e2, fint, hgap, k1, k2, k3, k4, k5, k6, k7, k8, b1, b2, b3, b4, b5, b6, b7, b8, dx, dy, dz, edge1_effects, edge2_effects, edge_order, e1_kick_limit, e2_kick_limit, kick_limit_scaling, nonlinear, use_bn, synch_rad, isr, isr1Particle, distributionBasedRadiation, includeOpeningAngle, tilt, etilt, fse, h1, h2, integration_order, nSlices, expansionOrder)
-end
+# function CSBEND(name, length, angle; e1=0.0, e2=0.0, fint=0.5, hgap=0.0, 
+#     k1=0.0, k2=0.0, k3=0.0, k4=0.0, k5=0.0, k6=0.0, k7=0.0, k8=0.0, 
+#     b1=0.0, b2=0.0, b3=0.0, b4=0.0, b5=0.0, b6=0.0, b7=0.0, b8=0.0, 
+#     dx=0.0, dy=0.0, dz=0.0, edge1_effects=1, edge2_effects=1, edge_order=1, 
+#     e1_kick_limit=-1.0, e2_kick_limit=-1.0, kick_limit_scaling=0.0, nonlinear=1, 
+#     use_bn=0, synch_rad=0, isr=0, isr1Particle=1, distributionBasedRadiation=0, 
+#     includeOpeningAngle=1, tilt=0.0, etilt=0.0, fse=0.0, h1=0.0, h2=0.0, integration_order=4, 
+#     nSlices=4, expansionOrder=0)
+#     CSBEND(name, length, angle, e1, e2, fint, hgap, k1, k2, k3, k4, k5, k6, k7, k8, b1, b2, b3, b4, b5, b6, b7, b8, dx, dy, dz, edge1_effects, edge2_effects, edge_order, e1_kick_limit, e2_kick_limit, kick_limit_scaling, nonlinear, use_bn, synch_rad, isr, isr1Particle, distributionBasedRadiation, includeOpeningAngle, tilt, etilt, fse, h1, h2, integration_order, nSlices, expansionOrder)
+# end
+# function CSBEND(name, length, angle, e1, e2, nSlices; fint=0.5, hgap=0.0, 
+#     k1=0.0, k2=0.0, k3=0.0, k4=0.0, k5=0.0, k6=0.0, k7=0.0, k8=0.0, 
+#     b1=0.0, b2=0.0, b3=0.0, b4=0.0, b5=0.0, b6=0.0, b7=0.0, b8=0.0, 
+#     dx=0.0, dy=0.0, dz=0.0, edge1_effects=1, edge2_effects=1, edge_order=1, 
+#     e1_kick_limit=-1.0, e2_kick_limit=-1.0, kick_limit_scaling=0.0, nonlinear=1, 
+#     use_bn=0, synch_rad=0, isr=0, isr1Particle=1, distributionBasedRadiation=0, 
+#     includeOpeningAngle=1, tilt=0.0, etilt=0.0, fse=0.0, h1=0.0, h2=0.0, integration_order=4, expansionOrder=0)
+#     CSBEND(name, length, angle, e1, e2, fint, hgap, k1, k2, k3, k4, k5, k6, k7, k8, b1, b2, b3, b4, b5, b6, b7, b8, dx, dy, dz, edge1_effects, edge2_effects, edge_order, e1_kick_limit, e2_kick_limit, kick_limit_scaling, nonlinear, use_bn, synch_rad, isr, isr1Particle, distributionBasedRadiation, includeOpeningAngle, tilt, etilt, fse, h1, h2, integration_order, nSlices, expansionOrder)
+# end
 
 @kwdef mutable struct RFCA <: AbstractElement
     name::String = "RFCA"
@@ -221,7 +211,7 @@ end
     phase_reference::Int64 = 0
     phase_fiducial::Float64 = 0.0
     fiducial_mode = nothing  
-    fiducial_seen = 0
+    fiducial_seen::Int = 0
     tReference::Float64 = -1.0
     Q::Float64 = 0.0
     len::Float64 = 0.0

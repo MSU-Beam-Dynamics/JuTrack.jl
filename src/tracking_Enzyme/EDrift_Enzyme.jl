@@ -1,4 +1,4 @@
-include("../lattice/canonical_elements.jl")
+# include("../lattice/canonical_elements.jl")
 
 # function EDrift_pass(part, np, OO)
 #     len = OO.len
@@ -10,27 +10,24 @@ include("../lattice/canonical_elements.jl")
 # end
 
 function pass!(part::Matrix{Float64}, OO::EDRIFT, Po::Float64, sigmaDelta2::Float64)
-    np = size(part)[1]
-    length = OO.len
-    for i in 1:np
-        part[i,1] += part[i,2] * length
-        part[i,3] += part[i,4] * length
-        part[i,5] += length * sqrt(1.0 + part[i,2]^2 + part[i,4]^2)
+    len = OO.len
+    for i in 1:length(part[:,1])
+        part[i,1] += part[i,2] * len
+        part[i,3] += part[i,4] * len
+        part[i,5] += len * sqrt(1.0 + part[i,2]^2 + part[i,4]^2)
     end
 end
 
-include("../TPSA_Enzyme/TPSA_fixedmap.jl")
-function pass_TPSA(x::CTPS, xp::CTPS, y::CTPS, yp::CTPS, z::CTPS, delta::CTPS, 
-                    OO::EDRIFT, Po::Float64, sigmaDelta2::Float64)
-    length = OO.len
-    x += xp * length
-    y += yp * length
-    z += length * sqrt(1.0 + xp^2 + yp^2)
-    return x, xp, y, yp, z, delta
-end
-# function EDrift(x, xp, y, yp, z, delta, length)
-#     return x + xp * length, xp, y + yp * length, yp, z + length * sqrt(1 + xp^2 + yp^2), delta
+# include("../TPSA_Enzyme/TPSA_fixedmap.jl")
+# function pass_TPSA(x::CTPS, xp::CTPS, y::CTPS, yp::CTPS, z::CTPS, delta::CTPS, 
+#                     OO::EDRIFT, Po::Float64, sigmaDelta2::Float64)
+#     length = OO.len
+#     x += xp * length
+#     y += yp * length
+#     z += length * sqrt(1.0 + xp^2 + yp^2)
+#     return x, xp, y, yp, z, delta
 # end
+
 
 
 # using Enzyme
