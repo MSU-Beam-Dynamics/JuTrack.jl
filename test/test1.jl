@@ -3,22 +3,39 @@ include("ssrf_ring.jl")
 using. JuTrack
 using Enzyme
 using BenchmarkTools
+# using Plots
 
 Enzyme.API.runtimeActivity!(true)
 function f(x)
     SSRF = ssrf(x[1])
-    particle = [0.001 0.0001 0.0005 0.0002 0.0 0.0; 0.001 0.0 0.0 0.0 0.0 0.0]
+    particles = [0.001 0.0001 0.0005 0.0002 0.0 0.0; 0.001 0.0 0.0 0.0 0.0 0.0]
+    # generate 1000 particles
+    # particles = zeros(1600, 6)
+    # x_range = LinRange(-0.008, 0.008, 40)
+    # y_range = LinRange(-0.008, 0.008, 40)
+    # index = 1
+    # for y in y_range
+    #     for x in x_range
+    #         particles[index, 1] = x   
+    #         particles[index, 3] = y   
+    #         index += 1
+    #     end
+    # end
+    # scatter(particles[:, 1], particles[:, 3], xlabel="x(m)", ylabel="y(m)", legend=false)
+
     Po = 6.849327668039155e+03
     # linepass!(SSRF, particle, Po, 0.0)
-    ringpass!(SSRF, particle, 1, Po, 0.0)
-    return particle[1,1]
+    ringpass!(SSRF, particles, 1000, Po, 0.0)
+    return particles[1,1]
 end
-# x = [-1.063770]
-# println(f(x))
-# @btime gradient(Forward, f, x)
-
-# grad = gradient(Forward, f, x)
+x = [-1.063770]
+println(f(x))
+# @btime f(x) 
+# @time grad = gradient(Reverse, f, x)
 # println(grad)
+# @btime gradient(Reverse, f, x)
+
+
 
 function f_dup(x, y)
     SSRF = ssrf(x[1])

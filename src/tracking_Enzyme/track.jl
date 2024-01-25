@@ -1,4 +1,3 @@
-<<<<<<< Updated upstream
 include("../lattice/canonical_elements.jl")
 include("EDrift_Enzyme.jl")
 include("multipole_Enzyme.jl")
@@ -6,15 +5,6 @@ include("multipole_Enzyme.jl")
 include("csbend_Enzyme.jl")
 # include("csbend_TPSA_Enzyme.jl")
 include("rfca_Enzyme.jl")
-=======
-# include("../lattice/canonical_elements.jl")
-# include("EDrift_Enzyme.jl")
-# include("multipole_Enzyme.jl")
-# include("multipole_TPSA_Enzyme.jl")
-# include("csbend_Enzyme.jl")
-# include("csbend_TPSA_Enzyme.jl")
-# include("rfca_Enzyme.jl")
->>>>>>> Stashed changes
 # include("rfca_TPSA_Enzyme.jl")
 # include("../TPSA_Enzyme/TPSA_fixedmap.jl")
 
@@ -32,8 +22,6 @@ function linepass!(line, particles, Po, p_error)
     end
 end
 
-<<<<<<< Updated upstream
-=======
 function ringpass!(line, particles, nturn, Po, p_error)
     nline = length(line)
     np = length(particles)
@@ -46,7 +34,6 @@ function ringpass!(line, particles, nturn, Po, p_error)
         linepass!(line, particles, Po, p_error)      
     end
 end
->>>>>>> Stashed changes
 # function linepass_TPSA(line, x, xp, y, yp, z, delta, Po, p_error)
 #     nline = length(line)
 #     # z = 0.0
