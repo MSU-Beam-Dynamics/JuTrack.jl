@@ -2,14 +2,14 @@ include("../src/JuTrack.jl")
 include("ssrf_ring.jl")
 using. JuTrack
 using Enzyme
-using BenchmarkTools
+# using BenchmarkTools
 # using Plots
 
 Enzyme.API.runtimeActivity!(true)
 function f(x)
     SSRF = ssrf(x[1])
     particles = [0.001 0.0001 0.0005 0.0002 0.0 0.0; 0.001 0.0 0.0 0.0 0.0 0.0]
-    # generate 1000 particles
+    # generate 1600 particles
     # particles = zeros(1600, 6)
     # x_range = LinRange(-0.008, 0.008, 40)
     # y_range = LinRange(-0.008, 0.008, 40)
@@ -31,7 +31,7 @@ end
 x = [-1.063770]
 println(f(x))
 # @btime f(x) 
-# @time grad = gradient(Reverse, f, x)
+@time grad = gradient(Reverse, f, x)
 # println(grad)
 # @btime gradient(Reverse, f, x)
 
