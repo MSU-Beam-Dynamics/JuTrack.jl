@@ -1,4 +1,4 @@
-function QuadFringePassP!(r, b2)
+function QuadFringePassP!(r::AbstractVector{Float64}, b2::Float64)
     u = b2 / (12.0 * (1.0 + r[5]))
     x2 = r[1]^2
     z2 = r[3]^2
@@ -18,9 +18,10 @@ function QuadFringePassP!(r, b2)
     
     r[2] += r1tmp
     r[4] -= r3tmp
+    return nothing
 end
 
-function QuadFringePassN!(r, b2)
+function QuadFringePassN!(r::AbstractVector{Float64}, b2::Float64)
     u = b2 / (12.0 * (1.0 + r[5]))
     x2 = r[1]^2
     z2 = r[3]^2
@@ -40,6 +41,7 @@ function QuadFringePassN!(r, b2)
     
     r[2] -= r1tmp
     r[4] += r3tmp
+    return nothing
 end
 
 function quadPartialFringeMatrix!(R, K1, inFringe, fringeInt, part)
@@ -78,9 +80,10 @@ function quadPartialFringeMatrix!(R, K1, inFringe, fringeInt, part)
     R[3, 4] = J2y / expJ1y
     R[4, 3] = expJ1y * J3y
     R[4, 4] = (1 + J2y * J3y) / expJ1y
+    return nothing
 end
 
-function linearQuadFringeElegantEntrance!(r6, b2, fringeIntM0, fringeIntP0)
+function linearQuadFringeElegantEntrance!(r6::AbstractVector{Float64}, b2, fringeIntM0, fringeIntP0)
     R = zeros(6, 6)
     inFringe = -1.0
     fringeIntM = fringeIntP0
@@ -103,9 +106,10 @@ function linearQuadFringeElegantEntrance!(r6, b2, fringeIntM0, fringeIntP0)
     r6[2] = R[2, 1] * r6[1] + R[2, 2] * r6[2]
     r6[3] = R[3, 3] * r6[3] + R[3, 4] * r6[4]
     r6[4] = R[4, 3] * r6[3] + R[4, 4] * r6[4]
+    return nothing
 end
 
-function linearQuadFringeElegantExit!(r6, b2, fringeIntM0, fringeIntP0)
+function linearQuadFringeElegantExit!(r6::AbstractVector{Float64}, b2, fringeIntM0, fringeIntP0)
     R = zeros(6, 6)
     inFringe = 1.0
     fringeIntM = fringeIntM0
@@ -128,9 +132,10 @@ function linearQuadFringeElegantExit!(r6, b2, fringeIntM0, fringeIntP0)
     r6[2] = R[2, 1] * r6[1] + R[2, 2] * r6[2]
     r6[3] = R[3, 3] * r6[3] + R[3, 4] * r6[4]
     r6[4] = R[4, 3] * r6[3] + R[4, 4] * r6[4]
+    return nothing
 end
 
-function edge_fringe_entrance!(r, inv_rho, edge_angle, fint, gap, method)
+function edge_fringe_entrance!(r::AbstractVector{Float64}, inv_rho, edge_angle, fint, gap, method)
     #      method 0 no fringe field
     #      method 1 legacy version Brown First Order
     #      method 2 SOLEIL close to second order of Brown
@@ -158,9 +163,10 @@ function edge_fringe_entrance!(r, inv_rho, edge_angle, fint, gap, method)
 
     r[2] += r[1] * fx
     r[4] -= r[3] * fy
+    return nothing
 end
 
-function edge_fringe_exit!(r, inv_rho, edge_angle, fint, gap, method)
+function edge_fringe_exit!(r::AbstractVector{Float64}, inv_rho, edge_angle, fint, gap, method)
     #      method 0 no fringe field
     #      method 1 legacy version Brown First Order
     #      method 2 SOLEIL close to second order of Brown
@@ -188,4 +194,5 @@ function edge_fringe_exit!(r, inv_rho, edge_angle, fint, gap, method)
 
     r[2] += r[1] * fx
     r[4] -= r[3] * fy
+    return nothing
 end

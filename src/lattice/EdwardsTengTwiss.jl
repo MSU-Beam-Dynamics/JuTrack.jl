@@ -1,8 +1,70 @@
 # include("../TPSA_Enzyme/TPSA_fixedmap.jl")
 # include("../tracking_Enzyme/track.jl")
 # include("../lattice/canonical_elements.jl")
-using LinearAlgebra
+# using LinearAlgebra
 abstract type AbstractTwiss end
+
+function det(A::Matrix{Float64})
+    # Ensure the matrix is square
+    if size(A, 1) != size(A, 2)
+        error("Matrix must be square")
+    end
+
+    # LU decomposition
+    N = size(A, 1)
+    U = zeros(Float64, N, N)
+	for i = 1:N
+		U[i, :] = A[i, :]
+	end
+    L = zeros(Float64, N, N)
+	for i = 1:N
+		L[i, i] = 1.0
+	end
+    swaps = 0
+
+    # Manually create the identity matrix
+    L = zeros(Float64, N, N)
+    for i = 1:N
+        L[i, i] = 1.0
+    end
+
+    for i = 1:N
+        # Find the pivot
+        pivot = i
+        for j = i+1:N
+            if abs(U[j, i]) > abs(U[pivot, i])
+                pivot = j
+            end
+        end
+
+        # Swap rows if necessary
+        if pivot != i
+            U[i, :], U[pivot, :] = U[pivot, :], U[i, :]
+            L[i, 1:i-1], L[pivot, 1:i-1] = L[pivot, 1:i-1], L[i, 1:i-1]
+            swaps += 1
+        end
+
+        # Check for singular matrix
+        if U[i, i] == 0
+            return 0.0
+        end
+
+        # Eliminate below
+        for j = i+1:N
+            L[j, i] = U[j, i] / U[i, i]
+            U[j, i:end] -= L[j, i] * U[i, i:end]
+        end
+    end
+
+    # Compute the determinant
+    det_val = (-1.0)^swaps
+    for i = 1:N
+        det_val *= U[i, i]
+    end
+
+    return det_val
+end
+
 
 struct EdwardsTengTwiss <: AbstractTwiss
 	betax::Float64
@@ -104,22 +166,31 @@ end
 #     return Ri
 # end
 
-EdwardsTengTwiss(;betx::Float64,bety::Float64,
-			   alfx::Float64=Float64(0),alfy::Float64=Float64(0),
-			   dx::Float64=Float64(0),dy::Float64=Float64(0),
-			   dpx::Float64=Float64(0),dpy::Float64=Float64(0),
-			   mux::Float64=Float64(0),muy::Float64=Float64(0),
-			   R11::Float64=Float64(0),R12::Float64=Float64(0),
-			   R21::Float64=Float64(0),R22::Float64=Float64(0),
-			   mode::Int=Int(1))=EdwardsTengTwiss(betx,bety,alfx,alfy,(Float64(1)+alfx^2)/betx,(Float64(1)+alfy^2)/bety,
+EdwardsTengTwiss(;betax::Float64,betay::Float64,
+			   alfx::Float64=0.0,alfy::Float64=0.0,
+			   dx::Float64=0.0,dy::Float64=0.0,
+			   dpx::Float64=0.0,dpy::Float64=0.0,
+			   mux::Float64=0.0,muy::Float64=0.0,
+			   R11::Float64=0.0,R12::Float64=0.0,
+			   R21::Float64=0.0,R22::Float64=0.0,
+			   mode::Int=1)=EdwardsTengTwiss(betax,betay,alfx,alfy,(1.0+alfx^2)/betax,(1.0+alfy^2)/betay,
 														  dx,dpx,dy,dpy,sin(mux),cos(mux),sin(muy),cos(muy),[R11 R12;R21 R22],mode)
 _symplectic_conjugate_2by2(M) = [M[2, 2] -M[1, 2]; -M[2, 1] M[1, 1]]
-_matrixTransform_2by2(M)=begin
-    m11,m21,m12,m22=M
-    [m11*m11 -2m11*m12 m12*m12
-    -m11*m21 1.0+2m12*m21 -m12*m22
-    m21*m21 -2m21*m22 m22*m22]
+function _matrixTransform_2by2(M)
+	m11 = M[1, 1]
+	m21 = M[2, 1]
+	m12 = M[1, 2]
+	m22 = M[2, 2]
+	return [m11*m11 -2m11*m12 m12*m12
+	-m11*m21 1.0+2m12*m21 -m12*m22
+	m21*m21 -2m21*m22 m22*m22]
 end
+# _matrixTransform_2by2(M)=begin
+#     m11,m21,m12,m22=M
+#     [m11*m11 -2m11*m12 m12*m12
+#     -m11*m21 1.0+2m12*m21 -m12*m22
+#     m21*m21 -2m21*m22 m22*m22]
+# end
 
 function twissPropagate(tin::EdwardsTengTwiss,M::Matrix{Float64})
 	A=@view M[1:2,1:2]
@@ -129,16 +200,16 @@ function twissPropagate(tin::EdwardsTengTwiss,M::Matrix{Float64})
 
 	R1=tin.R
 	_R1=_symplectic_conjugate_2by2(R1)
-	if tin.mode == Int(1)
+	if tin.mode == 1
 		X=A-B*R1
-		begin t=det(X)
-			if t>Float64(0.1)
+		t=det(X)
+			if t>0.1
 				R=(D*R1-C)*_symplectic_conjugate_2by2(X)
 				R/=t
 				X/=sqrt(t)
 				Y=D+C*_R1
 				Y/=sqrt(det(Y))
-				mode=Int(1)
+				mode=1
 			else
 				X=C-D*R1
 				X/=sqrt(det(X))
@@ -147,19 +218,18 @@ function twissPropagate(tin::EdwardsTengTwiss,M::Matrix{Float64})
 				R=-(D+C*_R1)*_symplectic_conjugate_2by2(Y)
 				R/=t
 				Y/=sqrt(t)
-				mode=Int(2)
+				mode=2
 			end
-		end
 	elseif tin.mode == Int(2) 
 		X=B+A*_R1
-		begin t=det(X)
-			if t>Float64(0.1)
+		t=det(X)
+			if t>0.1
 				R=-(D+C*_R1)*_symplectic_conjugate_2by2(X)
 				R/=t
 				X/=sqrt(t)
 				Y=C-D*R1
 				Y/=sqrt(det(Y))
-				mode=Int(1)
+				mode=1
 			else
 				X=D+C*_R1
 				X/=sqrt(det(X))
@@ -168,13 +238,13 @@ function twissPropagate(tin::EdwardsTengTwiss,M::Matrix{Float64})
 				R=(D*R1-C)*_symplectic_conjugate_2by2(Y)
 				R/=t
 				Y/=sqrt(t)
-				mode=Int(2)
+				mode=2
 			end
-		end
 	else
 		#throw(AssertionError("Mode should be integer 1 or 2."))
-		println(stderr,"Invalid mode.")
-		return EdwardsTengTwiss(;betx=Float64(1),bety=Float64(1),mode=Int(0))
+		# println(stderr,"Invalid mode.")
+		# return EdwardsTengTwiss(;betax=1.0,betay=1.0,mode=0)
+		error("Invalid mode.")
 	end
 
 	Nx=_matrixTransform_2by2(X)
@@ -226,69 +296,145 @@ end
 # 	end
 # 	return ss,names,ret
 # end
-function findm66(seq::Vector{AbstractElement}, dp::Float64=0.0, isring=false)
-	x = CTPS(0.0, 1, 6, 2)
-	px = CTPS(0.0, 2, 6, 2)
-	y = CTPS(0.0, 3, 6, 2)
-	py = CTPS(0.0, 4, 6, 2)
-	delta = CTPS(dp, 5, 6, 2)
-	z = CTPS(0.0, 6, 6, 2)
-	# r = [x, px, y, py, delta, z]
+function findm66(seq::Vector{AbstractElement}, dp::Float64, order::Int)
+	x = CTPS(0.0, 1, 6, order)
+	px = CTPS(0.0, 2, 6, order)
+	y = CTPS(0.0, 3, 6, order)
+	py = CTPS(0.0, 4, 6, order)
+	delta = CTPS(dp, 5, 6, order)
+	z = CTPS(0.0, 6, 6, order)
+	rin = [x, px, y, py, delta, z]
 	# no radiation, cavity off
-	Po, p_error, sigmaDelta2 = sqrt((3500/0.51099906)^2-1), 0.0, 0.0
-	x, px, y, py, delta, z = linepass(seq, x, px, y, py, delta, z, Po, p_error, sigmaDelta2)
+	linepass_TPSA!(seq, rin)
 
-	Map66 = [x.map[2] x.map[3] x.map[4] x.map[5] x.map[6] x.map[7];
-			px.map[2] px.map[3] px.map[4] px.map[5] px.map[6] px.map[7];
-			y.map[2] y.map[3] y.map[4] y.map[5] y.map[6] y.map[7];
-			py.map[2] py.map[3] py.map[4] py.map[5] py.map[6] py.map[7];
-			delta.map[2] delta.map[3] delta.map[4] delta.map[5] delta.map[6] delta.map[7];
-			z.map[2] z.map[3] z.map[4] z.map[5] z.map[6] z.map[7]]
-	return Map66
+	map = zeros(Float64, 6, 6)
+	for i in 1:6
+		for j in 1:6
+			map[i, j] = rin[i].map[j + 1]
+		end
+	end
+
+	# Map66 = [x.map[2] x.map[3] x.map[4] x.map[5] x.map[6] x.map[7];
+	# 		px.map[2] px.map[3] px.map[4] px.map[5] px.map[6] px.map[7];
+	# 		y.map[2] y.map[3] y.map[4] y.map[5] y.map[6] y.map[7];
+	# 		py.map[2] py.map[3] py.map[4] py.map[5] py.map[6] py.map[7];
+	# 		delta.map[2] delta.map[3] delta.map[4] delta.map[5] delta.map[6] delta.map[7];
+	# 		z.map[2] z.map[3] z.map[4] z.map[5] z.map[6] z.map[7]]
+	return map
 end
 
-function twissPropagate(tin::EdwardsTengTwiss,seq::Vector{AbstractElement}, dp::Float64=0.0, endindex::Int=1)
+function findm66_refpts(seq::Vector{AbstractElement}, dp::Float64, order::Int, refpts::Vector{Int})
+	x = CTPS(0.0, 1, 6, order)
+	px = CTPS(0.0, 2, 6, order)
+	y = CTPS(0.0, 3, 6, order)
+	py = CTPS(0.0, 4, 6, order)
+	delta = CTPS(dp, 5, 6, order)
+	z = CTPS(0.0, 6, 6, order)
+	rin = [x, px, y, py, delta, z]
+	# no radiation, cavity off
+	map_list = Vector{Matrix{Float64}}(undef, length(refpts))
+	num = 1
+	for i in eachindex(refpts)
+		if i == 1
+			linepass_TPSA!(seq[1:refpts[i]], rin)
+		else
+			linepass_TPSA!(seq[refpts[i-1]+1:refpts[i]], rin)
+		end
+		map = zeros(Float64, 6, 6)
+		for j in 1:6
+			for k in 1:6
+				map[j, k] = rin[j].map[k + 1]
+			end
+		end
+		map_list[num] = map
+		num += 1
+		reassign!(rin[1], 0.0, 1)
+		reassign!(rin[2], 0.0, 2)
+		reassign!(rin[3], 0.0, 3)
+		reassign!(rin[4], 0.0, 4)
+		reassign!(rin[5], dp, 5)
+		reassign!(rin[6], 0.0, 6)
+	end
+
+	return map_list
+end
+
+function Twissline(tin::EdwardsTengTwiss,seq::Vector{AbstractElement}, dp::Float64, order::Int, endindex::Int)
 	# obtain M through tracking
     ret = tin
     ss = 0.0
 	used_seq = seq[1:endindex]
-	M = findm66(used_seq, dp, false)
+	M = findm66(used_seq, dp, order)
 	ret = twissPropagate(ret, M)
 	ss = sum([mag.len for mag in used_seq])
 	names = [mag.name for mag in used_seq]
 	return ss,names,ret
 end
-# function twissPropagate(tin::EdwardsTengTwiss,seq::Vector{AbstractElement}, dp::Float64=0.0, endindex::Int=1)
-# 	# obtain M through tracking
-#     ret = tin
-#     ss = 0.0
-# 	for (index,mag) in enumerate(seq)
-# 		M=findm66(seq[index:index], dp, false)
-# 		ret=twissPropagate(ret,M)
-# 		ss=mag.len + ss
-# 		names=mag.name
-# 		if index == endindex
-# 			break
-# 		end
-# 	end
-# 	return ss,names,ret
-# end
+
+function is_increasing(A::Array)
+    # Check if the array has less than two elements
+    if length(A) < 2
+        return true
+    end
+
+    # Initialize the maximum with the first element
+    max_val = A[1]
+
+    # Iterate through the array starting from the second element
+    for i in 2:length(A)
+        # Check if the current element is not greater than the maximum so far
+        if A[i] <= max_val
+            return false
+        end
+        # Update the maximum value
+        max_val = A[i]
+    end
+
+    return true
+end
+
+function Twissline(tin::EdwardsTengTwiss,seq::Vector{AbstractElement}, dp::Float64, order::Int, refpts::Vector{Int})
+	if !is_increasing(refpts)
+		error("The reference points must be in increasing order.")
+	end
+	if refpts[end] > length(seq)
+		error("Invalid reference point.")
+	end
+	# obtain M through tracking
+	ret_vector = Vector{EdwardsTengTwiss}(undef, length(refpts))
+    ret = tin
+
+	M_list = findm66_refpts(seq, dp, order, refpts)
+	for i in 1:length(refpts)
+		ret = twissPropagate(ret, M_list[i])
+		ret_vector[i] = ret
+	end
+
+	ss = zeros(Float64, length(refpts))
+	names = Vector{String}(undef, length(refpts))
+	for i in 1:length(refpts)
+		ss[i] = sum([mag.len for mag in seq[1:refpts[i]]])
+		names[i] = seq[refpts[i]].name
+	end
+	return ss,names,ret_vector
+end
+
 function periodicEdwardsTengTwiss(M::Matrix{Float64})
 	A=@view M[1:2,1:2]
 	B=@view M[1:2,3:4]
 	C=@view M[3:4,1:2]
 	D=@view M[3:4,3:4]
-	invalid_ret=EdwardsTengTwiss(;betx=Float64(1),bety=Float64(1),mode=Int(0))
+	invalid_ret=EdwardsTengTwiss(;betax=1.0,betay=1.0,mode=0)
 
 	Bbar_and_C=_symplectic_conjugate_2by2(B)+C
 	t1=0.5*(tr(A)-tr(D))
 	Δ=t1*t1+det(Bbar_and_C)
-	Δ<Float64(0) && (println(stderr,"Failed to decouple periodic transfer matrix. The linear matrix is unstable.");return invalid_ret)
+	Δ<0.0 && (println(stderr,"Failed to decouple periodic transfer matrix. The linear matrix is unstable.");return invalid_ret)
 
-	_sign= t1>Float64(0) ? Float64(-1) : Float64(1)
+	_sign= t1>0.0 ? Float64(-1) : 1.0
 
 	t2=abs(t1)+sqrt(Δ)
-	if t2==Float64(0)
+	if t2==0.0
 		R=Float64[0 0;0 0]
 	else
 		R=Bbar_and_C*(_sign/t2)
@@ -302,27 +448,27 @@ function periodicEdwardsTengTwiss(M::Matrix{Float64})
 
 	cmux=Float64(0.5)*(X[1,1]+X[2,2])
 	cmuy=Float64(0.5)*(Y[1,1]+Y[2,2])
-	(Float64(-1)<cmux<Float64(1) && Float64(-1)<cmuy<Float64(1)) || (println(stderr,"Failed to get beta functions. The linear matrix is unstable.");return invalid_ret)
+	(Float64(-1)<cmux<1.0 && Float64(-1)<cmuy<1.0) || (println(stderr,"Failed to get beta functions. The linear matrix is unstable.");return invalid_ret)
 
-	smux=sqrt(Float64(1)-cmux*cmux)*sign(X[1,2])
-	smuy=sqrt(Float64(1)-cmuy*cmuy)*sign(Y[1,2])
-	betx=X[1,2]/smux
+	smux=sqrt(1.0-cmux*cmux)*sign(X[1,2])
+	smuy=sqrt(1.0-cmuy*cmuy)*sign(Y[1,2])
+	betax=X[1,2]/smux
 	gamx=-X[2,1]/smux
-	bety=Y[1,2]/smuy
+	betay=Y[1,2]/smuy
 	gamy=-Y[2,1]/smuy
 
 	alfx=Float64(0.5)*(X[1,1]-X[2,2])/smux
 	alfy=Float64(0.5)*(Y[1,1]-Y[2,2])/smuy
 
 	eta=inv(Matrix{Float64}(I,(4,4))-(@view M[1:4,1:4]))*(@view M[1:4,6])
-	return EdwardsTengTwiss(betx,bety,alfx,alfy,gamx,gamy,eta[1],eta[2],eta[3],eta[4],smux,cmux,smuy,cmuy,R,Int(1))
+	return EdwardsTengTwiss(betax,betay,alfx,alfy,gamx,gamy,eta[1],eta[2],eta[3],eta[4],smux,cmux,smuy,cmuy,R,1)
 end
 
 
 function normalMatrix(tin::EdwardsTengTwiss)
-	(tin.mode==Int(1) || tin.mode==Int(2)) || begin
+	(tin.mode==1 || tin.mode==Int(2)) || begin
 		println(stderr,"Warning: return identity matrix for unknown mode $(tin.mode) as the normal matrix (transformation matrix from normal space to physical space).")
-		return Float64(1)*Matrix{Float64}(I,6,6)
+		return 1.0*Matrix{Float64}(I,6,6)
 	end
 	D=Float64[1 0 0 0 0 tin.eta[1]
 			   0 1 0 0 0 tin.eta[2]
@@ -337,12 +483,12 @@ function normalMatrix(tin::EdwardsTengTwiss)
 			   0 0 -tin.alphay/sby 1/sby 0 0
 			   0 0 0 0 1 0
 			   0 0 0 0 0 1]
-	λ=Float64(1)/sqrt(abs(Float64(1)+det(tin.R)))
+	λ=1.0/sqrt(abs(1.0+det(tin.R)))
 	R=λ*tin.R
 	_R=_symplectic_conjugate_2by2(R)
 	O=Float64[0 0;0 0]
 	U=Float64[λ 0;0 λ]
-	if tin.mode==Int(1)
+	if tin.mode==1
 		V=[U _R O;-R U O;O O I]
 	else
 		V=[_R U O;U -R O;O O I]

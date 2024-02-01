@@ -1,7 +1,7 @@
 include("drift_AT.jl")
 include("fringe_AT.jl")
 
-function strthinkick!(r, A, B, L, max_order)
+function strthinkick!(r::AbstractVector{Float64}, A, B, L, max_order)
     # Calculate and apply a multipole kick to a 6-dimentional
     # phase space vector in a straight element (quadrupole)
     
@@ -21,14 +21,18 @@ function strthinkick!(r, A, B, L, max_order)
 
     r[2] -= L * ReSum
     r[4] += L * ImSum
+    return nothing
 end
 
 
-function StrMPoleSymplectic4Pass!(r, le, A, B, max_order, num_int_step, 
-    FringeQuadEntrance, FringeQuadExit, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
-    fringeIntM0,  # I0m/K1, I1m/K1, I2m/K1, I3m/K1, Lambda2m/K1 
-    fringeIntP0,  # I0p/K1, I1p/K1, I2p/K1, I3p/K1, Lambda2p/K1
-    T1, T2, R1, R2, RApertures, EApertures, KickAngle, num_particles)
+function StrMPoleSymplectic4Pass!(r::Array{Float64,1}, le::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+    max_order::Int, num_int_step::Int, 
+    FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
+    fringeIntM0::Array{Float64,1},  # I0m/K1, I1m/K1, I2m/K1, I3m/K1, Lambda2m/K1 
+    fringeIntP0::Array{Float64,1},  # I0p/K1, I1p/K1, I2p/K1, I3p/K1, Lambda2p/K1
+    T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
+    RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{Float64,1}, 
+    num_particles::Int, lost_flags::Array{Int64,1})
 
     DRIFT1  =  0.6756035959798286638
     DRIFT2 = -0.1756035959798286639
@@ -55,7 +59,11 @@ function StrMPoleSymplectic4Pass!(r, le, A, B, max_order, num_int_step,
     B[1] -= sin(KickAngle[1])/le
     A[1] += sin(KickAngle[2])/le
 
-    Threads.@threads for c in 1:num_particles
+    # Threads.@threads for c in 1:num_particles
+    for c in 1:num_particles
+        if lost_flags[c] == 1
+            continue
+        end
         r6 = @view r[(c-1)*6+1:c*6]
         if !isnan(r6[1])
             norm = 1.0 / (1.0 + r6[5])
@@ -120,70 +128,91 @@ function StrMPoleSymplectic4Pass!(r, le, A, B, max_order, num_int_step,
             if !isnothing(T2)
                 ATaddvv!(r6, T2)
             end
+            if r6[1] > CoordLimit || r6[2] > AngleLimit
+                lost_flags[c] = 1
+            end
         end
     end
 
     B[1] += sin(KickAngle[1]) / le
     A[1] -= sin(KickAngle[2]) / le
+    return nothing
 end
 
-# using Base: @kwdef
-# abstract type AbstractElement end
+function pass!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, lost_flags::Array{Int64,1})
+    # ele: KQUAD
+    # r_in: 6-by-num_particles array
+    # num_particles: number of particles
+    PolynomB = zeros(4)
+    if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
+        PolynomB[2] = ele.k1
+        StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+    else
+        PolynomB[1] = ele.PolynomB[1]
+        PolynomB[2] = ele.PolynomB[2]
+        PolynomB[3] = ele.PolynomB[3]
+        PolynomB[4] = ele.PolynomB[4]
+        StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+    end
+    return nothing
+end
 
-# @kwdef struct KQUAD <: AbstractElement
-#     name::String  = "Quad"                              # element name  
-#     PolynomA::Array{Float64,1} = [0.0, 0.0, 0.0, 0.0]    
-#     PolynomB::Array{Float64,1} = [0.0, 0.0, 0.0, 0.0]
-#     MaxOrder::Int64 = 1
-#     NumIntSteps::Int64 = 10
-#     FringeQuadEntrance::Int64 = 0
-#     FringeQuadExit::Int64 = 0
-#     FringeIntM0::Array{Float64,1} = [0.0, 0.0, 0.0, 0.0, 0.0]
-#     FringeIntP0::Array{Float64,1} = [0.0, 0.0, 0.0, 0.0, 0.0]
-#     T1::Array{Float64,1} = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-#     T2::Array{Float64,1} = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-#     R1::Array{Float64,2} = [1.0 0.0 0.0 0.0 0.0 0.0; 
-#                             0.0 1.0 0.0 0.0 0.0 0.0; 
-#                             0.0 0.0 1.0 0.0 0.0 0.0; 
-#                             0.0 0.0 0.0 1.0 0.0 0.0; 
-#                             0.0 0.0 0.0 0.0 1.0 0.0; 
-#                             0.0 0.0 0.0 0.0 0.0 1.0]
-#     R2::Array{Float64,2} = [1.0 0.0 0.0 0.0 0.0 0.0;
-#                             0.0 1.0 0.0 0.0 0.0 0.0;
-#                             0.0 0.0 1.0 0.0 0.0 0.0;
-#                             0.0 0.0 0.0 1.0 0.0 0.0;
-#                             0.0 0.0 0.0 0.0 1.0 0.0;
-#                             0.0 0.0 0.0 0.0 0.0 1.0]         
-#     RApertures::Array{Float64,1} = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-#     EApertures::Array{Float64,1} = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-#     KickAngle::Array{Float64,1} = [0.0, 0.0]
-# end
+function pass!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, lost_flags::Array{Int64,1})
+    # ele: KSEXT
+    # r_in: 6-by-num_particles array
+    # num_particles: number of particles
+    PolynomB = zeros(4)
+    if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
+        PolynomB[3] = ele.k2
+        StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+    else
+        PolynomB[1] = ele.PolynomB[1]
+        PolynomB[2] = ele.PolynomB[2]
+        PolynomB[3] = ele.PolynomB[3]
+        PolynomB[4] = ele.PolynomB[4]
+        StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+    end
+    return nothing
+end
+
+function pass!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, lost_flags::Array{Int64,1})
+    # ele: KOCT
+    # r_in: 6-by-num_particles array
+    # num_particles: number of particles
+    PolynomB = zeros(4)
+    if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
+        PolynomB[4] = ele.k3
+        StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+    else
+        PolynomB[1] = ele.PolynomB[1]
+        PolynomB[2] = ele.PolynomB[2]
+        PolynomB[3] = ele.PolynomB[3]
+        PolynomB[4] = ele.PolynomB[4]
+        StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+    end
+    return nothing
+end
 
 # using Enzyme
 # # q = KQUAD(PolynomialB=[0.0, 1.0, 0.0, 0.0])
+# include("../lattice/canonical_elements_AT.jl")
 # function f(k)
-# particles = [0.001 0.0001 0.0005 0.0002 0.0 0.0 0.001 0.0 0.0 0.0 0.0 0.0]
-# T1 = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-# T2 = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-# R1 = [1.0 0.0 0.0 0.0 0.0 0.0; 
-#       0.0 1.0 0.0 0.0 0.0 0.0; 
-#       0.0 0.0 1.0 0.0 0.0 0.0; 
-#       0.0 0.0 0.0 1.0 0.0 0.0; 
-#       0.0 0.0 0.0 0.0 1.0 0.0; 
-#       0.0 0.0 0.0 0.0 0.0 1.0]
-# R2 = [1.0 0.0 0.0 0.0 0.0 0.0;
-#         0.0 1.0 0.0 0.0 0.0 0.0;
-#         0.0 0.0 1.0 0.0 0.0 0.0;
-#         0.0 0.0 0.0 1.0 0.0 0.0;
-#         0.0 0.0 0.0 0.0 1.0 0.0;
-#         0.0 0.0 0.0 0.0 0.0 1.0]
-# PolynomB = [0.0, k[1], 0.0, 0.0]
-# StrMPoleSymplectic4Pass!(particles, 1.0, [0.0, 0.0, 0.0, 0.0], PolynomB, 1, 10, 0, 0, 
-# [0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0], T1, T2, R1, R2, [0.0, 0.0, 0.0, 0.0, 0.0, 0.0], 
-# [0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0], 2)
-# # println(particles)
-# return particles[1]
+#     particles = [0.001, 0.0001, 0.0005, 0.0002, 0.0, 0.0, 0.001, 0.0, 0.0, 0.0, 0.0, 0.0]
+#     Q = KQUAD(k1=k, len=1.0)
+#     pass!(Q, particles, 2)
+#     return particles
 # end
-# print(f([1.0]))
-# grad = gradient(Forward, f, [1.0])
-# println(grad)
+# using BenchmarkTools
+# @btime f(0.1)

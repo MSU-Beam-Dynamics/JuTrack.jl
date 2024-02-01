@@ -165,6 +165,20 @@ function assign!(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::T) where {T, TPS_Dim
     return nothing
 end
 
+function reassign!(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::T, n_var::Int) where {T, TPS_Dim, Max_TPS_Degree}
+    if n_var <= TPS_Dim && n_var > 0
+        map = ctps.map
+        for i in eachindex(map)
+            map[i] = zero(T)
+        end
+        map[n_var+1] = one(T)
+        map[1] = a
+        return nothing
+    else
+        error("Num of var out of range in CTPS")
+    end
+end
+
 # function element(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, ind::Int) where {T, TPS_Dim, Max_TPS_Degree}
 #     if ind < 1 || ind > ctps.terms
 #         error("Element index out of range in CTPS")
