@@ -1,5 +1,5 @@
-include("drift_AT.jl")
-include("fringe_AT.jl")
+include("drift.jl")
+include("fringe.jl")
 
 function strthinkick!(r::AbstractVector{Float64}, A, B, L, max_order)
     # Calculate and apply a multipole kick to a 6-dimentional
@@ -128,7 +128,7 @@ function StrMPoleSymplectic4Pass!(r::Array{Float64,1}, le::Float64, A::Array{Flo
             if !isnothing(T2)
                 ATaddvv!(r6, T2)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit
+            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit
                 lost_flags[c] = 1
             end
         end

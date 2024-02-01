@@ -1,4 +1,4 @@
-include("drift_TPSA_struct.jl")
+include("drift_TPSA.jl")
 # include("fringe_AT.jl")
 
 function strthinkick!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A, B, L, max_order) where {T, TPS_Dim, Max_TPS_Degree}

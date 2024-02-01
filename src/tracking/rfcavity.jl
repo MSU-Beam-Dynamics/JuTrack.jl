@@ -1,4 +1,4 @@
-include("drift_AT.jl")
+include("drift.jl")
 
 function RFCavityPass!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq::Float64, h::Float64, 
     lag::Float64, philag::Float64, nturn::Int, T0::Int, num_particles::Int, lost_flags::Array{Int64,1})
@@ -33,7 +33,7 @@ function RFCavityPass!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq::F
                 r6[5] += -nv * sin(2 * pi * freq * ((r6[6] - lag) / C0 - (h / freq - T0) * nturn) - philag)
                 drift6!(r6, halflength)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit
+            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit
                 lost_flags[c] = 1
             end
         end

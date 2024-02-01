@@ -19,6 +19,8 @@ function array_to_matrix(array::Vector{Float64}, n::Int)
 end
 
 function linepass!(line::Vector{AbstractElement}, particles::Beam)
+    # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
+    # Check if the particle is lost by checking the lost_flag
     np = particles.np
     particles6 = matrix_to_array(particles.r)
     lost_flags = particles.lost_flag
@@ -35,6 +37,8 @@ function linepass!(line::Vector{AbstractElement}, particles::Beam)
 end
 
 function ringpass!(line::Vector{AbstractElement}, particles::Beam, nturn::Int)
+    # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
+    # Check if the particle is lost by checking the lost_flag
     for i in 1:nturn
         linepass!(line, particles)    
     end

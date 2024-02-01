@@ -1,6 +1,6 @@
 # include("drift_TPSA.jl")
-include("drift_TPSA_struct.jl")
-include("fringe_TPSA_struct.jl")
+include("drift_TPSA.jl")
+include("fringe_TPSA.jl")
 
 function bndthinkick!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A, B, L, irho, max_order) where {T, TPS_Dim, Max_TPS_Degree}
     # Calculate multipole kick in a curved elemrnt (bending magnet)

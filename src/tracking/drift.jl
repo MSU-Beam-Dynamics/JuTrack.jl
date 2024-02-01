@@ -76,7 +76,7 @@ function DriftPass!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64,1}, T
             if !isnothing(T2)
                 ATaddvv!(r6, T2)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit
+            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit
                 lost_flags[c] = 1
             end
         end

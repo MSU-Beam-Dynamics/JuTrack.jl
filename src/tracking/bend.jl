@@ -1,5 +1,5 @@
-include("drift_AT.jl")
-include("fringe_AT.jl")
+include("drift.jl")
+include("fringe.jl")
 
 function bndthinkick!(r::AbstractVector{Float64}, A, B, L, irho, max_order)
 # Calculate multipole kick in a curved elemrnt (bending magnet)
@@ -146,7 +146,7 @@ function BndMPoleSymplectic4Pass!(r::Array{Float64,1}, le::Float64, irho::Float6
             if T2 !== nothing
                 ATaddvv!(r6, T2)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit
+            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit
                 lost_flags[c] = 1
             end
         end

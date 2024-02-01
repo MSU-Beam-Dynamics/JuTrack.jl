@@ -1,4 +1,4 @@
-include("drift_TPSA_struct.jl")
+include("drift_TPSA.jl")
 
 function RFCavityPass!(r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le, nv, freq, h, lag, 
     philag, nturn, T0, num_particles) where {T, TPS_Dim, Max_TPS_Degree}
