@@ -35,25 +35,14 @@ function bndthinkick!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A, B, L, irho
             ImSum = ImSum * r[1] + ReSum * r[3] + A[i]
             ReSum = CTPS(ReSumTemp)
         end
-        # ReSumTemp = tadd(tminus(tmult(B[max_order + 1], r[1]), tmult(A[max_order + 1], r[3])), B[1])
-        # ImSum = tadd(tadd(tmult(A[max_order + 1], r[1]), tmult(B[max_order + 1], r[3])), A[1])
-        # ReSum = CTPS(ReSumTemp)
-        # for i in reverse(2:max_order)
-        #     ReSumTemp = tadd(tminus(tmult(ReSum, r[1]), tmult(ImSum, r[3])), B[i])
-        #     ImSum = tadd(tadd(tmult(ImSum, r[1]), tmult(ReSum, r[3])), A[i])
-        #     ReSum = CTPS(ReSumTemp)
-        # end
-    
-        # r[2] = tminus(r[2], tmult(L, tminus(ReSum, tmult(tminus(r[5],tmult(r[1], irho)), irho))))
-        # r[4] = tadd(r[4], tmult(L, ImSum))
-        # r[6] = tadd(r[6], tmult(L, tmult(r[1], irho)))
+
         r[2] -= L * (ReSum - (r[5] - r[1] * irho) * irho)
         r[4] += L * ImSum
         r[6] += L * irho * r[1]  # Path length
         return nothing
     end
     
-    function BndMPoleSymplectic4Pass!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le, irho, A, B, max_order, num_int_steps,
+    function BendSymplecticPass!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le, irho, A, B, max_order, num_int_steps,
         entrance_angle, exit_angle,
         FringeBendEntrance, FringeBendExit,
         fint1, fint2, gap,
@@ -162,7 +151,7 @@ function bndthinkick!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A, B, L, irho
         # num_particles: number of particles
     
         irho = ele.angle / ele.len
-        BndMPoleSymplectic4Pass!(r_in, ele.len, irho, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
+        BendSymplecticPass!(r_in, ele.len, irho, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
             ele.e1, ele.e2,
             ele.FringeBendEntrance, ele.FringeBendExit,
             ele.fint1, ele.fint2, ele.gap,

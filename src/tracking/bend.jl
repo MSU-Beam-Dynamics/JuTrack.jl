@@ -37,7 +37,7 @@ function bndthinkick!(r::AbstractVector{Float64}, A, B, L, irho, max_order)
     return nothing
 end
 
-function BndMPoleSymplectic4Pass!(r::Array{Float64,1}, le::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function BendSymplecticPass!(r::Array{Float64,1}, le::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_steps::Int, entrance_angle::Float64, exit_angle::Float64, FringeBendEntrance::Int, FringeBendExit::Int,
     fint1::Float64, fint2::Float64, gap::Float64, FringeQuadEntrance::Int, FringeQuadExit::Int,
     fringeIntM0::Array{Float64,1}, fringeIntP0::Array{Float64,1}, T1::Array{Float64,1}, T2::Array{Float64,1}, 
@@ -165,7 +165,7 @@ function pass!(ele::SBEND, r_in::Array{Float64,1}, num_particles::Int64, lost_fl
     # num_particles: number of particles
 
     irho = ele.angle / ele.len
-    BndMPoleSymplectic4Pass!(r_in, ele.len, irho, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
+    BendSymplecticPass!(r_in, ele.len, irho, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
         ele.e1, ele.e2,
         ele.FringeBendEntrance, ele.FringeBendExit,
         ele.fint1, ele.fint2, ele.gap,

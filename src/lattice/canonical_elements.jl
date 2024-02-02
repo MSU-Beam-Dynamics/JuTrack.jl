@@ -165,3 +165,17 @@ end
     philag::Float64 = 0.0
     energy::Float64 = 0.0
 end
+
+@kwdef struct CrabCavity <: AbstractElement
+    name::String = "CrabCavity"
+    len::Float64 = 0.0
+    volt::Float64 = 0.0 # voltage
+    freq::Float64 = 0.0 # frequency
+    k::Float64 = 0.0 # wave number
+    phi::Float64 = 0.0 # phase
+    errors::Array{Float64,1} = [0.0, 0.0] # 1: Voltage error, 2: Phase error
+end
+function CrabCavity(;name::String = "CrabCavity", len::Float64 = 0.0, volt::Float64 = 0.0, freq::Float64 = 0.0, phi::Float64 = 0.0, errors::Array{Float64,1} = [0.0, 0.0])
+    k = 2*π*freq/2.99792458e8
+    return CrabCavity(name, len, volt, freq, k, phi, errors)
+end
