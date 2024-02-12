@@ -19,27 +19,32 @@ function ATaddvv!(r::AbstractVector{Float64}, dr::Array{Float64,1})
     return nothing
 end
 
-function fastdrift!(r::AbstractVector{Float64}, NormL::Float64)
-    # NormL=(Physical Length)/(1+delta)  is computed externally to speed up calculations
+function fastdrift!(r::AbstractVector{Float64}, NormL::Float64, le::Float64)
+    # NormL is computed externally to speed up calculations
     # in the loop if momentum deviation (delta) does not change
     # such as in 4-th order symplectic integrator w/o radiation
+    # AT uses small angle approximation pz = 1 + delta. 
+    # Here we use pz = sqrt((1 + delta)^2 - px^2 - py^2) for precise calculation
     r[1] += NormL * r[2]
     r[3] += NormL * r[4]
-    r[6] += NormL * (r[2]^2 + r[4]^2) / (2*(1+r[5]))
+    # r[6] += NormL * (r[2]^2 + r[4]^2) / (2*(1+r[5]))
+    r[5] += NormL * (1.0 + r[6]) - le
     return nothing
 end
 
 function drift6!(r::AbstractVector{Float64}, le::Float64)
-    p_norm = 1.0 / (1.0 + r[5])
-    NormL = le * p_norm
+    # AT uses small angle approximation pz = 1 + delta. 
+    # Here we use pz = sqrt((1 + delta)^2 - px^2 - py^2) for precise calculation
+    NormL = le / sqrt(((1.0 + r[6])^2 - r[2]^2 - r[4]^2))
     r[1] += NormL * r[2]
     r[3] += NormL * r[4]
-    r[6] += NormL * p_norm * (r[2] * r[2] + r[4] * r[4]) / 2.0
+    # r[6] += NormL * (r[2]^2 + r[4]^2) / (2*(1+r[5])) # for linearized approximation
+    r[5] += NormL * (1.0 + r[6]) - le
     return nothing
 end 
 function DriftPass!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64,1}, T2::Array{Float64,1}, 
     R1::Array{Float64,2}, R2::Array{Float64, 2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, 
-    num_particles::Int, lost_flags::Array{Int64,1})
+    num_particles::Int, lost_flags::Array{Int64,1}, noTarray::Array{Float64,1}, noRmatrix::Array{Float64,2})
     # Threads.@threads for c in 1:num_particles
     for c in 1:num_particles
         if lost_flags[c] == 1
@@ -48,10 +53,10 @@ function DriftPass!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64,1}, T
         r6 = @view r_in[(c-1)*6+1:c*6]
         if !isnan(r6[1])
             # Misalignment at entrance
-            if !isnothing(T1)
+            if T1 != noTarray
                 ATaddvv!(r6, T1)
             end
-            if !isnothing(R1)
+            if R1 != noRmatrix
                 ATmultmv!(r6, R1)
             end
             # Check physical apertures at the entrance of the magnet
@@ -70,10 +75,10 @@ function DriftPass!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64,1}, T
             #     checkiflostEllipticalAp!(r6, EApertures)
             # end
             # Misalignment at exit
-            if !isnothing(R2)
+            if R2 != noRmatrix
                 ATmultmv!(r6, R2)
             end
-            if !isnothing(T2)
+            if T2 != noTarray
                 ATaddvv!(r6, T2)
             end
             if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit
@@ -84,11 +89,11 @@ function DriftPass!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64,1}, T
     return nothing
 end
 
-function pass!(ele::DRIFT, r_in::Array{Float64,1}, num_particles::Int64, lost_flags::Array{Int64,1})
+function pass!(ele::DRIFT, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam, noTarray::Array{Float64,1}, noRmatrix::Array{Float64,2})
     # ele: EDRIFT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
-
-    DriftPass!(r_in, ele.len, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags)
+    lost_flags = particles.lost_flag
+    DriftPass!(r_in, ele.len, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags, noTarray, noRmatrix)
     return nothing
 end

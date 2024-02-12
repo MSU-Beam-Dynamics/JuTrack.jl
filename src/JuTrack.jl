@@ -1,6 +1,9 @@
 module JuTrack
 CoordLimit = 1.0
 AngleLimit = 1.0
+m_e = 0.51099895e6
+m_p = 938.27208816e6
+m_goldion = 931.49410242e6 # charge 79, atomic number 197
 
 include("TPSA_Enzyme/TPSA_fixedmap.jl")
 include("lattice/beam.jl")
@@ -17,10 +20,21 @@ include("tracking/rfcavity_TPSA.jl")
 include("tracking/track.jl")
 include("lattice/EdwardsTengTwiss.jl")
 
+include("tracking/lorentz.jl")
+include("tracking/crabcavity.jl")
+include("tracking/strongbb.jl")
+include("lattice/optics.jl")
+include("lattice/bunchedbeam.jl")
+export Beam
+export m_e, m_p, m_goldion
+export CrabCavity, easyCrabCavity, AccelCavity, LorentzBoost, InvLorentzBoost, StrongGaussianBeam, StrongThinGaussianBeam, AbstractStrongBeamBeam
+export LongitudinalRFMap, AbstractLongitudinalRFMap, AbstractTransferMap, AbstractTransverseMap
+export AbstractOptics, AbstractOptics2D, AbstractOptics4D, optics2D, optics4DUC
+export initilize_6DGaussiandist!, get_emittance!, get_2nd_moment!, get_centroid!, histogram1DinZ!
+export initilize_zslice!
 
 export CTPS, cst, findindex, PolyMap, getindexmap, tadd, tminus, tmult, tdiv, tpow, tsqrt, tsin, tcos, ttan, tcosh, tsinh, reassign!
 export DRIFT, KQUAD, KSEXT, KOCT, SBEND, RFCA, AbstractElement
-export Beam
 export EdwardsTengTwiss, AbstractTwiss, twissPropagate, findm66, periodicEdwardsTengTwiss, Twissline
 export linepass!, pass!, ringpass!, linepass_TPSA!, pass_TPSA!, ringpass_TPSA!
 

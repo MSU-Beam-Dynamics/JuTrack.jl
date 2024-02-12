@@ -1,3 +1,4 @@
+include("optics.jl")
 using Base: @kwdef
 abstract type AbstractElement end
 
@@ -166,6 +167,8 @@ end
     energy::Float64 = 0.0
 end
 
+###########################################
+# the following elements may not be symplectic and may not work with Enzyme
 @kwdef struct CrabCavity <: AbstractElement
     name::String = "CrabCavity"
     len::Float64 = 0.0
@@ -178,4 +181,99 @@ end
 function CrabCavity(;name::String = "CrabCavity", len::Float64 = 0.0, volt::Float64 = 0.0, freq::Float64 = 0.0, phi::Float64 = 0.0, errors::Array{Float64,1} = [0.0, 0.0])
     k = 2*π*freq/2.99792458e8
     return CrabCavity(name, len, volt, freq, k, phi, errors)
+end
+
+struct easyCrabCavity <: AbstractElement
+    name::String 
+    len::Float64 
+    halfthetac::Float64 
+    freq::Float64 
+    k::Float64 
+    phi::Float64 
+    errors::Array{Float64,1}  # 1: Voltage error, 2: Phase error
+end
+function easyCrabCavity(;name::String = "easyCrabCavity", len::Float64 = 0.0, halfthetac::Float64 = 0.0, freq::Float64 = 0.0, phi::Float64 = 0.0, errors::Array{Float64,1} = [0.0, 0.0])
+    k = 2*π*freq/2.99792458e8
+    return CrabCavity(name, len, halfthetac, freq, k, phi, errors)
+end
+
+@kwdef struct AccelCavity <: AbstractElement
+    name::String = "CrabCavity"
+    len::Float64 = 0.0
+    volt::Float64 = 0.0 # voltage
+    freq::Float64 = 0.0 # frequency
+    k::Float64 = 0.0 # wave number
+    h::Float64 = 1.0 # harmonic number
+    phis::Float64 = 0.0 # synchronous phase π/2 for accelerating on crest
+end
+function AccelCavity(freq, nv, h, phis; name="AccelCavity", len=0.0)
+    k = 2*π*freq/2.99792458e8
+    return AccelCavity(name, len, nv, freq, k, h, phis)
+end
+
+abstract type AbstractTransferMap <:AbstractElement end
+abstract type AbstractTransverseMap <:AbstractTransferMap end
+abstract type AbstractLongitudinalMap <:AbstractTransferMap end
+struct LongitudinalRFMap <: AbstractLongitudinalMap
+    alphac::Float64
+    RF::AbstractElement
+    LongitudinalRFMap(alphac::Float64, RF::AbstractElement)=new(alphac, RF)
+end
+
+struct LorentzBoost <: AbstractElement
+    angle::Float64
+    cosang::Float64
+    tanang::Float64
+    mode::Int
+    LorentzBoost(angle)=new(angle, cos(angle), tan(angle), 0)
+end
+
+struct InvLorentzBoost <: AbstractElement
+    angle::Float64
+    sinang::Float64
+    cosang::Float64
+    mode::Int
+    InvLorentzBoost(angle)=new(angle, sin(angle), cos(angle), 0)
+end
+
+
+######### strong beam-beam
+abstract type AbstractStrongBeamBeam <:AbstractElement end
+
+struct StrongThinGaussianBeam <: AbstractStrongBeamBeam
+    amplitude::Float64
+    rmssizex::Float64
+    rmssizey::Float64
+    zloc::Float64
+    xoffset::Float64
+    yoffset::Float64
+    StrongThinGaussianBeam(amp::Float64, rx::Float64, ry::Float64, zloc::Float64=0.0, xoff::Float64=0.0, yoff::Float64=0.0)=new(amp,rx,ry,zloc,xoff,yoff)
+end
+
+struct StrongGaussianBeam <: AbstractStrongBeamBeam  # Strong Beam with transverse Gaussian distribution
+    # particle::ParticleType
+    charge::Float64  
+    mass::Float64  
+    atomnum::Float64  
+    classrad0::Float64  
+    radconst::Float64  
+    num_particle::Int  # Number of particles
+    total_energy::Float64 # Total energy of the beam
+    momentum::Float64  # Design Momentum of the beam
+    gamma::Float64  # Relativistic gamma
+    beta::Float64  # Relativistic beta v/c
+    optics::AbstractOptics4D # optics @IP
+    beamsize::Vector{Float64} # Beam size at IP
+    nzslice::Int # Number of slices in z direction
+    zslice_center::Vector{Float64} # z center of each slice
+    zslice_npar::Vector{Float64} # amplitude of each slice
+    function StrongGaussianBeam(charge::Float64, mass::Float64, atomnum::Float64, 
+            np::Int, energy::Float64, op::AbstractOptics4D, bs::Vector{Float64}, nz::Int)
+        momentum=sqrt(energy*energy-mass*mass)  
+        gamma=energy/mass
+        beta=momentum/energy
+        classrad0=charge*charge/(atomnum*mass)/4/pi/55.26349406*1e-6
+        radconst=4*pi/3*classrad0/mass/mass/mass
+        new(charge,mass,atomnum,classrad0,radconst,np,energy,momentum,gamma,beta, op, bs, nz, zeros(nz), zeros(nz))
+    end  
 end

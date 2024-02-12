@@ -36,9 +36,9 @@ function bndthinkick!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A, B, L, irho
             ReSum = CTPS(ReSumTemp)
         end
 
-        r[2] -= L * (ReSum - (r[5] - r[1] * irho) * irho)
+        r[2] -= L * (ReSum - (r[6] - r[1] * irho) * irho)
         r[4] += L * ImSum
-        r[6] += L * irho * r[1]  # Path length
+        r[5] += L * irho * r[1]  # Path length
         return nothing
     end
     
@@ -49,7 +49,7 @@ function bndthinkick!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A, B, L, irho
         FringeQuadEntrance, FringeQuadExit,
         fringeIntM0, fringeIntP0,
         T1, T2, R1, R2, RApertures, EApertures,
-        KickAngle, num_particles) where {T, TPS_Dim, Max_TPS_Degree}
+        KickAngle, noTarray, noRmatrix) where {T, TPS_Dim, Max_TPS_Degree}
         
         DRIFT1 = 0.6756035959798286638
         DRIFT2 = -0.1756035959798286639
@@ -77,18 +77,17 @@ function bndthinkick!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A, B, L, irho
     
     
         # Threads.@threads for c in 1:num_particles
-        for c in 1:num_particles
+        # for c in 1:num_particles
         #     r6 = @view r[(c-1)*6+1:c*6]
             # if !isnan(r6[1])
-                p_norm = 1.0 / (1.0 + r[5])
-                NormL1 = L1 * p_norm
-                NormL2 = L2 * p_norm
+                NormL1 = L1 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
+                NormL2 = L2 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
     
                 # Misalignment at entrance
-                if isnothing(T1)
+                if T1 != noTarray
                     ATaddvv!(r, T1)
                 end
-                if isnothing(R1)
+                if R1 != noRmatrix
                     ATmultmv!(r, R1)
                 end
     
@@ -106,13 +105,13 @@ function bndthinkick!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A, B, L, irho
     
                 # Integrator
                 for m in 1:num_int_steps
-                    fastdrift!(r, NormL1)
+                    fastdrift!(r, NormL1, L1)
                     bndthinkick!(r, A, B, K1, irho, max_order)
-                    fastdrift!(r, NormL2)
+                    fastdrift!(r, NormL2, L2)
                     bndthinkick!(r, A, B, K2, irho, max_order)
-                    fastdrift!(r, NormL2)
+                    fastdrift!(r, NormL2, L2)
                     bndthinkick!(r, A, B, K1, irho, max_order)
-                    fastdrift!(r, NormL1)
+                    fastdrift!(r, NormL1, L1)
                 end
     
                 # Quadrupole gradient fringe exit
@@ -129,14 +128,14 @@ function bndthinkick!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A, B, L, irho
     
     
                 # Misalignment at exit
-                if R2 !== nothing
+                if R2 != noRmatrix
                     ATmultmv!(r, R2)
                 end
-                if T2 !== nothing
+                if T2 != noTarray
                     ATaddvv!(r, T2)
                 end
             # end
-        end
+        # end
     
         
         B[1] += sin(KickAngle[1]) / le
@@ -145,7 +144,8 @@ function bndthinkick!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A, B, L, irho
     end
     
     
-    function pass_TPSA!(ele::SBEND, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, num_particles::Int64) where {T, TPS_Dim, Max_TPS_Degree}
+    function pass_TPSA!(ele::SBEND, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, 
+        noTarray::Array{Float64,1}, noRmatrix::Array{Float64,2}) where {T, TPS_Dim, Max_TPS_Degree}
         # ele: SBEND
         # r_in: 6-by-num_particles array
         # num_particles: number of particles
@@ -158,7 +158,7 @@ function bndthinkick!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A, B, L, irho
             ele.FringeQuadEntrance, ele.FringeQuadExit,
             ele.FringeIntM0, ele.FringeIntP0,
             ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures,
-            ele.KickAngle, num_particles)
+            ele.KickAngle, noTarray, noRmatrix)
         return nothing
     end
 # using BenchmarkTools

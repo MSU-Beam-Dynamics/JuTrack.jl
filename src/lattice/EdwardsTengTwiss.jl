@@ -303,7 +303,7 @@ function findm66(seq::Vector{AbstractElement}, dp::Float64, order::Int)
 	py = CTPS(0.0, 4, 6, order)
 	delta = CTPS(dp, 5, 6, order)
 	z = CTPS(0.0, 6, 6, order)
-	rin = [x, px, y, py, delta, z]
+	rin = [x, px, y, py, z, delta]
 	# no radiation, cavity off
 	linepass_TPSA!(seq, rin)
 

@@ -43,7 +43,7 @@ function StrMPoleSymplectic4Pass!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, l
     FringeQuadEntrance, FringeQuadExit, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
     fringeIntM0,  # I0m/K1, I1m/K1, I2m/K1, I3m/K1, Lambda2m/K1 
     fringeIntP0,  # I0p/K1, I1p/K1, I2p/K1, I3p/K1, Lambda2p/K1
-    T1, T2, R1, R2, RApertures, EApertures, KickAngle, num_particles) where {T, TPS_Dim, Max_TPS_Degree}
+    T1, T2, R1, R2, RApertures, EApertures, KickAngle, noTarray, noRmatrix) where {T, TPS_Dim, Max_TPS_Degree}
 
     DRIFT1  =  0.6756035959798286638
     DRIFT2 = -0.1756035959798286639
@@ -72,9 +72,8 @@ function StrMPoleSymplectic4Pass!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, l
 
     # Threads.@threads for c in 1:num_particles
     for c in 1:num_particles
-            norm  = 1.0 / (1.0 + r[5])
-            NormL1 = L1 * norm
-            NormL2 = L2 * norm
+            NormL1 = L1 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
+            NormL2 = L2 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
             # norm = tdiv(1.0, tadd(1.0, r[5]))
             # NormL1 = tmult(L1, norm)
             # NormL2 = tmult(L2, norm)
@@ -98,13 +97,13 @@ function StrMPoleSymplectic4Pass!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, l
 
             # Integrator
             for m in 1:num_int_step
-                fastdrift!(r, NormL1)
+                fastdrift!(r, NormL1, L1)
                 strthinkick!(r, A, B, K1, max_order)
-                fastdrift!(r, NormL2)
+                fastdrift!(r, NormL2, L2)
                 strthinkick!(r, A, B, K2, max_order)
-                fastdrift!(r, NormL2)
+                fastdrift!(r, NormL2, L2)
                 strthinkick!(r, A, B, K1, max_order)
-                fastdrift!(r, NormL1)
+                fastdrift!(r, NormL1, L1)
             end
 
             # if FringeQuadExit != 0 && B[2] != 0
@@ -130,7 +129,7 @@ function StrMPoleSymplectic4Pass!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, l
     return nothing
 end
 
-function pass_TPSA!(ele::KQUAD, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, num_particles::Int64) where {T, TPS_Dim, Max_TPS_Degree}
+function pass_TPSA!(ele::KQUAD, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, noTarray::Array{Float64,1}, noRmatrix::Array{Float64,2}) where {T, TPS_Dim, Max_TPS_Degree}
     # ele: KQUAD
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -139,7 +138,7 @@ function pass_TPSA!(ele::KQUAD, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, 
         PolynomB[2] = ele.k1
         StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
             ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles)
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, noTarray, noRmatrix)
     else
         PolynomB[1] = ele.PolynomB[1]
         PolynomB[2] = ele.PolynomB[2]
@@ -147,12 +146,12 @@ function pass_TPSA!(ele::KQUAD, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, 
         PolynomB[4] = ele.PolynomB[4]
         StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
             ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles)
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, noTarray, noRmatrix)
     end
     return nothing
 end
 
-function pass_TPSA!(ele::KSEXT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, num_particles::Int64) where {T, TPS_Dim, Max_TPS_Degree}
+function pass_TPSA!(ele::KSEXT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, noTarray::Array{Float64,1}, noRmatrix::Array{Float64,2}) where {T, TPS_Dim, Max_TPS_Degree}
     # ele: KSEXT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -161,7 +160,7 @@ function pass_TPSA!(ele::KSEXT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, 
         PolynomB[3] = ele.k2
         StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
             ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles)
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, noTarray, noRmatrix)
     else
         PolynomB[1] = ele.PolynomB[1]
         PolynomB[2] = ele.PolynomB[2]
@@ -169,12 +168,12 @@ function pass_TPSA!(ele::KSEXT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, 
         PolynomB[4] = ele.PolynomB[4]
         StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
             ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles)
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, noTarray, noRmatrix)
     end
     return nothing 
 end
 
-function pass_TPSA!(ele::KOCT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, num_particles::Int64) where {T, TPS_Dim, Max_TPS_Degree}
+function pass_TPSA!(ele::KOCT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, noTarray::Array{Float64,1}, noRmatrix::Array{Float64,2}) where {T, TPS_Dim, Max_TPS_Degree}
     # ele: KOCT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -183,7 +182,7 @@ function pass_TPSA!(ele::KOCT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, n
         PolynomB[4] = ele.k3
         StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
             ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles)
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, noTarray, noRmatrix)
     else
         PolynomB[1] = ele.PolynomB[1]
         PolynomB[2] = ele.PolynomB[2]
@@ -191,7 +190,7 @@ function pass_TPSA!(ele::KOCT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, n
         PolynomB[4] = ele.PolynomB[4]
         StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
             ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles)
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, noTarray, noRmatrix)
     end
     return nothing
 end

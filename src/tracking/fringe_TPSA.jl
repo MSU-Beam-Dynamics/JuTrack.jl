@@ -20,7 +20,7 @@ function QuadFringePassP!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, b2) where
     # r[4] = tminus(r[4], r3tmp)
 
 
-    u = b2 / (12.0 * (1.0 + r[5]))
+    u = b2 / (12.0 * (1.0 + r[6]))
     x2 = r[1]^2
     z2 = r[3]^2
     xz = r[1] * r[3]
@@ -35,7 +35,7 @@ function QuadFringePassP!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, b2) where
     r[3] -= gz
     
     r3tmp = 3.0 * u * (2.0 * xz * r[2] - (x2 + z2) * r[4])
-    r[6] -= (gz * r[4] - gx * r[2]) / (1.0 + r[5])
+    r[5] -= (gz * r[4] - gx * r[2]) / (1.0 + r[6])
     
     r[2] += r1tmp
     r[4] -= r3tmp
@@ -63,7 +63,7 @@ function QuadFringePassN!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, b2) where
     # r[2] = tminus(r[2], r1tmp)
     # r[4] = tadd(r[4], r3tmp)
 
-    u = b2 / (12.0 * (1.0 + r[5]))
+    u = b2 / (12.0 * (1.0 + r[6]))
     x2 = r[1]^2
     z2 = r[3]^2
     xz = r[1] * r[3]
@@ -78,7 +78,7 @@ function QuadFringePassN!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, b2) where
     r[3] += gz
     
     r3tmp = 3.0 * u * (2.0 * xz * r[2] - (x2 + z2) * r[4])
-    r[6] += (gz * r[4] - gx * r[2]) / (1.0 + r[5])
+    r[5] += (gz * r[4] - gx * r[2]) / (1.0 + r[6])
     
     r[2] -= r1tmp
     r[4] += r3tmp
@@ -194,16 +194,16 @@ function edge_fringe_entrance!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, inv_
     fx = inv_rho * tan(edge_angle)
     if method == 1
         # fy = tmult(inv_rho, ttan(tminus(edge_angle, tdiv(fringecorr, tadd(1.0, r[5])))))
-        fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[5]))
+        fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[6]))
     elseif method == 2
         # fy = tmult(inv_rho, tdiv(ttan(tminus(edge_angle, tdiv(fringecorr, tadd(1.0, r[5])))), tadd(1.0, r[5])))
-        fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[5])) / (1.0 + r[5])
+        fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[6])) / (1.0 + r[6])
     elseif method == 3
         # fy = tmult(inv_rho, ttan(tadd(tminus(edge_angle, fringecorr), tdiv(r[2], tadd(1.0, r[5])))))
-        fy = inv_rho * tan(edge_angle - fringecorr + r[2] / (1.0 + r[5]))
+        fy = inv_rho * tan(edge_angle - fringecorr + r[2] / (1.0 + r[6]))
     else  # Fallback to legacy version
         # fy = tmult(inv_rho, ttan(tminus(edge_angle, tdiv(fringecorr, tadd(1.0, r[5])))))
-        fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[5]))
+        fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[6]))
     end
 
     # r[2] = tadd(r[2], tmult(r[1], fx))
@@ -231,16 +231,16 @@ function edge_fringe_exit!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, inv_rho,
     fx = inv_rho * tan(edge_angle)
     if method == 1
         # fy = tmult(inv_rho, ttan(tminus(edge_angle, tdiv(fringecorr, tadd(1.0, r[5])))))
-        fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[5]))
+        fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[6]))
     elseif method == 2
         # fy = tmult(inv_rho, tdiv(ttan(tminus(edge_angle, tdiv(fringecorr, tadd(1.0, r[5])))), tadd(1.0, r[5])))
-        fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[5])) / (1.0 + r[5])
+        fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[6])) / (1.0 + r[6])
     elseif method == 3
         # fy = tmult(inv_rho, ttan(tadd(tminus(edge_angle, fringecorr), tdiv(r[2], tadd(1.0, r[5])))))
-        fy = inv_rho * tan(edge_angle - fringecorr - r[2] / (1.0 + r[5]))
+        fy = inv_rho * tan(edge_angle - fringecorr - r[2] / (1.0 + r[6]))
     else  # Fallback to legacy version
         # fy = tmult(inv_rho, ttan(tminus(edge_angle, tdiv(fringecorr, tadd(1.0, r[5])))))
-        fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[5]))
+        fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[6]))
     end
 
     # r[2] = tadd(r[2], tmult(r[1], fx))

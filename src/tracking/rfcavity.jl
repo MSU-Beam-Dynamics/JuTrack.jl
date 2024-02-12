@@ -17,7 +17,7 @@ function RFCavityPass!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq::F
             end
             r6 = @view r_in[(c-1)*6+1:c*6]
             if !isnan(r6[1])
-                r6[5] += -nv * sin(2 * pi * freq * ((r6[6] - lag) / C0 - (h / freq - T0) * nturn) - philag)
+                r6[6] += -nv * sin(2 * pi * freq * ((r6[5] - lag) / C0 - (h / freq - T0) * nturn) - philag)
             end
         end
     else
@@ -30,7 +30,7 @@ function RFCavityPass!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq::F
             if !isnan(r6[1])
                 # drift-kick-drift
                 drift6!(r6, halflength)
-                r6[5] += -nv * sin(2 * pi * freq * ((r6[6] - lag) / C0 - (h / freq - T0) * nturn) - philag)
+                r6[6] += -nv * sin(2 * pi * freq * ((r6[5] - lag) / C0 - (h / freq - T0) * nturn) - philag)
                 drift6!(r6, halflength)
             end
             if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit
@@ -41,11 +41,11 @@ function RFCavityPass!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq::F
     return nothing
 end
 
-function pass!(ele::RFCA, r_in::Array{Float64,1}, num_particles::Int64, lost_flags::Array{Int64,1})
+function pass!(ele::RFCA, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam, noTarray::Array{Float64,1}, noRmatrix::Array{Float64,2})
     # ele: RFCA
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
-
+    lost_flags = particles.lost_flag
     T0=1.0/ele.freq      # Does not matter since nturns == 0
     nv = ele.volt / ele.energy
     RFCavityPass!(r_in, ele.len, nv, ele.freq, ele.h, ele.lag, ele.philag, 0, T0, num_particles, lost_flags)

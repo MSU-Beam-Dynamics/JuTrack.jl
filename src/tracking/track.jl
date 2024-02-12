@@ -18,18 +18,24 @@ function array_to_matrix(array::Vector{Float64}, n::Int)
     return particles
 end
 
-function linepass!(line::Vector{AbstractElement}, particles::Beam)
+function linepass!(line::Vector, particles::Beam)
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
-    np = particles.np
+    np = particles.nmacro
     particles6 = matrix_to_array(particles.r)
-    lost_flags = particles.lost_flag
     if length(particles6) != np*6
         error("The number of particles does not match the length of the particle array")
     end
+    noTarray = zeros(6)
+    noRmatrix = [1.0 0.0 0.0 0.0 0.0 0.0; 
+                 0.0 1.0 0.0 0.0 0.0 0.0; 
+                 0.0 0.0 1.0 0.0 0.0 0.0; 
+                 0.0 0.0 0.0 1.0 0.0 0.0; 
+                 0.0 0.0 0.0 0.0 1.0 0.0; 
+                 0.0 0.0 0.0 0.0 0.0 1.0]
     for i in eachindex(line)
         # ele = line[i]
-        pass!(line[i], particles6, np, lost_flags)        
+        pass!(line[i], particles6, np, particles, noTarray, noRmatrix)        
     end
     rout = array_to_matrix(particles6, np)
     particles.r = rout
@@ -49,9 +55,16 @@ function linepass_TPSA!(line::Vector{AbstractElement}, rin::Vector{CTPS{T, TPS_D
     if length(rin) != 6
         error("The length of TPSA must be 6")
     end
+    noTarray = zeros(6)
+    noRmatrix = [1.0 0.0 0.0 0.0 0.0 0.0; 
+                 0.0 1.0 0.0 0.0 0.0 0.0; 
+                 0.0 0.0 1.0 0.0 0.0 0.0; 
+                 0.0 0.0 0.0 1.0 0.0 0.0; 
+                 0.0 0.0 0.0 0.0 1.0 0.0; 
+                 0.0 0.0 0.0 0.0 0.0 1.0]
     for i in eachindex(line)
         # ele = line[i]
-        pass_TPSA!(line[i], rin, 1)        
+        pass_TPSA!(line[i], rin, noTarray, noRmatrix)        
     end
     return nothing
 end

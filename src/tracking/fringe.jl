@@ -1,5 +1,5 @@
 function QuadFringePassP!(r::AbstractVector{Float64}, b2::Float64)
-    u = b2 / (12.0 * (1.0 + r[5]))
+    u = b2 / (12.0 * (1.0 + r[6]))
     x2 = r[1]^2
     z2 = r[3]^2
     xz = r[1] * r[3]
@@ -14,7 +14,7 @@ function QuadFringePassP!(r::AbstractVector{Float64}, b2::Float64)
     r[3] -= gz
     
     r3tmp = 3 * u * (2 * xz * r[2] - (x2 + z2) * r[4])
-    r[6] -= (gz * r[4] - gx * r[2]) / (1 + r[5])
+    r[5] -= (gz * r[4] - gx * r[2]) / (1 + r[6])
     
     r[2] += r1tmp
     r[4] -= r3tmp
@@ -22,7 +22,7 @@ function QuadFringePassP!(r::AbstractVector{Float64}, b2::Float64)
 end
 
 function QuadFringePassN!(r::AbstractVector{Float64}, b2::Float64)
-    u = b2 / (12.0 * (1.0 + r[5]))
+    u = b2 / (12.0 * (1.0 + r[6]))
     x2 = r[1]^2
     z2 = r[3]^2
     xz = r[1] * r[3]
@@ -37,7 +37,7 @@ function QuadFringePassN!(r::AbstractVector{Float64}, b2::Float64)
     r[3] += gz
     
     r3tmp = 3 * u * (2 * xz * r[2] - (x2 + z2) * r[4])
-    r[6] += (gz * r[4] - gx * r[2]) / (1 + r[5])
+    r[5] += (gz * r[4] - gx * r[2]) / (1 + r[6])
     
     r[2] -= r1tmp
     r[4] += r3tmp
@@ -88,7 +88,7 @@ function linearQuadFringeElegantEntrance!(r6::AbstractVector{Float64}, b2, fring
     inFringe = -1.0
     fringeIntM = fringeIntP0
     fringeIntP = fringeIntM0
-    delta = r6[5]
+    delta = r6[6]
 
     # determine first linear matrix for this delta
     quadPartialFringeMatrix!(R, b2 / (1 + delta), inFringe, fringeIntM, 1)
@@ -114,7 +114,7 @@ function linearQuadFringeElegantExit!(r6::AbstractVector{Float64}, b2, fringeInt
     inFringe = 1.0
     fringeIntM = fringeIntM0
     fringeIntP = fringeIntP0
-    delta = r6[5]
+    delta = r6[6]
 
     # Determine first linear matrix for this delta
     quadPartialFringeMatrix!(R, b2 / (1 + delta), inFringe, fringeIntM, 1)
@@ -152,13 +152,13 @@ function edge_fringe_entrance!(r::AbstractVector{Float64}, inv_rho, edge_angle, 
 
     fx = inv_rho * tan(edge_angle)
     if method == 1
-        fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[5]))
+        fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[6]))
     elseif method == 2
-        fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[5])) / (1.0 + r[5])
+        fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[6])) / (1.0 + r[6])
     elseif method == 3
-        fy = inv_rho * tan(edge_angle - fringecorr + r[2] / (1.0 + r[5]))
+        fy = inv_rho * tan(edge_angle - fringecorr + r[2] / (1.0 + r[6]))
     else  # Fallback to legacy version
-        fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[5]))
+        fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[6]))
     end
 
     r[2] += r[1] * fx
@@ -183,13 +183,13 @@ function edge_fringe_exit!(r::AbstractVector{Float64}, inv_rho, edge_angle, fint
 
     fx = inv_rho * tan(edge_angle)
     if method == 1
-        fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[5]))
+        fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[6]))
     elseif method == 2
-        fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[5])) / (1.0 + r[5])
+        fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[6])) / (1.0 + r[6])
     elseif method == 3
-        fy = inv_rho * tan(edge_angle - fringecorr - r[2] / (1.0 + r[5]))
+        fy = inv_rho * tan(edge_angle - fringecorr - r[2] / (1.0 + r[6]))
     else  # Fallback to legacy version
-        fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[5]))
+        fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[6]))
     end
 
     r[2] += r[1] * fx

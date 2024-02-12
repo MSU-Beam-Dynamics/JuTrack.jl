@@ -2,7 +2,7 @@ include("../src/JuTrack.jl")
 include("ssrf_ring.jl")
 using. JuTrack
 using Enzyme
-using BenchmarkTools
+# using BenchmarkTools
 Enzyme.API.runtimeActivity!(true)
 
 function test_track(xx)
@@ -81,3 +81,9 @@ end
 # using DelimitedFiles
 # writedlm("ss.txt", ss)
 # writedlm("beta.txt", beta)
+
+D1 = DRIFT(name="D1", len=0.3)
+particles = [0.001 0.0001 0.0005 0.0002 0.01 0.0; 0.001 0.0 0.0 0.0 0.01 0.0]
+beam = Beam(particles)
+linepass!([D1], beam)
+println(beam.r)

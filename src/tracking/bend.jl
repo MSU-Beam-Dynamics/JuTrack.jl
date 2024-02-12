@@ -31,9 +31,9 @@ function bndthinkick!(r::AbstractVector{Float64}, A, B, L, irho, max_order)
         ReSum = ReSumTemp
     end
 
-    r[2] -= L * (ReSum - (r[5] - r[1] * irho) * irho)
+    r[2] -= L * (ReSum - (r[6] - r[1] * irho) * irho)
     r[4] += L * ImSum
-    r[6] += L * irho * r[1]  # Path length
+    r[5] += L * irho * r[1]  # Path length
     return nothing
 end
 
@@ -42,7 +42,7 @@ function BendSymplecticPass!(r::Array{Float64,1}, le::Float64, irho::Float64, A:
     fint1::Float64, fint2::Float64, gap::Float64, FringeQuadEntrance::Int, FringeQuadExit::Int,
     fringeIntM0::Array{Float64,1}, fringeIntP0::Array{Float64,1}, T1::Array{Float64,1}, T2::Array{Float64,1}, 
     R1::Array{Float64,2}, R2::Array{Float64,2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1},
-    KickAngle::Array{Float64,1}, num_particles::Int, lost_flags::Array{Int64,1})
+    KickAngle::Array{Float64,1}, num_particles::Int, lost_flags::Array{Int64,1}, noTarray::Array{Float64,1}, noRmatrix::Array{Float64,2})
     
     DRIFT1 = 0.6756035959798286638
     DRIFT2 = -0.1756035959798286639
@@ -76,15 +76,15 @@ function BendSymplecticPass!(r::Array{Float64,1}, le::Float64, irho::Float64, A:
         end
         r6 = @view r[(c-1)*6+1:c*6]
         if !isnan(r6[1])
-            p_norm = 1.0 / (1.0 + r6[5])
-            NormL1 = L1 * p_norm
-            NormL2 = L2 * p_norm
+            # p_norm = 1.0 / (1.0 + r6[5])
+            NormL1 = L1 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
+            NormL2 = L2 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
 
             # Misalignment at entrance
-            if isnothing(T1)
+            if T1 != noTarray
                 ATaddvv!(r6, T1)
             end
-            if isnothing(R1)
+            if R1 != noRmatrix
                 ATmultmv!(r6, R1)
             end
 
@@ -110,13 +110,13 @@ function BendSymplecticPass!(r::Array{Float64,1}, le::Float64, irho::Float64, A:
 
             # Integrator
             for m in 1:num_int_steps
-                fastdrift!(r6, NormL1)
+                fastdrift!(r6, NormL1, L1)
                 bndthinkick!(r6, A, B, K1, irho, max_order)
-                fastdrift!(r6, NormL2)
+                fastdrift!(r6, NormL2, L2)
                 bndthinkick!(r6, A, B, K2, irho, max_order)
-                fastdrift!(r6, NormL2)
+                fastdrift!(r6, NormL2, L2)
                 bndthinkick!(r6, A, B, K1, irho, max_order)
-                fastdrift!(r6, NormL1)
+                fastdrift!(r6, NormL1, L1)
             end
 
             # Quadrupole gradient fringe exit
@@ -140,10 +140,10 @@ function BendSymplecticPass!(r::Array{Float64,1}, le::Float64, irho::Float64, A:
             # end
 
             # Misalignment at exit
-            if R2 !== nothing
+            if R2 != noRmatrix
                 ATmultmv!(r6, R2)
             end
-            if T2 !== nothing
+            if T2 != noTarray 
                 ATaddvv!(r6, T2)
             end
             if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit
@@ -159,11 +159,11 @@ function BendSymplecticPass!(r::Array{Float64,1}, le::Float64, irho::Float64, A:
 end
 
 
-function pass!(ele::SBEND, r_in::Array{Float64,1}, num_particles::Int64, lost_flags::Array{Int64,1})
+function pass!(ele::SBEND, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam, noTarray::Array{Float64,1}, noRmatrix::Array{Float64,2})
     # ele: SBEND
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
-
+    lost_flags = particles.lost_flag
     irho = ele.angle / ele.len
     BendSymplecticPass!(r_in, ele.len, irho, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
         ele.e1, ele.e2,
@@ -172,7 +172,7 @@ function pass!(ele::SBEND, r_in::Array{Float64,1}, num_particles::Int64, lost_fl
         ele.FringeQuadEntrance, ele.FringeQuadExit,
         ele.FringeIntM0, ele.FringeIntP0,
         ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures,
-        ele.KickAngle, num_particles, lost_flags)
+        ele.KickAngle, num_particles, lost_flags, noTarray, noRmatrix)
     return nothing
 end
 # function f(L, angle)

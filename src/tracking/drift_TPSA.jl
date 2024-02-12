@@ -21,63 +21,61 @@ function ATaddvv!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, dr::Array{Float64
     return nothing
 end
 
-function fastdrift!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, NormL::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
+function fastdrift!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, NormL::CTPS{T, TPS_Dim, Max_TPS_Degree}, 
+    le::Float64) where {T, TPS_Dim, Max_TPS_Degree}
     # NormL=(Physical Length)/(1+delta)  is computed externally to speed up calculations
     # in the loop if momentum deviation (delta) does not change
     # such as in 4-th order symplectic integrator w/o radiation
-    # r[1] = tadd(r[1], tmult(NormL, r[2]))
-    # r[3] = tadd(r[3], tmult(NormL, r[4]))
-    # r[6] = tadd(r[6], tmult(NormL, tdiv(tadd(tmult(r[2], r[2]), tmult(r[4], r[4])), tmult(2.0, tadd(1.0, r[5])))))    
+    # AT uses small angle approximation pz = 1 + delta.
+    # Here we use pz = sqrt((1 + delta)^2 - px^2 - py^2) for precise calculation   
     r[1] += NormL * r[2]
     r[3] += NormL * r[4]
-    r[6] += NormL * (r[2]^2 + r[4]^2) / (2.0*(1.0+r[5]))
+    r[5] += NormL * (1 + r[6]) - le
     return nothing 
 end
 
 function drift6!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le::Float64) where {T, TPS_Dim, Max_TPS_Degree}
-    p_norm = 1.0 / (1.0 + r[5])
-    NormL = le * p_norm
-    # r[1] = tadd(r[1], tmult(NormL, r[2]))
-    # r[3] = tadd(r[3], tmult(NormL, r[4]))
-    # r[6] = tadd(r[6], tmult(NormL, tdiv(tadd(tmult(r[2], r[2]), tmult(r[4], r[4])), tmult(2.0, tadd(1.0, r[5])))))
+    NormL = le / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
+
     r[1] += NormL * r[2]
     r[3] += NormL * r[4]
-    r[6] += NormL * p_norm * (r[2] * r[2] + r[4] * r[4]) / 2.0
+    r[5] += NormL * (1.0 + r[6]) - le
     return nothing
 end 
 function DriftPass_TPSA!(r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le, T1, T2, R1, R2, 
-    RApertures, EApertures, num_particles) where {T, TPS_Dim, Max_TPS_Degree}
+    RApertures, EApertures, noTarray, noRmatrix) where {T, TPS_Dim, Max_TPS_Degree}
     # Threads.@threads for c in 1:num_particles
-    for c in 1:num_particles
+    # for c in 1:num_particles
         # if !isnan(r_in[1].map[1])
             # Misalignment at entrance
-            if !isnothing(T1)
+            if T1 != noTarray
                 ATaddvv!(r_in, T1)
             end
-            if !isnothing(R1)
+            if R1 != noRmatrix
                 ATmultmv!(r_in, R1)
             end
 
             drift6!(r_in, le)
 
             # Misalignment at exit
-            if !isnothing(R2)
+            if R2 != noRmatrix
                 ATmultmv!(r_in, R2)
             end
-            if !isnothing(T2)
+            if T2 != noTarray
                 ATaddvv!(r_in, T2)
             end
         # end
-    end
+    # end
     return nothing
 end
 
-function pass_TPSA!(ele::DRIFT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, num_particles::Int64) where {T, TPS_Dim, Max_TPS_Degree}
+function pass_TPSA!(ele::DRIFT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}},
+    noTarray::Array{Float64,1}, noRmatrix::Array{Float64,2}) where {T, TPS_Dim, Max_TPS_Degree}
     # ele: EDRIFT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
 
-    DriftPass_TPSA!(r_in, ele.len, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles)
+    DriftPass_TPSA!(r_in, ele.len, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, noTarray, noRmatrix)
     return nothing
 end
 
