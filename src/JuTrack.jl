@@ -20,6 +20,15 @@ include("tracking/rfcavity_TPSA.jl")
 include("tracking/track.jl")
 include("lattice/EdwardsTengTwiss.jl")
 
+# multi-threading
+include("tracking/bend_mthread.jl")
+include("tracking/drift_mthread.jl")
+include("tracking/multipole_mthread.jl")
+include("tracking/rfcavity_mthread.jl")
+include("tracking/crabcavity_mthread.jl")
+include("tracking/lorentz_mthread.jl")
+include("tracking/track_mthread.jl")
+
 include("tracking/lorentz.jl")
 include("tracking/crabcavity.jl")
 include("tracking/strongbb.jl")
@@ -37,5 +46,6 @@ export CTPS, cst, findindex, PolyMap, getindexmap, tadd, tminus, tmult, tdiv, tp
 export DRIFT, KQUAD, KSEXT, KOCT, SBEND, RFCA, AbstractElement
 export EdwardsTengTwiss, AbstractTwiss, twissPropagate, findm66, periodicEdwardsTengTwiss, Twissline
 export linepass!, pass!, ringpass!, linepass_TPSA!, pass_TPSA!, ringpass_TPSA!
+export plinepass!, pringpass!, pass_P!
 
 end

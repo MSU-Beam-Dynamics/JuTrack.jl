@@ -2,7 +2,7 @@ using LinearAlgebra
 using Distributions
 
 # linear algebra functions
-function det(A::Matrix{Float64})
+function det1(A::Matrix{Float64})
     # Ensure the matrix is square
     if size(A, 1) != size(A, 2)
         error("Matrix must be square")
@@ -113,7 +113,7 @@ function get_emittance!(beam::Beam)
         end
     end
     @inbounds for i in 1:3
-        beam.emittance[i] = sqrt(det(beam.moment2nd[2*i-1:2*i,2*i-1:2*i]))
+        beam.emittance[i] = sqrt(det1(beam.moment2nd[2*i-1:2*i,2*i-1:2*i]))
     end
     @inbounds for i in 1:6
         beam.beamsize[i] = sqrt(beam.moment2nd[i, i])

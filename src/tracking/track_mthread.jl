@@ -18,7 +18,7 @@ function array_to_matrix(array::Vector{Float64}, n::Int)
     return particles
 end
 
-function linepass!(line, particles::Beam)
+function plinepass!(line, particles::Beam)
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     np = particles.nmacro
@@ -35,47 +35,20 @@ function linepass!(line, particles::Beam)
                  0.0 0.0 0.0 0.0 0.0 1.0]
     for i in eachindex(line)
         # ele = line[i]
-        pass!(line[i], particles6, np, particles, noTarray, noRmatrix)        
+        pass_P!(line[i], particles6, np, particles, noTarray, noRmatrix)        
     end
     rout = array_to_matrix(particles6, np)
     particles.r = rout
     return nothing
 end
 
-function ringpass!(line::Vector{AbstractElement}, particles::Beam, nturn::Int)
+function pringpass!(line::Vector{AbstractElement}, particles::Beam, nturn::Int)
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     for i in 1:nturn
-        linepass!(line, particles)    
+        plinepass!(line, particles)    
     end
     return nothing
 end
 
-function linepass_TPSA!(line::Vector{AbstractElement}, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) where {T, TPS_Dim, Max_TPS_Degree}
-    if length(rin) != 6
-        error("The length of TPSA must be 6")
-    end
-    noTarray = zeros(6)
-    noRmatrix = [1.0 0.0 0.0 0.0 0.0 0.0; 
-                 0.0 1.0 0.0 0.0 0.0 0.0; 
-                 0.0 0.0 1.0 0.0 0.0 0.0; 
-                 0.0 0.0 0.0 1.0 0.0 0.0; 
-                 0.0 0.0 0.0 0.0 1.0 0.0; 
-                 0.0 0.0 0.0 0.0 0.0 1.0]
-    for i in eachindex(line)
-        # ele = line[i]
-        pass_TPSA!(line[i], rin, noTarray, noRmatrix)        
-    end
-    return nothing
-end
-
-function ringpass_TPSA!(line::Vector{AbstractElement}, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, nturn::Int) where {T, TPS_Dim, Max_TPS_Degree}
-    if length(rin) != 6
-        error("The length of TPSA must be 6")
-    end
-    for i in 1:nturn
-        linepass_TPSA!(line, rin)    
-    end
-    return nothing
-end
 
