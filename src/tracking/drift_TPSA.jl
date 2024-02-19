@@ -30,7 +30,7 @@ function fastdrift!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, NormL::CTPS{T, 
     # Here we use pz = sqrt((1 + delta)^2 - px^2 - py^2) for precise calculation   
     r[1] += NormL * r[2]
     r[3] += NormL * r[4]
-    r[5] += NormL * (1 + r[6]) - le
+    r[5] += NormL * (1.0 + r[6]) - le
     return nothing 
 end
 

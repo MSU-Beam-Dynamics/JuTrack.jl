@@ -99,18 +99,145 @@ function test_track(xx)
     BendingAngle = pi/20
     BD1 = SBEND(name="BD1", len=0.72, angle=BendingAngle/2, e1=BendingAngle/2, e2=0.0 )
     BD2 = SBEND(name="BD2", len=0.72, angle=BendingAngle/2, e1=0.0, e2=BendingAngle/2 )
-    M1 = AbstractElement[DL,  QL1, D1,  S1,   D2,   QL2H, QL2H,  D33, 
+    M1 = (DL,  QL1, D1,  S1,   D2,   QL2H, QL2H,  D33, 
     QL3,  D51,  S2,  D52,  BD1, BD2,  D6,   QL4,
     D7,   SD,   D8, QL5,  D9,  SF,
     D9,   QM5,  D8,  SD,   D7,  QM4,  D6,  BD1, BD2,
-    D5,   QM3,  D4,  S4,   D3,  Q2H, Q2H,  D2,  S3,  D1, QM1, DM]
-    linepass!(M1, beam)
+    D5,   QM3,  D4,  S4,   D3,  Q2H, Q2H,  D2,  S3,  D1, QM1, DM)
+    M2 =(DM,   QM1, D1,   S3,  D2,   Q2H, Q2H, D3,  
+    S4,   D4 ,  QM3, D5,  BD1, BD2,  D6,   QM4,  
+    D7,   SD ,  D8,   QM5, D9,  SF, 
+    D9,   QM5,  D8,  SD,  D7,  QM4,  D6,  BD1, BD2, 
+    D5,   QM3,  D4,  S6,   D3,  Q2H, Q2H,  D2,  S5,  D1, QM1, DM)
+  
+M3 = (DM,   QM1,  D1,   S5,  D2,   Q2H, Q2H, D3,  
+    S6,   D4,   QM3,  D5,  BD1, BD2,  D6,   QM4,  
+    D7,   SD,   D8,    QM5, D9,  SF, 
+    D9,   QM5,  D8,   SD,  D7,  QM4,  D6,  BD1, BD2, 
+    D5,   QM3,  D4,   S6,  D3,  Q2H, Q2H,  D2,  S5,  D1,  QM1, DM)
+    
+M4 = (DM,   QM1,   D1,   S5,  D2,  Q2H, Q2H,  D3,  
+    S6,   D4 ,  QM3,  D5,  BD1, BD2,  D6,   QM4,  
+    D7,   SD ,  D8,   QM5, D9,  SF, 
+    D9,   QM5,  D8,   SD,   D7,  QM4,  D6,  BD1, BD2, 
+    D5,   QM3,  D4,   S4,  D3,  Q2H, Q2H,  D2,  S3,  D1,  QM1, DM)
+
+M5 =(DM,   QM1,  D1,  S3,  D2,  Q2H, Q2H,  D3,  
+    S4,   D4,   QM3,  D5,  BD1, BD2,  D6,   QM4,  
+    D7,   SD,   D8,   QM5, D9,  SF, 
+    D9,   QL5,  D8,   SD,  D7, QL4,  D6,  BD1, BD2,
+    D52,  S2,   D51,  QL3,  D33,  QL2H, QL2H,  D2, S1,  D1,  QL1,  DL)
+
+    CELL = (M1, M2, M3, M4, M5)
+    ring = (CELL, CELL, CELL, CELL)
+
+    # ring = (DL,  QL1, D1,  S1,   D2,   QL2H, QL2H,  D33, 
+    # QL3,  D51,  S2,  D52,  BD1, BD2,  D6,   QL4,
+    # D7,   SD,   D8, QL5,  D9,  SF,
+    # D9,   QM5,  D8,  SD,   D7,  QM4,  D6,  BD1, BD2,
+    # D5,   QM3,  D4,  S4,   D3,  Q2H, Q2H,  D2,  S3,  D1, QM1, DM,
+    # DM,   QM1, D1,   S3,  D2,   Q2H, Q2H, D3,  
+    # S4,   D4 ,  QM3, D5,  BD1, BD2,  D6,   QM4,  
+    # D7,   SD ,  D8,   QM5, D9,  SF, 
+    # D9,   QM5,  D8,  SD,  D7,  QM4,  D6,  BD1, BD2, 
+    # D5,   QM3,  D4,  S6,   D3,  Q2H, Q2H,  D2,  S5,  D1, QM1, DM,
+    # DM,   QM1,  D1,   S5,  D2,   Q2H, Q2H, D3,  
+    # S6,   D4,   QM3,  D5,  BD1, BD2,  D6,   QM4,  
+    # D7,   SD,   D8,    QM5, D9,  SF, 
+    # D9,   QM5,  D8,   SD,  D7,  QM4,  D6,  BD1, BD2, 
+    # D5,   QM3,  D4,   S6,  D3,  Q2H, Q2H,  D2,  S5,  D1,  QM1, DM,
+    # DM,   QM1,   D1,   S5,  D2,  Q2H, Q2H,  D3,  
+    # S6,   D4 ,  QM3,  D5,  BD1, BD2,  D6,   QM4,  
+    # D7,   SD ,  D8,   QM5, D9,  SF, 
+    # D9,   QM5,  D8,   SD,   D7,  QM4,  D6,  BD1, BD2, 
+    # D5,   QM3,  D4,   S4,  D3,  Q2H, Q2H,  D2,  S3,  D1,  QM1, DM,
+    # DM,   QM1,  D1,  S3,  D2,  Q2H, Q2H,  D3,  
+    # S4,   D4,   QM3,  D5,  BD1, BD2,  D6,   QM4,  
+    # D7,   SD,   D8,   QM5, D9,  SF, 
+    # D9,   QL5,  D8,   SD,  D7, QL4,  D6,  BD1, BD2,
+    # D52,  S2,   D51,  QL3,  D33,  QL2H, QL2H,  D2, S1,  D1,  QL1,  DL,
+    # DL,  QL1, D1,  S1,   D2,   QL2H, QL2H,  D33, 
+    # QL3,  D51,  S2,  D52,  BD1, BD2,  D6,   QL4,
+    # D7,   SD,   D8, QL5,  D9,  SF,
+    # D9,   QM5,  D8,  SD,   D7,  QM4,  D6,  BD1, BD2,
+    # D5,   QM3,  D4,  S4,   D3,  Q2H, Q2H,  D2,  S3,  D1, QM1, DM,
+    # DM,   QM1, D1,   S3,  D2,   Q2H, Q2H, D3,  
+    # S4,   D4 ,  QM3, D5,  BD1, BD2,  D6,   QM4,  
+    # D7,   SD ,  D8,   QM5, D9,  SF, 
+    # D9,   QM5,  D8,  SD,  D7,  QM4,  D6,  BD1, BD2, 
+    # D5,   QM3,  D4,  S6,   D3,  Q2H, Q2H,  D2,  S5,  D1, QM1, DM,
+    # DM,   QM1,  D1,   S5,  D2,   Q2H, Q2H, D3,  
+    # S6,   D4,   QM3,  D5,  BD1, BD2,  D6,   QM4,  
+    # D7,   SD,   D8,    QM5, D9,  SF, 
+    # D9,   QM5,  D8,   SD,  D7,  QM4,  D6,  BD1, BD2, 
+    # D5,   QM3,  D4,   S6,  D3,  Q2H, Q2H,  D2,  S5,  D1,  QM1, DM,
+    # DM,   QM1,   D1,   S5,  D2,  Q2H, Q2H,  D3,  
+    # S6,   D4 ,  QM3,  D5,  BD1, BD2,  D6,   QM4,  
+    # D7,   SD ,  D8,   QM5, D9,  SF, 
+    # D9,   QM5,  D8,   SD,   D7,  QM4,  D6,  BD1, BD2, 
+    # D5,   QM3,  D4,   S4,  D3,  Q2H, Q2H,  D2,  S3,  D1,  QM1, DM,
+    # DM,   QM1,  D1,  S3,  D2,  Q2H, Q2H,  D3,  
+    # S4,   D4,   QM3,  D5,  BD1, BD2,  D6,   QM4,  
+    # D7,   SD,   D8,   QM5, D9,  SF, 
+    # D9,   QL5,  D8,   SD,  D7, QL4,  D6,  BD1, BD2,
+    # D52,  S2,   D51,  QL3,  D33,  QL2H, QL2H,  D2, S1,  D1,  QL1,  DL,
+    # DL,  QL1, D1,  S1,   D2,   QL2H, QL2H,  D33, 
+    # QL3,  D51,  S2,  D52,  BD1, BD2,  D6,   QL4,
+    # D7,   SD,   D8, QL5,  D9,  SF,
+    # D9,   QM5,  D8,  SD,   D7,  QM4,  D6,  BD1, BD2,
+    # D5,   QM3,  D4,  S4,   D3,  Q2H, Q2H,  D2,  S3,  D1, QM1, DM,
+    # DM,   QM1, D1,   S3,  D2,   Q2H, Q2H, D3,  
+    # S4,   D4 ,  QM3, D5,  BD1, BD2,  D6,   QM4,  
+    # D7,   SD ,  D8,   QM5, D9,  SF, 
+    # D9,   QM5,  D8,  SD,  D7,  QM4,  D6,  BD1, BD2, 
+    # D5,   QM3,  D4,  S6,   D3,  Q2H, Q2H,  D2,  S5,  D1, QM1, DM,
+    # DM,   QM1,  D1,   S5,  D2,   Q2H, Q2H, D3,  
+    # S6,   D4,   QM3,  D5,  BD1, BD2,  D6,   QM4,  
+    # D7,   SD,   D8,    QM5, D9,  SF, 
+    # D9,   QM5,  D8,   SD,  D7,  QM4,  D6,  BD1, BD2, 
+    # D5,   QM3,  D4,   S6,  D3,  Q2H, Q2H,  D2,  S5,  D1,  QM1, DM,
+    # DM,   QM1,   D1,   S5,  D2,  Q2H, Q2H,  D3,  
+    # S6,   D4 ,  QM3,  D5,  BD1, BD2,  D6,   QM4,  
+    # D7,   SD ,  D8,   QM5, D9,  SF, 
+    # D9,   QM5,  D8,   SD,   D7,  QM4,  D6,  BD1, BD2, 
+    # D5,   QM3,  D4,   S4,  D3,  Q2H, Q2H,  D2,  S3,  D1,  QM1, DM,
+    # DM,   QM1,  D1,  S3,  D2,  Q2H, Q2H,  D3,  
+    # S4,   D4,   QM3,  D5,  BD1, BD2,  D6,   QM4,  
+    # D7,   SD,   D8,   QM5, D9,  SF, 
+    # D9,   QL5,  D8,   SD,  D7, QL4,  D6,  BD1, BD2,
+    # D52,  S2,   D51,  QL3,  D33,  QL2H, QL2H,  D2, S1,  D1,  QL1,  DL,
+    # DL,  QL1, D1,  S1,   D2,   QL2H, QL2H,  D33, 
+    # QL3,  D51,  S2,  D52,  BD1, BD2,  D6,   QL4,
+    # D7,   SD,   D8, QL5,  D9,  SF,
+    # D9,   QM5,  D8,  SD,   D7,  QM4,  D6,  BD1, BD2,
+    # D5,   QM3,  D4,  S4,   D3,  Q2H, Q2H,  D2,  S3,  D1, QM1, DM,
+    # DM,   QM1, D1,   S3,  D2,   Q2H, Q2H, D3,  
+    # S4,   D4 ,  QM3, D5,  BD1, BD2,  D6,   QM4,  
+    # D7,   SD ,  D8,   QM5, D9,  SF, 
+    # D9,   QM5,  D8,  SD,  D7,  QM4,  D6,  BD1, BD2, 
+    # D5,   QM3,  D4,  S6,   D3,  Q2H, Q2H,  D2,  S5,  D1, QM1, DM,
+    # DM,   QM1,  D1,   S5,  D2,   Q2H, Q2H, D3,  
+    # S6,   D4,   QM3,  D5,  BD1, BD2,  D6,   QM4,  
+    # D7,   SD,   D8,    QM5, D9,  SF, 
+    # D9,   QM5,  D8,   SD,  D7,  QM4,  D6,  BD1, BD2, 
+    # D5,   QM3,  D4,   S6,  D3,  Q2H, Q2H,  D2,  S5,  D1,  QM1, DM,
+    # DM,   QM1,   D1,   S5,  D2,  Q2H, Q2H,  D3,  
+    # S6,   D4 ,  QM3,  D5,  BD1, BD2,  D6,   QM4,  
+    # D7,   SD ,  D8,   QM5, D9,  SF, 
+    # D9,   QM5,  D8,   SD,   D7,  QM4,  D6,  BD1, BD2, 
+    # D5,   QM3,  D4,   S4,  D3,  Q2H, Q2H,  D2,  S3,  D1,  QM1, DM,
+    # DM,   QM1,  D1,  S3,  D2,  Q2H, Q2H,  D3,  
+    # S4,   D4,   QM3,  D5,  BD1, BD2,  D6,   QM4,  
+    # D7,   SD,   D8,   QM5, D9,  SF, 
+    # D9,   QL5,  D8,   SD,  D7, QL4,  D6,  BD1, BD2,
+    # D52,  S2,   D51,  QL3,  D33,  QL2H, QL2H,  D2, S1,  D1,  QL1,  DL)
+    plinepass!(ring, beam)
     return beam.r[1,1]
 end
 println(test_track(-1.063770))
 grad = autodiff(Forward, test_track,  Duplicated, Duplicated(-1.063770, 1.0))
 println(grad)
-@time grad = gradient(Forward, test_track, x, Val(1))
+@time grad = autodiff(Forward, test_track,  Duplicated, Duplicated(-1.063770, 1.0))
 
 
 

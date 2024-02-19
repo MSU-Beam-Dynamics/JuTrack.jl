@@ -71,7 +71,7 @@ function StrMPoleSymplectic4Pass!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, l
     A[1] += sin(KickAngle[2])/le
 
     # Threads.@threads for c in 1:num_particles
-    for c in 1:num_particles
+    # for c in 1:num_particles
             NormL1 = L1 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
             NormL2 = L2 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
             # norm = tdiv(1.0, tadd(1.0, r[5]))
@@ -122,7 +122,7 @@ function StrMPoleSymplectic4Pass!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, l
                 ATaddvv!(r, T2)
             end
         # end
-    end
+    # end
 
     B[1] += sin(KickAngle[1]) / le
     A[1] -= sin(KickAngle[2]) / le
