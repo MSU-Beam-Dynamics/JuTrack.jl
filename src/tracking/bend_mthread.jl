@@ -175,3 +175,19 @@ function pass_P!(ele::SBEND, r_in::Array{Float64,1}, num_particles::Int64, parti
         ele.KickAngle, num_particles, lost_flags)
     return nothing
 end
+function pass_P!(ele::RBEND, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+    # ele: RBEND
+    # r_in: 6-by-num_particles array
+    # num_particles: number of particles
+    lost_flags = particles.lost_flag
+    irho = ele.angle / ele.len
+    BendSymplecticPass_P!(r_in, ele.len, irho, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
+        ele.e1, ele.e2,
+        ele.FringeBendEntrance, ele.FringeBendExit,
+        ele.fint1, ele.fint2, ele.gap,
+        ele.FringeQuadEntrance, ele.FringeQuadExit,
+        ele.FringeIntM0, ele.FringeIntP0,
+        ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures,
+        ele.KickAngle, num_particles, lost_flags)
+    return nothing
+end

@@ -109,6 +109,45 @@ end
     KickAngle::Array{Float64,1} = zeros(2)
 end
 
+struct RBEND <: AbstractElement
+    name::String
+    len::Float64 
+    angle::Float64 
+    e1::Float64 
+    e2::Float64 
+    PolynomA::Array{Float64,1}
+    PolynomB::Array{Float64,1} 
+    MaxOrder::Int64 
+    NumIntSteps::Int64
+    fint1::Float64
+    fint2::Float64
+    gap::Float64
+    FringeBendEntrance::Int64
+    FringeBendExit::Int64
+    FringeQuadEntrance::Int64
+    FringeQuadExit::Int64
+    FringeIntM0::Array{Float64,1}
+    FringeIntP0::Array{Float64,1}
+    T1::Array{Float64,1}
+    T2::Array{Float64,1}
+    R1::Array{Float64,2}
+    R2::Array{Float64,2}     
+    RApertures::Array{Float64,1}
+    EApertures::Array{Float64,1}
+    KickAngle::Array{Float64,1}
+end
+function RBEND(;name::String = "RBend", len::Float64 = 0.0, angle::Float64 = 0.0, PolynomA::Array{Float64,1} = zeros(4), 
+                PolynomB::Array{Float64,1} = zeros(4), MaxOrder::Int64 = 0, NumIntSteps::Int64 = 10, fint1::Float64 = 0.0, 
+                fint2::Float64 = 0.0, gap::Float64 = 0.0, FringeBendEntrance::Int64 = 0, FringeBendExit::Int64 = 0, 
+                FringeQuadEntrance::Int64 = 0, FringeQuadExit::Int64 = 0, FringeIntM0::Array{Float64,1} = zeros(5), 
+                FringeIntP0::Array{Float64,1} = zeros(5), T1::Array{Float64,1} = zeros(6), T2::Array{Float64,1} = zeros(6), 
+                R1::Array{Float64,2} = zeros(6,6), R2::Array{Float64,2} = zeros(6,6), RApertures::Array{Float64,1} = zeros(6), 
+                EApertures::Array{Float64,1} = zeros(6), KickAngle::Array{Float64,1} = zeros(2))
+    e1 = angle/2.0
+    e2 = angle/2.0
+    return RBEND(name, len, angle, e1, e2, PolynomA, PolynomB, MaxOrder, NumIntSteps, fint1, fint2, gap, FringeBendEntrance, FringeBendExit, FringeQuadEntrance, FringeQuadExit, FringeIntM0, FringeIntP0, T1, T2, R1, R2, RApertures, EApertures, KickAngle)
+end
+
 
 @kwdef struct RFCA <: AbstractElement
     name::String = "RFCA"
