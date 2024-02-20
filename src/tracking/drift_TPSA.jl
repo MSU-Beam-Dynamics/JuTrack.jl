@@ -43,25 +43,25 @@ function drift6!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le::Float64) where
     return nothing
 end 
 function DriftPass_TPSA!(r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le, T1, T2, R1, R2, 
-    RApertures, EApertures, noTarray, noRmatrix) where {T, TPS_Dim, Max_TPS_Degree}
+    RApertures, EApertures) where {T, TPS_Dim, Max_TPS_Degree}
     # Threads.@threads for c in 1:num_particles
     # for c in 1:num_particles
         # if !isnan(r_in[1].map[1])
             # Misalignment at entrance
-            if T1 != noTarray
+            if T1 != zeros(6)
                 ATaddvv!(r_in, T1)
             end
-            if R1 != noRmatrix
+            if R1 != zeros(6, 6)
                 ATmultmv!(r_in, R1)
             end
 
             drift6!(r_in, le)
 
             # Misalignment at exit
-            if R2 != noRmatrix
+            if R2 != zeros(6, 6)
                 ATmultmv!(r_in, R2)
             end
-            if T2 != noTarray
+            if T2 != zeros(6)
                 ATaddvv!(r_in, T2)
             end
         # end
@@ -69,13 +69,16 @@ function DriftPass_TPSA!(r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le, T1,
     return nothing
 end
 
-function pass_TPSA!(ele::DRIFT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}},
-    noTarray::Array{Float64,1}, noRmatrix::Array{Float64,2}) where {T, TPS_Dim, Max_TPS_Degree}
+function pass_TPSA!(ele::DRIFT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) where {T, TPS_Dim, Max_TPS_Degree}
     # ele: EDRIFT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
 
-    DriftPass_TPSA!(r_in, ele.len, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, noTarray, noRmatrix)
+    DriftPass_TPSA!(r_in, ele.len, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures)
+    return nothing
+end
+
+function pass_TPSA!(ele::MARKER, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) where {T, TPS_Dim, Max_TPS_Degree}
     return nothing
 end
 

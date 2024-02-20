@@ -2,6 +2,10 @@ include("optics.jl")
 using Base: @kwdef
 abstract type AbstractElement end
 
+@kwdef struct MARKER <: AbstractElement
+    name::String = "MARKER"
+end
+
 @kwdef struct DRIFT <: AbstractElement
     name::String = "EDrift"
     len::Float64 = 0.0
@@ -117,6 +121,15 @@ end
     energy::Float64 = 0.0
 end
 
+@kwdef struct SOLENOID <: AbstractElement
+    name::String = "Solenoid"
+    len::Float64 = 0.0
+    ks::Float64 = 0.0
+    T1::Array{Float64,1} = zeros(6)
+    T2::Array{Float64,1} = zeros(6)
+    R1::Array{Float64,2} = zeros(6,6)
+    R2::Array{Float64,2} = zeros(6,6)
+end
 ###########################################
 # the following elements may not be symplectic and may not work with Enzyme
 @kwdef struct CrabCavity <: AbstractElement

@@ -42,7 +42,7 @@ function BendSymplecticPass!(r::Array{Float64,1}, le::Float64, irho::Float64, A:
     fint1::Float64, fint2::Float64, gap::Float64, FringeQuadEntrance::Int, FringeQuadExit::Int,
     fringeIntM0::Array{Float64,1}, fringeIntP0::Array{Float64,1}, T1::Array{Float64,1}, T2::Array{Float64,1}, 
     R1::Array{Float64,2}, R2::Array{Float64,2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1},
-    KickAngle::Array{Float64,1}, num_particles::Int, lost_flags::Array{Int64,1}, noTarray::Array{Float64,1}, noRmatrix::Array{Float64,2})
+    KickAngle::Array{Float64,1}, num_particles::Int, lost_flags::Array{Int64,1})
     
     DRIFT1 = 0.6756035959798286638
     DRIFT2 = -0.1756035959798286639
@@ -81,10 +81,10 @@ function BendSymplecticPass!(r::Array{Float64,1}, le::Float64, irho::Float64, A:
             NormL2 = L2 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
 
             # Misalignment at entrance
-            if T1 != noTarray
+            if T1 != zeros(6)
                 ATaddvv!(r6, T1)
             end
-            if R1 != noRmatrix
+            if R1 != zeros(6, 6)
                 ATmultmv!(r6, R1)
             end
 
@@ -140,10 +140,10 @@ function BendSymplecticPass!(r::Array{Float64,1}, le::Float64, irho::Float64, A:
             # end
 
             # Misalignment at exit
-            if R2 != noRmatrix
+            if R2 != zeros(6, 6)
                 ATmultmv!(r6, R2)
             end
-            if T2 != noTarray 
+            if T2 != zeros(6) 
                 ATaddvv!(r6, T2)
             end
             if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit
@@ -159,7 +159,7 @@ function BendSymplecticPass!(r::Array{Float64,1}, le::Float64, irho::Float64, A:
 end
 
 
-function pass!(ele::SBEND, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam, noTarray::Array{Float64,1}, noRmatrix::Array{Float64,2})
+function pass!(ele::SBEND, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
     # ele: SBEND
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -172,7 +172,7 @@ function pass!(ele::SBEND, r_in::Array{Float64,1}, num_particles::Int64, particl
         ele.FringeQuadEntrance, ele.FringeQuadExit,
         ele.FringeIntM0, ele.FringeIntP0,
         ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures,
-        ele.KickAngle, num_particles, lost_flags, noTarray, noRmatrix)
+        ele.KickAngle, num_particles, lost_flags)
     return nothing
 end
 # function f(L, angle)

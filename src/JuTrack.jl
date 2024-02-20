@@ -17,6 +17,8 @@ include("tracking/bend_TPSA.jl")
 include("tracking/drift_TPSA.jl")
 include("tracking/multipole_TPSA.jl")
 include("tracking/rfcavity_TPSA.jl")
+include("tracking/solenoid.jl")
+include("tracking/solenoid_TPSA.jl")
 include("tracking/track.jl")
 include("lattice/EdwardsTengTwiss.jl")
 
@@ -27,6 +29,7 @@ include("tracking/multipole_mthread.jl")
 include("tracking/rfcavity_mthread.jl")
 include("tracking/crabcavity_mthread.jl")
 include("tracking/lorentz_mthread.jl")
+include("tracking/solenoid_mthread.jl")
 include("tracking/track_mthread.jl")
 
 include("tracking/lorentz.jl")
@@ -43,7 +46,7 @@ export initilize_6DGaussiandist!, get_emittance!, get_2nd_moment!, get_centroid!
 export initilize_zslice!
 
 export CTPS, cst, findindex, PolyMap, getindexmap, tadd, tminus, tmult, tdiv, tpow, tsqrt, tsin, tcos, ttan, tcosh, tsinh, reassign!
-export DRIFT, KQUAD, KSEXT, KOCT, SBEND, RFCA, AbstractElement
+export AbstractElement, DRIFT, KQUAD, KSEXT, KOCT, SBEND, RFCA, SOLENOID, MARKER
 export EdwardsTengTwiss, AbstractTwiss, twissPropagate, findm66, periodicEdwardsTengTwiss, Twissline
 export linepass!, pass!, ringpass!, linepass_TPSA!, pass_TPSA!, ringpass_TPSA!
 export plinepass!, pringpass!, pass_P!

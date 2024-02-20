@@ -40,20 +40,20 @@ function AccelCavityPass_P!(r::Array{Float64,1}, cavity::AccelCavity, beta2E::Fl
     return nothing
 end
 
-function pass_P!(ele::CrabCavity, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam, noTarray::Array{Float64,1}, noRmatrix::Array{Float64,2})
+function pass_P!(ele::CrabCavity, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
     beta2E = particles.beta^2 * particles.energy
     lost_flags = particles.lost_flag
     CrabCavityPass_P!(r_in, ele, beta2E, num_particles,lost_flags)
     return nothing
 end
 
-function pass_P!(ele::easyCrabCavity, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam, noTarray::Array{Float64,1}, noRmatrix::Array{Float64,2})
+function pass_P!(ele::easyCrabCavity, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
     lost_flags = particles.lost_flag
     easyCrabCavityPass_P!(r_in, ele, num_particles,lost_flags)
     return nothing
 end
 
-function pass_P!(ele::AccelCavity, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam, noTarray::Array{Float64,1}, noRmatrix::Array{Float64,2})
+function pass_P!(ele::AccelCavity, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
     lost_flags = particles.lost_flag
     beta2E = particles.beta^2 * particles.energy
     AccelCavityPass_P!(r_in, ele, beta2E, num_particles,lost_flags)

@@ -44,7 +44,7 @@ function drift6!(r::AbstractVector{Float64}, le::Float64)
 end 
 function DriftPass!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64,1}, T2::Array{Float64,1}, 
     R1::Array{Float64,2}, R2::Array{Float64, 2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, 
-    num_particles::Int, lost_flags::Array{Int64,1}, noTarray::Array{Float64,1}, noRmatrix::Array{Float64,2})
+    num_particles::Int, lost_flags::Array{Int64,1})
     # Threads.@threads for c in 1:num_particles
     for c in 1:num_particles
         if lost_flags[c] == 1
@@ -53,10 +53,10 @@ function DriftPass!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64,1}, T
         r6 = @view r_in[(c-1)*6+1:c*6]
         if !isnan(r6[1])
             # Misalignment at entrance
-            if T1 != noTarray
+            if T1 != zeros(6)
                 ATaddvv!(r6, T1)
             end
-            if R1 != noRmatrix
+            if R1 != zeros(6, 6)
                 ATmultmv!(r6, R1)
             end
             # Check physical apertures at the entrance of the magnet
@@ -75,10 +75,10 @@ function DriftPass!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64,1}, T
             #     checkiflostEllipticalAp!(r6, EApertures)
             # end
             # Misalignment at exit
-            if R2 != noRmatrix
+            if R2 != zeros(6, 6)
                 ATmultmv!(r6, R2)
             end
-            if T2 != noTarray
+            if T2 != zeros(6)
                 ATaddvv!(r6, T2)
             end
             if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit
@@ -89,11 +89,15 @@ function DriftPass!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64,1}, T
     return nothing
 end
 
-function pass!(ele::DRIFT, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam, noTarray::Array{Float64,1}, noRmatrix::Array{Float64,2})
+function pass!(ele::DRIFT, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
     # ele: EDRIFT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
     lost_flags = particles.lost_flag
-    DriftPass!(r_in, ele.len, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags, noTarray, noRmatrix)
+    DriftPass!(r_in, ele.len, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags)
+    return nothing
+end
+
+function pass!(ele::MARKER, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
     return nothing
 end

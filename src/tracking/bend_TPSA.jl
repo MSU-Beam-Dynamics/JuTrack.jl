@@ -49,7 +49,7 @@ function bndthinkick!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A, B, L, irho
         FringeQuadEntrance, FringeQuadExit,
         fringeIntM0, fringeIntP0,
         T1, T2, R1, R2, RApertures, EApertures,
-        KickAngle, noTarray, noRmatrix) where {T, TPS_Dim, Max_TPS_Degree}
+        KickAngle) where {T, TPS_Dim, Max_TPS_Degree}
         
         DRIFT1 = 0.6756035959798286638
         DRIFT2 = -0.1756035959798286639
@@ -84,10 +84,10 @@ function bndthinkick!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A, B, L, irho
                 NormL2 = L2 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
     
                 # Misalignment at entrance
-                if T1 != noTarray
+                if T1 != zeros(6)
                     ATaddvv!(r, T1)
                 end
-                if R1 != noRmatrix
+                if R1 != zeros(6, 6)
                     ATmultmv!(r, R1)
                 end
     
@@ -128,10 +128,10 @@ function bndthinkick!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A, B, L, irho
     
     
                 # Misalignment at exit
-                if R2 != noRmatrix
+                if R2 != zeros(6, 6)
                     ATmultmv!(r, R2)
                 end
-                if T2 != noTarray
+                if T2 != zeros(6)
                     ATaddvv!(r, T2)
                 end
             # end
@@ -144,8 +144,7 @@ function bndthinkick!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A, B, L, irho
     end
     
     
-    function pass_TPSA!(ele::SBEND, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, 
-        noTarray::Array{Float64,1}, noRmatrix::Array{Float64,2}) where {T, TPS_Dim, Max_TPS_Degree}
+    function pass_TPSA!(ele::SBEND, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) where {T, TPS_Dim, Max_TPS_Degree}
         # ele: SBEND
         # r_in: 6-by-num_particles array
         # num_particles: number of particles
@@ -158,7 +157,7 @@ function bndthinkick!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A, B, L, irho
             ele.FringeQuadEntrance, ele.FringeQuadExit,
             ele.FringeIntM0, ele.FringeIntP0,
             ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures,
-            ele.KickAngle, noTarray, noRmatrix)
+            ele.KickAngle)
         return nothing
     end
 # using BenchmarkTools

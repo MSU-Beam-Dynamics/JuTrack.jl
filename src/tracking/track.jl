@@ -18,6 +18,23 @@ function array_to_matrix(array::Vector{Float64}, n::Int)
     return particles
 end
 
+function linepass!(line, particles::Beam)
+    # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
+    # Check if the particle is lost by checking the lost_flag
+    np = particles.nmacro
+    particles6 = matrix_to_array(particles.r)
+    if length(particles6) != np*6
+        error("The number of particles does not match the length of the particle array")
+    end
+    for i in eachindex(line)
+        # ele = line[i]
+        pass!(line[i], particles6, np, particles)        
+    end
+    rout = array_to_matrix(particles6, np)
+    particles.r = rout
+    return nothing
+end
+
 # function linepass!(line, particles::Beam)
 #     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
 #     # Check if the particle is lost by checking the lost_flag
@@ -30,47 +47,28 @@ end
 #     noRmatrix = zeros(6, 6)
 #     for i in eachindex(line)
 #         # ele = line[i]
-#         pass!(line[i], particles6, np, particles, noTarray, noRmatrix)        
+#         if line[i] isa AbstractElement
+#             pass!(line[i], particles6, np, particles, noTarray, noRmatrix)      
+#         else 
+#             for j in eachindex(line[i])
+#                 if line[i][j] isa AbstractElement
+#                     pass!(line[i][j], particles6, np, particles, noTarray, noRmatrix)      
+#                 else
+#                     for k in eachindex(line[i][j])
+#                         if line[i][j][k] isa AbstractElement
+#                             pass!(line[i][j][k], particles6, np, particles, noTarray, noRmatrix)      
+#                         else
+#                            error("The element is not an AbstractElement")
+#                         end
+#                     end
+#                 end     
+#             end  
+#         end     
 #     end
 #     rout = array_to_matrix(particles6, np)
 #     particles.r = rout
 #     return nothing
 # end
-
-function linepass!(line, particles::Beam)
-    # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
-    # Check if the particle is lost by checking the lost_flag
-    np = particles.nmacro
-    particles6 = matrix_to_array(particles.r)
-    if length(particles6) != np*6
-        error("The number of particles does not match the length of the particle array")
-    end
-    noTarray = zeros(6)
-    noRmatrix = zeros(6, 6)
-    for i in eachindex(line)
-        # ele = line[i]
-        if line[i] isa AbstractElement
-            pass!(line[i], particles6, np, particles, noTarray, noRmatrix)      
-        else 
-            for j in eachindex(line[i])
-                if line[i][j] isa AbstractElement
-                    pass!(line[i][j], particles6, np, particles, noTarray, noRmatrix)      
-                else
-                    for k in eachindex(line[i][j])
-                        if line[i][j][k] isa AbstractElement
-                            pass!(line[i][j][k], particles6, np, particles, noTarray, noRmatrix)      
-                        else
-                           error("The element is not an AbstractElement")
-                        end
-                    end
-                end     
-            end  
-        end     
-    end
-    rout = array_to_matrix(particles6, np)
-    particles.r = rout
-    return nothing
-end
 
 
 function ringpass!(line::Vector{AbstractElement}, particles::Beam, nturn::Int)
@@ -86,11 +84,10 @@ function linepass_TPSA!(line::Vector{AbstractElement}, rin::Vector{CTPS{T, TPS_D
     if length(rin) != 6
         error("The length of TPSA must be 6")
     end
-    noTarray = zeros(6)
-    noRmatrix = zeros(6, 6)
+
     for i in eachindex(line)
         # ele = line[i]
-        pass_TPSA!(line[i], rin, noTarray, noRmatrix)        
+        pass_TPSA!(line[i], rin)        
     end
     return nothing
 end

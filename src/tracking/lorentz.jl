@@ -1,4 +1,4 @@
-function pass!(ele::LorentzBoost, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam, noTarray::Array{Float64,1}, noRmatrix::Array{Float64,2})
+function pass!(ele::LorentzBoost, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
     lost_flags = particles.lost_flag
     if ele.mode == 0
         invcosang = 1.0 / ele.cosang
@@ -17,7 +17,7 @@ function pass!(ele::LorentzBoost, r_in::Array{Float64,1}, num_particles::Int64, 
     return nothing
 end
 
-function pass!(ele::InvLorentzBoost, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam, noTarray::Array{Float64,1}, noRmatrix::Array{Float64,2})
+function pass!(ele::InvLorentzBoost, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
     lost_flags = particles.lost_flag
     if ele.mode == 0
         invcosang = 1.0 / ele.cosang

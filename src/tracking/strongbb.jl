@@ -170,7 +170,7 @@ function track_sbb!(rin, num_macro, temp1, temp2, temp3, temp4, temp5, sgb::Stro
 end
 
 
-function pass!(sgb::StrongGaussianBeam, r_in::Array{Float64,1}, num_macro::Int, wb::Beam, noTarray::Array{Float64,1}, noRmatrix::Array{Float64,2})
+function pass!(sgb::StrongGaussianBeam, r_in::Array{Float64,1}, num_macro::Int, wb::Beam)
     factor=wb.classrad0/wb.gamma*wb.charge*sgb.charge
     lumi=track_sbb!(r_in, num_macro, wb.temp1, wb.temp2, wb.temp3, wb.temp4, wb.temp5, sgb, factor)
     lumi *= wb.np / wb.nmacro

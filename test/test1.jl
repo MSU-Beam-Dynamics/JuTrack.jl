@@ -44,7 +44,7 @@ function twiss_test(xx)
     ss, name, twiss_out = Twissline(twiss_in, SSRF, 0.0, 2, length(SSRF))
     return twiss_out.betax
 end
-# println(twiss_test([-1.063770]))
+println(twiss_test([-1.063770]))
 # grad = gradient(Forward, twiss_test, [-1.063770])
 # println(grad)
 # @btime begin 
@@ -81,9 +81,3 @@ end
 # using DelimitedFiles
 # writedlm("ss.txt", ss)
 # writedlm("beta.txt", beta)
-
-D1 = DRIFT(name="D1", len=0.3)
-particles = [0.001 0.0001 0.0005 0.0002 0.01 0.0; 0.001 0.0 0.0 0.0 0.01 0.0]
-beam = Beam(particles)
-linepass!([D1], beam)
-println(beam.r)
