@@ -2,13 +2,13 @@ include("optics.jl")
 using Base: @kwdef
 abstract type AbstractElement end
 
-@kwdef mutable struct MARKER <: AbstractElement
+@kwdef struct MARKER <: AbstractElement
     name::String = "MARKER"
     len::Float64 = 0.0
     eletype::String = "MARKER"
 end
 
-@kwdef mutable struct DRIFT <: AbstractElement
+@kwdef struct DRIFT <: AbstractElement
     name::String = "EDrift"
     len::Float64 = 0.0
     T1::Array{Float64,1} = zeros(6)
@@ -21,7 +21,7 @@ end
 end
 
 
-@kwdef mutable struct KQUAD <: AbstractElement
+@kwdef struct KQUAD <: AbstractElement
     name::String  = "Quad"                                      # element name  
     len::Float64 = 0.0
     k1::Float64 = 0.0                                           # use k1 if PolynomB is not given
@@ -43,7 +43,7 @@ end
     eletype::String = "KQUAD"
 end
 
-@kwdef mutable struct KSEXT <: AbstractElement
+@kwdef struct KSEXT <: AbstractElement
     name::String  = "Sext"                                      # element name  
     len::Float64 = 0.0
     k2::Float64 = 0.0                                           # use k2 if PolynomB is not given
@@ -65,7 +65,7 @@ end
     eletype::String = "KSEXT"
 end
 
-@kwdef mutable struct KOCT <: AbstractElement
+@kwdef struct KOCT <: AbstractElement
     name::String  = "OCT"                                       # element name  
     len::Float64 = 0.0
     k3::Float64 = 0.0                                           # use k3 if PolynomB is not given
@@ -87,7 +87,7 @@ end
     eletype::String = "KOCT"
 end
 
-@kwdef mutable struct thinMULTIPOLE <: AbstractElement
+@kwdef struct thinMULTIPOLE <: AbstractElement
     name::String  = "thinMULTIPOLE"                                       # element name  
     len::Float64 = 0.0
     PolynomA::Array{Float64,1} = zeros(4)    
@@ -108,7 +108,7 @@ end
     eletype::String = "thinMULTIPOLE"
 end
 
-@kwdef mutable struct SBEND <: AbstractElement
+@kwdef struct SBEND <: AbstractElement
     name::String = "SBend"
     len::Float64 = 0.0
     angle::Float64 = 0.0
@@ -137,7 +137,7 @@ end
     eletype::String = "SBEND"
 end
 
-mutable struct RBEND <: AbstractElement
+struct RBEND <: AbstractElement
     name::String
     len::Float64 
     angle::Float64 
@@ -178,7 +178,7 @@ function RBEND(;name::String = "RBend", len::Float64 = 0.0, angle::Float64 = 0.0
 end
 
 
-@kwdef mutable struct RFCA <: AbstractElement
+@kwdef struct RFCA <: AbstractElement
     name::String = "RFCA"
     len::Float64 = 0.0
     volt::Float64 = 0.0
@@ -190,7 +190,7 @@ end
     eletype::String = "RFCA"
 end
 
-@kwdef mutable struct SOLENOID <: AbstractElement
+@kwdef struct SOLENOID <: AbstractElement
     name::String = "Solenoid"
     len::Float64 = 0.0
     ks::Float64 = 0.0
@@ -201,7 +201,7 @@ end
     eletype::String = "SOLENOID"
 end
 
-@kwdef mutable struct CORRECTOR <: AbstractElement
+@kwdef struct CORRECTOR <: AbstractElement
     name::String = "HKicker"
     len::Float64 = 0.0
     xkick::Float64 = 0.0
@@ -220,7 +220,7 @@ function VKICKER(;name="VKicker", len=0.0, ykick=0.0)
 end
 ###########################################
 # the following elements may not be symplectic and may not work with Enzyme
-mutable struct CrabCavity <: AbstractElement
+struct CrabCavity <: AbstractElement
     name::String 
     len::Float64 
     volt::Float64  # voltage
@@ -235,7 +235,7 @@ function CrabCavity(;name::String = "CrabCavity", len::Float64 = 0.0, volt::Floa
     return CrabCavity(name, len, volt, freq, k, phi, errors, "CrabCavity")
 end
 
-mutable struct easyCrabCavity <: AbstractElement
+struct easyCrabCavity <: AbstractElement
     name::String 
     len::Float64 
     halfthetac::Float64 
@@ -250,7 +250,7 @@ function easyCrabCavity(;name::String = "easyCrabCavity", len::Float64 = 0.0, ha
     return CrabCavity(name, len, halfthetac, freq, k, phi, errors, "easyCrabCavity")
 end
 
-@kwdef mutable struct AccelCavity <: AbstractElement
+@kwdef struct AccelCavity <: AbstractElement
     name::String = "AccelCavity"
     len::Float64 = 0.0
     volt::Float64 = 0.0 # voltage
@@ -268,13 +268,13 @@ end
 abstract type AbstractTransferMap <:AbstractElement end
 abstract type AbstractTransverseMap <:AbstractTransferMap end
 abstract type AbstractLongitudinalMap <:AbstractTransferMap end
-mutable struct LongitudinalRFMap <: AbstractLongitudinalMap
+struct LongitudinalRFMap <: AbstractLongitudinalMap
     alphac::Float64
     RF::AbstractElement
     LongitudinalRFMap(alphac::Float64, RF::AbstractElement)=new(alphac, RF)
 end
 
-mutable struct LorentzBoost <: AbstractElement
+struct LorentzBoost <: AbstractElement
     angle::Float64
     cosang::Float64
     tanang::Float64
@@ -282,7 +282,7 @@ mutable struct LorentzBoost <: AbstractElement
     LorentzBoost(angle)=new(angle, cos(angle), tan(angle), 0)
 end
 
-mutable struct InvLorentzBoost <: AbstractElement
+struct InvLorentzBoost <: AbstractElement
     angle::Float64
     sinang::Float64
     cosang::Float64
@@ -294,7 +294,7 @@ end
 ######### strong beam-beam
 abstract type AbstractStrongBeamBeam <:AbstractElement end
 
-mutable struct StrongThinGaussianBeam <: AbstractStrongBeamBeam
+struct StrongThinGaussianBeam <: AbstractStrongBeamBeam
     amplitude::Float64
     rmssizex::Float64
     rmssizey::Float64
@@ -304,7 +304,7 @@ mutable struct StrongThinGaussianBeam <: AbstractStrongBeamBeam
     StrongThinGaussianBeam(amp::Float64, rx::Float64, ry::Float64, zloc::Float64=0.0, xoff::Float64=0.0, yoff::Float64=0.0)=new(amp,rx,ry,zloc,xoff,yoff)
 end
 
-mutable struct StrongGaussianBeam <: AbstractStrongBeamBeam  # Strong Beam with transverse Gaussian distribution
+struct StrongGaussianBeam <: AbstractStrongBeamBeam  # Strong Beam with transverse Gaussian distribution
     # particle::ParticleType
     charge::Float64  
     mass::Float64  

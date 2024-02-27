@@ -51,6 +51,6 @@ export CTPS, cst, findindex, PolyMap, getindexmap, tadd, tminus, tmult, tdiv, tp
 export AbstractElement, DRIFT, KQUAD, KSEXT, KOCT, SBEND, RBEND, RFCA, SOLENOID, MARKER, CORRECTOR, HKICKER, VKICKER, thinMULTIPOLE
 export EdwardsTengTwiss, AbstractTwiss, twissPropagate, findm66, periodicEdwardsTengTwiss, Twissline
 export linepass!, pass!, ringpass!, linepass_TPSA!, pass_TPSA!, ringpass_TPSA!
-export plinepass!, pringpass!, pass_P!
+export plinepass!, pringpass!, pass_P!, ADlinepass!
 
 end

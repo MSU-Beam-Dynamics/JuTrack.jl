@@ -31,19 +31,30 @@ Enzyme.API.runtimeActivity!(true)
 # end
 
 # Load from the file
-@time esr = deserialize("esr_main_mutable_vector.jls")
-function f(x, ring)
+@time esr = deserialize("esr_main_vector.jls")
+function f(x,k, ring)
     particles = [0.001 0.0001 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0 0.0 0.0]
     beam = Beam(particles)
-    nameofD1 = ring[2].name
-    new_D1 = DRIFT(name=nameofD1, len=x)
-    # the ring is pretty long
-    new_ring = [ring[1], new_D1, ring[3:end]...]
-    linepass!(new_ring, beam)
+    changed_idx = [2, 3]
+    new_D1 = DRIFT(len=x)
+    lenQ1 = ring[3].len
+    new_Q1 = KQUAD(len=lenQ1, k1=k)
+    changed_ele = [new_D1, new_Q1]
+    ADlinepass!(ring, beam, changed_idx, changed_ele)
     return beam.r[1, 1]
 end
 
-println(f(0.1, esr))
-println(f(0.11, esr))
-grad = autodiff(Forward, f, Duplicated(0.1, 1.0), Const(esr))
+println((f(0.1001, -0.22, esr)-f(0.1, -0.22, esr))/0.0001)
+println((f(0.1, -0.22, esr)-f(0.1, -0.22001, esr))/0.00001)
+
+dx = [1.0, 1.0]
+# grad = autodiff(Forward, f, DuplicatedNoNeed, Duplicated(0.1, 1.0), Duplicated(-0.22, 1.0), Const(esr))
+grad = autodiff(Forward, f, BatchDuplicated, BatchDuplicated(0.1, (1.0,0.0)), BatchDuplicated(-0.22, (0.0,1.0)), Const(esr))
+
 println(grad)
+
+# function f(x, y, z)
+#     return x^2 + y^2 + z^2
+# end
+# grad = autodiff(Forward, f, BatchDuplicated, BatchDuplicated(2.0, (1.0,0.0)), BatchDuplicated(3.0, (0.0,1.0)), Const(4.0))
+# println(grad)
