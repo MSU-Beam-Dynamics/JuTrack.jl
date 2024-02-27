@@ -2,11 +2,13 @@ include("optics.jl")
 using Base: @kwdef
 abstract type AbstractElement end
 
-@kwdef struct MARKER <: AbstractElement
+@kwdef mutable struct MARKER <: AbstractElement
     name::String = "MARKER"
+    len::Float64 = 0.0
+    eletype::String = "MARKER"
 end
 
-@kwdef struct DRIFT <: AbstractElement
+@kwdef mutable struct DRIFT <: AbstractElement
     name::String = "EDrift"
     len::Float64 = 0.0
     T1::Array{Float64,1} = zeros(6)
@@ -15,10 +17,11 @@ end
     R2::Array{Float64,2} = zeros(6,6)        
     RApertures::Array{Float64,1} = zeros(6)
     EApertures::Array{Float64,1} = zeros(6)
+    eletype::String = "DRIFT"
 end
 
 
-@kwdef struct KQUAD <: AbstractElement
+@kwdef mutable struct KQUAD <: AbstractElement
     name::String  = "Quad"                                      # element name  
     len::Float64 = 0.0
     k1::Float64 = 0.0                                           # use k1 if PolynomB is not given
@@ -37,9 +40,10 @@ end
     RApertures::Array{Float64,1} = zeros(6)
     EApertures::Array{Float64,1} = zeros(6)
     KickAngle::Array{Float64,1} = zeros(2)
+    eletype::String = "KQUAD"
 end
 
-@kwdef struct KSEXT <: AbstractElement
+@kwdef mutable struct KSEXT <: AbstractElement
     name::String  = "Sext"                                      # element name  
     len::Float64 = 0.0
     k2::Float64 = 0.0                                           # use k2 if PolynomB is not given
@@ -58,9 +62,10 @@ end
     RApertures::Array{Float64,1} = zeros(6)
     EApertures::Array{Float64,1} = zeros(6)
     KickAngle::Array{Float64,1} = zeros(2)
+    eletype::String = "KSEXT"
 end
 
-@kwdef struct KOCT <: AbstractElement
+@kwdef mutable struct KOCT <: AbstractElement
     name::String  = "OCT"                                       # element name  
     len::Float64 = 0.0
     k3::Float64 = 0.0                                           # use k3 if PolynomB is not given
@@ -79,9 +84,31 @@ end
     RApertures::Array{Float64,1} = zeros(6)
     EApertures::Array{Float64,1} = zeros(6)
     KickAngle::Array{Float64,1} = zeros(2)
+    eletype::String = "KOCT"
 end
 
-@kwdef struct SBEND <: AbstractElement
+@kwdef mutable struct thinMULTIPOLE <: AbstractElement
+    name::String  = "thinMULTIPOLE"                                       # element name  
+    len::Float64 = 0.0
+    PolynomA::Array{Float64,1} = zeros(4)    
+    PolynomB::Array{Float64,1} = zeros(4)           # PolynomB has higher priority than k1, k2, k3
+    MaxOrder::Int64 = 1
+    NumIntSteps::Int64 = 10
+    FringeQuadEntrance::Int64 = 0
+    FringeQuadExit::Int64 = 0
+    FringeIntM0::Array{Float64,1} = zeros(5)
+    FringeIntP0::Array{Float64,1} = zeros(5)
+    T1::Array{Float64,1} = zeros(6)
+    T2::Array{Float64,1} = zeros(6)
+    R1::Array{Float64,2} = zeros(6, 6)
+    R2::Array{Float64,2} = zeros(6, 6)        
+    RApertures::Array{Float64,1} = zeros(6)
+    EApertures::Array{Float64,1} = zeros(6)
+    KickAngle::Array{Float64,1} = zeros(2)
+    eletype::String = "thinMULTIPOLE"
+end
+
+@kwdef mutable struct SBEND <: AbstractElement
     name::String = "SBend"
     len::Float64 = 0.0
     angle::Float64 = 0.0
@@ -107,9 +134,10 @@ end
     RApertures::Array{Float64,1} = zeros(6)
     EApertures::Array{Float64,1} = zeros(6)
     KickAngle::Array{Float64,1} = zeros(2)
+    eletype::String = "SBEND"
 end
 
-struct RBEND <: AbstractElement
+mutable struct RBEND <: AbstractElement
     name::String
     len::Float64 
     angle::Float64 
@@ -135,6 +163,7 @@ struct RBEND <: AbstractElement
     RApertures::Array{Float64,1}
     EApertures::Array{Float64,1}
     KickAngle::Array{Float64,1}
+    eletype::String
 end
 function RBEND(;name::String = "RBend", len::Float64 = 0.0, angle::Float64 = 0.0, PolynomA::Array{Float64,1} = zeros(4), 
                 PolynomB::Array{Float64,1} = zeros(4), MaxOrder::Int64 = 0, NumIntSteps::Int64 = 10, fint1::Float64 = 0.0, 
@@ -145,11 +174,11 @@ function RBEND(;name::String = "RBend", len::Float64 = 0.0, angle::Float64 = 0.0
                 EApertures::Array{Float64,1} = zeros(6), KickAngle::Array{Float64,1} = zeros(2))
     e1 = angle/2.0
     e2 = angle/2.0
-    return RBEND(name, len, angle, e1, e2, PolynomA, PolynomB, MaxOrder, NumIntSteps, fint1, fint2, gap, FringeBendEntrance, FringeBendExit, FringeQuadEntrance, FringeQuadExit, FringeIntM0, FringeIntP0, T1, T2, R1, R2, RApertures, EApertures, KickAngle)
+    return RBEND(name, len, angle, e1, e2, PolynomA, PolynomB, MaxOrder, NumIntSteps, fint1, fint2, gap, FringeBendEntrance, FringeBendExit, FringeQuadEntrance, FringeQuadExit, FringeIntM0, FringeIntP0, T1, T2, R1, R2, RApertures, EApertures, KickAngle, "RBEND")
 end
 
 
-@kwdef struct RFCA <: AbstractElement
+@kwdef mutable struct RFCA <: AbstractElement
     name::String = "RFCA"
     len::Float64 = 0.0
     volt::Float64 = 0.0
@@ -158,9 +187,10 @@ end
     lag::Float64 = 0.0
     philag::Float64 = 0.0
     energy::Float64 = 0.0
+    eletype::String = "RFCA"
 end
 
-@kwdef struct SOLENOID <: AbstractElement
+@kwdef mutable struct SOLENOID <: AbstractElement
     name::String = "Solenoid"
     len::Float64 = 0.0
     ks::Float64 = 0.0
@@ -168,24 +198,44 @@ end
     T2::Array{Float64,1} = zeros(6)
     R1::Array{Float64,2} = zeros(6,6)
     R2::Array{Float64,2} = zeros(6,6)
+    eletype::String = "SOLENOID"
+end
+
+@kwdef mutable struct CORRECTOR <: AbstractElement
+    name::String = "HKicker"
+    len::Float64 = 0.0
+    xkick::Float64 = 0.0
+    ykick::Float64 = 0.0
+    T1::Array{Float64,1} = zeros(6)
+    T2::Array{Float64,1} = zeros(6)
+    R1::Array{Float64,2} = zeros(6,6)
+    R2::Array{Float64,2} = zeros(6,6)
+    eletype::String = "CORRECTOR"
+end
+function HKICKER(;name="HKicker", len=0.0, xkick=0.0)
+    return CORRECTOR(name, len, xkick, 0.0, zeros(6), zeros(6), zeros(6,6), zeros(6,6), "HKICKER")
+end
+function VKICKER(;name="VKicker", len=0.0, ykick=0.0)
+    return CORRECTOR(name, len, 0.0, ykick, zeros(6), zeros(6), zeros(6,6), zeros(6,6), "VKICKER")
 end
 ###########################################
 # the following elements may not be symplectic and may not work with Enzyme
-@kwdef struct CrabCavity <: AbstractElement
-    name::String = "CrabCavity"
-    len::Float64 = 0.0
-    volt::Float64 = 0.0 # voltage
-    freq::Float64 = 0.0 # frequency
-    k::Float64 = 0.0 # wave number
-    phi::Float64 = 0.0 # phase
-    errors::Array{Float64,1} = [0.0, 0.0] # 1: Voltage error, 2: Phase error
+mutable struct CrabCavity <: AbstractElement
+    name::String 
+    len::Float64 
+    volt::Float64  # voltage
+    freq::Float64  # frequency
+    k::Float64  # wave number
+    phi::Float64  # phase
+    errors::Array{Float64,1} # 1: Voltage error, 2: Phase error
+    eletype::String 
 end
-function CrabCavity(;name::String = "CrabCavity", len::Float64 = 0.0, volt::Float64 = 0.0, freq::Float64 = 0.0, phi::Float64 = 0.0, errors::Array{Float64,1} = [0.0, 0.0])
+function CrabCavity(;name::String = "CrabCavity", len::Float64 = 0.0, volt::Float64 = 0.0, freq::Float64 = 0.0, phi::Float64 = 0.0, errors::Array{Float64,1} = zeros(2))
     k = 2*π*freq/2.99792458e8
-    return CrabCavity(name, len, volt, freq, k, phi, errors)
+    return CrabCavity(name, len, volt, freq, k, phi, errors, "CrabCavity")
 end
 
-struct easyCrabCavity <: AbstractElement
+mutable struct easyCrabCavity <: AbstractElement
     name::String 
     len::Float64 
     halfthetac::Float64 
@@ -193,36 +243,38 @@ struct easyCrabCavity <: AbstractElement
     k::Float64 
     phi::Float64 
     errors::Array{Float64,1}  # 1: Voltage error, 2: Phase error
+    eletype::String
 end
 function easyCrabCavity(;name::String = "easyCrabCavity", len::Float64 = 0.0, halfthetac::Float64 = 0.0, freq::Float64 = 0.0, phi::Float64 = 0.0, errors::Array{Float64,1} = [0.0, 0.0])
     k = 2*π*freq/2.99792458e8
-    return CrabCavity(name, len, halfthetac, freq, k, phi, errors)
+    return CrabCavity(name, len, halfthetac, freq, k, phi, errors, "easyCrabCavity")
 end
 
-@kwdef struct AccelCavity <: AbstractElement
-    name::String = "CrabCavity"
+@kwdef mutable struct AccelCavity <: AbstractElement
+    name::String = "AccelCavity"
     len::Float64 = 0.0
     volt::Float64 = 0.0 # voltage
     freq::Float64 = 0.0 # frequency
     k::Float64 = 0.0 # wave number
     h::Float64 = 1.0 # harmonic number
     phis::Float64 = 0.0 # synchronous phase π/2 for accelerating on crest
+    eletype::String = "AccelCavity"
 end
 function AccelCavity(freq, nv, h, phis; name="AccelCavity", len=0.0)
     k = 2*π*freq/2.99792458e8
-    return AccelCavity(name, len, nv, freq, k, h, phis)
+    return AccelCavity(name, len, nv, freq, k, h, phis, "AccelCavity")
 end
 
 abstract type AbstractTransferMap <:AbstractElement end
 abstract type AbstractTransverseMap <:AbstractTransferMap end
 abstract type AbstractLongitudinalMap <:AbstractTransferMap end
-struct LongitudinalRFMap <: AbstractLongitudinalMap
+mutable struct LongitudinalRFMap <: AbstractLongitudinalMap
     alphac::Float64
     RF::AbstractElement
     LongitudinalRFMap(alphac::Float64, RF::AbstractElement)=new(alphac, RF)
 end
 
-struct LorentzBoost <: AbstractElement
+mutable struct LorentzBoost <: AbstractElement
     angle::Float64
     cosang::Float64
     tanang::Float64
@@ -230,7 +282,7 @@ struct LorentzBoost <: AbstractElement
     LorentzBoost(angle)=new(angle, cos(angle), tan(angle), 0)
 end
 
-struct InvLorentzBoost <: AbstractElement
+mutable struct InvLorentzBoost <: AbstractElement
     angle::Float64
     sinang::Float64
     cosang::Float64
@@ -242,7 +294,7 @@ end
 ######### strong beam-beam
 abstract type AbstractStrongBeamBeam <:AbstractElement end
 
-struct StrongThinGaussianBeam <: AbstractStrongBeamBeam
+mutable struct StrongThinGaussianBeam <: AbstractStrongBeamBeam
     amplitude::Float64
     rmssizex::Float64
     rmssizey::Float64
@@ -252,7 +304,7 @@ struct StrongThinGaussianBeam <: AbstractStrongBeamBeam
     StrongThinGaussianBeam(amp::Float64, rx::Float64, ry::Float64, zloc::Float64=0.0, xoff::Float64=0.0, yoff::Float64=0.0)=new(amp,rx,ry,zloc,xoff,yoff)
 end
 
-struct StrongGaussianBeam <: AbstractStrongBeamBeam  # Strong Beam with transverse Gaussian distribution
+mutable struct StrongGaussianBeam <: AbstractStrongBeamBeam  # Strong Beam with transverse Gaussian distribution
     # particle::ParticleType
     charge::Float64  
     mass::Float64  
