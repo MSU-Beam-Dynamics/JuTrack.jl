@@ -7,7 +7,7 @@ function CrabCavityPass!(r::Array{Float64,1}, cavity::CrabCavity, beta2E::Float6
         r6 = @view r[(c-1)*6+1:c*6] 
         ang = -cavity.k * r6[5] + cavity.phi
         r6[2] += cavity.volt/beta2E * sin(ang)
-        r6[6] += (-cavity.k * cavity.volt/beta2E) * r[1] * cos(ang)
+        r6[6] += (-cavity.k * cavity.volt/beta2E) * r6[1] * cos(ang)
     end
     return nothing
 end

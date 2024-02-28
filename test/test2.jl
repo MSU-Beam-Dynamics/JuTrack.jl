@@ -30,31 +30,72 @@ Enzyme.API.runtimeActivity!(true)
 #     linepass!(line, beam_100)
 # end
 
-# Load from the file
-@time esr = deserialize("esr_main_vector.jls")
-function f(x,k, ring)
+
+function f1(x, ring)
     particles = [0.001 0.0001 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0 0.0 0.0]
     beam = Beam(particles)
-    changed_idx = [2, 3]
+    changed_idx = [2]
     new_D1 = DRIFT(len=x)
-    lenQ1 = ring[3].len
-    new_Q1 = KQUAD(len=lenQ1, k1=k)
-    changed_ele = [new_D1, new_Q1]
+    # lenQ1 = ring[3].len
+    # new_Q1 = KQUAD(len=lenQ1, k1=k)
+    changed_ele = [new_D1]
     ADlinepass!(ring, beam, changed_idx, changed_ele)
     return beam.r[1, 1]
 end
+function f2(x, ring)
+    particles = [0.001 0.0001 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0 0.0 0.0]
+    beam = Beam(particles)
+    changed_idx = [3]
+    # new_D1 = DRIFT(len=x)
+    lenQ1 = ring[3].len
+    new_Q1 = KQUAD(len=lenQ1, k1=x)
+    changed_ele = [new_Q1]
+    ADlinepass!(ring, beam, changed_idx, changed_ele)
+    return beam.r[1, 1]
+end
+# println((f1(0.1001, esr)-f1(0.1,  esr))/0.0001)
+# println((f2(-0.22+ 1e-15, esr)-f2(-0.22,  esr))/1e-15)
 
-println((f(0.1001, -0.22, esr)-f(0.1, -0.22, esr))/0.0001)
-println((f(0.1, -0.22, esr)-f(0.1, -0.22001, esr))/0.00001)
+# dx = [1.0, 1.0]
+# @time grad1 = autodiff(Forward, f1, Duplicated, Duplicated(0.1, 1.0),  Const(esr))
+# @time grad2 = autodiff(Forward, f2, Duplicated, Duplicated(-0.22, 1.0),  Const(esr))
+# println(grad1, grad2)
 
-dx = [1.0, 1.0]
-# grad = autodiff(Forward, f, DuplicatedNoNeed, Duplicated(0.1, 1.0), Duplicated(-0.22, 1.0), Const(esr))
-grad = autodiff(Forward, f, BatchDuplicated, BatchDuplicated(0.1, (1.0,0.0)), BatchDuplicated(-0.22, (0.0,1.0)), Const(esr))
+function f(xx, ring)
+    x = CTPS(0.0, 1, 6, 3)
+    xp = CTPS(0.0, 2, 6, 3)
+    y = CTPS(0.0, 3, 6, 3)
+    yp = CTPS(0.0, 4, 6, 3)
+    delta = CTPS(0.0, 5, 6, 3)
+    z = CTPS(0.0, 6, 6, 3)
+    rin = [x, xp, y, yp, delta, z]
 
-println(grad)
+    changed_idx = [2]
+    new_D1 = DRIFT(len=xx)
+    changed_ele = [new_D1]
 
-# function f(x, y, z)
-#     return x^2 + y^2 + z^2
-# end
-# grad = autodiff(Forward, f, BatchDuplicated, BatchDuplicated(2.0, (1.0,0.0)), BatchDuplicated(3.0, (0.0,1.0)), Const(4.0))
+    ADlinepass_TPSA!(ring, rin, changed_idx, changed_ele)
+    return rin[1].map[3]
+end
+# println(f(0.1, esr))
+# println(f(0.1001, esr))
+# println((f(0.1001, esr)-f(0.1,  esr))/0.0001)
+# grad = autodiff(Forward, f, Duplicated, Duplicated(0.1, 1.0),  Const(esr))
 # println(grad)
+# Load from the file
+@time esr = deserialize("esr_main_vector.jls")
+twi, pos = twissring(esr, 0.0, 3)
+
+twi_matrix = zeros(length(esr), 7)
+for i in eachindex(esr)
+    twi_matrix[i, 1] = pos[i]
+    twi_matrix[i, 2] = twi[i].betax
+    twi_matrix[i, 3] = twi[i].betay
+    twi_matrix[i, 4] = twi[i].alphax
+    twi_matrix[i, 5] = twi[i].alphay
+    twi_matrix[i, 6] = twi[i].dx
+    twi_matrix[i, 7] = twi[i].dy
+end
+# save the matrix as a text file
+using DelimitedFiles
+writedlm("twiss_matrix.txt", twi_matrix)

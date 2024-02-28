@@ -21,6 +21,9 @@ include("tracking/multipole_TPSA.jl")
 include("tracking/rfcavity_TPSA.jl")
 include("tracking/solenoid.jl")
 include("tracking/solenoid_TPSA.jl")
+include("tracking/crabcavity_TPSA.jl")
+include("tracking/thinmultipole_TPSA.jl")
+include("tracking/corrector_TPSA.jl")
 include("tracking/track.jl")
 include("lattice/EdwardsTengTwiss.jl")
 
@@ -49,8 +52,8 @@ export initilize_zslice!
 
 export CTPS, cst, findindex, PolyMap, getindexmap, tadd, tminus, tmult, tdiv, tpow, tsqrt, tsin, tcos, ttan, tcosh, tsinh, reassign!
 export AbstractElement, DRIFT, KQUAD, KSEXT, KOCT, SBEND, RBEND, RFCA, SOLENOID, MARKER, CORRECTOR, HKICKER, VKICKER, thinMULTIPOLE
-export EdwardsTengTwiss, AbstractTwiss, twissPropagate, findm66, periodicEdwardsTengTwiss, Twissline
+export EdwardsTengTwiss, AbstractTwiss, twissPropagate, findm66, periodicEdwardsTengTwiss, Twissline, ADTwissline, twissring
 export linepass!, pass!, ringpass!, linepass_TPSA!, pass_TPSA!, ringpass_TPSA!
-export plinepass!, pringpass!, pass_P!, ADlinepass!
+export plinepass!, pringpass!, pass_P!, ADlinepass!, ADlinepass_TPSA!
 
 end

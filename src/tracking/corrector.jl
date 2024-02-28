@@ -30,11 +30,11 @@ function CorrectorPass!(r::Array{Float64,1}, le::Float64, xkick::Float64, ykick:
             
             r6[5] += NormL*p_norm*(xkick*xkick/3 + ykick*ykick/3 +
    		            r6[2]*r6[2] + r6[4]*r6[4] +
-   		            r6[2]*xkick + r6[4]*ykick)/2;
-            r6[1] += NormL*(r6[2]+xkick/2);
-		    r6[2] += xkick;
-		    r6[3] += NormL*(r6[4]+ykick/2);
-   		    r6[4] += ykick;
+   		            r6[2]*xkick + r6[4]*ykick)/2
+            r6[1] += NormL*(r6[2]+xkick/2)
+		    r6[2] += xkick
+		    r6[3] += NormL*(r6[4]+ykick/2)
+   		    r6[4] += ykick
             # Check physical apertures at the exit of the magnet
             # if RApertures != nothing
             #     checkiflostRectangularAp(r6, RApertures)

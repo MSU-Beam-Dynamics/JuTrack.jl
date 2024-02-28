@@ -91,6 +91,22 @@ function linepass_TPSA!(line::Vector{AbstractElement}, rin::Vector{CTPS{T, TPS_D
     end
     return nothing
 end
+function ADlinepass_TPSA!(line::Vector{AbstractElement}, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, changed_idx::Vector{Int}, changed_ele) where {T, TPS_Dim, Max_TPS_Degree}
+    if length(rin) != 6
+        error("The length of TPSA must be 6")
+    end
+    count = 1
+    for i in eachindex(line)
+        # ele = line[i]
+        if i in changed_idx
+            pass_TPSA!(changed_ele[count], rin)
+            count += 1
+        else
+            pass_TPSA!(line[i], rin)        
+        end
+    end
+    return nothing
+end
 
 function ringpass_TPSA!(line::Vector{AbstractElement}, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, nturn::Int) where {T, TPS_Dim, Max_TPS_Degree}
     if length(rin) != 6
