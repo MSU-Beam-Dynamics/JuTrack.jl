@@ -134,6 +134,9 @@ function pass_TPSA!(ele::KQUAD, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) 
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
     PolynomB = zeros(4)
+    if ele.rad != 0
+        println("Synchrtron radiation is not implemented in TPSA")
+    end
     if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
         PolynomB[2] = ele.k1
         StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
@@ -156,6 +159,9 @@ function pass_TPSA!(ele::KSEXT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) 
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
     PolynomB = zeros(4)
+    if ele.rad != 0
+        println("Synchrtron radiation is not implemented in TPSA")
+    end
     if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
         PolynomB[3] = ele.k2
         StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
@@ -178,6 +184,9 @@ function pass_TPSA!(ele::KOCT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) w
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
     PolynomB = zeros(4)
+    if ele.rad != 0
+        println("Synchrtron radiation is not implemented in TPSA")
+    end
     if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
         PolynomB[4] = ele.k3
         StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 

@@ -29,6 +29,7 @@ end
     PolynomB::Array{Float64,1} = zeros(4)          # PolynomB has higher priority than k1, k2, k3
     MaxOrder::Int64 = 1
     NumIntSteps::Int64 = 10
+    rad::Int64 = 0
     FringeQuadEntrance::Int64 = 0
     FringeQuadExit::Int64 = 0
     FringeIntM0::Array{Float64,1} = zeros(5)
@@ -51,6 +52,7 @@ end
     PolynomB::Array{Float64,1} = zeros(4)           # PolynomB has higher priority than k1, k2, k3
     MaxOrder::Int64 = 2
     NumIntSteps::Int64 = 10
+    rad::Int64 = 0
     FringeQuadEntrance::Int64 = 0
     FringeQuadExit::Int64 = 0
     FringeIntM0::Array{Float64,1} = zeros(5)
@@ -73,6 +75,7 @@ end
     PolynomB::Array{Float64,1} = zeros(4)           # PolynomB has higher priority than k1, k2, k3
     MaxOrder::Int64 = 3
     NumIntSteps::Int64 = 10
+    rad::Int64 = 0
     FringeQuadEntrance::Int64 = 0
     FringeQuadExit::Int64 = 0
     FringeIntM0::Array{Float64,1} = zeros(5)
@@ -94,6 +97,7 @@ end
     PolynomB::Array{Float64,1} = zeros(4)           # PolynomB has higher priority than k1, k2, k3
     MaxOrder::Int64 = 1
     NumIntSteps::Int64 = 10
+    rad::Int64 = 0
     FringeQuadEntrance::Int64 = 0
     FringeQuadExit::Int64 = 0
     FringeIntM0::Array{Float64,1} = zeros(5)
@@ -118,6 +122,7 @@ end
     PolynomB::Array{Float64,1} = zeros(4)
     MaxOrder::Int64 = 0
     NumIntSteps::Int64 = 10
+    rad::Int64 = 0
     fint1::Float64 = 0.0
     fint2::Float64 = 0.0
     gap::Float64 = 0.0
@@ -147,6 +152,7 @@ struct RBEND <: AbstractElement
     PolynomB::Array{Float64,1} 
     MaxOrder::Int64 
     NumIntSteps::Int64
+    rad::Int64
     fint1::Float64
     fint2::Float64
     gap::Float64
@@ -166,7 +172,7 @@ struct RBEND <: AbstractElement
     eletype::String
 end
 function RBEND(;name::String = "RBend", len::Float64 = 0.0, angle::Float64 = 0.0, PolynomA::Array{Float64,1} = zeros(4), 
-                PolynomB::Array{Float64,1} = zeros(4), MaxOrder::Int64 = 0, NumIntSteps::Int64 = 10, fint1::Float64 = 0.0, 
+                PolynomB::Array{Float64,1} = zeros(4), MaxOrder::Int64 = 0, NumIntSteps::Int64 = 10, rad::Int64=0, fint1::Float64 = 0.0, 
                 fint2::Float64 = 0.0, gap::Float64 = 0.0, FringeBendEntrance::Int64 = 0, FringeBendExit::Int64 = 0, 
                 FringeQuadEntrance::Int64 = 0, FringeQuadExit::Int64 = 0, FringeIntM0::Array{Float64,1} = zeros(5), 
                 FringeIntP0::Array{Float64,1} = zeros(5), T1::Array{Float64,1} = zeros(6), T2::Array{Float64,1} = zeros(6), 
@@ -174,7 +180,7 @@ function RBEND(;name::String = "RBend", len::Float64 = 0.0, angle::Float64 = 0.0
                 EApertures::Array{Float64,1} = zeros(6), KickAngle::Array{Float64,1} = zeros(2))
     e1 = angle/2.0
     e2 = angle/2.0
-    return RBEND(name, len, angle, e1, e2, PolynomA, PolynomB, MaxOrder, NumIntSteps, fint1, fint2, gap, FringeBendEntrance, FringeBendExit, FringeQuadEntrance, FringeQuadExit, FringeIntM0, FringeIntP0, T1, T2, R1, R2, RApertures, EApertures, KickAngle, "RBEND")
+    return RBEND(name, len, angle, e1, e2, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, fint1, fint2, gap, FringeBendEntrance, FringeBendExit, FringeQuadEntrance, FringeQuadExit, FringeIntM0, FringeIntP0, T1, T2, R1, R2, RApertures, EApertures, KickAngle, "RBEND")
 end
 
 

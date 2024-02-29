@@ -27,7 +27,7 @@ function fastdrift!(r::AbstractVector{Float64}, NormL::Float64, le::Float64)
     # Here we use pz = sqrt((1 + delta)^2 - px^2 - py^2) for precise calculation
     r[1] += NormL * r[2]
     r[3] += NormL * r[4]
-    # r[6] += NormL * (r[2]^2 + r[4]^2) / (2*(1+r[5]))
+    # r[5] += NormL * (r[2]^2 + r[4]^2) / (2*(1+r[5]))
     r[5] += NormL * (1.0 + r[6]) - le
     return nothing
 end

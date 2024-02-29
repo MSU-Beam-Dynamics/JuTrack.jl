@@ -144,11 +144,12 @@ function bndthinkick!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A, B, L, irho
     end
     
     
-    function pass_TPSA!(ele::SBEND, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) where {T, TPS_Dim, Max_TPS_Degree}
-        # ele: SBEND
-        # r_in: 6-by-num_particles array
-        # num_particles: number of particles
-    
+function pass_TPSA!(ele::SBEND, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) where {T, TPS_Dim, Max_TPS_Degree}
+    # ele: SBEND
+    # r_in: 6-by-1 TPSA array
+    if ele.rad != 0
+        println("Synchrotron radiation is not included in the SBEND element for TPSA tracking.")
+    end
         irho = ele.angle / ele.len
         BendSymplecticPass!(r_in, ele.len, irho, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
             ele.e1, ele.e2,
@@ -158,13 +159,14 @@ function bndthinkick!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A, B, L, irho
             ele.FringeIntM0, ele.FringeIntP0,
             ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures,
             ele.KickAngle)
-        return nothing
-    end
+    return nothing
+end
     function pass_TPSA!(ele::RBEND, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) where {T, TPS_Dim, Max_TPS_Degree}
         # ele: RBEND
-        # r_in: 6-by-num_particles array
-        # num_particles: number of particles
-    
+        # r_in: 6-by-1 TPSA array
+        if ele.rad != 0
+            println("Synchrotron radiation is not included in the SBEND element for TPSA tracking.")
+        end
         irho = ele.angle / ele.len
         BendSymplecticPass!(r_in, ele.len, irho, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
             ele.e1, ele.e2,

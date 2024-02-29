@@ -4,6 +4,7 @@ AngleLimit = 1.0
 m_e = 0.51099895e6
 m_p = 938.27208816e6
 m_goldion = 931.49410242e6 # charge 79, atomic number 197
+CGAMMA =	8.846056192e-05
 
 include("TPSA_Enzyme/TPSA_fixedmap.jl")
 include("lattice/beam.jl")
@@ -43,7 +44,7 @@ include("tracking/strongbb.jl")
 include("lattice/optics.jl")
 include("lattice/bunchedbeam.jl")
 export Beam
-export m_e, m_p, m_goldion
+export m_e, m_p, m_goldion, CGAMMA, CoordLimit, AngleLimit
 export CrabCavity, easyCrabCavity, AccelCavity, LorentzBoost, InvLorentzBoost, StrongGaussianBeam, StrongThinGaussianBeam, AbstractStrongBeamBeam
 export LongitudinalRFMap, AbstractLongitudinalRFMap, AbstractTransferMap, AbstractTransverseMap
 export AbstractOptics, AbstractOptics2D, AbstractOptics4D, optics2D, optics4DUC
