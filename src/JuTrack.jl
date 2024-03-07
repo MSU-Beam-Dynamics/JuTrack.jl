@@ -43,6 +43,8 @@ include("tracking/crabcavity.jl")
 include("tracking/strongbb.jl")
 include("lattice/optics.jl")
 include("lattice/bunchedbeam.jl")
+
+include("utils/lattice_utils.jl")
 export Beam
 export m_e, m_p, m_goldion, CGAMMA, CoordLimit, AngleLimit
 export CrabCavity, easyCrabCavity, AccelCavity, LorentzBoost, InvLorentzBoost, StrongGaussianBeam, StrongThinGaussianBeam, AbstractStrongBeamBeam
@@ -53,8 +55,9 @@ export initilize_zslice!
 
 export CTPS, cst, findindex, PolyMap, getindexmap, tadd, tminus, tmult, tdiv, tpow, tsqrt, tsin, tcos, ttan, tcosh, tsinh, reassign!
 export AbstractElement, DRIFT, KQUAD, KSEXT, KOCT, SBEND, RBEND, RFCA, SOLENOID, MARKER, CORRECTOR, HKICKER, VKICKER, thinMULTIPOLE
-export EdwardsTengTwiss, AbstractTwiss, twissPropagate, findm66, periodicEdwardsTengTwiss, Twissline, ADTwissline, twissring
+export EdwardsTengTwiss, AbstractTwiss, twissPropagate, findm66, periodicEdwardsTengTwiss, Twissline, ADTwissline, twissring, ADfindm66, ADtwissring, ADperiodicEdwardsTengTwiss
 export linepass!, pass!, ringpass!, linepass_TPSA!, pass_TPSA!, ringpass_TPSA!
 export plinepass!, pringpass!, pass_P!, ADlinepass!, ADlinepass_TPSA!
 
+export total_length
 end

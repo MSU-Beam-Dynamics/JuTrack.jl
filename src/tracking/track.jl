@@ -80,6 +80,19 @@ function ringpass!(line::Vector{AbstractElement}, particles::Beam, nturn::Int)
     return nothing
 end
 
+function ringpass!(line::Vector{AbstractElement}, particles::Beam, nturn::Int, save::Bool)
+    # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
+    # Check if the particle is lost by checking the lost_flag
+    save_beam = []
+    for i in 1:nturn
+        linepass!(line, particles)    
+        if save
+            push!(save_beam, copy(particles.r))
+        end
+    end
+    return save_beam
+end
+
 function linepass_TPSA!(line::Vector{AbstractElement}, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) where {T, TPS_Dim, Max_TPS_Degree}
     if length(rin) != 6
         error("The length of TPSA must be 6")

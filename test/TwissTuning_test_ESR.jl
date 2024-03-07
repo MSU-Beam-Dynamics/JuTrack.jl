@@ -13,15 +13,18 @@ function twiss_test(xx, esr)
     new_Q1 = KQUAD(len=lenQ1, k1=xx)
     changed_ele = [new_Q1]
 
-    twiss_in = EdwardsTengTwiss(betax=50.0,betay=10.0)
-    ss, name, twiss_out = ADTwissline(twiss_in, esr, 0.0, 2, length(esr), changed_idx, changed_ele)
-    return twiss_out.betax
+    # twiss_in = EdwardsTengTwiss(betax=50.0,betay=10.0)
+    # ss, name, Twi = ADTwissline(twiss_in, esr, 0.0, 2, length(esr), changed_idx, changed_ele)
+    Twi = ADperiodicEdwardsTengTwiss(esr, 0.0, 1, changed_idx, changed_ele)
+    return Twi.betax
 end
-
+esr = deserialize("test/esr_main_vector.jls")
+grad = autodiff(Forward, twiss_test, DuplicatedNoNeed, Duplicated(-0.2278853772, 1.0),  Const(esr))
 function tuning_test(target)
-    esr = deserialize("esr_main_vector.jls")
+    esr = deserialize("test/esr_main_vector.jls")
 
     x0 = -0.2278853772
+    # x0 = -4.0
     niter = 20
     step = 0.00001
 
@@ -56,4 +59,16 @@ p3 = plot(1:length(grad_vals), grad_vals, title = L"Evolution\ of\ \frac{\partia
     ylabel = L"\partial \beta_x /\partial k_1", legend = false, line=:dash, marker=:circle)
 plot(p1, p2, p3, layout = (3, 1), size=(800, 650))
 
-
+# twi_matrix = zeros(length(esr), 7)
+# for i in eachindex(esr)
+#     twi_matrix[i, 1] = pos[i]
+#     twi_matrix[i, 2] = twi[i].betax
+#     twi_matrix[i, 3] = twi[i].betay
+#     twi_matrix[i, 4] = twi[i].alphax
+#     twi_matrix[i, 5] = twi[i].alphay
+#     twi_matrix[i, 6] = twi[i].dx
+#     twi_matrix[i, 7] = twi[i].dy
+# end
+# # save the matrix as a text file
+# using DelimitedFiles
+# writedlm("twiss_matrix.txt", twi_matrix)

@@ -34,6 +34,7 @@ function strthinkickrad!(r::AbstractVector{Float64}, A, B, L, E0, max_order)
 
     # momentums after losing energy
     p_norm = 1.0 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
+    # p_norm = 1.0 / (1.0 + r[6])
     r[2] = xpr / p_norm
     r[4] = ypr / p_norm
 

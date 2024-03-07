@@ -55,6 +55,7 @@ function bndthinkickrad!(r::AbstractVector{Float64}, A, B, L, irho, E0, max_orde
 
         # angles from momentums
         p_norm = 1.0 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
+        # p_norm = 1.0 / (1.0 + r[6])
         x = r[1]
         xpr = r[2] * p_norm
         y = r[3]
@@ -66,6 +67,7 @@ function bndthinkickrad!(r::AbstractVector{Float64}, A, B, L, irho, E0, max_orde
     
         # momentums after losing energy
         p_norm = 1.0 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
+        # p_norm = 1.0 / (1.0 + r[6])
         r[2] = xpr / p_norm
         r[4] = ypr / p_norm
 

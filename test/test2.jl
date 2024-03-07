@@ -5,32 +5,6 @@ using Enzyme
 using BenchmarkTools
 Enzyme.API.runtimeActivity!(true)
 
-# circumference = 3834.0018419157
-# solen = SOLENOID(len=0.5, ks=0.3)
-Q1 = KQUAD(len=0.5, k1=0.3, rad=1)
-Q2 = KQUAD(len=0.5, k1=0.3, rad=0)
-# S1 = KSEXT(len=0.5, k2=0.3)
-# K1 = HKICKER(len=0.5, xkick=0.3)
-R1 = RBEND(len=0.2, angle=0.01)
-R2 = RBEND(len=0.2, angle=0.01, rad = 1)
-# RF0 = RFCA(name="rf0", len=4.01667, volt=0.0, freq=(299792458*1.0/circumference)*7560.0, h=7560.0, lag=0.5, energy=17.846262619763e9)
-# crab = CrabCavity(name="rf_crab", len=4.0, volt=0.0, freq=3.94e8)
-particles = zeros(1, 6)
-particles[1, 1] = 0.001
-particles[1, 2] = 0.0001
-particles_100 = zeros(1, 6)
-particles_100[:, 1] .= 0.001
-particles_100[:, 2] .= 0.0001
-beam_100 = Beam(particles_100)
-beam = Beam(particles)
-line1 = [R1]
-line2 = [R2]
-linepass!(line1, beam)
-linepass!(line2, beam_100)
-println(beam.r)
-println(beam_100.r)
-
-
 
 function f1(x, ring)
     particles = [0.001 0.0001 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0 0.0 0.0]
@@ -67,9 +41,9 @@ function f(xx, ring)
     xp = CTPS(0.0, 2, 6, 3)
     y = CTPS(0.0, 3, 6, 3)
     yp = CTPS(0.0, 4, 6, 3)
-    delta = CTPS(0.0, 5, 6, 3)
-    z = CTPS(0.0, 6, 6, 3)
-    rin = [x, xp, y, yp, delta, z]
+    z = CTPS(0.0, 5, 6, 3)
+    delta = CTPS(0.0, 6, 6, 3)
+    rin = [x, xp, y, yp, z, delta]
 
     changed_idx = [2]
     new_D1 = DRIFT(len=xx)
@@ -78,25 +52,49 @@ function f(xx, ring)
     ADlinepass_TPSA!(ring, rin, changed_idx, changed_ele)
     return rin[1].map[3]
 end
-# println(f(0.1, esr))
-# println(f(0.1001, esr))
-# println((f(0.1001, esr)-f(0.1,  esr))/0.0001)
-# grad = autodiff(Forward, f, Duplicated, Duplicated(0.1, 1.0),  Const(esr))
-# println(grad)
-# Load from the file
-# @time esr = deserialize("esr_main_vector.jls")
-# twi, pos = twissring(esr, 0.0, 3)
 
-# twi_matrix = zeros(length(esr), 7)
-# for i in eachindex(esr)
-#     twi_matrix[i, 1] = pos[i]
-#     twi_matrix[i, 2] = twi[i].betax
-#     twi_matrix[i, 3] = twi[i].betay
-#     twi_matrix[i, 4] = twi[i].alphax
-#     twi_matrix[i, 5] = twi[i].alphay
-#     twi_matrix[i, 6] = twi[i].dx
-#     twi_matrix[i, 7] = twi[i].dy
-# end
-# # save the matrix as a text file
-# using DelimitedFiles
-# writedlm("twiss_matrix.txt", twi_matrix)
+particle = [0.0005 0.0001 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0 0.0 0.0]
+beam = Beam(particle, energy=18e9)
+
+esr = deserialize("test/esr_main_vector.jls")
+rout = ringpass!(esr, beam, 100, true)
+
+using CSV, DataFrames
+path = "C:/Users/WAN/Downloads/ESR/Version-6.2/tracking_results.tfs"
+data = CSV.File(path, delim=' ', ignorerepeated=true, header=8, comment="#") |> DataFrame
+MAD_result = zeros(100, 6)
+for i in 1:100
+    MAD_result[i, 1] = data[i+1, 3]
+    MAD_result[i, 2] = data[i+1, 4]
+    MAD_result[i, 3] = data[i+1, 5]
+    MAD_result[i, 4] = data[i+1, 6]
+    MAD_result[i, 5] = data[i+1, 7]
+    MAD_result[i, 6] = data[i+1, 8]
+end
+
+using Plots
+rout_m = zeros(100, 6)
+for i in 1:100
+    rout_m[i, 1] = rout[i][1,1]
+    rout_m[i, 2] = rout[i][1,2]
+    rout_m[i, 3] = rout[i][1,3]
+    rout_m[i, 4] = rout[i][1,4]
+    rout_m[i, 5] = rout[i][1,5]
+    rout_m[i, 6] = rout[i][1,6]
+end
+p1 = plot(1:100, MAD_result[:, 1], label="MADX x", xlabel="Turn", ylabel="Position (m)", title="Tracking Results", legend=:topleft)
+plot!(1:100, rout_m[:, 1], label="JuTrack x")
+p2 = plot(1:100, MAD_result[:, 2], label="MADX xp", xlabel="Turn", ylabel="Position (m)", title="Tracking Results", legend=:topleft)
+plot!(1:100, rout_m[:, 2], label="JuTrack xp")
+p3 = plot(1:100, MAD_result[:, 3], label="MADX y", xlabel="Turn", ylabel="Position (m)", title="Tracking Results", legend=:topleft)
+plot!(1:100, rout_m[:, 3], label="JuTrack y")
+p4 = plot(1:100, MAD_result[:, 4], label="MADX yp", xlabel="Turn", ylabel="Position (m)", title="Tracking Results", legend=:topleft)
+plot!(1:100, rout_m[:, 4], label="JuTrack yp")
+p_all = plot(p1, p2, p3, p4, layout=(2, 2), size=(1000, 600))
+# savefig(p_all, "tracking_results.png")
+
+# p5 = plot(MAD_result[:, 1], MAD_result[:, 2], label="MADX", xlabel="x", ylabel="xp", title="H Phase Space", legend=:topleft)
+# plot!(rout_m[:, 1], rout_m[:, 2], label="JuTrack")
+# p6 = plot(MAD_result[:, 3], MAD_result[:, 4], label="MADX", xlabel="y", ylabel="yp", title="V Phase Space", legend=:topleft)
+# plot!(rout_m[:, 3], rout_m[:, 4], label="JuTrack")
+# p_all2 = plot(p5, p6, layout=(1, 2), size=(800, 360))

@@ -234,11 +234,12 @@ struct CrabCavity <: AbstractElement
     k::Float64  # wave number
     phi::Float64  # phase
     errors::Array{Float64,1} # 1: Voltage error, 2: Phase error
+    energy::Float64
     eletype::String 
 end
-function CrabCavity(;name::String = "CrabCavity", len::Float64 = 0.0, volt::Float64 = 0.0, freq::Float64 = 0.0, phi::Float64 = 0.0, errors::Array{Float64,1} = zeros(2))
+function CrabCavity(;name::String = "CrabCavity", len::Float64 = 0.0, volt::Float64 = 0.0, freq::Float64 = 0.0, phi::Float64 = 0.0, errors::Array{Float64,1} = zeros(2), energy::Float64 = 1e9)
     k = 2*π*freq/2.99792458e8
-    return CrabCavity(name, len, volt, freq, k, phi, errors, "CrabCavity")
+    return CrabCavity(name, len, volt, freq, k, phi, errors, energy, "CrabCavity")
 end
 
 struct easyCrabCavity <: AbstractElement
@@ -253,7 +254,7 @@ struct easyCrabCavity <: AbstractElement
 end
 function easyCrabCavity(;name::String = "easyCrabCavity", len::Float64 = 0.0, halfthetac::Float64 = 0.0, freq::Float64 = 0.0, phi::Float64 = 0.0, errors::Array{Float64,1} = [0.0, 0.0])
     k = 2*π*freq/2.99792458e8
-    return CrabCavity(name, len, halfthetac, freq, k, phi, errors, "easyCrabCavity")
+    return easyCrabCavity(name, len, halfthetac, freq, k, phi, errors, "easyCrabCavity")
 end
 
 @kwdef struct AccelCavity <: AbstractElement
