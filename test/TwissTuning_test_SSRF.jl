@@ -9,9 +9,11 @@ Enzyme.API.runtimeActivity!(true)
 
 
 function twiss_test(xx)
+    # we don't suggest to create a long lattice inside the function. Use twiss_test(ring, xx) instead.
+    # the ring can be set as Const in autodiff function
     SSRF = ssrf(xx[1])
     twiss_in = EdwardsTengTwiss(betax=1.0,betay=2.0)
-    ss, name, twiss_out = Twissline(twiss_in, SSRF, 0.0, 2, length(SSRF))
+    ss, name, twiss_out = Twissline(twiss_in, SSRF, 0.0, 1, length(SSRF))
     return twiss_out.betax
 end
 

@@ -100,11 +100,8 @@ function linepass3!(line, particles::Beam)
 end
 particle = [0.0005 0.0001 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0 0.0 0.0]
 beam = Beam(particle, energy=18e9)
-beam1 = Beam(particle, energy=18e9)
-esr1 = deserialize("test/esr_main_fromseq.jls")
 
 esr = deserialize("test/esr_main.jls")
-# rout = linepass2!(esr, esr1, beam, beam1)
 rout = ringpass!(esr, beam, 100, true)
 # println(rout[1, :])
 # println(use_exact_Hamiltonian)
