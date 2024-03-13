@@ -9,7 +9,11 @@ function CorrectorPass_TPSA!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le::Fl
         # r6 = @view r[(c-1)*6+1:c*6]
         # if !isnan(r6[1])
             # p_norm = 1.0 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
-            p_norm = 1.0 / sqrt(1.0 + r[6])
+            if false
+                p_norm = 1.0 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
+            else
+                p_norm = 1.0 / sqrt(1.0 + r[6])
+            end
             NormL = le * p_norm
             # Misalignment at entrance
             if T1 != zeros(6)

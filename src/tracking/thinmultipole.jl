@@ -57,7 +57,7 @@ function ThinMPolePass!(r::Array{Float64,1}, le::Float64, A::Array{Float64,1}, B
             #     checkiflostEllipticalAp(r6, EApertures)
             # end
             
-            strthinkick1!(r6, A, B, le, max_order)
+            strthinkick1!(r6, A, B, 1.0, max_order)
             r6[2] += bax * r6[6]
             r6[4] -= bay * r6[6]
             r6[6] -= bax * r6[1] - bay * r6[3]  # Path lenghtening
@@ -132,7 +132,7 @@ function ThinMPolePass_P!(r::Array{Float64,1}, le::Float64, A::Array{Float64,1},
             #     checkiflostEllipticalAp(r6, EApertures)
             # end
             
-            strthinkick1!(r6, A, B, le, max_order)
+            strthinkick1!(r6, A, B, 1.0, max_order)
             r6[2] += bax * r6[6]
             r6[4] -= bay * r6[6]
             r6[6] -= bax * r6[1] - bay * r6[3]  # Path lenghtening

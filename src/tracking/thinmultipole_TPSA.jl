@@ -29,7 +29,7 @@ function ThinMPolePass_TPSA!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le::Fl
                 ATmultmv!(r, R1)
             end
 
-            strthinkick!(r, A, B, le, max_order)
+            strthinkick!(r, A, B, 1.0, max_order)
             r[2] += bax * r[6]
             r[4] -= bay * r[6]
             r[6] -= bax * r[1] - bay * r[3]  # Path lenghtening

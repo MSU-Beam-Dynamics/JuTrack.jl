@@ -12,8 +12,11 @@ function pass_TPSA!(ele::SOLENOID, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}
         #     end
             # r6 = @view r_in[(c-1)*6+1:c*6]
             # if !isnan(r6[1]) 
+            if use_exact_Hamiltonian == 1
                 p_norm = 1.0 / sqrt((1.0 + r_in[6])^2 - r_in[2]^2 - r_in[4]^2) # use exact p_norm
-    
+            else
+                p_norm = 1.0 / sqrt(1.0 + r_in[6]) # use linearized p_norm
+            end
                 # Misalignment at entrance
                 if T1 != zeros(6)
                     ATaddvv!(r_in, T1)

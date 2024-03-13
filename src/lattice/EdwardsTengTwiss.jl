@@ -110,6 +110,8 @@ struct EdwardsTengTwiss <: AbstractTwiss
 	dpx::Float64
 	dy::Float64
 	dpy::Float64
+	dmux::Float64
+	dmuy::Float64
 	sinmux::Float64
 	cosmux::Float64
 	sinmuy::Float64
@@ -128,7 +130,7 @@ EdwardsTengTwiss(;betax::Float64,betay::Float64,
 			   R11::Float64=0.0,R12::Float64=0.0,
 			   R21::Float64=0.0,R22::Float64=0.0,
 			   mode::Int=1)=EdwardsTengTwiss(betax,betay,alfx,alfy,(1.0+alfx^2)/betax,(1.0+alfy^2)/betay,
-														  dx,dpx,dy,dpy,sin(mux),cos(mux),sin(muy),cos(muy),[R11 R12;R21 R22],mode)
+														  dx,dpx,dy,dpy,mux,muy,sin(mux),cos(mux),sin(muy),cos(muy),[R11 R12;R21 R22],mode)
 _symplectic_conjugate_2by2(M) = [M[2, 2] -M[1, 2]; -M[2, 1] M[1, 1]]
 function _matrixTransform_2by2(M)
 	m11 = M[1, 1]
@@ -211,7 +213,13 @@ function twissPropagate(tin::EdwardsTengTwiss,M::Matrix{Float64})
 	smuy=sin_dmuy*cmuy0+cos_dmuy*smuy0
 	cmuy=cos_dmuy*cmuy0-sin_dmuy*smuy0
 
-	return EdwardsTengTwiss(v1[1],v2[1],v1[2],v2[2],v1[3],v2[3],eta[1],eta[2],eta[3],eta[4],smux,cmux,smuy,cmuy,R,mode)
+	# Calculate the change in phase (Delta mux and Delta muy) in radians
+	delta_mux = atan(sin_dmux, cos_dmux)
+	delta_muy = atan(sin_dmuy, cos_dmuy)
+
+	new_mux = tin.dmux + delta_mux
+	new_muy = tin.dmuy + delta_muy
+	return EdwardsTengTwiss(v1[1],v2[1],v1[2],v2[2],v1[3],v2[3],eta[1],eta[2],eta[3],eta[4],new_mux,new_muy,smux,cmux,smuy,cmuy,R,mode)
 end
 
 function findm66(seq::Vector{AbstractElement}, dp::Float64, order::Int)
@@ -411,7 +419,7 @@ function periodicEdwardsTengTwiss(seq::Vector{AbstractElement}, dp, order::Int)
 	alfy=Float64(0.5)*(Y[1,1]-Y[2,2])/smuy
 
 	eta=inv1(Matrix{Float64}(I,(4,4))-(@view M[1:4,1:4]))*(@view M[1:4,6])
-	return EdwardsTengTwiss(betax,betay,alfx,alfy,gamx,gamy,eta[1],eta[2],eta[3],eta[4],smux,cmux,smuy,cmuy,R,1)
+	return EdwardsTengTwiss(betax,betay,alfx,alfy,gamx,gamy,eta[1],eta[2],eta[3],eta[4],0.0,0.0,smux,cmux,smuy,cmuy,R,1)
 end
 
 function ADperiodicEdwardsTengTwiss(seq::Vector{AbstractElement}, dp, order::Int, changed_idx::Vector{Int}, changed_ele)
@@ -470,7 +478,7 @@ function ADperiodicEdwardsTengTwiss(seq::Vector{AbstractElement}, dp, order::Int
 		Identity[i, i] = 1.0
 	end
 	eta=inv1(Identity-(@view M[1:4,1:4]))*(@view M[1:4,6])
-	return EdwardsTengTwiss(betax,betay,alfx,alfy,gamx,gamy,eta[1],eta[2],eta[3],eta[4],smux,cmux,smuy,cmuy,R,1)
+	return EdwardsTengTwiss(betax,betay,alfx,alfy,gamx,gamy,eta[1],eta[2],eta[3],eta[4],0.0,0.0,smux,cmux,smuy,cmuy,R,1)
 end
 
 function twissring(seq::Vector{AbstractElement}, dp::Float64, order::Int)

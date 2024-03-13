@@ -67,17 +67,19 @@ function StrMPoleSymplectic4Pass!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, l
         useLinFrEleExit = 0
     end
 
-    B[1] -= sin(KickAngle[1])/le
-    A[1] += sin(KickAngle[2])/le
-
+    if le > 0
+        B[1] -= sin(KickAngle[1])/le
+        A[1] += sin(KickAngle[2])/le
+    end
     # Threads.@threads for c in 1:num_particles
     # for c in 1:num_particles
-            NormL1 = L1 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
-            NormL2 = L2 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
-            # norm = tdiv(1.0, tadd(1.0, r[5]))
-            # NormL1 = tmult(L1, norm)
-            # NormL2 = tmult(L2, norm)
-
+    if use_exact_Hamiltonian == 1
+        NormL1 = L1 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
+        NormL2 = L2 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
+    else
+        NormL1 = L1 / (1.0 + r[6])
+        NormL2 = L2 / (1.0 + r[6])
+    end
             # Misalignment at entrance
             if T1 != zeros(6)
                 ATaddvv!(r, T1)
@@ -123,9 +125,10 @@ function StrMPoleSymplectic4Pass!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, l
             end
         # end
     # end
-
-    B[1] += sin(KickAngle[1]) / le
-    A[1] -= sin(KickAngle[2]) / le
+    if le > 0
+        B[1] += sin(KickAngle[1]) / le
+        A[1] -= sin(KickAngle[2]) / le
+    end
     return nothing
 end
 
@@ -144,9 +147,9 @@ function pass_TPSA!(ele::KQUAD, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) 
             ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
     else
         PolynomB[1] = ele.PolynomB[1]
-        PolynomB[2] = ele.PolynomB[2]
-        PolynomB[3] = ele.PolynomB[3]
-        PolynomB[4] = ele.PolynomB[4]
+        PolynomB[2] = ele.PolynomB[2] 
+        PolynomB[3] = ele.PolynomB[3] / 2.0
+        PolynomB[4] = ele.PolynomB[4] / 6.0
         StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
             ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
             ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
@@ -163,15 +166,15 @@ function pass_TPSA!(ele::KSEXT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) 
         println("Synchrtron radiation is not implemented in TPSA")
     end
     if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
-        PolynomB[3] = ele.k2
+        PolynomB[3] = ele.k2 / 2.0
         StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
             ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
             ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
     else
         PolynomB[1] = ele.PolynomB[1]
-        PolynomB[2] = ele.PolynomB[2]
-        PolynomB[3] = ele.PolynomB[3]
-        PolynomB[4] = ele.PolynomB[4]
+        PolynomB[2] = ele.PolynomB[2] 
+        PolynomB[3] = ele.PolynomB[3] / 2.0
+        PolynomB[4] = ele.PolynomB[4] / 6.0
         StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
             ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
             ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
@@ -188,15 +191,15 @@ function pass_TPSA!(ele::KOCT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) w
         println("Synchrtron radiation is not implemented in TPSA")
     end
     if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
-        PolynomB[4] = ele.k3
+        PolynomB[4] = ele.k3 / 6.0
         StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
             ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
             ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
     else
         PolynomB[1] = ele.PolynomB[1]
-        PolynomB[2] = ele.PolynomB[2]
-        PolynomB[3] = ele.PolynomB[3]
-        PolynomB[4] = ele.PolynomB[4]
+        PolynomB[2] = ele.PolynomB[2] 
+        PolynomB[3] = ele.PolynomB[3] / 2.0
+        PolynomB[4] = ele.PolynomB[4] / 6.0
         StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
             ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
             ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
@@ -204,26 +207,21 @@ function pass_TPSA!(ele::KOCT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) w
     return nothing
 end
 
-# using Enzyme
-# include("../lattice/canonical_elements.jl")
-# include("../TPSA_Enzyme/TPSA_fixedmap.jl")
-# # # # q = KQUAD(PolynomialB=[0.0, 1.0, 0.0, 0.0])
-# function f(xx)
-#     q = KQUAD(len=1.0, k1=xx[1])
-#     x = CTPS(0.0, 1, 6, 3)
-#     xp = CTPS(0.0, 2, 6, 3)
-#     y = CTPS(0.0, 3, 6, 3)
-#     yp = CTPS(0.0, 4, 6, 3)
-#     z = CTPS(0.0, 5, 6, 3)
-#     delta = CTPS(0.0, 6, 6, 3)
-#     rin = [x, xp, y, yp, z, delta]
-#     pass_TPSA!(q, rin, 1)
-# return rin[1].map[2]
+# function pass_TPSA!(ele::thinMULTIPOLE, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) where {T, TPS_Dim, Max_TPS_Degree}
+#     # ele: thinMULTIPOLE
+#     # r_in: 6-by-num_particles array
+#     # num_particles: number of particles
+#     PolynomB = zeros(4)
+#     if ele.rad != 0
+#         println("Synchrtron radiation is not implemented in TPSA")
+#     end
+
+#         PolynomB[1] = ele.PolynomB[1]
+#         PolynomB[2] = ele.PolynomB[2] 
+#         PolynomB[3] = ele.PolynomB[3] / 2.0
+#         PolynomB[4] = ele.PolynomB[4] / 6.0
+#         StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+#             ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+#             ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
+#     return nothing
 # end
-# x = [-1.063770]
-# println(f(x))
-# # grad = gradient(Forward, f, x)
-# using BenchmarkTools
-# # # @btime f([1.0])
-# @btime grad = gradient(Forward, f, [1.0])
-# # println(grad)

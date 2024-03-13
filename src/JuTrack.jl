@@ -5,6 +5,7 @@ m_e = 0.51099895e6
 m_p = 938.27208816e6
 m_goldion = 931.49410242e6 # charge 79, atomic number 197
 CGAMMA =	8.846056192e-05
+use_exact_Hamiltonian = 0
 
 include("TPSA_Enzyme/TPSA_fixedmap.jl")
 include("lattice/beam.jl")
@@ -29,13 +30,6 @@ include("tracking/track.jl")
 include("lattice/EdwardsTengTwiss.jl")
 
 # multi-threading
-include("tracking/bend_mthread.jl")
-include("tracking/drift_mthread.jl")
-include("tracking/multipole_mthread.jl")
-include("tracking/rfcavity_mthread.jl")
-include("tracking/crabcavity_mthread.jl")
-include("tracking/lorentz_mthread.jl")
-include("tracking/solenoid_mthread.jl")
 include("tracking/track_mthread.jl")
 
 include("tracking/lorentz.jl")
@@ -46,8 +40,8 @@ include("lattice/bunchedbeam.jl")
 
 include("utils/lattice_utils.jl")
 export Beam
-export m_e, m_p, m_goldion, CGAMMA, CoordLimit, AngleLimit
-export CrabCavity, easyCrabCavity, AccelCavity, LorentzBoost, InvLorentzBoost, StrongGaussianBeam, StrongThinGaussianBeam, AbstractStrongBeamBeam
+export m_e, m_p, m_goldion, CGAMMA, CoordLimit, AngleLimit, use_exact_Hamiltonian, use_exact_drift
+export CRABCAVITY, easyCRABCAVITY, AccelCavity, LorentzBoost, InvLorentzBoost, StrongGaussianBeam, StrongThinGaussianBeam, AbstractStrongBeamBeam
 export LongitudinalRFMap, AbstractLongitudinalRFMap, AbstractTransferMap, AbstractTransverseMap
 export AbstractOptics, AbstractOptics2D, AbstractOptics4D, optics2D, optics4DUC
 export initilize_6DGaussiandist!, get_emittance!, get_2nd_moment!, get_centroid!, histogram1DinZ!
@@ -58,6 +52,6 @@ export AbstractElement, DRIFT, KQUAD, KSEXT, KOCT, SBEND, RBEND, RFCA, SOLENOID,
 export EdwardsTengTwiss, AbstractTwiss, twissPropagate, findm66, periodicEdwardsTengTwiss, Twissline, ADTwissline, twissring, ADfindm66, ADtwissring, ADperiodicEdwardsTengTwiss
 export linepass!, pass!, ringpass!, linepass_TPSA!, pass_TPSA!, ringpass_TPSA!
 export plinepass!, pringpass!, pass_P!, ADlinepass!, ADlinepass_TPSA!
-
-export total_length
+export matrix_to_array, array_to_matrix
+export total_length, spos, findelem
 end

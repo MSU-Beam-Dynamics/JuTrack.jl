@@ -9,8 +9,11 @@ function CorrectorPass!(r::Array{Float64,1}, le::Float64, xkick::Float64, ykick:
         end
         r6 = @view r[(c-1)*6+1:c*6]
         if !isnan(r6[1])
-            # p_norm = 1.0 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
-            p_norm = 1.0 / sqrt(1.0 + r6[6])
+            if false
+                p_norm = 1.0 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
+            else
+                p_norm = 1.0 / sqrt(1.0 + r6[6])
+            end
             NormL = le * p_norm
             # Misalignment at entrance
             if T1 != zeros(6)
@@ -79,8 +82,11 @@ function CorrectorPass_P!(r::Array{Float64,1}, le::Float64, xkick::Float64, ykic
         end
         r6 = @view r[(c-1)*6+1:c*6]
         if !isnan(r6[1])
-            # p_norm = 1.0 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
-            p_norm = 1.0 / sqrt(1.0 + r6[6])
+            if false
+                p_norm = 1.0 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
+            else
+                p_norm = 1.0 / sqrt(1.0 + r6[6])
+            end
             NormL = le * p_norm
             # Misalignment at entrance
             if T1 != zeros(6)

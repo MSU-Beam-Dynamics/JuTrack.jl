@@ -23,23 +23,31 @@ end
 
 function fastdrift!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, NormL::CTPS{T, TPS_Dim, Max_TPS_Degree}, 
     le::Float64) where {T, TPS_Dim, Max_TPS_Degree}
-    # NormL=(Physical Length)/(1+delta)  is computed externally to speed up calculations
     # in the loop if momentum deviation (delta) does not change
     # such as in 4-th order symplectic integrator w/o radiation
-    # AT uses small angle approximation pz = 1 + delta.
-    # Here we use pz = sqrt((1 + delta)^2 - px^2 - py^2) for precise calculation   
-    r[1] += NormL * r[2]
-    r[3] += NormL * r[4]
-    r[5] += NormL * (1.0 + r[6]) - le
+
+    if use_exact_Hamiltonian == 1
+        r[1] += NormL * r[2]
+        r[3] += NormL * r[4]
+        r[5] += NormL * (1.0 + r[6]) - le
+    else
+        r[1] += NormL * r[2]
+        r[3] += NormL * r[4]
+        r[5] += NormL * (r[2]^2 + r[4]^2) / (2.0*(1.0+r[5]))
+    end
     return nothing 
 end
 
 function drift6!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le::Float64) where {T, TPS_Dim, Max_TPS_Degree}
-    NormL = le / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
-
+    if use_exact_Hamiltonian == 1
+        NormL = le / sqrt(((1.0 + r[6])^2 - r[2]^2 - r[4]^2))
+        r[5] += NormL * (1.0 + r[6]) - le
+    else
+        NormL = le / (1.0 + r[6])
+        r[5] += NormL * (r[2]^2 + r[4]^2) / (2.0*(1.0+r[5])) # for linearized approximation
+    end
     r[1] += NormL * r[2]
     r[3] += NormL * r[4]
-    r[5] += NormL * (1.0 + r[6]) - le
     return nothing
 end 
 function DriftPass_TPSA!(r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le, T1, T2, R1, R2, 

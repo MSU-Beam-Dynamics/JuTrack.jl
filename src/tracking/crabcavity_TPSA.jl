@@ -1,5 +1,5 @@
 include("drift_TPSA.jl")
-function pass_TPSA!(ele::CrabCavity, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) where {T, TPS_Dim, Max_TPS_Degree}
+function pass_TPSA!(ele::CRABCAVITY, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) where {T, TPS_Dim, Max_TPS_Degree}
     E = ele.energy
     gamma = E / m_e
     beta = sqrt(1.0 - 1.0 / gamma^2)
@@ -18,13 +18,13 @@ function pass_TPSA!(ele::CrabCavity, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degre
     return nothing
 end
 
-function pass_TPSA!(ele::easyCrabCavity, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) where {T, TPS_Dim, Max_TPS_Degree}
+function pass_TPSA!(ele::easyCRABCAVITY, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) where {T, TPS_Dim, Max_TPS_Degree}
     if ele.len == 0.0
         return nothing
     else
         drift6!(r_in, ele.len)
     end
-    println("warning: easyCrabCavity is not implemented in TPSA")
+    println("warning: easyCRABCAVITY is not implemented in TPSA")
     return nothing
 end
 

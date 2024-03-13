@@ -53,23 +53,77 @@ function f(xx, ring)
     return rin[1].map[3]
 end
 
+function linepass2!(line, line2, particles::Beam, particles2::Beam)
+    # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
+    # Check if the particle is lost by checking the lost_flag
+    np = particles.nmacro
+    particles6 = matrix_to_array(particles.r)
+    particles6_2 = matrix_to_array(particles2.r)
+
+    for i in eachindex(line)
+        pass!(line[i], particles6, np, particles)  
+        pass!(line2[i], particles6_2, np, particles2)     
+        if abs(particles6[1] - particles6_2[1]) > 1e-4 
+            println(i)
+            println(particles6[1]," ", particles6_2[1])
+            println(particles6[2], " ", particles6_2[2]) 
+        end
+    end
+    rout = array_to_matrix(particles6, np)
+    particles.r = rout
+    return nothing
+end
+
+function linepass3!(line, particles::Beam)
+    # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
+    # Check if the particle is lost by checking the lost_flag
+    np = particles.nmacro
+    particles6 = matrix_to_array(particles.r)
+    x = zeros(length(line)*2)
+    px = zeros(length(line)*2)
+    s = zeros(length(line)*2)
+    for i in eachindex(line)
+        pass!(line[i], particles6, np, particles)  
+        x[i] = particles6[1]
+        px[i] = particles6[2]
+        s[i] = total_length(line[1:i])
+    end
+    for i in eachindex(line)
+        pass!(line[i], particles6, np, particles)  
+        x[i+length(line)] = particles6[1]
+        px[i+length(line)] = particles6[2]
+        s[i+length(line)] = total_length(line[1:i])
+    end
+    rout = array_to_matrix(particles6, np)
+    particles.r = rout
+    return x, px,s
+end
 particle = [0.0005 0.0001 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0 0.0 0.0]
 beam = Beam(particle, energy=18e9)
+beam1 = Beam(particle, energy=18e9)
+esr1 = deserialize("test/esr_main_fromseq.jls")
 
-esr = deserialize("test/esr_main_vector.jls")
+esr = deserialize("test/esr_main.jls")
+# rout = linepass2!(esr, esr1, beam, beam1)
 rout = ringpass!(esr, beam, 100, true)
-
+# println(rout[1, :])
+# println(use_exact_Hamiltonian)
+# use_exact_drift(1)
+# beam = Beam(particle, energy=18e9)
+# rout = ringpass!(esr, beam, 100, true)
+# println(rout[1, :])
+# println(use_exact_Hamiltonian)
 using CSV, DataFrames
-path = "C:/Users/WAN/Downloads/ESR/Version-6.2/tracking_results.tfs"
-data = CSV.File(path, delim=' ', ignorerepeated=true, header=8, comment="#") |> DataFrame
+path = "C:/Users/WAN/Downloads/ESR/Version-6.2/tracking_results_2turns.tfs"
+data = CSV.File(path, delim=' ', ignorerepeated=true, header=54, comment="#") |> DataFrame
 MAD_result = zeros(100, 6)
 for i in 1:100
-    MAD_result[i, 1] = data[i+1, 3]
-    MAD_result[i, 2] = data[i+1, 4]
-    MAD_result[i, 3] = data[i+1, 5]
-    MAD_result[i, 4] = data[i+1, 6]
-    MAD_result[i, 5] = data[i+1, 7]
-    MAD_result[i, 6] = data[i+1, 8]
+    MAD_result[i, 1] = data[i, 3]
+    MAD_result[i, 2] = data[i, 4]
+    MAD_result[i, 3] = data[i, 5]
+    MAD_result[i, 4] = data[i, 6]
+    MAD_result[i, 5] = data[i, 7]
+    MAD_result[i, 6] = data[i, 8]
 end
 
 using Plots
@@ -82,19 +136,24 @@ for i in 1:100
     rout_m[i, 5] = rout[i][1,5]
     rout_m[i, 6] = rout[i][1,6]
 end
-p1 = plot(1:100, MAD_result[:, 1], label="MADX x", xlabel="Turn", ylabel="Position (m)", title="Tracking Results", legend=:topleft)
+p1 = plot(1:100, MAD_result[1:100, 1], label="MADX x", xlabel="Turn", ylabel="Position (m)", title="Tracking Results", legend=:topleft)
 plot!(1:100, rout_m[:, 1], label="JuTrack x")
-p2 = plot(1:100, MAD_result[:, 2], label="MADX xp", xlabel="Turn", ylabel="Position (m)", title="Tracking Results", legend=:topleft)
+p2 = plot(1:100, MAD_result[1:100, 2], label="MADX xp", xlabel="Turn", ylabel="Position (m)", title="Tracking Results", legend=:topleft)
 plot!(1:100, rout_m[:, 2], label="JuTrack xp")
-p3 = plot(1:100, MAD_result[:, 3], label="MADX y", xlabel="Turn", ylabel="Position (m)", title="Tracking Results", legend=:topleft)
+p3 = plot(1:100, MAD_result[1:100, 3], label="MADX y", xlabel="Turn", ylabel="Position (m)", title="Tracking Results", legend=:topleft)
 plot!(1:100, rout_m[:, 3], label="JuTrack y")
-p4 = plot(1:100, MAD_result[:, 4], label="MADX yp", xlabel="Turn", ylabel="Position (m)", title="Tracking Results", legend=:topleft)
+p4 = plot(1:100, MAD_result[1:100, 4], label="MADX yp", xlabel="Turn", ylabel="Position (m)", title="Tracking Results", legend=:topleft)
 plot!(1:100, rout_m[:, 4], label="JuTrack yp")
 p_all = plot(p1, p2, p3, p4, layout=(2, 2), size=(1000, 600))
 # savefig(p_all, "tracking_results.png")
-
+# open("output_file.txt", "w") do file
+#     for i = 1:5550
+#         write(file, esr[i].name * "\n")
+#     end
+# end
 # p5 = plot(MAD_result[:, 1], MAD_result[:, 2], label="MADX", xlabel="x", ylabel="xp", title="H Phase Space", legend=:topleft)
 # plot!(rout_m[:, 1], rout_m[:, 2], label="JuTrack")
 # p6 = plot(MAD_result[:, 3], MAD_result[:, 4], label="MADX", xlabel="y", ylabel="yp", title="V Phase Space", legend=:topleft)
 # plot!(rout_m[:, 3], rout_m[:, 4], label="JuTrack")
 # p_all2 = plot(p5, p6, layout=(1, 2), size=(800, 360))
+

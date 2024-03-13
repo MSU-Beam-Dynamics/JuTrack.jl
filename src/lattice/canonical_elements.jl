@@ -96,7 +96,7 @@ end
     PolynomA::Array{Float64,1} = zeros(4)    
     PolynomB::Array{Float64,1} = zeros(4)           # PolynomB has higher priority than k1, k2, k3
     MaxOrder::Int64 = 1
-    NumIntSteps::Int64 = 10
+    NumIntSteps::Int64 = 1
     rad::Int64 = 0
     FringeQuadEntrance::Int64 = 0
     FringeQuadExit::Int64 = 0
@@ -192,7 +192,7 @@ end
     h::Float64 = 1.0
     lag::Float64 = 0.0
     philag::Float64 = 0.0
-    energy::Float64 = 0.0
+    energy::Float64 = 0.0 # eV
     eletype::String = "RFCA"
 end
 
@@ -226,7 +226,7 @@ function VKICKER(;name="VKicker", len=0.0, ykick=0.0)
 end
 ###########################################
 # the following elements may not be symplectic and may not work with Enzyme
-struct CrabCavity <: AbstractElement
+struct CRABCAVITY <: AbstractElement
     name::String 
     len::Float64 
     volt::Float64  # voltage
@@ -237,12 +237,12 @@ struct CrabCavity <: AbstractElement
     energy::Float64
     eletype::String 
 end
-function CrabCavity(;name::String = "CrabCavity", len::Float64 = 0.0, volt::Float64 = 0.0, freq::Float64 = 0.0, phi::Float64 = 0.0, errors::Array{Float64,1} = zeros(2), energy::Float64 = 1e9)
+function CRABCAVITY(;name::String = "CRABCAVITY", len::Float64 = 0.0, volt::Float64 = 0.0, freq::Float64 = 0.0, phi::Float64 = 0.0, errors::Array{Float64,1} = zeros(2), energy::Float64 = 1e9)
     k = 2*π*freq/2.99792458e8
-    return CrabCavity(name, len, volt, freq, k, phi, errors, energy, "CrabCavity")
+    return CRABCAVITY(name, len, volt, freq, k, phi, errors, energy, "CRABCAVITY")
 end
 
-struct easyCrabCavity <: AbstractElement
+struct easyCRABCAVITY <: AbstractElement
     name::String 
     len::Float64 
     halfthetac::Float64 
@@ -252,9 +252,9 @@ struct easyCrabCavity <: AbstractElement
     errors::Array{Float64,1}  # 1: Voltage error, 2: Phase error
     eletype::String
 end
-function easyCrabCavity(;name::String = "easyCrabCavity", len::Float64 = 0.0, halfthetac::Float64 = 0.0, freq::Float64 = 0.0, phi::Float64 = 0.0, errors::Array{Float64,1} = [0.0, 0.0])
+function easyCRABCAVITY(;name::String = "easyCRABCAVITY", len::Float64 = 0.0, halfthetac::Float64 = 0.0, freq::Float64 = 0.0, phi::Float64 = 0.0, errors::Array{Float64,1} = [0.0, 0.0])
     k = 2*π*freq/2.99792458e8
-    return easyCrabCavity(name, len, halfthetac, freq, k, phi, errors, "easyCrabCavity")
+    return easyCRABCAVITY(name, len, halfthetac, freq, k, phi, errors, "easyCRABCAVITY")
 end
 
 @kwdef struct AccelCavity <: AbstractElement

@@ -80,9 +80,13 @@ function bndthinkick!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A, B, L, irho
         # for c in 1:num_particles
         #     r6 = @view r[(c-1)*6+1:c*6]
             # if !isnan(r6[1])
+            if use_exact_Hamiltonian == 1
                 NormL1 = L1 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
                 NormL2 = L2 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
-    
+            else
+                NormL1 = L1 / (1.0 + r[6])
+                NormL2 = L2 / (1.0 + r[6])
+            end
                 # Misalignment at entrance
                 if T1 != zeros(6)
                     ATaddvv!(r, T1)

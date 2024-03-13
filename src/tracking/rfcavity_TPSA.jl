@@ -43,7 +43,9 @@ function pass_TPSA!(ele::RFCA, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) w
     # ele: RFCA
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
-
+    if ele.energy == 0
+        error("Energy is not defined for RFCA ", ele.name)
+    end
     T0=1.0/ele.freq      # Does not matter since nturns == 0
     nv = ele.volt / ele.energy
     RFCavityPass!(r_in, ele.len, nv, ele.freq, ele.h, ele.lag, ele.philag, 0, T0)

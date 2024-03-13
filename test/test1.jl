@@ -6,6 +6,7 @@ using Enzyme
 Enzyme.API.runtimeActivity!(true)
 
 function test_track(xx)
+    # we don't suggest to create lattice in the function, it's better to create lattice outside the function
     particles = [0.001 0.0001 0.0005 0.0002 0.0 0.0; 0.001 0.0 0.0 0.0 0.0 0.0]
     beam = Beam(particles)
     line = ssrf(xx[1])
@@ -20,6 +21,7 @@ end
 
 
 function f_TPS(xx)
+    # we don't suggest to create lattice in the function, it's better to create lattice outside the function
     SSRF = ssrf(xx[1])
     x = CTPS(0.0, 1, 6, 3)
     xp = CTPS(0.0, 2, 6, 3)
@@ -39,6 +41,7 @@ end
 
 
 function twiss_test(xx)
+    # we don't suggest to create lattice in the function, it's better to create lattice outside the function
     SSRF = ssrf(xx[1])
     twiss_in = EdwardsTengTwiss(betax=1.0,betay=2.0)
     ss, name, twiss_out = Twissline(twiss_in, SSRF, 0.0, 2, length(SSRF))
@@ -55,6 +58,7 @@ println(twiss_test([-1.063770]))
 # end
 
 function twiss_test_refpts(xx)
+    # we don't suggest to create lattice in the function, it's better to create lattice outside the function
     SSRF = ssrf(xx[1])
     twiss_in = EdwardsTengTwiss(betax=1.0,betay=2.0)
     idx = collect(1:length(SSRF))

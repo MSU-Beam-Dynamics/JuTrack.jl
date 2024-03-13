@@ -1,7 +1,8 @@
-include("../JuTrack.jl")
+include("../src/JuTrack.jl")
 using. JuTrack
 using Enzyme
 
+# the sextupole strengths are divided by 2
 function esr_main(x)
     circumference = 3834.0018419157
     ip6 = MARKER(name="ip6")
@@ -38,7 +39,7 @@ function esr_main(x)
     D16 = DRIFT(name="D16", len=0.15000000000000002)
     q8er_6 = KQUAD(name="q8er_6", len=1.2, k1=0.06050609079)
     D17 = DRIFT(name="D17", len=0.9999999999999942)
-    rf_crab = CrabCavity(name="rf_crab", len=4.0, volt=0.0, freq=3.94e8, energy=17.846262619763e9)
+    rf_crab = CRABCAVITY(name="rf_crab", len=4.0, volt=0.0, freq=3.94e8, energy=17.846262619763e9)
     D18 = DRIFT(name="D18", len=1.0)
     sq9er_6 = KQUAD(name="sq9er_6", len=0.25, k1=0.0)
     D19 = DRIFT(name="D19", len=0.15000000000000002)
