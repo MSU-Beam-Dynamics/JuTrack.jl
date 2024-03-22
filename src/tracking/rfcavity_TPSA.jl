@@ -19,7 +19,7 @@ function RFCavityPass!(r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le, nv, f
             # r6 = @view r_in[(c-1)*6+1:c*6]
             # if !isnan(r6[1])
             # r_in[5] = tminus(r_in[5], tmult(nv, tsin(tminus(tmult(2*pi*freq, tdiv(tminus(r_in[6], lag), C0)), philag))))
-            r_in[6] += -nv * sin(2.0 * pi * freq * ((r_in[5] - lag) / C0 - (h / freq - T0) * nturn) - philag)
+            # r_in[6] += -nv * sin(2.0 * pi * freq * ((r_in[5] - lag) / C0 - (h / freq - T0) * nturn) - philag)
             # end
         # end
     else
@@ -31,8 +31,9 @@ function RFCavityPass!(r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le, nv, f
 
                 # nturn = 0
                 # r_in[5] = tminus(r_in[5], tmult(nv, tsin(tminus(tmult(2*pi*freq, tdiv(tminus(r_in[6], lag), C0)), philag))))
-                r_in[6] += -nv * sin(2 * pi * freq * ((r_in[5] - lag) / C0 - (h / freq - T0) * nturn) - philag)
+                # r_in[6] += -nv * sin(2 * pi * freq * ((r_in[5] - lag) / C0 - (h / freq - T0) * nturn) - philag)
                 drift6!(r_in, halflength)
+                println("rfcavity is not implemented in TPSA")
             # end
         # end
     end

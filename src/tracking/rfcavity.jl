@@ -31,6 +31,7 @@ function RFCavityPass!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq::F
                 # drift-kick-drift
                 drift6!(r6, halflength)
                 r6[6] += -nv * sin(2 * pi * freq * ((r6[5] - lag) / C0 - (h / freq - T0) * nturn) - philag)
+                # r6[6] += -nv * sin(2 * pi * freq * ((-r6[5] - lag)  - (h / freq - T0) * nturn) - philag)
                 drift6!(r6, halflength)
             end
             if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit
@@ -46,12 +47,13 @@ function pass!(ele::RFCA, r_in::Array{Float64,1}, num_particles::Int64, particle
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
     lost_flags = particles.lost_flag
-    T0=1.0/ele.freq      # Does not matter since nturns == 0
+    T0 = particles.T0
+    nturn = 0 #particles.nturn
     if ele.energy == 0
         error("Energy is not defined for RFCA ", ele.name)
     end
     nv = ele.volt / ele.energy
-    RFCavityPass!(r_in, ele.len, nv, ele.freq, ele.h, ele.lag, ele.philag, 0, T0, num_particles, lost_flags)
+    RFCavityPass!(r_in, ele.len, nv, ele.freq, ele.h, ele.lag, ele.philag, nturn, T0, num_particles, lost_flags)
     return nothing
 end
 

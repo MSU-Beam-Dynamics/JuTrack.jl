@@ -226,9 +226,10 @@ function StrMPoleSymplectic4RadPass!(r::Array{Float64,1}, le::Float64, A::Array{
         useLinFrEleExit = 0
     end
 
-    B[1] -= sin(KickAngle[1])/le
-    A[1] += sin(KickAngle[2])/le
-
+    if le > 0
+        B[1] -= sin(KickAngle[1])/le
+        A[1] += sin(KickAngle[2])/le
+    end
     # Threads.@threads for c in 1:num_particles
     for c in 1:num_particles
         if lost_flags[c] == 1
@@ -236,14 +237,6 @@ function StrMPoleSymplectic4RadPass!(r::Array{Float64,1}, le::Float64, A::Array{
         end
         r6 = @view r[(c-1)*6+1:c*6]
         if !isnan(r6[1])
-            if use_exact_Hamiltonian == 1
-                NormL1 = L1 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
-                NormL2 = L2 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
-            else
-                NormL1 = L1 / (1.0 + r6[6])
-                NormL2 = L2 / (1.0 + r6[6])
-            end
-
             # Misalignment at entrance
             if T1 != zeros(6)
                 ATaddvv!(r6, T1)
@@ -270,13 +263,13 @@ function StrMPoleSymplectic4RadPass!(r::Array{Float64,1}, le::Float64, A::Array{
 
             # Integrator
             for m in 1:num_int_step
-                fastdrift!(r6, NormL1, L1)
+                drift6!(r6, L1)
                 strthinkickrad!(r6, A, B, K1, E0, max_order)
-                fastdrift!(r6, NormL2, L2)
+                drift6!(r6, L2)
                 strthinkickrad!(r6, A, B, K2, E0, max_order)
-                fastdrift!(r6, NormL2, L2)
+                drift6!(r6, L2)
                 strthinkickrad!(r6, A, B, K1, E0, max_order)
-                fastdrift!(r6, NormL1, L1)
+                drift6!(r6, L1)
             end
 
             if FringeQuadExit != 0 && B[2] != 0
@@ -307,9 +300,11 @@ function StrMPoleSymplectic4RadPass!(r::Array{Float64,1}, le::Float64, A::Array{
             end
         end
     end
+    if le > 0
+        B[1] += sin(KickAngle[1]) / le
+        A[1] -= sin(KickAngle[2]) / le
+    end
 
-    B[1] += sin(KickAngle[1]) / le
-    A[1] -= sin(KickAngle[2]) / le
     return nothing
 end
 
@@ -607,13 +602,6 @@ function StrMPoleSymplectic4RadPass_P!(r::Array{Float64,1}, le::Float64, A::Arra
         end
         r6 = @view r[(c-1)*6+1:c*6]
         if !isnan(r6[1])
-            if use_exact_Hamiltonian == 1
-                NormL1 = L1 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
-                NormL2 = L2 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
-            else
-                NormL1 = L1 / (1.0 + r6[6])
-                NormL2 = L2 / (1.0 + r6[6])
-            end
             # Misalignment at entrance
             if T1 != zeros(6)
                 ATaddvv!(r6, T1)
@@ -640,13 +628,13 @@ function StrMPoleSymplectic4RadPass_P!(r::Array{Float64,1}, le::Float64, A::Arra
 
             # Integrator
             for m in 1:num_int_step
-                fastdrift!(r6, NormL1, L1)
+                drift6!(r6, L1)
                 strthinkickrad!(r6, A, B, K1, E0, max_order)
-                fastdrift!(r6, NormL2, L2)
+                drift6!(r6, L2)
                 strthinkickrad!(r6, A, B, K2, E0, max_order)
-                fastdrift!(r6, NormL2, L2)
+                drift6!(r6, L2)
                 strthinkickrad!(r6, A, B, K1, E0, max_order)
-                fastdrift!(r6, NormL1, L1)
+                drift6!(r6, L1)
             end
 
             if FringeQuadExit != 0 && B[2] != 0

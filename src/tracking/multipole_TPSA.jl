@@ -138,7 +138,7 @@ function pass_TPSA!(ele::KQUAD, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) 
     # num_particles: number of particles
     PolynomB = zeros(4)
     if ele.rad != 0
-        println("Synchrtron radiation is not implemented in TPSA")
+        println("Synchrtron radiation is not implemented for Quad in TPSA")
     end
     if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
         PolynomB[2] = ele.k1
@@ -163,7 +163,7 @@ function pass_TPSA!(ele::KSEXT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) 
     # num_particles: number of particles
     PolynomB = zeros(4)
     if ele.rad != 0
-        println("Synchrtron radiation is not implemented in TPSA")
+        println("Synchrtron radiation is not implemented for Sext in TPSA")
     end
     if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
         PolynomB[3] = ele.k2 / 2.0
@@ -188,7 +188,7 @@ function pass_TPSA!(ele::KOCT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) w
     # num_particles: number of particles
     PolynomB = zeros(4)
     if ele.rad != 0
-        println("Synchrtron radiation is not implemented in TPSA")
+        println("Synchrtron radiation is not implemented for OCT in TPSA")
     end
     if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
         PolynomB[4] = ele.k3 / 6.0

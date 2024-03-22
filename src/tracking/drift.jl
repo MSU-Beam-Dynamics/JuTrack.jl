@@ -30,7 +30,7 @@ function fastdrift!(r::AbstractVector{Float64}, NormL::Float64, le::Float64)
     else
         r[1] += NormL * r[2]
         r[3] += NormL * r[4]
-        r[5] += NormL * (r[2]^2 + r[4]^2) / (2.0*(1.0+r[5]))
+        r[5] += NormL * (r[2]^2 + r[4]^2) / (2.0*(1.0+r[6]))
     end
     return nothing
 end
@@ -43,7 +43,7 @@ function drift6!(r::AbstractVector{Float64}, le::Float64)
         r[5] += NormL * (1.0 + r[6]) - le
     else
         NormL = le / (1.0 + r[6])
-        r[5] += NormL * (r[2]^2 + r[4]^2) / (2.0*(1.0+r[5])) # for linearized approximation
+        r[5] += NormL * (r[2]^2 + r[4]^2) / (2.0*(1.0+r[6])) # for linearized approximation
     end
     r[1] += NormL * r[2]
     r[3] += NormL * r[4]

@@ -53,5 +53,5 @@ export EdwardsTengTwiss, AbstractTwiss, twissPropagate, findm66, periodicEdwards
 export linepass!, pass!, ringpass!, linepass_TPSA!, pass_TPSA!, ringpass_TPSA!
 export plinepass!, pringpass!, pass_P!, ADlinepass!, ADlinepass_TPSA!
 export matrix_to_array, array_to_matrix
-export total_length, spos, findelem
+export total_length, spos, findelem, plot_optics
 end

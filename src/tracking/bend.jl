@@ -122,14 +122,6 @@ function BendSymplecticPassRad!(r::Array{Float64,1}, le::Float64, irho::Float64,
         end
         r6 = @view r[(c-1)*6+1:c*6]
         if !isnan(r6[1])
-            if use_exact_Hamiltonian == 1
-                NormL1 = L1 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
-                NormL2 = L2 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
-            else
-                NormL1 = L1 / (1.0 + r6[6])
-                NormL2 = L2 / (1.0 + r6[6])
-            end
-
             # Misalignment at entrance
             if T1 != zeros(6)
                 ATaddvv!(r6, T1)
@@ -160,13 +152,13 @@ function BendSymplecticPassRad!(r::Array{Float64,1}, le::Float64, irho::Float64,
 
             # Integrator
             for m in 1:num_int_steps
-                fastdrift!(r6, NormL1, L1)
+                drift6!(r6, L1)
                 bndthinkickrad!(r6, A, B, K1, irho, E0, max_order)
-                fastdrift!(r6, NormL2, L2)
+                drift6!(r6, L2)
                 bndthinkickrad!(r6, A, B, K2, irho, E0, max_order)
-                fastdrift!(r6, NormL2, L2)
+                drift6!(r6, L2)
                 bndthinkickrad!(r6, A, B, K1, irho, E0, max_order)
-                fastdrift!(r6, NormL1, L1)
+                drift6!(r6, L1)
             end
 
             # Quadrupole gradient fringe exit
@@ -432,14 +424,6 @@ function BendSymplecticPassRad_P!(r::Array{Float64,1}, le::Float64, irho::Float6
         end
         r6 = @view r[(c-1)*6+1:c*6]
         if !isnan(r6[1])
-            if use_exact_Hamiltonian == 1
-                NormL1 = L1 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
-                NormL2 = L2 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
-            else
-                NormL1 = L1 / (1.0 + r6[6])
-                NormL2 = L2 / (1.0 + r6[6])
-            end
-
             # Misalignment at entrance
             if T1 != zeros(6)
                 ATaddvv!(r6, T1)
@@ -470,13 +454,13 @@ function BendSymplecticPassRad_P!(r::Array{Float64,1}, le::Float64, irho::Float6
 
             # Integrator
             for m in 1:num_int_steps
-                fastdrift!(r6, NormL1, L1)
+                drift6!(r6, L1)
                 bndthinkickrad!(r6, A, B, K1, irho, E0, max_order)
-                fastdrift!(r6, NormL2, L2)
+                drift6!(r6, L2)
                 bndthinkickrad!(r6, A, B, K2, irho, E0, max_order)
-                fastdrift!(r6, NormL2, L2)
+                drift6!(r6, L2)
                 bndthinkickrad!(r6, A, B, K1, irho, E0, max_order)
-                fastdrift!(r6, NormL1, L1)
+                drift6!(r6, L1)
             end
 
             # Quadrupole gradient fringe exit
