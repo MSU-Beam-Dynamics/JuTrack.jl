@@ -67,12 +67,12 @@ function optics(Twi)
     return beta, alpha, gamma, mu, dp
 end
 
-function plot_optics(RING)
-    Twi,s = twissring(RING, 0.0, 1)
-    using Plots
-    beta, alpha, gamma, mu, dp = optics(Twi)
-    p1=plot(s, beta[:, 1], label="betax", xlabel="s", ylabel="beta")
-    plot!(s, beta[:, 2], label="betay", xlabel="s", ylabel="beta",)
-    p2=plot(s, dp[:, 1], label="dispersion", xlabel="s", ylabel="dispersion")
-    plot(p1, p2, layout=(2,1))
-end
+# function plot_optics(RING)
+#     Twi,s = twissring(RING, 0.0, 1)
+#     using Plots
+#     beta, alpha, gamma, mu, dp = optics(Twi)
+#     p1=plot(s, beta[:, 1], label="betax", xlabel="s", ylabel="beta")
+#     plot!(s, beta[:, 2], label="betay", xlabel="s", ylabel="beta",)
+#     p2=plot(s, dp[:, 1], label="dispersion", xlabel="s", ylabel="dispersion")
+#     plot(p1, p2, layout=(2,1))
+# end

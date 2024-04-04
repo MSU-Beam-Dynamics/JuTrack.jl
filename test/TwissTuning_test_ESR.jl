@@ -18,10 +18,12 @@ function twiss_test(xx, esr)
     Twi = ADperiodicEdwardsTengTwiss(esr, 0.0, 1, changed_idx, changed_ele)
     return Twi.betax
 end
-esr = deserialize("test/esr_main_vector.jls")
-grad = autodiff(Forward, twiss_test, DuplicatedNoNeed, Duplicated(-0.2278853772, 1.0),  Const(esr))
+
+esr = deserialize("test/esr_main_rad.jls")
+grad = autodiff(Forward, twiss_test, Duplicated, Duplicated(-0.2278853772, 1.0),  Const(esr))
+println(grad)
 function tuning_test(target)
-    esr = deserialize("test/esr_main_vector.jls")
+    esr = deserialize("test/esr_main.jls")
 
     x0 = -0.2278853772
     # x0 = -4.0

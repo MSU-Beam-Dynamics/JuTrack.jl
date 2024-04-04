@@ -8,6 +8,7 @@ function StrB2perp(bx::Float64, by::Float64, x::Float64, xpr::Float64, y::Float6
 end
 
 function strthinkickrad!(r::AbstractVector{Float64}, A, B, L, E0, max_order)
+    # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
     ReSum = B[max_order + 1]
     ImSum = A[max_order + 1]
     ReSumTemp = 0.0
@@ -52,12 +53,7 @@ function strthinkickrad!(r::AbstractVector{Float64}, A, B, L, E0, max_order)
 end
 
 function strthinkick!(r::AbstractVector{Float64}, A, B, L, max_order)
-    # Calculate and apply a multipole kick to a 6-dimentional
-    # phase space vector in a straight element (quadrupole)
-    
-    # IMPORTANT !!!
-    # The reference coordinate system is straight but the field expansion may still
-    # contain dipole terms A[1], B[1]
+    # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
 
     ReSum = B[max_order + 1]
     ImSum = A[max_order + 1]
@@ -83,6 +79,7 @@ function StrMPoleSymplectic4Pass!(r::Array{Float64,1}, le::Float64, A::Array{Flo
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
     RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{Float64,1}, 
     num_particles::Int, lost_flags::Array{Int64,1})
+    # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
 
     DRIFT1  =  0.6756035959798286638
     DRIFT2 = -0.1756035959798286639
@@ -110,7 +107,6 @@ function StrMPoleSymplectic4Pass!(r::Array{Float64,1}, le::Float64, A::Array{Flo
         B[1] -= sin(KickAngle[1])/le
         A[1] += sin(KickAngle[2])/le
     end
-    # Threads.@threads for c in 1:num_particles
     for c in 1:num_particles
         if lost_flags[c] == 1
             continue
@@ -126,19 +122,11 @@ function StrMPoleSymplectic4Pass!(r::Array{Float64,1}, le::Float64, A::Array{Flo
             end
             # Misalignment at entrance
             if T1 != zeros(6)
-                ATaddvv!(r6, T1)
+                addvv!(r6, T1)
             end
             if R1 != zeros(6, 6)
-                ATmultmv!(r6, R1)
+                multmv!(r6, R1)
             end
-
-            # Check physical apertures at the entrance of the magnet
-            # if RApertures != nothing
-            #     checkiflostRectangularAp(r6, RApertures)
-            # end
-            # if EApertures != nothing
-            #     checkiflostEllipticalAp(r6, EApertures)
-            # end
 
             if FringeQuadEntrance != 0 && B[2] != 0
                 if useLinFrEleEntrance == 1
@@ -167,22 +155,14 @@ function StrMPoleSymplectic4Pass!(r::Array{Float64,1}, le::Float64, A::Array{Flo
                 end
             end
 
-            # Check physical apertures at the exit of the magnet
-            # if RApertures != nothing
-            #     checkiflostRectangularAp(r6, RApertures)
-            # end
-            # if EApertures != nothing
-            #     checkiflostEllipticalAp(r6, EApertures)
-            # end
-
             # Misalignment at exit
             if R2 != zeros(6, 6)
-                ATmultmv!(r6, R2)
+                multmv!(r6, R2)
             end
             if T2 != zeros(6)
-                ATaddvv!(r6, T2)
+                addvv!(r6, T2)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit
+            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end
@@ -203,6 +183,7 @@ function StrMPoleSymplectic4RadPass!(r::Array{Float64,1}, le::Float64, A::Array{
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
     RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{Float64,1}, E0::Float64,
     num_particles::Int, lost_flags::Array{Int64,1})
+    # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
 
     DRIFT1  =  0.6756035959798286638
     DRIFT2 = -0.1756035959798286639
@@ -230,7 +211,6 @@ function StrMPoleSymplectic4RadPass!(r::Array{Float64,1}, le::Float64, A::Array{
         B[1] -= sin(KickAngle[1])/le
         A[1] += sin(KickAngle[2])/le
     end
-    # Threads.@threads for c in 1:num_particles
     for c in 1:num_particles
         if lost_flags[c] == 1
             continue
@@ -239,19 +219,11 @@ function StrMPoleSymplectic4RadPass!(r::Array{Float64,1}, le::Float64, A::Array{
         if !isnan(r6[1])
             # Misalignment at entrance
             if T1 != zeros(6)
-                ATaddvv!(r6, T1)
+                addvv!(r6, T1)
             end
             if R1 != zeros(6, 6)
-                ATmultmv!(r6, R1)
+                multmv!(r6, R1)
             end
-
-            # Check physical apertures at the entrance of the magnet
-            # if RApertures != nothing
-            #     checkiflostRectangularAp(r6, RApertures)
-            # end
-            # if EApertures != nothing
-            #     checkiflostEllipticalAp(r6, EApertures)
-            # end
 
             if FringeQuadEntrance != 0 && B[2] != 0
                 if useLinFrEleEntrance == 1
@@ -280,22 +252,14 @@ function StrMPoleSymplectic4RadPass!(r::Array{Float64,1}, le::Float64, A::Array{
                 end
             end
 
-            # Check physical apertures at the exit of the magnet
-            # if RApertures != nothing
-            #     checkiflostRectangularAp(r6, RApertures)
-            # end
-            # if EApertures != nothing
-            #     checkiflostEllipticalAp(r6, EApertures)
-            # end
-
             # Misalignment at exit
             if R2 != zeros(6, 6)
-                ATmultmv!(r6, R2)
+                multmv!(r6, R2)
             end
             if T2 != zeros(6)
-                ATaddvv!(r6, T2)
+                addvv!(r6, T2)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit
+            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end
@@ -416,29 +380,6 @@ function pass!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, particle
     return nothing
 end
 
-# function pass!(ele::thinMULTIPOLE, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
-#     # ele: KQUAD
-#     # r_in: 6-by-num_particles array
-#     # num_particles: number of particles
-#     lost_flags = particles.lost_flag
-#     PolynomB = zeros(4)
-#     E0 = particles.energy
-
-#         PolynomB[1] = ele.PolynomB[1]
-#         PolynomB[2] = ele.PolynomB[2] 
-#         PolynomB[3] = ele.PolynomB[3] / 2.0
-#         PolynomB[4] = ele.PolynomB[4] / 6.0
-#         if ele.rad == 0
-#             StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-#                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-#                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
-#         else
-#             StrMPoleSymplectic4RadPass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-#                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-#                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
-#         end
-#     return nothing
-# end
 
 ###################
 # multi-threading
@@ -477,7 +418,6 @@ function StrMPoleSymplectic4Pass_P!(r::Array{Float64,1}, le::Float64, A::Array{F
     A[1] += sin(KickAngle[2])/le
 
     Threads.@threads for c in 1:num_particles
-    # for c in 1:num_particles
         if lost_flags[c] == 1
             continue
         end
@@ -492,19 +432,12 @@ function StrMPoleSymplectic4Pass_P!(r::Array{Float64,1}, le::Float64, A::Array{F
             end
             # Misalignment at entrance
             if T1 != zeros(6)
-                ATaddvv!(r6, T1)
+                addvv!(r6, T1)
             end
             if R1 != zeros(6, 6)
-                ATmultmv!(r6, R1)
+                multmv!(r6, R1)
             end
 
-            # Check physical apertures at the entrance of the magnet
-            # if RApertures != nothing
-            #     checkiflostRectangularAp(r6, RApertures)
-            # end
-            # if EApertures != nothing
-            #     checkiflostEllipticalAp(r6, EApertures)
-            # end
 
             if FringeQuadEntrance != 0 && B[2] != 0
                 if useLinFrEleEntrance == 1
@@ -533,22 +466,14 @@ function StrMPoleSymplectic4Pass_P!(r::Array{Float64,1}, le::Float64, A::Array{F
                 end
             end
 
-            # Check physical apertures at the exit of the magnet
-            # if RApertures != nothing
-            #     checkiflostRectangularAp(r6, RApertures)
-            # end
-            # if EApertures != nothing
-            #     checkiflostEllipticalAp(r6, EApertures)
-            # end
-
             # Misalignment at exit
             if R2 != zeros(6, 6)
-                ATmultmv!(r6, R2)
+                multmv!(r6, R2)
             end
             if T2 != zeros(6)
-                ATaddvv!(r6, T2)
+                addvv!(r6, T2)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit
+            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end
@@ -604,10 +529,10 @@ function StrMPoleSymplectic4RadPass_P!(r::Array{Float64,1}, le::Float64, A::Arra
         if !isnan(r6[1])
             # Misalignment at entrance
             if T1 != zeros(6)
-                ATaddvv!(r6, T1)
+                addvv!(r6, T1)
             end
             if R1 != zeros(6, 6)
-                ATmultmv!(r6, R1)
+                multmv!(r6, R1)
             end
 
             # Check physical apertures at the entrance of the magnet
@@ -655,12 +580,12 @@ function StrMPoleSymplectic4RadPass_P!(r::Array{Float64,1}, le::Float64, A::Arra
 
             # Misalignment at exit
             if R2 != zeros(6, 6)
-                ATmultmv!(r6, R2)
+                multmv!(r6, R2)
             end
             if T2 != zeros(6)
-                ATaddvv!(r6, T2)
+                addvv!(r6, T2)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit
+            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end

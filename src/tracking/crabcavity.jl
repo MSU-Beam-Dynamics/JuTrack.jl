@@ -1,5 +1,4 @@
 function CRABCAVITYPass!(r::Array{Float64,1}, cavity::CRABCAVITY, beta2E::Float64, num_particles::Int64, lost_flags::Array{Int,1})
-    # Threads.@threads for c in 1:num_particles
     for c in 1:num_particles
         if lost_flags[c] == 1
             continue
@@ -7,11 +6,11 @@ function CRABCAVITYPass!(r::Array{Float64,1}, cavity::CRABCAVITY, beta2E::Float6
         r6 = @view r[(c-1)*6+1:c*6] 
         ang = -cavity.k * r6[5] + cavity.phi
         if cavity.len == 0.0
-            r6[1] += (cavity.volt/beta2E) * sin(ang)
+            r6[2] += (cavity.volt/beta2E) * sin(ang)
             r6[6] += (-cavity.k * cavity.volt/beta2E) * r6[1] * cos(ang)
         else
             drift6!(r6, cavity.len / 2.0)
-            r6[1] += (cavity.volt/beta2E) * sin(ang)
+            r6[2] += (cavity.volt/beta2E) * sin(ang)
             r6[6] += (-cavity.k * cavity.volt/beta2E) * r6[1] * cos(ang)
             drift6!(r6, cavity.len / 2.0)
         end
@@ -20,7 +19,6 @@ function CRABCAVITYPass!(r::Array{Float64,1}, cavity::CRABCAVITY, beta2E::Float6
 end
 
 function easyCRABCAVITYPass!(r::Array{Float64,1}, cavity::easyCRABCAVITY, num_particles::Int64, lost_flags::Array{Int,1})
-    # Threads.@threads for c in 1:num_particles
     for c in 1:num_particles
         if lost_flags[c] == 1
             continue
@@ -77,8 +75,15 @@ function CRABCAVITYPass_P!(r::Array{Float64,1}, cavity::CRABCAVITY, beta2E::Floa
         end
         r6 = @view r[(c-1)*6+1:c*6] 
         ang = -cavity.k * r6[5] + cavity.phi
-        r6[2] += cavity.volt/beta2E * sin(ang)
-        r6[6] += (-cavity.k * cavity.volt/beta2E) * r[1] * cos(ang)
+        if cavity.len == 0.0
+            r6[2] += (cavity.volt/beta2E) * sin(ang)
+            r6[6] += (-cavity.k * cavity.volt/beta2E) * r6[1] * cos(ang)
+        else
+            drift6!(r6, cavity.len / 2.0)
+            r6[2] += (cavity.volt/beta2E) * sin(ang)
+            r6[6] += (-cavity.k * cavity.volt/beta2E) * r6[1] * cos(ang)
+            drift6!(r6, cavity.len / 2.0)
+        end
     end
     return nothing
 end

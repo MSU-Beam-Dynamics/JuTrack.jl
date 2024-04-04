@@ -1,87 +1,72 @@
 include("../src/JuTrack.jl")
-include("ssrf_ring.jl")
 using. JuTrack
 using Enzyme
-# using BenchmarkTools
+using BenchmarkTools
 Enzyme.API.runtimeActivity!(true)
 
-function test_track(xx)
-    # we don't suggest to create lattice in the function, it's better to create lattice outside the function
-    particles = [0.001 0.0001 0.0005 0.0002 0.0 0.0; 0.001 0.0 0.0 0.0 0.0 0.0]
-    beam = Beam(particles)
-    line = ssrf(xx[1])
-    linepass!(line, beam)
-    return beam.r[1,1]
+D1 = DRIFT(len=1.0)
+B1 = SBEND(len= 1.0, angle=pi/6.0)
+Q1 = KQUAD(len=1.0, k1=-0.9325169994516977) # optimized k1 starting from -1.0
+Q2 = KQUAD(len=1.0, k1=0.3)
+
+cell = [D1, B1, Q1, B1, Q2, B1, Q1, B1, D1]
+ring = [D1, B1, Q1, B1, Q2, B1, Q1, B1, D1, 
+        D1, B1, Q1, B1, Q2, B1, Q1, B1, D1, 
+        D1, B1, Q1, B1, Q2, B1, Q1, B1, D1]
+# particles = [0.001 0.0001 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0 0.0 0.0]
+# beam = Beam(particles)
+# linepass!(ring, beam)
+# println(beam.r)
+
+
+function f1(k, ring)
+    changed_idx = [3, 7, 12, 16, 21, 25]
+    changed_ele = [KQUAD(len=1.0, k1=k), KQUAD(len=1.0, k1=k), 
+                    KQUAD(len=1.0, k1=k), KQUAD(len=1.0, k1=k), 
+                    KQUAD(len=1.0, k1=k), KQUAD(len=1.0, k1=k)]
+    m66 = ADfindm66(ring, 0.0, 3, changed_idx, changed_ele)
+    trace = m66[1, 1] + m66[2, 2]
+    return trace
 end
-# x = [-1.063770]
-# println(test_track(x))
-# grad = gradient(Forward, test_track, x, Val(1))
-# println(grad)
-# @time grad = gradient(Forward, test_track, x, Val(1))
-
-
-function f_TPS(xx)
-    # we don't suggest to create lattice in the function, it's better to create lattice outside the function
-    SSRF = ssrf(xx[1])
-    x = CTPS(0.0, 1, 6, 3)
-    xp = CTPS(0.0, 2, 6, 3)
-    y = CTPS(0.0, 3, 6, 3)
-    yp = CTPS(0.0, 4, 6, 3)
-    delta = CTPS(0.0, 5, 6, 3)
-    z = CTPS(0.0, 6, 6, 3)
-    rin = [x, xp, y, yp, delta, z]
-    linepass_TPSA!(SSRF, rin)
-    return rin[1].map[2]
+function f2(k, ring)
+    changed_idx = [5, 14, 23]
+    changed_ele = [KQUAD(len=1.0, k1=k), KQUAD(len=1.0, k1=k), KQUAD(len=1.0, k1=k)]
+    m66 = ADfindm66(ring, 0.0, 3, changed_idx, changed_ele)
+    trace = m66[1, 1] + m66[2, 2]
+    return trace
 end
-# println(f_TPS([-1.063770]))
-# x = [-1.063770]
-# println(f_TPS(x))
-# @btime f_TPS(x) 
-# @btime grad = gradient(Forward, f_TPS, x)
 
+grad1 = autodiff(Forward, f1, DuplicatedNoNeed, Duplicated(-1.0, 1.0),  Const(ring))
+grad2 = autodiff(Forward, f2, DuplicatedNoNeed, Duplicated(1.0, 1.0),  Const(ring))
+println(grad1)
+println(grad2)
 
-function twiss_test(xx)
-    # we don't suggest to create lattice in the function, it's better to create lattice outside the function
-    SSRF = ssrf(xx[1])
-    twiss_in = EdwardsTengTwiss(betax=1.0,betay=2.0)
-    ss, name, twiss_out = Twissline(twiss_in, SSRF, 0.0, 1, length(SSRF))
-    return twiss_out.betax
+k1 = -1.0
+k2 = 1.0
+# optimize k1 to make the |trace| of the transfer matrix less than 2
+x0 = [k1, k2]
+niter = 100
+step = 0.0001
+
+x0_vals = Float64[]
+trace_vals = Float64[]
+grad_vals = Float64[]
+for i in 1:niter
+    trace0 = f1(x0[1], ring)
+    grad = autodiff(Forward, f1, DuplicatedNoNeed, Duplicated(x0[1], 1.0),  Const(ring))
+    if trace0 > 2
+        x0[1] -= step * grad[1]
+    else
+        x0[1] += step * grad[1]
+    end
+    trace1 = f1(x0[1], ring)
+    println("trace0: ", trace0, " trace1: ", trace1, "grad:", grad, "at step ", i)
+    push!(x0_vals, x0[1])
+    push!(trace_vals, trace1)
+    push!(grad_vals, grad[1])
+    if trace1 < 2.0 && trace1 > -2.0
+        println("tuning finished at step ", i, " with trace1: ", trace1, " and target: ", 2.0)
+        break
+    end
 end
-println(twiss_test([-1.063770]))
-# grad = gradient(Forward, twiss_test, [-1.063770])
-# println(grad)
-# @btime begin 
-#     twiss_test([-1.063770])
-# end
-# @btime begin 
-#     grad = gradient(Forward, twiss_test, [-1.063770])
-# end
-
-function twiss_test_refpts(xx)
-    # we don't suggest to create lattice in the function, it's better to create lattice outside the function
-    SSRF = ssrf(xx[1])
-    twiss_in = EdwardsTengTwiss(betax=1.0,betay=2.0)
-    idx = collect(1:length(SSRF))
-    ss, name, twiss_out = Twissline(twiss_in, SSRF, 0.0, 1, idx)
-    return ss, name, twiss_out
-end
-# ss, name, twiss_out = twiss_test_refpts([-1.063770])
-
-# beta = zeros(length(twiss_out), 2)
-# for i in eachindex(twiss_out)
-#     beta[i,1] = twiss_out[i].betax
-#     beta[i,2] = twiss_out[i].betay
-# end
-
-# println("beta_x: ", beta[:,1])
-# println("beta_y: ", beta[:,2])
-
-# run the plot code in REPL
-# using Plots
-# gr()
-# p = plot(ss, beta[:,1], label="betax", xlabel="s(m)", ylabel="beta(m)")
-# plot!(ss, beta[:,2], label="betay")
-# display(p)
-# using DelimitedFiles
-# writedlm("ss.txt", ss)
-# writedlm("beta.txt", beta)
+println("k1: ", x0[1], " trace: ", f1(x0[1], ring))

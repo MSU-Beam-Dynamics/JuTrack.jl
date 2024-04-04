@@ -2,6 +2,7 @@ include("drift.jl")
 
 function RFCavityPass!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq::Float64, h::Float64, 
     lag::Float64, philag::Float64, nturn::Int, T0::Float64, num_particles::Int, lost_flags::Array{Int64,1})
+    # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
     # le - physical length
     # nv - peak voltage (V) normalized to the design enegy (eV)
     # freq - frequency (Hz)
@@ -34,7 +35,7 @@ function RFCavityPass!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq::F
                 # r6[6] += -nv * sin(2 * pi * freq * ((-r6[5] - lag)  - (h / freq - T0) * nturn) - philag)
                 drift6!(r6, halflength)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit
+            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end
@@ -61,7 +62,7 @@ end
 ##########################################################################################
 # multi-threading
 function RFCavityPass_P!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq::Float64, h::Float64, 
-    lag::Float64, philag::Float64, nturn::Int, T0::Int, num_particles::Int, lost_flags::Array{Int64,1})
+    lag::Float64, philag::Float64, nturn::Int, T0::Float64, num_particles::Int, lost_flags::Array{Int64,1})
     # le - physical length
     # nv - peak voltage (V) normalized to the design enegy (eV)
     # freq - frequency (Hz)
@@ -95,7 +96,7 @@ function RFCavityPass_P!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq:
                 r6[6] += -nv * sin(2 * pi * freq * ((r6[5] - lag) / C0 - (h / freq - T0) * nturn) - philag)
                 drift6!(r6, halflength)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit
+            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit|| isnan(r6[1])
                 lost_flags[c] = 1
             end
         end

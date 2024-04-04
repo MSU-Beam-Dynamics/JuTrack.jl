@@ -19,10 +19,10 @@ function pass_TPSA!(ele::SOLENOID, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}
             end
                 # Misalignment at entrance
                 if T1 != zeros(6)
-                    ATaddvv!(r_in, T1)
+                    addvv!(r_in, T1)
                 end
                 if R1 != zeros(6, 6)
-                    ATmultmv!(r_in, R1)
+                    multmv!(r_in, R1)
                 end
     
                 x = r_in[1]
@@ -39,10 +39,10 @@ function pass_TPSA!(ele::SOLENOID, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}
                 r_in[5] += ele.len*(H*H*(x*x+y*y) + 2.0*H*(xpr*y-ypr*x) +xpr*xpr+ypr*ypr)/2.0
     
                 if R2 != zeros(6, 6)
-                    ATmultmv!(r_in, R2)
+                    multmv!(r_in, R2)
                 end
                 if T2 != zeros(6) 
-                    ATaddvv!(r_in, T2)
+                    addvv!(r_in, T2)
                 end
             # end
         # end

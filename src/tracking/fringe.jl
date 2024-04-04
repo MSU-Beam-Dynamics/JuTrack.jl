@@ -1,4 +1,6 @@
 function QuadFringePassP!(r::AbstractVector{Float64}, b2::Float64)
+    # AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
+
     u = b2 / (12.0 * (1.0 + r[6]))
     x2 = r[1]^2
     z2 = r[3]^2
@@ -22,6 +24,7 @@ function QuadFringePassP!(r::AbstractVector{Float64}, b2::Float64)
 end
 
 function QuadFringePassN!(r::AbstractVector{Float64}, b2::Float64)
+    # AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
     u = b2 / (12.0 * (1.0 + r[6]))
     x2 = r[1]^2
     z2 = r[3]^2
@@ -45,6 +48,8 @@ function QuadFringePassN!(r::AbstractVector{Float64}, b2::Float64)
 end
 
 function quadPartialFringeMatrix!(R, K1, inFringe, fringeInt, part)
+    # AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
+
     J1x, J2x, J3x, J1y, J2y, J3y = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
     K1sqr = K1 * K1
 
@@ -84,6 +89,7 @@ function quadPartialFringeMatrix!(R, K1, inFringe, fringeInt, part)
 end
 
 function linearQuadFringeElegantEntrance!(r6::AbstractVector{Float64}, b2, fringeIntM0, fringeIntP0)
+    # AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
     R = zeros(6, 6)
     inFringe = -1.0
     fringeIntM = fringeIntP0
@@ -110,6 +116,7 @@ function linearQuadFringeElegantEntrance!(r6::AbstractVector{Float64}, b2, fring
 end
 
 function linearQuadFringeElegantExit!(r6::AbstractVector{Float64}, b2, fringeIntM0, fringeIntP0)
+    # AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
     R = zeros(6, 6)
     inFringe = 1.0
     fringeIntM = fringeIntM0
@@ -136,6 +143,7 @@ function linearQuadFringeElegantExit!(r6::AbstractVector{Float64}, b2, fringeInt
 end
 
 function edge_fringe_entrance!(r::AbstractVector{Float64}, inv_rho, edge_angle, fint, gap, method)
+    # AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
     #      method 0 no fringe field
     #      method 1 legacy version Brown First Order
     #      method 2 SOLEIL close to second order of Brown
@@ -167,6 +175,7 @@ function edge_fringe_entrance!(r::AbstractVector{Float64}, inv_rho, edge_angle, 
 end
 
 function edge_fringe_exit!(r::AbstractVector{Float64}, inv_rho, edge_angle, fint, gap, method)
+    # AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
     #      method 0 no fringe field
     #      method 1 legacy version Brown First Order
     #      method 2 SOLEIL close to second order of Brown

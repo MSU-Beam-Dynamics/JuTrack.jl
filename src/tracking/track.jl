@@ -29,12 +29,12 @@ function linepass!(line, particles::Beam)
     for i in eachindex(line)
         # ele = line[i]
         pass!(line[i], particles6, np, particles)        
-        if isnan(particles6[1]) || isinf(particles6[1])
-            println("The particle is lost at element ", i, "element name is ", line[i].name)
-            rout = array_to_matrix(particles6, np)
-            particles.r = rout
-            return nothing
-        end
+        # if isnan(particles6[1]) || isinf(particles6[1])
+        #     println("The particle is lost at element ", i, "element name is ", line[i].name)
+        #     rout = array_to_matrix(particles6, np)
+        #     particles.r = rout
+        #     return nothing
+        # end
     end
     rout = array_to_matrix(particles6, np)
     particles.r = rout
@@ -70,6 +70,22 @@ function ADlinepass!(line, particles::Beam, changed_idx::Vector{Int}, changed_el
     return nothing
 end
 
+function AD_ringpass!(line, particles::Beam, nturn::Int, changed_idx::Vector{Int}, changed_ele)
+    for i in 1:nturn
+        ADlinepass!(line, particles, changed_idx, changed_ele)    
+    end
+    return nothing
+end
+function AD_ringpass!(line, particles::Beam, nturn::Int, changed_idx::Vector{Int}, changed_ele, save::Bool)
+    save_beam = []
+    for i in 1:nturn
+        ADlinepass!(line, particles, changed_idx, changed_ele)    
+        if save
+            push!(save_beam, copy(particles.r))
+        end
+    end
+    return save_beam
+end
 
 function ringpass!(line, particles::Beam, nturn::Int)
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 

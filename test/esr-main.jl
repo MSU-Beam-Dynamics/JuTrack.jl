@@ -2349,4 +2349,4 @@ RING  = [
    IP2,   UTIL_2N...,   ARC_3...,              UTIL_4...,
    IP4,   UTIL_4N...,   ARC_5...,              HALF_IR6..., IR_6...,     IP6]
 
-# serialize("esr_main.jls", RING)
+serialize("esr_main.jls", RING)

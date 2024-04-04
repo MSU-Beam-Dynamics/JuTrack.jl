@@ -21,10 +21,10 @@ function pass!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, part
     
                 # Misalignment at entrance
                 if T1 != zeros(6)
-                    ATaddvv!(r6, T1)
+                    addvv!(r6, T1)
                 end
                 if R1 != zeros(6, 6)
-                    ATmultmv!(r6, R1)
+                    multmv!(r6, R1)
                 end
     
                 x = r6[1]
@@ -41,13 +41,13 @@ function pass!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, part
                 r6[5] += ele.len*(H*H*(x*x+y*y) + 2.0*H*(xpr*y-ypr*x) +xpr*xpr+ypr*ypr)/2.0
     
                 if R2 != zeros(6, 6)
-                    ATmultmv!(r6, R2)
+                    multmv!(r6, R2)
                 end
                 if T2 != zeros(6) 
-                    ATaddvv!(r6, T2)
+                    addvv!(r6, T2)
                 end
 
-                if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit
+                if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit || isnan(r6[1])
                     lost_flags[c] = 1
                 end
             end
@@ -59,7 +59,7 @@ function pass!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, part
             end
             r6 = @view r_in[(c-1)*6+1:c*6]
             drift6!(r6, ele.len)
-            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit
+            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end
@@ -92,10 +92,10 @@ function pass_P!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, pa
     
                 # Misalignment at entrance
                 if T1 != zeros(6)
-                    ATaddvv!(r6, T1)
+                    addvv!(r6, T1)
                 end
                 if R1 != zeros(6, 6)
-                    ATmultmv!(r6, R1)
+                    multmv!(r6, R1)
                 end
     
                 x = r6[1]
@@ -112,13 +112,13 @@ function pass_P!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, pa
                 r6[5] += ele.len*(H*H*(x*x+y*y) + 2.0*H*(xpr*y-ypr*x) +xpr*xpr+ypr*ypr)/2.0
     
                 if R2 != zeros(6, 6)
-                    ATmultmv!(r6, R2)
+                    multmv!(r6, R2)
                 end
                 if T2 != zeros(6) 
-                    ATaddvv!(r6, T2)
+                    addvv!(r6, T2)
                 end
 
-                if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit
+                if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit || isnan(r6[1])
                     lost_flags[c] = 1
                 end
             end
@@ -130,7 +130,7 @@ function pass_P!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, pa
             end
             r6 = @view r_in[(c-1)*6+1:c*6]
             drift6!(r6, ele.len)
-            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit
+            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end

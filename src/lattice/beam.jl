@@ -1,10 +1,3 @@
-# include("../tracking/strongbb.jl")
-
-
-# const m_e = 0.51099895e6
-# const m_p = 938.27208816e6
-# const m_goldion = 931.49410242e6 # charge 79, atomic number 197
-
 mutable struct Beam
     r::Matrix{Float64} # x, px, y, py, z, dp
     np::Int # default is the same as nmacro 

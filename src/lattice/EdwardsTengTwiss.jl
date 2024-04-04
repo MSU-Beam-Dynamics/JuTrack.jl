@@ -268,6 +268,40 @@ function ADfindm66(seq::Vector{AbstractElement}, dp::Float64, order::Int, change
 	return map
 end
 
+function ADfindm66_refpts(seq::Vector{AbstractElement}, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector{Int}, changed_ele)
+	x = CTPS(0.0, 1, 6, order)
+	px = CTPS(0.0, 2, 6, order)
+	y = CTPS(0.0, 3, 6, order)
+	py = CTPS(0.0, 4, 6, order)
+	z = CTPS(dp, 5, 6, order)
+	delta = CTPS(0.0, 6, 6, order)
+	rin = [x, px, y, py, z, delta]
+	# no radiation, cavity off
+	map_list = Vector{Matrix{Float64}}(undef, length(refpts))
+	for i in eachindex(refpts)
+		if i == 1
+			ADlinepass_TPSA!(seq[1:refpts[i]], rin, changed_idx, changed_ele)
+		else
+			ADlinepass_TPSA!(seq[refpts[i-1]+1:refpts[i]], rin, changed_idx, changed_ele)
+		end
+		map = zeros(Float64, 6, 6)
+		for j in 1:6
+			for k in 1:6
+				map[j, k] = rin[j].map[k + 1]
+			end
+		end
+		map_list[i] = map
+		reassign!(rin[1], 0.0, 1)
+		reassign!(rin[2], 0.0, 2)
+		reassign!(rin[3], 0.0, 3)
+		reassign!(rin[4], 0.0, 4)
+		reassign!(rin[5], dp, 5)
+		reassign!(rin[6], 0.0, 6)
+	end
+
+	return map_list
+end
+
 function findm66_refpts(seq::Vector{AbstractElement}, dp::Float64, order::Int, refpts::Vector{Int})
 	x = CTPS(0.0, 1, 6, order)
 	px = CTPS(0.0, 2, 6, order)
@@ -311,21 +345,60 @@ function Twissline(tin::EdwardsTengTwiss,seq::Vector{AbstractElement}, dp::Float
 	used_seq = seq[1:endindex]
 	M = findm66(used_seq, dp, order)
 	ret = twissPropagate(ret, M)
-	ss = sum([mag.len for mag in used_seq])
-	names = [mag.name for mag in used_seq]
-	return ss,names,ret
+	# ss = sum([mag.len for mag in used_seq])
+	# names = [mag.name for mag in used_seq]
+	return ret
 end
 
-function ADTwissline(tin::EdwardsTengTwiss,seq::Vector{AbstractElement}, dp::Float64, order::Int, endindex::Int, changed_idx::Vector{Int}, changed_ele)
+function Twissline(tin::EdwardsTengTwiss,seq::Vector{AbstractElement}, dp::Float64, order::Int, refpts::Vector{Int})
+	# if !is_increasing(refpts)
+	# 	error("The reference points must be in increasing order.")
+	# end
+	if refpts[end] > length(seq)
+		error("Invalid reference point.")
+	end
 	# obtain M through tracking
+	ret_vector = Vector{EdwardsTengTwiss}(undef, length(refpts))
     ret = tin
-    ss = 0.0
-	used_seq = seq[1:endindex]
-	M = ADfindm66(used_seq, dp, order, changed_idx, changed_ele)
-	ret = twissPropagate(ret, M)
-	ss = sum([mag.len for mag in used_seq])
-	names = [mag.name for mag in used_seq]
-	return ss,names,ret
+
+	M_list = findm66_refpts(seq, dp, order, refpts)
+	for i in 1:length(refpts)
+		ret = twissPropagate(ret, M_list[i])
+		ret_vector[i] = ret
+	end
+
+	# ss = zeros(Float64, length(refpts))
+	# names = Vector{String}(undef, length(refpts))
+	# for i in 1:length(refpts)
+	# 	ss[i] = sum([mag.len for mag in seq[1:refpts[i]]])
+	# 	names[i] = seq[refpts[i]].name
+	# end
+	return ret_vector
+end
+
+function ADTwissline(tin::EdwardsTengTwiss,seq::Vector{AbstractElement}, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector{Int}, changed_ele)
+	# if !is_increasing(refpts)
+	# 	error("The reference points must be in increasing order.")
+	# end
+	if refpts[end] > length(seq)
+		error("Invalid reference point.")
+	end
+	# obtain M through tracking
+	ret_vector = Vector{EdwardsTengTwiss}(undef, length(refpts))    
+	ret = tin
+	M_list = ADfindm66_refpts(seq, dp, order, refpts, changed_idx, changed_ele)
+	for i in 1:length(refpts)
+		ret = twissPropagate(ret, M_list[i])
+		ret_vector[i] = ret
+	end
+
+	# ss = zeros(Float64, length(refpts))
+	# names = Vector{String}(undef, length(refpts))
+	# for i in 1:length(refpts)
+	# 	ss[i] = sum([mag.len for mag in seq[1:refpts[i]]])
+	# 	names[i] = seq[refpts[i]].name
+	# end
+	return ret_vector
 end
 
 function is_increasing(A::Array)
@@ -350,31 +423,7 @@ function is_increasing(A::Array)
     return true
 end
 
-function Twissline(tin::EdwardsTengTwiss,seq::Vector{AbstractElement}, dp::Float64, order::Int, refpts::Vector{Int})
-	if !is_increasing(refpts)
-		error("The reference points must be in increasing order.")
-	end
-	if refpts[end] > length(seq)
-		error("Invalid reference point.")
-	end
-	# obtain M through tracking
-	ret_vector = Vector{EdwardsTengTwiss}(undef, length(refpts))
-    ret = tin
 
-	M_list = findm66_refpts(seq, dp, order, refpts)
-	for i in 1:length(refpts)
-		ret = twissPropagate(ret, M_list[i])
-		ret_vector[i] = ret
-	end
-
-	ss = zeros(Float64, length(refpts))
-	names = Vector{String}(undef, length(refpts))
-	for i in 1:length(refpts)
-		ss[i] = sum([mag.len for mag in seq[1:refpts[i]]])
-		names[i] = seq[refpts[i]].name
-	end
-	return ss,names,ret_vector
-end
 
 function periodicEdwardsTengTwiss(seq::Vector{AbstractElement}, dp, order::Int)
 	M = findm66(seq, dp, order)
@@ -485,16 +534,16 @@ function twissring(seq::Vector{AbstractElement}, dp::Float64, order::Int)
 	twi0 = periodicEdwardsTengTwiss(seq, dp, order)
 	nele = length(seq)
 	refpts = [i for i in 1:nele]
-	ss, name, twi = Twissline(twi0, seq, dp, order, refpts)
-	return twi, ss
+	twi = Twissline(twi0, seq, dp, order, refpts)
+	return twi
 end
 
-function ADtwissring(seq::Vector{AbstractElement}, dp::Float64, order::Int, changed_idx::Vector{Int}, changed_ele)
+function ADtwissring(seq::Vector{AbstractElement}, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector{Int}, changed_ele)
 	twi0 = ADperiodicEdwardsTengTwiss(seq, dp, order, changed_idx, changed_ele)
 	nele = length(seq)
-	refpts = [i for i in 1:nele]
-	ss, name, twi = ADTwissline(twi0, seq, dp, order, nele, changed_idx, changed_ele)
-	return twi, ss
+	# refpts = [i for i in 1:nele]
+	twi = ADTwissline(twi0, seq, dp, order, refpts, changed_idx, changed_ele)
+	return twi
 end
 
 function normalMatrix(tin::EdwardsTengTwiss)

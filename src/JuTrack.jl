@@ -7,7 +7,7 @@ m_goldion = 931.49410242e6 # charge 79, atomic number 197
 CGAMMA =	8.846056192e-05
 use_exact_Hamiltonian = 0
 
-include("TPSA_Enzyme/TPSA_fixedmap.jl")
+include("TPSA_Enzyme/TPSA.jl")
 include("lattice/beam.jl")
 include("lattice/canonical_elements.jl")
 include("tracking/bend.jl")
@@ -54,4 +54,5 @@ export linepass!, pass!, ringpass!, linepass_TPSA!, pass_TPSA!, ringpass_TPSA!
 export plinepass!, pringpass!, pass_P!, ADlinepass!, ADlinepass_TPSA!
 export matrix_to_array, array_to_matrix
 export total_length, spos, findelem, plot_optics
+export ADfindm66_refpts
 end

@@ -2,13 +2,6 @@ include("drift_TPSA.jl")
 # include("fringe_AT.jl")
 
 function strthinkick!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A, B, L, max_order) where {T, TPS_Dim, Max_TPS_Degree}
-    # Calculate and apply a multipole kick to a 6-dimentional
-    # phase space vector in a straight element (quadrupole)
-    
-    # IMPORTANT !!!
-    # The reference coordinate system is straight but the field expansion may still
-    # contain dipole terms A[1], B[1]
-
     ### this section is type unstable
     # ReSum = B[max_order + 1]
     # ImSum = A[max_order + 1]
@@ -18,13 +11,8 @@ function strthinkick!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A, B, L, max_
     ReSumTemp = B[max_order + 1] * r[1] - A[max_order + 1] * r[3] + B[1]
     ImSum = A[max_order + 1] * r[1] + B[max_order + 1] * r[3] + A[1]
     ReSum = CTPS(ReSumTemp)
-    # ReSumTemp = tadd(tminus(tmult(B[max_order + 1], r[1]), tmult(A[max_order + 1], r[3])), B[1])
-    # ImSum = tadd(tadd(tmult(A[max_order + 1], r[1]), tmult(B[max_order + 1], r[3])), A[1])
-    # ReSum = CTPS(ReSumTemp)
+
     for i in reverse(2:max_order)
-        # ReSumTemp = tadd(tminus(tmult(ReSum, r[1]), tmult(ImSum, r[3])), B[i])
-        # ImSum = tadd(tadd(tmult(ImSum, r[1]), tmult(ReSum, r[3])), A[i])
-        # ReSum = CTPS(ReSumTemp)
         ReSumTemp = ReSum * r[1] - ImSum * r[3] + B[i]
         ImSum = ImSum * r[1] + ReSum * r[3] + A[i]
         ReSum = CTPS(ReSumTemp)
@@ -32,9 +20,6 @@ function strthinkick!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A, B, L, max_
 
     r[2] -= L * ReSum
     r[4] += L * ImSum
-    # r[2] = tminus(r[2], tmult(L, ReSum))
-    # r[4] = tadd(r[4], tmult(L, ImSum))
-
     return nothing
 end
 
@@ -80,49 +65,32 @@ function StrMPoleSymplectic4Pass!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, l
         NormL1 = L1 / (1.0 + r[6])
         NormL2 = L2 / (1.0 + r[6])
     end
-            # Misalignment at entrance
-            if T1 != zeros(6)
-                ATaddvv!(r, T1)
-            end
-            if R1 != zeros(6, 6)
-                ATmultmv!(r, R1)
-            end
+    # Misalignment at entrance
+    if T1 != zeros(6)
+        addvv!(r, T1)
+    end
+    if R1 != zeros(6, 6)
+        multmv!(r, R1)
+    end
 
-            # fringe effect is not implemented for TPSA
-            # if FringeQuadEntrance != 0 && B[2] != 0
-            #     if useLinFrEleEntrance == 1
-            #         linearQuadFringeElegantEntrance!(r6, B[2], fringeIntM0, fringeIntP0)
-            #     else
-            #         QuadFringePassP!(r6, B[2])
-            #     end
-            # end
+    # Integrator
+    for m in 1:num_int_step
+        fastdrift!(r, NormL1, L1)
+        strthinkick!(r, A, B, K1, max_order)
+        fastdrift!(r, NormL2, L2)
+        strthinkick!(r, A, B, K2, max_order)
+        fastdrift!(r, NormL2, L2)
+        strthinkick!(r, A, B, K1, max_order)
+        fastdrift!(r, NormL1, L1)
+    end
 
-            # Integrator
-            for m in 1:num_int_step
-                fastdrift!(r, NormL1, L1)
-                strthinkick!(r, A, B, K1, max_order)
-                fastdrift!(r, NormL2, L2)
-                strthinkick!(r, A, B, K2, max_order)
-                fastdrift!(r, NormL2, L2)
-                strthinkick!(r, A, B, K1, max_order)
-                fastdrift!(r, NormL1, L1)
-            end
-
-            # if FringeQuadExit != 0 && B[2] != 0
-            #     if useLinFrEleExit == 1
-            #         linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
-            #     else
-            #         QuadFringePassN!(r6, B[2])
-            #     end
-            # end
-
-            # Misalignment at exit
-            if R2 != zeros(6, 6)
-                ATmultmv!(r, R2)
-            end
-            if T2 != zeros(6)
-                ATaddvv!(r, T2)
-            end
+    # Misalignment at exit
+    if R2 != zeros(6, 6)
+        multmv!(r, R2)
+    end
+    if T2 != zeros(6)
+        addvv!(r, T2)
+    end            
         # end
     # end
     if le > 0
@@ -137,9 +105,9 @@ function pass_TPSA!(ele::KQUAD, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) 
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
     PolynomB = zeros(4)
-    if ele.rad != 0
-        println("Synchrtron radiation is not implemented for Quad in TPSA")
-    end
+    # if ele.rad != 0
+    #     println("Synchrtron radiation is not implemented for Quad in TPSA")
+    # end
     if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
         PolynomB[2] = ele.k1
         StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
@@ -162,9 +130,9 @@ function pass_TPSA!(ele::KSEXT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) 
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
     PolynomB = zeros(4)
-    if ele.rad != 0
-        println("Synchrtron radiation is not implemented for Sext in TPSA")
-    end
+    # if ele.rad != 0
+    #     println("Synchrtron radiation is not implemented for Sext in TPSA")
+    # end
     if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
         PolynomB[3] = ele.k2 / 2.0
         StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
@@ -187,9 +155,9 @@ function pass_TPSA!(ele::KOCT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) w
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
     PolynomB = zeros(4)
-    if ele.rad != 0
-        println("Synchrtron radiation is not implemented for OCT in TPSA")
-    end
+    # if ele.rad != 0
+    #     println("Synchrtron radiation is not implemented for OCT in TPSA")
+    # end
     if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
         PolynomB[4] = ele.k3 / 6.0
         StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
@@ -206,22 +174,3 @@ function pass_TPSA!(ele::KOCT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) w
     end
     return nothing
 end
-
-# function pass_TPSA!(ele::thinMULTIPOLE, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) where {T, TPS_Dim, Max_TPS_Degree}
-#     # ele: thinMULTIPOLE
-#     # r_in: 6-by-num_particles array
-#     # num_particles: number of particles
-#     PolynomB = zeros(4)
-#     if ele.rad != 0
-#         println("Synchrtron radiation is not implemented in TPSA")
-#     end
-
-#         PolynomB[1] = ele.PolynomB[1]
-#         PolynomB[2] = ele.PolynomB[2] 
-#         PolynomB[3] = ele.PolynomB[3] / 2.0
-#         PolynomB[4] = ele.PolynomB[4] / 6.0
-#         StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-#             ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-#             ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
-#     return nothing
-# end

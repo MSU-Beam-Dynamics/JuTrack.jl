@@ -1,25 +1,5 @@
 function QuadFringePassP!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, b2) where {T, TPS_Dim, Max_TPS_Degree}
-    # u = tdiv(b2, tmult(12.0, tadd(1.0, r[5])))
-    # x2 = tmult(r[1], r[1])
-    # z2 = tmult(r[3], r[3])
-    # xz = tmult(r[1], r[3])
-    # gx = tmult(u, tmult(tadd(x2, tmult(3.0, z2)), r[1]))
-    # gz = tmult(u, tmult(tadd(z2, tmult(3.0, x2)), r[3]))
-    # r1tmp = zeros(length(r[1]))
-    # r3tmp = zeros(length(r[3]))
-
-    # r[1] = tadd(r[1], gx)
-    # r1tmp = tmult(3.0, tmult(u, tminus(tmult(tmult(2.0, xz), r[4]), tmult(tadd(x2, z2), r[2]))))
-
-    # r[3] = tminus(r[3], gz)
-
-    # r3tmp = tmult(3.0, tmult(u, tminus(tmult(tmult(2.0, xz), r[2]), tmult(tadd(x2, z2), r[4]))))
-    # r[6] = tminus(r[6], tdiv(tminus(tmult(gz, r[4]), tmult(gx, r[2]), tadd(1.0, r[5]))))
-
-    # r[2] = tadd(r[2], r1tmp)
-    # r[4] = tminus(r[4], r3tmp)
-
-
+    # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
     u = b2 / (12.0 * (1.0 + r[6]))
     x2 = r[1]^2
     z2 = r[3]^2
@@ -43,25 +23,7 @@ function QuadFringePassP!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, b2) where
 end
 
 function QuadFringePassN!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, b2) where {T, TPS_Dim, Max_TPS_Degree}
-    # u = tdiv(b2, tmult(12.0, tadd(1.0, r[5])))
-    # x2 = tmult(r[1], r[1])
-    # z2 = tmult(r[3], r[3])
-    # xz = tmult(r[1], r[3])
-    # gx = tmult(u, tmult(tadd(x2, tmult(3.0, z2)), r[1]))
-    # gz = tmult(u, tmult(tadd(z2, tmult(3.0, x2)), r[3]))
-    # r1tmp = zeros(length(r[1]))
-    # r3tmp = zeros(length(r[3]))
-
-    # r[1] = tminus(r[1], gx)
-    # r1tmp = tmult(3.0, tmult(u, tminus(tmult(tmult(2.0, xz), r[4]), tmult(tadd(x2, z2), r[2]))))
-
-    # r[3] = tadd(r[3], gz)
-
-    # r3tmp = tmult(3.0, tmult(u, tminus(tmult(tmult(2.0, xz), r[2]), tmult(tadd(x2, z2), r[4]))))
-    # r[6] = tadd(r[6], tdiv(tminus(tmult(gz, r[4]), tmult(gx, r[2]), tadd(1.0, r[5]))))
-
-    # r[2] = tminus(r[2], r1tmp)
-    # r[4] = tadd(r[4], r3tmp)
+    # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
 
     u = b2 / (12.0 * (1.0 + r[6]))
     x2 = r[1]^2
@@ -177,6 +139,7 @@ end
 # end
 
 function edge_fringe_entrance!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, inv_rho, edge_angle, fint, gap, method) where {T, TPS_Dim, Max_TPS_Degree}
+    # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
     #      method 0 no fringe field
     #      method 1 legacy version Brown First Order
     #      method 2 SOLEIL close to second order of Brown
@@ -193,27 +156,22 @@ function edge_fringe_entrance!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, inv_
 
     fx = inv_rho * tan(edge_angle)
     if method == 1
-        # fy = tmult(inv_rho, ttan(tminus(edge_angle, tdiv(fringecorr, tadd(1.0, r[5])))))
         fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[6]))
     elseif method == 2
-        # fy = tmult(inv_rho, tdiv(ttan(tminus(edge_angle, tdiv(fringecorr, tadd(1.0, r[5])))), tadd(1.0, r[5])))
         fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[6])) / (1.0 + r[6])
     elseif method == 3
-        # fy = tmult(inv_rho, ttan(tadd(tminus(edge_angle, fringecorr), tdiv(r[2], tadd(1.0, r[5])))))
         fy = inv_rho * tan(edge_angle - fringecorr + r[2] / (1.0 + r[6]))
     else  # Fallback to legacy version
-        # fy = tmult(inv_rho, ttan(tminus(edge_angle, tdiv(fringecorr, tadd(1.0, r[5])))))
         fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[6]))
     end
 
-    # r[2] = tadd(r[2], tmult(r[1], fx))
-    # r[4] = tminus(r[4], tmult(r[3], fy))
     r[2] += r[1] * fx
     r[4] -= r[3] * fy
     return nothing
 end
 
 function edge_fringe_exit!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, inv_rho, edge_angle, fint, gap, method) where {T, TPS_Dim, Max_TPS_Degree}
+    # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
     #      method 0 no fringe field
     #      method 1 legacy version Brown First Order
     #      method 2 SOLEIL close to second order of Brown
@@ -230,21 +188,15 @@ function edge_fringe_exit!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, inv_rho,
 
     fx = inv_rho * tan(edge_angle)
     if method == 1
-        # fy = tmult(inv_rho, ttan(tminus(edge_angle, tdiv(fringecorr, tadd(1.0, r[5])))))
         fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[6]))
     elseif method == 2
-        # fy = tmult(inv_rho, tdiv(ttan(tminus(edge_angle, tdiv(fringecorr, tadd(1.0, r[5])))), tadd(1.0, r[5])))
         fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[6])) / (1.0 + r[6])
     elseif method == 3
-        # fy = tmult(inv_rho, ttan(tadd(tminus(edge_angle, fringecorr), tdiv(r[2], tadd(1.0, r[5])))))
         fy = inv_rho * tan(edge_angle - fringecorr - r[2] / (1.0 + r[6]))
     else  # Fallback to legacy version
-        # fy = tmult(inv_rho, ttan(tminus(edge_angle, tdiv(fringecorr, tadd(1.0, r[5])))))
         fy = inv_rho * tan(edge_angle - fringecorr / (1.0 + r[6]))
     end
 
-    # r[2] = tadd(r[2], tmult(r[1], fx))
-    # r[4] = tminus(r[4], tmult(r[3], fy))
     r[2] += r[1] * fx
     r[4] -= r[3] * fy
     return nothing

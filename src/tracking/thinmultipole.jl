@@ -1,5 +1,7 @@
 include("drift.jl")
 function strthinkick1!(r::AbstractVector{Float64}, A, B, L, max_order)
+    # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
+
     # Calculate and apply a multipole kick to a 6-dimentional
     # phase space vector in a straight element (quadrupole)
     
@@ -27,6 +29,8 @@ function ThinMPolePass!(r::Array{Float64,1}, le::Float64, A::Array{Float64,1}, B
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
     RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{Float64,1}, 
     num_particles::Int, lost_flags::Array{Int64,1})
+    # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
+
     # no bending
     bax = 0.0 
     bay = 0.0
@@ -43,40 +47,25 @@ function ThinMPolePass!(r::Array{Float64,1}, le::Float64, A::Array{Float64,1}, B
         if !isnan(r6[1])
             # Misalignment at entrance
             if T1 != zeros(6)
-                ATaddvv!(r6, T1)
+                addvv!(r6, T1)
             end
             if R1 != zeros(6, 6)
-                ATmultmv!(r6, R1)
+                multmv!(r6, R1)
             end
 
-            # Check physical apertures at the entrance of the magnet
-            # if RApertures != nothing
-            #     checkiflostRectangularAp(r6, RApertures)
-            # end
-            # if EApertures != nothing
-            #     checkiflostEllipticalAp(r6, EApertures)
-            # end
-            
             strthinkick1!(r6, A, B, 1.0, max_order)
             r6[2] += bax * r6[6]
             r6[4] -= bay * r6[6]
             r6[6] -= bax * r6[1] - bay * r6[3]  # Path lenghtening
-            # Check physical apertures at the exit of the magnet
-            # if RApertures != nothing
-            #     checkiflostRectangularAp(r6, RApertures)
-            # end
-            # if EApertures != nothing
-            #     checkiflostEllipticalAp(r6, EApertures)
-            # end
 
             # Misalignment at exit
             if R2 != zeros(6, 6)
-                ATmultmv!(r6, R2)
+                multmv!(r6, R2)
             end
             if T2 != zeros(6)
-                ATaddvv!(r6, T2)
+                addvv!(r6, T2)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit
+            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end
@@ -118,40 +107,26 @@ function ThinMPolePass_P!(r::Array{Float64,1}, le::Float64, A::Array{Float64,1},
         if !isnan(r6[1])
             # Misalignment at entrance
             if T1 != zeros(6)
-                ATaddvv!(r6, T1)
+                addvv!(r6, T1)
             end
             if R1 != zeros(6, 6)
-                ATmultmv!(r6, R1)
+                multmv!(r6, R1)
             end
-
-            # Check physical apertures at the entrance of the magnet
-            # if RApertures != nothing
-            #     checkiflostRectangularAp(r6, RApertures)
-            # end
-            # if EApertures != nothing
-            #     checkiflostEllipticalAp(r6, EApertures)
-            # end
             
             strthinkick1!(r6, A, B, 1.0, max_order)
             r6[2] += bax * r6[6]
             r6[4] -= bay * r6[6]
             r6[6] -= bax * r6[1] - bay * r6[3]  # Path lenghtening
-            # Check physical apertures at the exit of the magnet
-            # if RApertures != nothing
-            #     checkiflostRectangularAp(r6, RApertures)
-            # end
-            # if EApertures != nothing
-            #     checkiflostEllipticalAp(r6, EApertures)
-            # end
+
 
             # Misalignment at exit
             if R2 != zeros(6, 6)
-                ATmultmv!(r6, R2)
+                multmv!(r6, R2)
             end
             if T2 != zeros(6)
-                ATaddvv!(r6, T2)
+                addvv!(r6, T2)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit
+            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end

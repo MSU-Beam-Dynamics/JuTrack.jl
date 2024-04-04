@@ -13,7 +13,7 @@ function twiss_test(xx)
     # the ring can be set as Const in autodiff function
     SSRF = ssrf(xx[1])
     twiss_in = EdwardsTengTwiss(betax=1.0,betay=2.0)
-    ss, name, twiss_out = Twissline(twiss_in, SSRF, 0.0, 1, length(SSRF))
+    twiss_out = Twissline(twiss_in, SSRF, 0.0, 1, length(SSRF))
     return twiss_out.betax
 end
 

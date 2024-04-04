@@ -5,7 +5,7 @@ function ssrf(K1,RAD)
        if RAD == 0
           VOLT = 0.0
        else
-          VOLT = 0.0 #4.0e6
+          VOLT = 4.0e6
        end
        E0 = 3500.0 # MeV
        gamma0 = E0/0.51099906

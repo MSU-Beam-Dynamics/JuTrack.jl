@@ -2,169 +2,221 @@ include("../src/JuTrack.jl")
 using. JuTrack
 using Serialization
 using Enzyme
-using BenchmarkTools
+using LaTeXStrings
+using Plots
+
 Enzyme.API.runtimeActivity!(true)
 
 
-function f1(x, ring)
-    particles = [0.001 0.0001 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0 0.0 0.0]
-    beam = Beam(particles)
-    changed_idx = [2]
-    new_D1 = DRIFT(len=x)
-    # lenQ1 = ring[3].len
-    # new_Q1 = KQUAD(len=lenQ1, k1=k)
-    changed_ele = [new_D1]
-    ADlinepass!(ring, beam, changed_idx, changed_ele)
-    return beam.r[1, 1]
-end
-function f2(x, ring)
-    particles = [0.001 0.0001 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0 0.0 0.0]
-    beam = Beam(particles)
+
+# crabid = findelem(RING, CRABCAVITY)
+# ip8id = findelem(RING, :name, "IP8")
+# ip6id = findelem(RING, :name, "IP6")
+
+# thetac = 25e-3
+E0 = 17.846262619763e9
+# omega = 394.0e6*2*pi
+# c = 2.99792458e8
+
+# # crab2 - IP8 - crab3
+# R12_crab2 = sqrt(beta[crabid[2],1]*beta[ip8id[1],1])
+# V_crab2 = c * E0 * thetac/ 2/ omega / R12_crab2
+# R12_crab3 = sqrt(beta[crabid[3],1]*beta[ip8id[1],1])
+# V_crab3 = c * E0 * thetac/ 2/ omega / R12_crab3
+
+# # crab4 - IP6 - crab1
+# R12_crab4 = sqrt(beta[crabid[4],1]*beta[ip6id[1],1])
+# V_crab4 = c * E0 * thetac/ 2/ omega / R12_crab4
+# R12_crab1 = sqrt(beta[crabid[1],1]*beta[ip6id[1],1])
+# V_crab1 = c * E0 * thetac/ 2/ omega / R12_crab1
+
+
+ESR_crab = deserialize("test/esr_main_rad.jls")
+ESR_nocrab = deserialize("test/esr_main_rad_craboff.jls")
+
+
+function get_phase14(x3, RING)
+    # change the 3rd quad, optimize phase advance between CC1-35 and CC4-5533
     changed_idx = [3]
-    # new_D1 = DRIFT(len=x)
-    lenQ1 = ring[3].len
-    new_Q1 = KQUAD(len=lenQ1, k1=x)
-    changed_ele = [new_Q1]
-    ADlinepass!(ring, beam, changed_idx, changed_ele)
-    return beam.r[1, 1]
-end
-# println((f1(0.1001, esr)-f1(0.1,  esr))/0.0001)
-# println((f2(-0.22+ 1e-15, esr)-f2(-0.22,  esr))/1e-15)
-
-# dx = [1.0, 1.0]
-# @time grad1 = autodiff(Forward, f1, Duplicated, Duplicated(0.1, 1.0),  Const(esr))
-# @time grad2 = autodiff(Forward, f2, Duplicated, Duplicated(-0.22, 1.0),  Const(esr))
-# println(grad1, grad2)
-
-function f(xx, ring)
-    x = CTPS(0.0, 1, 6, 3)
-    xp = CTPS(0.0, 2, 6, 3)
-    y = CTPS(0.0, 3, 6, 3)
-    yp = CTPS(0.0, 4, 6, 3)
-    z = CTPS(0.0, 5, 6, 3)
-    delta = CTPS(0.0, 6, 6, 3)
-    rin = [x, xp, y, yp, z, delta]
-
-    changed_idx = [2]
-    new_D1 = DRIFT(len=xx)
+    new_D1 = KQUAD(len=RING[3].len, k1=x3)
     changed_ele = [new_D1]
+    refpts = [i for i in 1:length(RING)]
+    twi = ADtwissring(RING, 0.0, 1, refpts, changed_idx, changed_ele)
 
-    ADlinepass_TPSA!(ring, rin, changed_idx, changed_ele)
-    return rin[1].map[3]
+    phase41 = twi[35].dmux + twi[end].dmux - twi[5533].dmux
+
+    return phase41 - 2*pi
 end
 
-function linepass2!(line, line2, particles::Beam, particles2::Beam)
-    # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
-    # Check if the particle is lost by checking the lost_flag
-    np = particles.nmacro
-    particles6 = matrix_to_array(particles.r)
-    particles6_2 = matrix_to_array(particles2.r)
+function get_phase23(x, RING)
+    # change the 3rd quad, optimize phase advance between CC1-35 and CC4-5533
+    changed_idx = [3]
+    new_D1 = KQUAD(len=RING[3].len, k1=x)
+    changed_ele = [new_D1]
+    refpts = [i for i in 1:length(RING)]
+    twi = ADtwissring(RING, 0.0, 1, refpts, changed_idx, changed_ele)
 
-    for i in eachindex(line)
-        pass!(line[i], particles6, np, particles)  
-        pass!(line2[i], particles6_2, np, particles2)     
-        if abs(particles6[1] - particles6_2[1]) > 1e-4 
-            println(i)
-            println(particles6[1]," ", particles6_2[1])
-            println(particles6[2], " ", particles6_2[2]) 
+    phase23 = twi[952].dmux - twi[916].dmux
+
+    return phase23 - 2*pi
+end
+
+phi14 = get_phase14(ESR_crab[3].k1, ESR_crab)
+phi23 = get_phase23(ESR_crab[3].k1, ESR_crab)
+
+function Q_perturb(ESR_crab)
+    for i in eachindex(ESR_crab)
+        if ESR_crab[i] isa KQUAD
+            k1 = ESR_crab[i].k1
+            k1 = k1 * (1 + 0.001 * randn())
+            new_KQ = KQUAD(name=ESR_crab[i].name, len=ESR_crab[i].len, k1=k1)
+            ESR_crab[i] = new_KQ
         end
     end
-    rout = array_to_matrix(particles6, np)
-    particles.r = rout
-    return nothing
+    return ESR_crab
+end
+function optics(Twi)
+    beta = zeros(length(Twi), 2)
+    beta[:, 1] = [Twi[i].betax for i in eachindex(Twi)]
+    beta[:, 2] = [Twi[i].betay for i in eachindex(Twi)]
+    alpha = zeros(length(Twi), 2)
+    alpha[:, 1] = [Twi[i].alphax for i in eachindex(Twi)]
+        alpha[:, 2] = [Twi[i].alphay for i in eachindex(Twi)]
+    gamma = zeros(length(Twi), 2)
+    gamma[:, 1] = [Twi[i].gammax for i in eachindex(Twi)]
+    gamma[:, 2] = [Twi[i].gammay for i in eachindex(Twi)]
+    mu = zeros(length(Twi), 2)
+    mu[:, 1] = [Twi[i].dmux for i in eachindex(Twi)]
+    mu[:, 2] = [Twi[i].dmuy for i in eachindex(Twi)]
+    dp = zeros(length(Twi), 4)
+    dp[:, 1] = [Twi[i].dx for i in eachindex(Twi)]
+    dp[:, 2] = [Twi[i].dy for i in eachindex(Twi)]
+    dp[:, 3] = [Twi[i].dpx for i in eachindex(Twi)]
+    dp[:, 4] = [Twi[i].dpy for i in eachindex(Twi)]
+    return beta, alpha, gamma, mu, dp
+end
+ESR_perturb = Q_perturb(ESR_crab)
+
+idx = findelem(ESR_crab,CRABCAVITY)
+
+xinit = [ESR_perturb[9].k1; ESR_perturb[13].k1; ESR_perturb[17].k1; ESR_perturb[23].k1; ESR_perturb[27].k1; ESR_perturb[31].k1; ESR_perturb[5537].k1]
+
+zero_idx = [9,13,17,23,27,31,5537]
+function get_phase14_zero(x, RING)
+    changed_idx = [9,13,17,23,27,31,5537]
+    new_D1 = KQUAD(len=RING[9].len, k1=x[1])
+    new_D2 = KQUAD(len=RING[13].len, k1=x[2])
+    new_D3 = KQUAD(len=RING[17].len, k1=x[3])
+    new_D4 = KQUAD(len=RING[23].len, k1=x[4])
+    new_D5 = KQUAD(len=RING[27].len, k1=x[5])
+    new_D6 = KQUAD(len=RING[31].len, k1=x[6])
+    new_D7 = KQUAD(len=RING[5537].len, k1=x[7])
+    changed_ele = [new_D1, new_D2, new_D3, new_D4, new_D5, new_D6, new_D7]
+    refpts = [i for i in 1:length(RING)]
+    twi = ADtwissring(RING, 0.0, 1, refpts, changed_idx, changed_ele)
+
+    phase41 = twi[35].dmux + twi[end].dmux - twi[5533].dmux
+
+    return phase41 - 2*pi
 end
 
-function linepass3!(line, particles::Beam)
-    # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
-    # Check if the particle is lost by checking the lost_flag
-    np = particles.nmacro
-    particles6 = matrix_to_array(particles.r)
-    x = zeros(length(line))
-    px = zeros(length(line))
-    y = zeros(length(line))
-    py = zeros(length(line))
-    z = zeros(length(line))
-    delta = zeros(length(line))
-    s = zeros(length(line))
-    for i in eachindex(line)
-        pass!(line[i], particles6, np, particles)  
-        x[i] = particles6[1]
-        px[i] = particles6[2]
-        y[i] = particles6[3]
-        py[i] = particles6[4]
-        z[i] = particles6[5]
-        delta[i] = particles6[6]
-        s[i] = total_length(line[1:i])
+function get_phase23_zero(x, RING)
+    changed_idx = [9,13,17,23,27,31,5537]
+    new_D1 = KQUAD(len=RING[9].len, k1=x[1])
+    new_D2 = KQUAD(len=RING[13].len, k1=x[2])
+    new_D3 = KQUAD(len=RING[17].len, k1=x[3])
+    new_D4 = KQUAD(len=RING[23].len, k1=x[4])
+    new_D5 = KQUAD(len=RING[27].len, k1=x[5])
+    new_D6 = KQUAD(len=RING[31].len, k1=x[6])
+    new_D7 = KQUAD(len=RING[5537].len, k1=x[7])
+    changed_ele = [new_D1, new_D2, new_D3, new_D4, new_D5, new_D6, new_D7]
+    refpts = [i for i in 1:length(RING)]
+    twi = ADtwissring(RING, 0.0, 1, refpts, changed_idx, changed_ele)
+
+    phase23 = twi[952].dmux - twi[916].dmux
+
+    return phase23 - 2*pi
+end
+
+function multi_val_op(x0, niter, step, RING)
+    target = 0.01
+    x0_vals = zeros(7, niter)
+    goal_vals = []
+    grad_vals = zeros(7, niter)
+    zero_idx = [9,13,17,23,27,31,5537]
+    g0 = get_phase14_zero(x0, RING)
+    for i in 1:niter
+        grad9 = autodiff(Forward, get_phase14_zero, Duplicated, Duplicated(x0, [1.0,0.0,0.0,0.0,0.0,0.0,0.0]), Const(ESR_perturb))
+        grad13 = autodiff(Forward, get_phase14_zero, Duplicated, Duplicated(x0, [0.0,1.0,0.0,0.0,0.0,0.0,0.0]), Const(ESR_perturb))
+        grad17 = autodiff(Forward, get_phase14_zero, Duplicated, Duplicated(x0, [0.0,0.0,1.0,0.0,0.0,0.0,0.0]), Const(ESR_perturb))
+        grad23 = autodiff(Forward, get_phase14_zero, Duplicated, Duplicated(x0, [0.0,0.0,0.0,1.0,0.0,0.0,0.0]), Const(ESR_perturb))
+        grad27 = autodiff(Forward, get_phase14_zero, Duplicated, Duplicated(x0, [0.0,0.0,0.0,0.0,1.0,0.0,0.0]), Const(ESR_perturb))
+        grad31 = autodiff(Forward, get_phase14_zero, Duplicated, Duplicated(x0, [0.0,0.0,0.0,0.0,0.0,1.0,0.0]), Const(ESR_perturb))
+        grad5537 = autodiff(Forward, get_phase14_zero, Duplicated, Duplicated(x0, [0.0,0.0,0.0,0.0,0.0,0.0,1.0]), Const(ESR_perturb))
+
+        x0[1] -= step * grad9[2]
+        x0[2] -= step * grad13[2]
+        x0[3] -= step * grad17[2]
+        x0[4] -= step * grad23[2]
+        x0[5] -= step * grad27[2]
+        x0[6] -= step * grad31[2]
+        x0[7] -= step * grad5537[2]
+
+        new_phase = get_phase14_zero(x0, RING)
+        println("init: ", g0, " now: ", new_phase, "at step ", i)
+        x0_vals[:, i] = x0
+        push!(goal_vals, new_phase)
+        grad_vals[:, i] = [grad9[2], grad13[2], grad17[2], grad23[2], grad27[2], grad31[2], grad5537[2]]
+        if abs(new_phase) < target 
+            println("tuning finished at step ", i)
+            break
+        end
     end
-    # for i in eachindex(line)
-    #     pass!(line[i], particles6, np, particles)  
-    #     x[i+length(line)] = particles6[1]
-    #     px[i+length(line)] = particles6[2]
-    #     s[i+length(line)] = total_length(line[1:i])
-    # end
-    rout = array_to_matrix(particles6, np)
-    particles.r = rout
-    return x, px, y, py, z, delta, s
+    return x0_vals, goal_vals, grad_vals
 end
-# particle = [0.0005 0.0 0.0001 0.0 0.0 0.0]
 
-# L0 = 3833.99838673867
-# C0 = 299792458.0
-# T0 = L0 / C0
-# beam = Beam(particle, energy=17.846262619763e9, T0=T0)
+x0_vals, goal_vals, grad_vals = multi_val_op(xinit, 10, 1e-5, ESR_crab)
 
-# esr = deserialize("test/esr_main.jls")
-# esr_rad = deserialize("test/esr_main_rad.jls")
-# rout = ringpass!(esr_rad, beam, 100, true)
-# # println(rout[1, :])
-# # println(use_exact_Hamiltonian)
-# # use_exact_drift(1)
-# # beam = Beam(particle, energy=18e9)
-# # rout = ringpass!(esr, beam, 100, true)
-# # println(rout[1, :])
-# # println(use_exact_Hamiltonian)
-# using CSV, DataFrames
-# path = "C:/Users/WAN/Downloads/ESR/Version-6.2/tracking_results_1turns_rad.tfs"
-# data = CSV.File(path, delim=' ', ignorerepeated=true, header=54, comment="#") |> DataFrame
-# MAD_result = zeros(838, 7)
-# for i in 1:838
-#     MAD_result[i, 1] = data[i, 3]
-#     MAD_result[i, 2] = data[i, 4]
-#     MAD_result[i, 3] = data[i, 5]
-#     MAD_result[i, 4] = data[i, 6]
-#     MAD_result[i, 5] = data[i, 7]
-#     MAD_result[i, 6] = data[i, 8]
-#     MAD_result[i, 7] = data[i, 9]
-# end
+plot_steps = 3
+p1 = plot(1:plot_steps, x0_vals[1, 1:plot_steps], title = L"Evolution\ of\ k", xlabel = L"Iterations", ylabel = L"Strength (m^{-1})", label=L"k_1", line=:dash, marker=:circle)
+for i in 2:7
+    label_str = "k_{$i}"  
+    full_label = latexstring(label_str)
+    plot!(1:plot_steps, x0_vals[i, 1:plot_steps], label=full_label, line=:dash, marker=:circle)
+end
+p2 = plot(1:plot_steps, goal_vals[1:plot_steps], title = L"Evolution\ of\ \Delta \phi", xlabel = L"Iterations", ylabel = L"phase\ advance(rad)", legend = false, line=:dash, marker=:circle)
+p3 = plot(1:plot_steps, grad_vals[1, 1:plot_steps], title = L"Evolution\ of\ gradient", xlabel = L"Iterations", 
+    ylabel = L"\partial \frac{\Delta \phi}{\partial k}", label=L"k_1", line=:dash, marker=:circle)
+for i in 2:7
+    label_str = "k_{$i}"  
+    full_label = latexstring(label_str)
+    plot!(1:plot_steps, grad_vals[i, 1:plot_steps], label=full_label, line=:dash, marker=:circle)
+end
+plot(p1, p2, p3, layout = (3, 1), size=(800, 650))
 
-# using Plots
-# rout_m = zeros(100, 6)
-# for i in 1:100
-#     rout_m[i, 1] = rout[i][1,1]
-#     rout_m[i, 2] = rout[i][1,2]
-#     rout_m[i, 3] = rout[i][1,3]
-#     rout_m[i, 4] = rout[i][1,4]
-#     rout_m[i, 5] = rout[i][1,5]
-#     rout_m[i, 6] = rout[i][1,6]
-# end
-# p1 = plot(1:100, MAD_result[1:100, 1], label="MADX x", xlabel="Turn", ylabel="Position (m)", title="Tracking Results", legend=:topleft)
-# plot!(1:100, rout_m[:, 1], label="JuTrack x")
-# p2 = plot(1:100, MAD_result[1:100, 2], label="MADX xp", xlabel="Turn", ylabel="Position (m)", title="Tracking Results", legend=:topleft)
-# plot!(1:100, rout_m[:, 2], label="JuTrack xp")
-# p3 = plot(1:100, MAD_result[1:100, 3], label="MADX y", xlabel="Turn", ylabel="Position (m)", title="Tracking Results", legend=:topleft)
-# plot!(1:100, rout_m[:, 3], label="JuTrack y")
-# p4 = plot(1:100, MAD_result[1:100, 4], label="MADX yp", xlabel="Turn", ylabel="Position (m)", title="Tracking Results", legend=:topleft)
-# plot!(1:100, rout_m[:, 4], label="JuTrack yp")
-# p_all = plot(p1, p2, p3, p4, layout=(2, 2), size=(1000, 600))
-# savefig(p_all, "tracking_results.png")
-# open("output_file.txt", "w") do file
-#     for i = 1:5550
-#         write(file, esr[i].name * "\n")
-#     end
-# end
-# p5 = plot(MAD_result[:, 1], MAD_result[:, 2], label="MADX", xlabel="x", ylabel="xp", title="H Phase Space", legend=:topleft)
-# plot!(rout_m[:, 1], rout_m[:, 2], label="JuTrack")
-# p6 = plot(MAD_result[:, 3], MAD_result[:, 4], label="MADX", xlabel="y", ylabel="yp", title="V Phase Space", legend=:topleft)
-# plot!(rout_m[:, 3], rout_m[:, 4], label="JuTrack")
-# p_all2 = plot(p5, p6, layout=(1, 2), size=(800, 360))
 
+function get_phase14_zero1(x1, x2, x3, x4, x5, x6, x7, RING)
+    changed_idx = [9,13,17,23,27,31,5537]
+    new_D1 = KQUAD(len=RING[9].len, k1=x1)
+    new_D2 = KQUAD(len=RING[13].len, k1=x2)
+    new_D3 = KQUAD(len=RING[17].len, k1=x3)
+    new_D4 = KQUAD(len=RING[23].len, k1=x4)
+    new_D5 = KQUAD(len=RING[27].len, k1=x5)
+    new_D6 = KQUAD(len=RING[31].len, k1=x6)
+    new_D7 = KQUAD(len=RING[5537].len, k1=x7)
+    changed_ele = [new_D1, new_D2, new_D3, new_D4, new_D5, new_D6, new_D7]
+    refpts = [i for i in 1:length(RING)]
+    twi = ADtwissring(RING, 0.0, 1, refpts, changed_idx, changed_ele)
+
+    phase41 = twi[35].dmux + twi[end].dmux - twi[5533].dmux
+
+    return phase41 - 2*pi
+end
+
+# result = autodiff(Forward, get_phase14_zero1, BatchDuplicated, BatchDuplicated(xinit[1], (1.0,0.0,0.0,0.0,0.0,0.0,0.0)), BatchDuplicated(xinit[2], (0.0,1.0,0.0,0.0,0.0,0.0,0.0)),
+# BatchDuplicated(xinit[3], (0.0,0.0,1.0,0.0,0.0,0.0,0.0)), BatchDuplicated(xinit[4], (0.0,0.0,0.0,1.0,0.0,0.0,0.0)), BatchDuplicated(xinit[5], (0.0,0.0,0.0,0.0,1.0,0.0,0.0)),
+# BatchDuplicated(xinit[6], (1.0,0.0,0.0,0.0,0.0,1.0,0.0)), BatchDuplicated(xinit[7], (1.0,0.0,0.0,0.0,0.0,0.0,1.0)), Const(ESR_perturb))
+
+# result = autodiff(Forward, get_phase14_zero, BatchDuplicated, BatchDuplicated(xinit, ([1.0,0.0,0.0,0.0,0.0,0.0,0.0], 
+# [0.0,1.0,0.0,0.0,0.0,0.0,0.0], [0.0,0.0,1.0,0.0,0.0,0.0,0.0], [0.0,0.0,0.0,1.0,0.0,0.0,0.0], [0.0,0.0,0.0,0.0,1.0,0.0,0.0], 
+# [0.0,0.0,0.0,0.0,0.0,1.0,0.0], [0.0,0.0,0.0,0.0,0.0,0.0,1.0])), Const(ESR_perturb))

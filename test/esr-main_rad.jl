@@ -31,6 +31,9 @@ VOLT_RF     =      3.78e6
 LAG_RF      =      0.5847649913891533 # 0.0
 LRF         =      4.01667
 
+# Crab cavity parameters.
+crab14 = 2.8713953711409927e6
+crab23 = 2.8713762590139e6
 # ------- The geometry ------------------------------------
 # Number of bends per ARC.
 NBENDS_ARC  = 32.0
@@ -1672,7 +1675,11 @@ HSOL20_8 = SOLENOID(name="HSOL20_8", len=LSOL20/2, ks=KSOL2_8)
 #
 # ======= RF Cavities. ====================================
 RF0 = RFCA(name="RF0", len=LRF, volt=VOLT_RF, h=HRMN_RF, freq=591.1397738e6, energy=E, philag=LAG_RF)  
-RF_CRAB = CRABCAVITY(name="RF_CRAB", len=lecrab, volt=0.0, freq=394.0e6)
+# RF_CRAB = CRABCAVITY(name="RF_CRAB", len=lecrab, volt=0.0, freq=394.0e6)
+RF_CRAB1 = CRABCAVITY(name="RF_CRAB1", len=lecrab, volt=crab14, freq=394.0e6)
+RF_CRAB2 = CRABCAVITY(name="RF_CRAB2", len=lecrab, volt=-crab14, freq=394.0e6)
+RF_CRAB3 = CRABCAVITY(name="RF_CRAB3", len=lecrab, volt=crab23, freq=394.0e6)
+RF_CRAB4 = CRABCAVITY(name="RF_CRAB4", len=lecrab, volt=-crab23, freq=394.0e6)
 #
 # ======= Drifts. =========================================
 ODB23 = DRIFT(name="ODB23", len=L12_STR)
@@ -1879,7 +1886,7 @@ IR_6 = [mlrf_6,
    q5ef_6, oww_sh, sq5ef_6, omir_ir6f,
    q4ef_6, oww_sh, sq4ef_6, o3ef_6,
    q3ef_6, ow2c,
-   RF_CRAB,
+   RF_CRAB1,
    ow2c, q2ef_6, oww_sh, sq2ef_6,
    oww_sh, d2ef_6, ODB23, d2ef_6, ODB23, d1ef_6, o2ef_6,
    MCOLL_MASK,
@@ -1895,7 +1902,7 @@ IR_6N = [o0er_6, q1er_6, o1er_6,
  d3er_6, oww,
  sq6er_6, oww_sh, q6er_6, omir_ir6r2,
  sq7er_6, oww_sh, q7er_6, omir_ir6r2,
- sq8er_6, oww_sh, q8er_6, ow2c, RF_CRAB, ow2c,
+ sq8er_6, oww_sh, q8er_6, ow2c, RF_CRAB4, ow2c,
  sq9er_6, oww_sh, q9er_6, omir_ir6r2,
  sq10er_6, oww_sh, q10er_6, oww, d4er_6, oww,
  q11er_6, oww, d4er_6, oww,
@@ -1918,7 +1925,7 @@ IR_8 = [mlrf_8,
    q5ef_8, omir,
    q4ef_8, o3ef_8,
    q3ef_8, oqc,
-   RF_CRAB,
+   RF_CRAB2,
    oqc, q2ef_8,
    oww, d1ef_8,
    oww, d1ef_8,
@@ -1935,7 +1942,7 @@ IR_8N = [o0er_8, q1er_8, o1er_8, q2er_8, o2er_8, d2er_8, o3er_8, q3er_8,
  q6er_8, omir,
  q7er_8, omir,
  q8er_8, omir,
- q9er_8, oqc, RF_CRAB, oqc,
+ q9er_8, oqc, RF_CRAB3, oqc,
  q10er_8, omir,
  q11er_8, oww, d4er_8, oww,
  q12er_8, oww, d5er_8, oww,
@@ -2330,18 +2337,5 @@ RING  = [
    IP12,  UTIL_12N...,  ARC_1...,              UTIL_2...,
    IP2,   UTIL_2N...,   ARC_3...,              UTIL_4...,
    IP4,   UTIL_4N...,   ARC_5...,              HALF_IR6..., IR_6...,     IP6]
-
 # serialize("esr_main_rad.jls", RING)
-# use_exact_drift(0)
-# particles = [0.0 0.0 0.0 0.0 0.0 0.0]
-# # particles = [ 2.798358E-06 -4.910457E-06 -5.575021E-10 -4.537499E-09  7.525020E-03 -5.834977E-05]
-# beam = Beam(particles, energy=17.846262619763e9)
-# rout = ringpass!(RING, beam, 100, true)
-# rout_m = zeros(length(rout), 6)
-# for i in 1:length(rout)
-#     rout_m[i, :] = rout[i]
-# end
-# scatter(rout_m[:,5], rout_m[:,6], zcolor=1:length(rout),  
-#         xlabel="z(m)", ylabel="delta", label="longitudinal",
-#         cmap=:viridis, colorbar_title="turns") 
-twi,ss = twissring(RING, 0.0, 1)
+

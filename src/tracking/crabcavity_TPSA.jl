@@ -8,13 +8,14 @@ function pass_TPSA!(ele::CRABCAVITY, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degre
         # ang = -ele.k * r_in[5] + ele.phi
         # r_in[2] += ele.volt/beta2E * sin(ang)
         # r_in[6] += (-ele.k * ele.volt/beta2E) * r_in[1] * cos(ang)
-        println("crabcavity is not implemented in TPSA")
+        # println("crabcavity is not implemented in TPSA")
+        return nothing
     else
         drift6!(r_in, ele.len / 2.0)
         # ang = -ele.k * r_in[5] + ele.phi
         # r_in[2] += ele.volt/beta2E * sin(ang)
         # r_in[6] += (-ele.k * ele.volt/beta2E) * r_in[1] * cos(ang)
-        println("crabcavity is not implemented in TPSA")
+        # println("crabcavity is not implemented in TPSA")
         drift6!(r_in, ele.len / 2.0)
     end
     return nothing

@@ -6,25 +6,7 @@ function B2perp(bx, by, irho, x, xpr, y, ypr)
     return ((by * (1.0 + x*irho))^2 + (bx *(1.0 + x*irho))^2 + (bx*ypr - by*xpr)^2) * v_norm2
 end
 function bndthinkick!(r::AbstractVector{Float64}, A, B, L, irho, max_order)
-# Calculate multipole kick in a curved elemrnt (bending magnet)
-# The reference coordinate system  has the curvature given by the inverse 
-# (design) radius irho.
-# IMPORTANT !!!
-# The magnetic field Bo that provides this curvature MUST NOT be included in the dipole term
-# PolynomB[1](MATLAB notation)(C: B[0] in this function) of the By field expansion
-
-# The kick is given by
-
-#            e L      L delta      L x
-# theta  = - --- B  + -------  -  -----  , 
-#      x     p    y     rho           2
-#             0                    rho
-
-#          e L
-# theta  = --- B
-#      y    p   x
-#            0
-
+# AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
     ReSum = B[max_order + 1]
     ImSum = A[max_order + 1]
     ReSumTemp = 0.0
@@ -42,45 +24,46 @@ function bndthinkick!(r::AbstractVector{Float64}, A, B, L, irho, max_order)
 end
 
 function bndthinkickrad!(r::AbstractVector{Float64}, A, B, L, irho, E0, max_order)
-        ReSum = B[max_order + 1]
-        ImSum = A[max_order + 1]
-        ReSumTemp = 0.0
-        CRAD = CGAMMA * E0^3 / (2.0*pi*1e27) # [m]/[GeV^3] M.Sands (4.1)
+    # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
+    ReSum = B[max_order + 1]
+    ImSum = A[max_order + 1]
+    ReSumTemp = 0.0
+    CRAD = CGAMMA * E0^3 / (2.0*pi*1e27) # [m]/[GeV^3] M.Sands (4.1)
 
-        for i in reverse(1:max_order)
-            ReSumTemp = ReSum * r[1] - ImSum * r[3] + B[i]
-            ImSum = ImSum * r[1] + ReSum * r[3] + A[i]
-            ReSum = ReSumTemp
-        end
+    for i in reverse(1:max_order)
+        ReSumTemp = ReSum * r[1] - ImSum * r[3] + B[i]
+        ImSum = ImSum * r[1] + ReSum * r[3] + A[i]
+        ReSum = ReSumTemp
+    end
 
-        # angles from momentums
-        if use_exact_Hamiltonian == 1
-            p_norm = 1.0 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
-        else
-            p_norm = 1.0 / (1.0 + r[6])
-        end
-        x = r[1]
-        xpr = r[2] * p_norm
-        y = r[3]
-        ypr = r[4] * p_norm
-        B2P = B2perp(ImSum, ReSum + irho, irho, x, xpr, y, ypr)
+    # angles from momentums
+    if use_exact_Hamiltonian == 1
+        p_norm = 1.0 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
+    else
+        p_norm = 1.0 / (1.0 + r[6])
+    end
+    x = r[1]
+    xpr = r[2] * p_norm
+    y = r[3]
+    ypr = r[4] * p_norm
+    B2P = B2perp(ImSum, ReSum + irho, irho, x, xpr, y, ypr)
 
-        dp_0 = r[6]
-        r[6] = r[6] - CRAD * (1.0+r[6])^2 * B2P * (1.0 + x*irho + (xpr^2 + ypr^2) / 2.0) * L
+    dp_0 = r[6]
+    r[6] = r[6] - CRAD * (1.0+r[6])^2 * B2P * (1.0 + x*irho + (xpr^2 + ypr^2) / 2.0) * L
     
-        # momentums after losing energy
-        if use_exact_Hamiltonian == 1
-            p_norm = 1.0 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
-        else
-            p_norm = 1.0 / (1.0 + r[6])
-        end
-        r[2] = xpr / p_norm
-        r[4] = ypr / p_norm
+    # momentums after losing energy
+    if use_exact_Hamiltonian == 1
+        p_norm = 1.0 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
+    else
+        p_norm = 1.0 / (1.0 + r[6])
+    end
+    r[2] = xpr / p_norm
+    r[4] = ypr / p_norm
 
-        r[2] -= L * (ReSum - (dp_0 - r[1]*irho)*irho)
-        r[4] += L * ImSum
-        r[5] += L * irho * r[1]
-        return nothing
+    r[2] -= L * (ReSum - (dp_0 - r[1]*irho)*irho)
+    r[4] += L * ImSum
+    r[5] += L * irho * r[1]
+    return nothing
     end
 
 function BendSymplecticPassRad!(r::Array{Float64,1}, le::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
@@ -89,7 +72,8 @@ function BendSymplecticPassRad!(r::Array{Float64,1}, le::Float64, irho::Float64,
     fringeIntM0::Array{Float64,1}, fringeIntP0::Array{Float64,1}, T1::Array{Float64,1}, T2::Array{Float64,1}, 
     R1::Array{Float64,2}, R2::Array{Float64,2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1},
     KickAngle::Array{Float64,1}, E0::Float64, num_particles::Int, lost_flags::Array{Int64,1})
-    
+    # AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
+
     DRIFT1 = 0.6756035959798286638
     DRIFT2 = -0.1756035959798286639
     KICK1 = 1.351207191959657328
@@ -115,7 +99,6 @@ function BendSymplecticPassRad!(r::Array{Float64,1}, le::Float64, irho::Float64,
     A[1] += sin(KickAngle[2]) / le
 
 
-    # Threads.@threads for c in 1:num_particles
     for c in 1:num_particles
         if lost_flags[c] == 1
             continue
@@ -124,20 +107,11 @@ function BendSymplecticPassRad!(r::Array{Float64,1}, le::Float64, irho::Float64,
         if !isnan(r6[1])
             # Misalignment at entrance
             if T1 != zeros(6)
-                ATaddvv!(r6, T1)
+                addvv!(r6, T1)
             end
             if R1 != zeros(6, 6)
-                ATmultmv!(r6, R1)
+                multmv!(r6, R1)
             end
-
-            # Aperture checks at the entrance
-            # if RApertures !== nothing
-            #     checkiflostRectangularAp!(r6, RApertures)
-            # end
-            # if EApertures !== nothing
-            #     checkiflostEllipticalAp!(r6, EApertures)
-            # end
-
             # Edge focus at entrance
             edge_fringe_entrance!(r6, irho, entrance_angle, fint1, gap, FringeBendEntrance)
 
@@ -173,22 +147,14 @@ function BendSymplecticPassRad!(r::Array{Float64,1}, le::Float64, irho::Float64,
             # Edge focus at exit
             edge_fringe_exit!(r6, irho, exit_angle, fint2, gap, FringeBendExit)
 
-            # Aperture checks at the exit
-            # if RApertures !== nothing
-            #     checkiflostRectangularAp!(r6, RApertures)
-            # end
-            # if EApertures !== nothing
-            #     checkiflostEllipticalAp!(r6, EApertures)
-            # end
-
             # Misalignment at exit
             if R2 != zeros(6, 6)
-                ATmultmv!(r6, R2)
+                multmv!(r6, R2)
             end
             if T2 != zeros(6) 
-                ATaddvv!(r6, T2)
+                addvv!(r6, T2)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit
+            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end
@@ -206,7 +172,8 @@ function BendSymplecticPass!(r::Array{Float64,1}, le::Float64, irho::Float64, A:
     fringeIntM0::Array{Float64,1}, fringeIntP0::Array{Float64,1}, T1::Array{Float64,1}, T2::Array{Float64,1}, 
     R1::Array{Float64,2}, R2::Array{Float64,2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1},
     KickAngle::Array{Float64,1}, num_particles::Int, lost_flags::Array{Int64,1})
-    
+    # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
+
     DRIFT1 = 0.6756035959798286638
     DRIFT2 = -0.1756035959798286639
     KICK1 = 1.351207191959657328
@@ -232,7 +199,6 @@ function BendSymplecticPass!(r::Array{Float64,1}, le::Float64, irho::Float64, A:
     A[1] += sin(KickAngle[2]) / le
 
 
-    # Threads.@threads for c in 1:num_particles
     for c in 1:num_particles
         if lost_flags[c] == 1
             continue
@@ -249,19 +215,11 @@ function BendSymplecticPass!(r::Array{Float64,1}, le::Float64, irho::Float64, A:
 
             # Misalignment at entrance
             if T1 != zeros(6)
-                ATaddvv!(r6, T1)
+                addvv!(r6, T1)
             end
             if R1 != zeros(6, 6)
-                ATmultmv!(r6, R1)
+                multmv!(r6, R1)
             end
-
-            # Aperture checks at the entrance
-            # if RApertures !== nothing
-            #     checkiflostRectangularAp!(r6, RApertures)
-            # end
-            # if EApertures !== nothing
-            #     checkiflostEllipticalAp!(r6, EApertures)
-            # end
 
             # Edge focus at entrance
             edge_fringe_entrance!(r6, irho, entrance_angle, fint1, gap, FringeBendEntrance)
@@ -298,22 +256,14 @@ function BendSymplecticPass!(r::Array{Float64,1}, le::Float64, irho::Float64, A:
             # Edge focus at exit
             edge_fringe_exit!(r6, irho, exit_angle, fint2, gap, FringeBendExit)
 
-            # Aperture checks at the exit
-            # if RApertures !== nothing
-            #     checkiflostRectangularAp!(r6, RApertures)
-            # end
-            # if EApertures !== nothing
-            #     checkiflostEllipticalAp!(r6, EApertures)
-            # end
-
             # Misalignment at exit
             if R2 != zeros(6, 6)
-                ATmultmv!(r6, R2)
+                multmv!(r6, R2)
             end
             if T2 != zeros(6) 
-                ATaddvv!(r6, T2)
+                addvv!(r6, T2)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit
+            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end
@@ -330,6 +280,7 @@ function pass!(ele::SBEND, r_in::Array{Float64,1}, num_particles::Int64, particl
     # ele: SBEND
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
+    # particles: Beam object
     lost_flags = particles.lost_flag
     irho = ele.angle / ele.len
     E0 = particles.energy
@@ -358,6 +309,7 @@ function pass!(ele::RBEND, r_in::Array{Float64,1}, num_particles::Int64, particl
     # ele: RBEND
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
+    # particles: Beam object
     lost_flags = particles.lost_flag
     irho = ele.angle / ele.len
     E0 = particles.energy
@@ -417,8 +369,8 @@ function BendSymplecticPassRad_P!(r::Array{Float64,1}, le::Float64, irho::Float6
     A[1] += sin(KickAngle[2]) / le
 
 
-    # Threads.@threads for c in 1:num_particles
-    for c in 1:num_particles
+    Threads.@threads for c in 1:num_particles
+    # for c in 1:num_particles
         if lost_flags[c] == 1
             continue
         end
@@ -426,19 +378,11 @@ function BendSymplecticPassRad_P!(r::Array{Float64,1}, le::Float64, irho::Float6
         if !isnan(r6[1])
             # Misalignment at entrance
             if T1 != zeros(6)
-                ATaddvv!(r6, T1)
+                addvv!(r6, T1)
             end
             if R1 != zeros(6, 6)
-                ATmultmv!(r6, R1)
+                multmv!(r6, R1)
             end
-
-            # Aperture checks at the entrance
-            # if RApertures !== nothing
-            #     checkiflostRectangularAp!(r6, RApertures)
-            # end
-            # if EApertures !== nothing
-            #     checkiflostEllipticalAp!(r6, EApertures)
-            # end
 
             # Edge focus at entrance
             edge_fringe_entrance!(r6, irho, entrance_angle, fint1, gap, FringeBendEntrance)
@@ -475,20 +419,12 @@ function BendSymplecticPassRad_P!(r::Array{Float64,1}, le::Float64, irho::Float6
             # Edge focus at exit
             edge_fringe_exit!(r6, irho, exit_angle, fint2, gap, FringeBendExit)
 
-            # Aperture checks at the exit
-            # if RApertures !== nothing
-            #     checkiflostRectangularAp!(r6, RApertures)
-            # end
-            # if EApertures !== nothing
-            #     checkiflostEllipticalAp!(r6, EApertures)
-            # end
-
             # Misalignment at exit
             if R2 != zeros(6, 6)
-                ATmultmv!(r6, R2)
+                multmv!(r6, R2)
             end
             if T2 != zeros(6) 
-                ATaddvv!(r6, T2)
+                addvv!(r6, T2)
             end
             if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit
                 lost_flags[c] = 1
@@ -534,8 +470,8 @@ function BendSymplecticPass_P!(r::Array{Float64,1}, le::Float64, irho::Float64, 
     A[1] += sin(KickAngle[2]) / le
 
 
-    # Threads.@threads for c in 1:num_particles
-    for c in 1:num_particles
+    Threads.@threads for c in 1:num_particles
+    # for c in 1:num_particles
         if lost_flags[c] == 1
             continue
         end
@@ -551,19 +487,11 @@ function BendSymplecticPass_P!(r::Array{Float64,1}, le::Float64, irho::Float64, 
 
             # Misalignment at entrance
             if T1 != zeros(6)
-                ATaddvv!(r6, T1)
+                addvv!(r6, T1)
             end
             if R1 != zeros(6, 6)
-                ATmultmv!(r6, R1)
+                multmv!(r6, R1)
             end
-
-            # Aperture checks at the entrance
-            # if RApertures !== nothing
-            #     checkiflostRectangularAp!(r6, RApertures)
-            # end
-            # if EApertures !== nothing
-            #     checkiflostEllipticalAp!(r6, EApertures)
-            # end
 
             # Edge focus at entrance
             edge_fringe_entrance!(r6, irho, entrance_angle, fint1, gap, FringeBendEntrance)
@@ -600,22 +528,14 @@ function BendSymplecticPass_P!(r::Array{Float64,1}, le::Float64, irho::Float64, 
             # Edge focus at exit
             edge_fringe_exit!(r6, irho, exit_angle, fint2, gap, FringeBendExit)
 
-            # Aperture checks at the exit
-            # if RApertures !== nothing
-            #     checkiflostRectangularAp!(r6, RApertures)
-            # end
-            # if EApertures !== nothing
-            #     checkiflostEllipticalAp!(r6, EApertures)
-            # end
-
             # Misalignment at exit
             if R2 != zeros(6, 6)
-                ATmultmv!(r6, R2)
+                multmv!(r6, R2)
             end
             if T2 != zeros(6) 
-                ATaddvv!(r6, T2)
+                addvv!(r6, T2)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit
+            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end

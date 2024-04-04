@@ -14,39 +14,27 @@ function ThinMPolePass_TPSA!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le::Fl
     B[1] -= KickAngle[1]
     A[1] += KickAngle[2]
 
-    # Threads.@threads for c in 1:num_particles
-    # for c in 1:num_particles
-    #     if lost_flags[c] == 1
-    #         continue
-    #     end
-    #     r = @view r[(c-1)*6+1:c*6]
-        # if !isnan(r[1])
-            # Misalignment at entrance
-            if T1 != zeros(6)
-                ATaddvv!(r, T1)
-            end
-            if R1 != zeros(6, 6)
-                ATmultmv!(r, R1)
-            end
+    # Misalignment at entrance
+    if T1 != zeros(6)
+        addvv!(r, T1)
+    end
+    if R1 != zeros(6, 6)
+        multmv!(r, R1)
+    end
 
-            strthinkick!(r, A, B, 1.0, max_order)
-            r[2] += bax * r[6]
-            r[4] -= bay * r[6]
-            r[6] -= bax * r[1] - bay * r[3]  # Path lenghtening
+    strthinkick!(r, A, B, 1.0, max_order)
+    r[2] += bax * r[6]
+    r[4] -= bay * r[6]
+    r[6] -= bax * r[1] - bay * r[3]  # Path lenghtening
 
 
-            # Misalignment at exit
-            if R2 != zeros(6, 6)
-                ATmultmv!(r, R2)
-            end
-            if T2 != zeros(6)
-                ATaddvv!(r, T2)
-            end
-            # if r[1] > CoordLimit || r[2] > AngleLimit || r[1] < -CoordLimit || r[2] < -AngleLimit
-            #     lost_flags[c] = 1
-            # end
-        # end
-    # end
+    # Misalignment at exit
+    if R2 != zeros(6, 6)
+        multmv!(r, R2)
+    end
+    if T2 != zeros(6)
+        addvv!(r, T2)
+    end
 
     B[1] += KickAngle[1]
     A[1] -= KickAngle[2]
