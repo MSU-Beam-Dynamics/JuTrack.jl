@@ -18,10 +18,10 @@ function pass_TPSA!(ele::SOLENOID, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}
                 p_norm = 1.0 / sqrt(1.0 + r_in[6]) # use linearized p_norm
             end
                 # Misalignment at entrance
-                if T1 != zeros(6)
+                if !iszero(T1)
                     addvv!(r_in, T1)
                 end
-                if R1 != zeros(6, 6)
+                if !iszero(R1)
                     multmv!(r_in, R1)
                 end
     
@@ -38,10 +38,10 @@ function pass_TPSA!(ele::SOLENOID, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}
                 r_in[4] = (x*H*S*S - xpr*C*S - y*C*S*H + ypr*C*C) / p_norm
                 r_in[5] += ele.len*(H*H*(x*x+y*y) + 2.0*H*(xpr*y-ypr*x) +xpr*xpr+ypr*ypr)/2.0
     
-                if R2 != zeros(6, 6)
+                if !iszero(R2)
                     multmv!(r_in, R2)
                 end
-                if T2 != zeros(6) 
+                if !iszero(T2)
                     addvv!(r_in, T2)
                 end
             # end

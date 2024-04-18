@@ -46,10 +46,10 @@ function ThinMPolePass!(r::Array{Float64,1}, le::Float64, A::Array{Float64,1}, B
         r6 = @view r[(c-1)*6+1:c*6]
         if !isnan(r6[1])
             # Misalignment at entrance
-            if T1 != zeros(6)
+            if !iszero(T1)
                 addvv!(r6, T1)
             end
-            if R1 != zeros(6, 6)
+            if !iszero(R1)
                 multmv!(r6, R1)
             end
 
@@ -59,13 +59,13 @@ function ThinMPolePass!(r::Array{Float64,1}, le::Float64, A::Array{Float64,1}, B
             r6[6] -= bax * r6[1] - bay * r6[3]  # Path lenghtening
 
             # Misalignment at exit
-            if R2 != zeros(6, 6)
+            if !iszero(R2)
                 multmv!(r6, R2)
             end
-            if T2 != zeros(6)
+            if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit || isnan(r6[1])
+            if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end
@@ -106,10 +106,10 @@ function ThinMPolePass_P!(r::Array{Float64,1}, le::Float64, A::Array{Float64,1},
         r6 = @view r[(c-1)*6+1:c*6]
         if !isnan(r6[1])
             # Misalignment at entrance
-            if T1 != zeros(6)
+            if !iszero(T1)
                 addvv!(r6, T1)
             end
-            if R1 != zeros(6, 6)
+            if !iszero(R1)
                 multmv!(r6, R1)
             end
             
@@ -120,13 +120,13 @@ function ThinMPolePass_P!(r::Array{Float64,1}, le::Float64, A::Array{Float64,1},
 
 
             # Misalignment at exit
-            if R2 != zeros(6, 6)
+            if !iszero(R2)
                 multmv!(r6, R2)
             end
-            if T2 != zeros(6)
+            if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit || isnan(r6[1])
+            if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end

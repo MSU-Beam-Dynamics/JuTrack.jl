@@ -4,6 +4,8 @@ using Enzyme
 using BenchmarkTools
 Enzyme.API.runtimeActivity!(true)
 
+# an simple example that optimize the transfer matrix of a ring
+
 D1 = DRIFT(len=1.0)
 B1 = SBEND(len= 1.0, angle=pi/6.0)
 Q1 = KQUAD(len=1.0, k1=-0.9325169994516977) # optimized k1 starting from -1.0

@@ -1,6 +1,6 @@
 function CRABCAVITYPass!(r::Array{Float64,1}, cavity::CRABCAVITY, beta2E::Float64, num_particles::Int64, lost_flags::Array{Int,1})
     for c in 1:num_particles
-        if lost_flags[c] == 1
+        if isone(lost_flags[c])
             continue
         end
         r6 = @view r[(c-1)*6+1:c*6] 
@@ -20,7 +20,7 @@ end
 
 function easyCRABCAVITYPass!(r::Array{Float64,1}, cavity::easyCRABCAVITY, num_particles::Int64, lost_flags::Array{Int,1})
     for c in 1:num_particles
-        if lost_flags[c] == 1
+        if isone(lost_flags[c])
             continue
         end
         r6 = @view r[(c-1)*6+1:c*6] 
@@ -70,7 +70,7 @@ end
 function CRABCAVITYPass_P!(r::Array{Float64,1}, cavity::CRABCAVITY, beta2E::Float64, num_particles::Int64, lost_flags::Array{Int,1})
     Threads.@threads for c in 1:num_particles
     # for c in 1:num_particles
-        if lost_flags[c] == 1
+        if isone(lost_flags[c])
             continue
         end
         r6 = @view r[(c-1)*6+1:c*6] 
@@ -91,7 +91,7 @@ end
 function easyCRABCAVITYPass_P!(r::Array{Float64,1}, cavity::easyCRABCAVITY, num_particles::Int64, lost_flags::Array{Int,1})
     Threads.@threads for c in 1:num_particles
     # for c in 1:num_particles
-        if lost_flags[c] == 1
+        if isone(lost_flags[c])
             continue
         end
         r6 = @view r[(c-1)*6+1:c*6] 

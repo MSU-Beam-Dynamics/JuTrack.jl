@@ -1,10 +1,10 @@
 module JuTrack
-CoordLimit = 1.0
-AngleLimit = 1.0
-m_e = 0.51099895e6
-m_p = 938.27208816e6
-m_goldion = 931.49410242e6 # charge 79, atomic number 197
-CGAMMA =	8.846056192e-05
+const CoordLimit = 1.0
+const AngleLimit = 1.0
+const m_e = 0.51099895e6
+const m_p = 938.27208816e6
+const m_goldion = 931.49410242e6 # charge 79, atomic number 197
+const CGAMMA =	8.846056192e-05
 use_exact_Hamiltonian = 0
 
 include("TPSA_Enzyme/TPSA.jl")
@@ -16,7 +16,8 @@ include("tracking/multipole.jl")
 include("tracking/rfcavity.jl")
 include("tracking/thinmultipole.jl")
 include("tracking/corrector.jl")
-include("tracking/track.jl")
+include("tracking/wakefield.jl")
+
 include("tracking/bend_TPSA.jl")
 include("tracking/drift_TPSA.jl")
 include("tracking/multipole_TPSA.jl")
@@ -43,6 +44,7 @@ export Beam
 export m_e, m_p, m_goldion, CGAMMA, CoordLimit, AngleLimit, use_exact_Hamiltonian, use_exact_drift
 export CRABCAVITY, easyCRABCAVITY, AccelCavity, LorentzBoost, InvLorentzBoost, StrongGaussianBeam, StrongThinGaussianBeam, AbstractStrongBeamBeam
 export LongitudinalRFMap, AbstractLongitudinalRFMap, AbstractTransferMap, AbstractTransverseMap
+export LongitudinalRLCWake, LongitudinalWake
 export AbstractOptics, AbstractOptics2D, AbstractOptics4D, optics2D, optics4DUC
 export initilize_6DGaussiandist!, get_emittance!, get_2nd_moment!, get_centroid!, histogram1DinZ!
 export initilize_zslice!

@@ -8,9 +8,7 @@ function multmv!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A::Matrix{Float64}
             temp[i] += A[i, j] * r[j]
         end
     end
-    for i in 1:6
-        r[i] = temp[i]
-    end
+    r .= temp
     return nothing
 end
 
@@ -27,7 +25,7 @@ function fastdrift!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, NormL::CTPS{T, 
     # in the loop if momentum deviation (delta) does not change
     # such as in 4-th order symplectic integrator w/o radiation
 
-    if use_exact_Hamiltonian == 1
+    if isone(use_exact_Hamiltonian)
         r[1] += NormL * r[2]
         r[3] += NormL * r[4]
         r[5] += NormL * (1.0 + r[6]) - le
@@ -41,7 +39,7 @@ end
 
 function drift6!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le::Float64) where {T, TPS_Dim, Max_TPS_Degree}
     # similar to AT drift6. Provide an option to use exact Hamiltonian or linearized approximation
-    if use_exact_Hamiltonian == 1
+    if isone(use_exact_Hamiltonian)
         NormL = le / sqrt(((1.0 + r[6])^2 - r[2]^2 - r[4]^2))
         r[5] += NormL * (1.0 + r[6]) - le
     else
@@ -55,20 +53,20 @@ end
 function DriftPass_TPSA!(r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le, T1, T2, R1, R2, 
     RApertures, EApertures) where {T, TPS_Dim, Max_TPS_Degree}
 
-    if T1 != zeros(6)
+    if !iszero(T1)
         addvv!(r_in, T1)
     end
-    if R1 != zeros(6, 6)
+    if !iszero(R1)
         multmv!(r_in, R1)
     end
 
     drift6!(r_in, le)
 
     # Misalignment at exit
-    if R2 != zeros(6, 6)
+    if !iszero(R2)
         multmv!(r_in, R2)
     end
-    if T2 != zeros(6)
+    if !iszero(T2)
         addvv!(r_in, T2)
     end
 

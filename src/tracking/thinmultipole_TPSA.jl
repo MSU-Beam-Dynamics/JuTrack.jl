@@ -15,10 +15,10 @@ function ThinMPolePass_TPSA!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le::Fl
     A[1] += KickAngle[2]
 
     # Misalignment at entrance
-    if T1 != zeros(6)
+    if !iszero(T1)
         addvv!(r, T1)
     end
-    if R1 != zeros(6, 6)
+    if !iszero(R1)
         multmv!(r, R1)
     end
 
@@ -29,10 +29,10 @@ function ThinMPolePass_TPSA!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le::Fl
 
 
     # Misalignment at exit
-    if R2 != zeros(6, 6)
+    if !iszero(R2)
         multmv!(r, R2)
     end
-    if T2 != zeros(6)
+    if !iszero(T2)
         addvv!(r, T2)
     end
 

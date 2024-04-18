@@ -37,7 +37,7 @@ function bndthinkickrad!(r::AbstractVector{Float64}, A, B, L, irho, E0, max_orde
     end
 
     # angles from momentums
-    if use_exact_Hamiltonian == 1
+    if isone(use_exact_Hamiltonian)
         p_norm = 1.0 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
     else
         p_norm = 1.0 / (1.0 + r[6])
@@ -52,7 +52,7 @@ function bndthinkickrad!(r::AbstractVector{Float64}, A, B, L, irho, E0, max_orde
     r[6] = r[6] - CRAD * (1.0+r[6])^2 * B2P * (1.0 + x*irho + (xpr^2 + ypr^2) / 2.0) * L
     
     # momentums after losing energy
-    if use_exact_Hamiltonian == 1
+    if isone(use_exact_Hamiltonian)
         p_norm = 1.0 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
     else
         p_norm = 1.0 / (1.0 + r[6])
@@ -84,12 +84,12 @@ function BendSymplecticPassRad!(r::Array{Float64,1}, le::Float64, irho::Float64,
     K1 = SL * KICK1
     K2 = SL * KICK2
 
-    if FringeQuadEntrance==2 && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
+    if FringeQuadEntrance==2# && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
         useLinFrEleEntrance = 1
     else
         useLinFrEleEntrance = 0
     end
-    if FringeQuadExit==2 && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
+    if FringeQuadExit==2# && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
         useLinFrEleExit = 1
     else
         useLinFrEleExit = 0
@@ -100,23 +100,23 @@ function BendSymplecticPassRad!(r::Array{Float64,1}, le::Float64, irho::Float64,
 
 
     for c in 1:num_particles
-        if lost_flags[c] == 1
+        if isone(lost_flags[c])
             continue
         end
         r6 = @view r[(c-1)*6+1:c*6]
         if !isnan(r6[1])
             # Misalignment at entrance
-            if T1 != zeros(6)
+            if !iszero(T1)
                 addvv!(r6, T1)
             end
-            if R1 != zeros(6, 6)
+            if !iszero(R1)
                 multmv!(r6, R1)
             end
             # Edge focus at entrance
             edge_fringe_entrance!(r6, irho, entrance_angle, fint1, gap, FringeBendEntrance)
 
             # Quadrupole gradient fringe entrance
-            if FringeQuadEntrance != 0 && B[2] != 0
+            if !iszero(FringeQuadEntrance) && !iszero(B[2])
                 if useLinFrEleEntrance == 1
                     linearQuadFringeElegantEntrance!(r6, B[2], fringeIntM0, fringeIntP0)
                 else
@@ -136,7 +136,7 @@ function BendSymplecticPassRad!(r::Array{Float64,1}, le::Float64, irho::Float64,
             end
 
             # Quadrupole gradient fringe exit
-            if FringeQuadExit != 0 && B[2] != 0
+            if !iszero(FringeQuadExit) && !iszero(B[2])
                 if useLinFrEleExit == 1
                     linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
                 else
@@ -148,13 +148,13 @@ function BendSymplecticPassRad!(r::Array{Float64,1}, le::Float64, irho::Float64,
             edge_fringe_exit!(r6, irho, exit_angle, fint2, gap, FringeBendExit)
 
             # Misalignment at exit
-            if R2 != zeros(6, 6)
+            if !iszero(R2)
                 multmv!(r6, R2)
             end
-            if T2 != zeros(6) 
+            if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit || isnan(r6[1])
+            if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end
@@ -184,12 +184,12 @@ function BendSymplecticPass!(r::Array{Float64,1}, le::Float64, irho::Float64, A:
     K1 = SL * KICK1
     K2 = SL * KICK2
 
-    if FringeQuadEntrance==2 && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
+    if FringeQuadEntrance==2# && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
         useLinFrEleEntrance = 1
     else
         useLinFrEleEntrance = 0
     end
-    if FringeQuadExit==2 && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
+    if FringeQuadExit==2 #&& !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
         useLinFrEleExit = 1
     else
         useLinFrEleExit = 0
@@ -200,12 +200,12 @@ function BendSymplecticPass!(r::Array{Float64,1}, le::Float64, irho::Float64, A:
 
 
     for c in 1:num_particles
-        if lost_flags[c] == 1
+        if isone(lost_flags[c])
             continue
         end
         r6 = @view r[(c-1)*6+1:c*6]
         if !isnan(r6[1])
-            if use_exact_Hamiltonian == 1
+            if isone(use_exact_Hamiltonian)
                 NormL1 = L1 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
                 NormL2 = L2 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
             else
@@ -214,10 +214,10 @@ function BendSymplecticPass!(r::Array{Float64,1}, le::Float64, irho::Float64, A:
             end
 
             # Misalignment at entrance
-            if T1 != zeros(6)
+            if !iszero(T1)
                 addvv!(r6, T1)
             end
-            if R1 != zeros(6, 6)
+            if !iszero(R1)
                 multmv!(r6, R1)
             end
 
@@ -225,8 +225,8 @@ function BendSymplecticPass!(r::Array{Float64,1}, le::Float64, irho::Float64, A:
             edge_fringe_entrance!(r6, irho, entrance_angle, fint1, gap, FringeBendEntrance)
 
             # Quadrupole gradient fringe entrance
-            if FringeQuadEntrance != 0 && B[2] != 0
-                if useLinFrEleEntrance == 1
+            if !iszero(FringeQuadEntrance) && !iszero(B[2])
+                if isone(useLinFrEleEntrance)
                     linearQuadFringeElegantEntrance!(r6, B[2], fringeIntM0, fringeIntP0)
                 else
                     QuadFringePassP!(r6, B[2])
@@ -245,8 +245,8 @@ function BendSymplecticPass!(r::Array{Float64,1}, le::Float64, irho::Float64, A:
             end
 
             # Quadrupole gradient fringe exit
-            if FringeQuadExit != 0 && B[2] != 0
-                if useLinFrEleExit == 1
+            if !iszero(FringeQuadExit) && !iszero(B[2])
+                if isone(useLinFrEleExit)
                     linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
                 else
                     QuadFringePassN!(r6, B[2])
@@ -257,13 +257,13 @@ function BendSymplecticPass!(r::Array{Float64,1}, le::Float64, irho::Float64, A:
             edge_fringe_exit!(r6, irho, exit_angle, fint2, gap, FringeBendExit)
 
             # Misalignment at exit
-            if R2 != zeros(6, 6)
+            if !iszero(R2)
                 multmv!(r6, R2)
             end
-            if T2 != zeros(6) 
+            if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit || isnan(r6[1])
+            if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end
@@ -354,12 +354,12 @@ function BendSymplecticPassRad_P!(r::Array{Float64,1}, le::Float64, irho::Float6
     K1 = SL * KICK1
     K2 = SL * KICK2
 
-    if FringeQuadEntrance==2 && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
+    if FringeQuadEntrance==2 #&& !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
         useLinFrEleEntrance = 1
     else
         useLinFrEleEntrance = 0
     end
-    if FringeQuadExit==2 && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
+    if FringeQuadExit==2 #&& !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
         useLinFrEleExit = 1
     else
         useLinFrEleExit = 0
@@ -371,16 +371,16 @@ function BendSymplecticPassRad_P!(r::Array{Float64,1}, le::Float64, irho::Float6
 
     Threads.@threads for c in 1:num_particles
     # for c in 1:num_particles
-        if lost_flags[c] == 1
+        if isone(lost_flags[c])
             continue
         end
         r6 = @view r[(c-1)*6+1:c*6]
         if !isnan(r6[1])
             # Misalignment at entrance
-            if T1 != zeros(6)
+            if !iszero(T1)
                 addvv!(r6, T1)
             end
-            if R1 != zeros(6, 6)
+            if !iszero(R1)
                 multmv!(r6, R1)
             end
 
@@ -388,8 +388,8 @@ function BendSymplecticPassRad_P!(r::Array{Float64,1}, le::Float64, irho::Float6
             edge_fringe_entrance!(r6, irho, entrance_angle, fint1, gap, FringeBendEntrance)
 
             # Quadrupole gradient fringe entrance
-            if FringeQuadEntrance != 0 && B[2] != 0
-                if useLinFrEleEntrance == 1
+            if !iszero(FringeQuadEntrance) && !iszero(B[2])
+                if isone(useLinFrEleEntrance)
                     linearQuadFringeElegantEntrance!(r6, B[2], fringeIntM0, fringeIntP0)
                 else
                     QuadFringePassP!(r6, B[2])
@@ -408,8 +408,8 @@ function BendSymplecticPassRad_P!(r::Array{Float64,1}, le::Float64, irho::Float6
             end
 
             # Quadrupole gradient fringe exit
-            if FringeQuadExit != 0 && B[2] != 0
-                if useLinFrEleExit == 1
+            if !iszero(FringeQuadExit) && !iszero(B[2])
+                if isone(useLinFrEleExit)
                     linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
                 else
                     QuadFringePassN!(r6, B[2])
@@ -420,13 +420,13 @@ function BendSymplecticPassRad_P!(r::Array{Float64,1}, le::Float64, irho::Float6
             edge_fringe_exit!(r6, irho, exit_angle, fint2, gap, FringeBendExit)
 
             # Misalignment at exit
-            if R2 != zeros(6, 6)
+            if !iszero(R2)
                 multmv!(r6, R2)
             end
-            if T2 != zeros(6) 
+            if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit
+            if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end
@@ -455,12 +455,12 @@ function BendSymplecticPass_P!(r::Array{Float64,1}, le::Float64, irho::Float64, 
     K1 = SL * KICK1
     K2 = SL * KICK2
 
-    if FringeQuadEntrance==2 && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
+    if FringeQuadEntrance==2#&& !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
         useLinFrEleEntrance = 1
     else
         useLinFrEleEntrance = 0
     end
-    if FringeQuadExit==2 && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
+    if FringeQuadExit==2# && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
         useLinFrEleExit = 1
     else
         useLinFrEleExit = 0
@@ -472,12 +472,12 @@ function BendSymplecticPass_P!(r::Array{Float64,1}, le::Float64, irho::Float64, 
 
     Threads.@threads for c in 1:num_particles
     # for c in 1:num_particles
-        if lost_flags[c] == 1
+        if isone(lost_flags[c])
             continue
         end
         r6 = @view r[(c-1)*6+1:c*6]
         if !isnan(r6[1])
-            if use_exact_Hamiltonian == 1
+            if isone(use_exact_Hamiltonian)
                 NormL1 = L1 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
                 NormL2 = L2 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
             else
@@ -486,10 +486,10 @@ function BendSymplecticPass_P!(r::Array{Float64,1}, le::Float64, irho::Float64, 
             end
 
             # Misalignment at entrance
-            if T1 != zeros(6)
+            if !iszero(T1)
                 addvv!(r6, T1)
             end
-            if R1 != zeros(6, 6)
+            if !iszero(R1)
                 multmv!(r6, R1)
             end
 
@@ -497,8 +497,8 @@ function BendSymplecticPass_P!(r::Array{Float64,1}, le::Float64, irho::Float64, 
             edge_fringe_entrance!(r6, irho, entrance_angle, fint1, gap, FringeBendEntrance)
 
             # Quadrupole gradient fringe entrance
-            if FringeQuadEntrance != 0 && B[2] != 0
-                if useLinFrEleEntrance == 1
+            if !iszero(FringeQuadEntrance) && !iszero(B[2])
+                if isone(useLinFrEleEntrance)
                     linearQuadFringeElegantEntrance!(r6, B[2], fringeIntM0, fringeIntP0)
                 else
                     QuadFringePassP!(r6, B[2])
@@ -517,8 +517,8 @@ function BendSymplecticPass_P!(r::Array{Float64,1}, le::Float64, irho::Float64, 
             end
 
             # Quadrupole gradient fringe exit
-            if FringeQuadExit != 0 && B[2] != 0
-                if useLinFrEleExit == 1
+            if !iszero(FringeQuadExit) && !iszero(B[2])
+                if isone(useLinFrEleExit)
                     linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
                 else
                     QuadFringePassN!(r6, B[2])
@@ -529,13 +529,13 @@ function BendSymplecticPass_P!(r::Array{Float64,1}, le::Float64, irho::Float64, 
             edge_fringe_exit!(r6, irho, exit_angle, fint2, gap, FringeBendExit)
 
             # Misalignment at exit
-            if R2 != zeros(6, 6)
+            if !iszero(R2)
                 multmv!(r6, R2)
             end
-            if T2 != zeros(6) 
+            if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit || isnan(r6[1])
+            if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end

@@ -43,60 +43,60 @@ function BendSymplecticPass!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le, ir
     K1 = SL * KICK1
     K2 = SL * KICK2
 
-    if FringeQuadEntrance==2 && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
-        useLinFrEleEntrance = 1
-    else
-        useLinFrEleEntrance = 0
-    end
-    if FringeQuadExit==2 && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
-        useLinFrEleExit = 1
-    else
-        useLinFrEleExit = 0
-    end
+    # if FringeQuadEntrance==2 #&& !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
+    #     useLinFrEleEntrance = 1
+    # else
+    #     useLinFrEleEntrance = 0
+    # end
+    # if FringeQuadExit==2 #&& !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
+    #     useLinFrEleExit = 1
+    # else
+    #     useLinFrEleExit = 0
+    # end
 
     B[1] -= sin(KickAngle[1]) / le
     A[1] += sin(KickAngle[2]) / le
 
-    if use_exact_Hamiltonian == 1
+    if isone(use_exact_Hamiltonian)
         NormL1 = L1 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
         NormL2 = L2 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
     else
         NormL1 = L1 / (1.0 + r[6])
         NormL2 = L2 / (1.0 + r[6])
     end
-        # Misalignment at entrance
-        if T1 != zeros(6)
-            addvv!(r, T1)
-        end
-        if R1 != zeros(6, 6)
-            multmv!(r, R1)
-        end
+    # Misalignment at entrance
+    if !iszero(T1)
+        addvv!(r, T1)
+    end
+    if !iszero(R1)
+        multmv!(r, R1)
+    end
 
-        # Edge focus at entrance
-        edge_fringe_entrance!(r, irho, entrance_angle, fint1, gap, FringeBendEntrance)
+    # Edge focus at entrance
+    edge_fringe_entrance!(r, irho, entrance_angle, fint1, gap, FringeBendEntrance)
 
-        # Integrator
-        for m in 1:num_int_steps
-            fastdrift!(r, NormL1, L1)
-            bndthinkick!(r, A, B, K1, irho, max_order)
-            fastdrift!(r, NormL2, L2)
-            bndthinkick!(r, A, B, K2, irho, max_order)
-            fastdrift!(r, NormL2, L2)
-            bndthinkick!(r, A, B, K1, irho, max_order)
-            fastdrift!(r, NormL1, L1)
-        end
+    # Integrator
+    for m in 1:num_int_steps
+        fastdrift!(r, NormL1, L1)
+        bndthinkick!(r, A, B, K1, irho, max_order)
+        fastdrift!(r, NormL2, L2)
+        bndthinkick!(r, A, B, K2, irho, max_order)
+        fastdrift!(r, NormL2, L2)
+        bndthinkick!(r, A, B, K1, irho, max_order)
+        fastdrift!(r, NormL1, L1)
+    end
 
-        # Edge focus at exit
-        edge_fringe_exit!(r, irho, exit_angle, fint2, gap, FringeBendExit)
+    # Edge focus at exit
+    edge_fringe_exit!(r, irho, exit_angle, fint2, gap, FringeBendExit)
 
 
-        # Misalignment at exit
-        if R2 != zeros(6, 6)
-            multmv!(r, R2)
-        end
-        if T2 != zeros(6)
-            addvv!(r, T2)
-        end
+    # Misalignment at exit
+    if !iszero(R2)
+        multmv!(r, R2)
+    end
+    if !iszero(T2)
+        addvv!(r, T2)
+    end
 
     
     B[1] += sin(KickAngle[1]) / le

@@ -179,19 +179,25 @@ function initilize_6DGaussiandist!(beam::Beam, optics::AbstractOptics4D, lmap::A
     return nothing
 end
 
-function histogram1DinZ!(beam::Beam, nbins::Int64, inzindex, zhist, zhist_edges)
+function histogram1DinZ!(beam::Beam, nbins::Int64, inzindex, zhist, zhist_edges) 
     # histogram in z
     num_macro=beam.nmacro
     zmax=maximum(beam.r[:, 5])
     zmin=minimum(beam.r[:, 5])
     zhist .= 0.0
-    zhist_edges .= collect(range(zmin-(zmax-zmin)/nbins, zmax+(zmax-zmin)/nbins, length=nbins+1))
+
+    total_range_start = zmin - (zmax - zmin) / nbins
+    total_range_end = zmax + (zmax - zmin) / nbins
+    zstep = (total_range_end - total_range_start) / nbins
+    @inbounds for i in 0:nbins
+        zhist_edges[i+1] = total_range_start + i * zstep
+    end
     zsep=(zhist_edges[end]-zhist_edges[1])/nbins
     @inbounds for i in 1:num_macro
-        ibin = (beam.r[i, 5] - zhist_edges[1])/zsep  # number of bin from 0
+        ibin = (beam.r[:, 5][i] - zhist_edges[1])/zsep  # number of bin from 0
         dx = round(ibin) - ibin
         binnum=Int64(floor(ibin)+1)
-        inzindex[i] = binnum
+        inzindex[i] = binnum 
         neighbor = binnum + Int64(sign(dx))
         ratio = (0.5 - abs(dx))/0.5
         weight_neighbor = 0.5 * ratio^2
@@ -200,6 +206,7 @@ function histogram1DinZ!(beam::Beam, nbins::Int64, inzindex, zhist, zhist_edges)
     end
     return nothing
 end
+
 function histogram1DinZ!(beam::Beam)
     # histogram in z
     histogram1DinZ!(beam, beam.znbin, beam.inzindex, beam.zhist, beam.zhist_edges)

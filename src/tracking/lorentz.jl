@@ -3,7 +3,7 @@ function pass!(ele::LorentzBoost, r_in::Array{Float64,1}, num_particles::Int64, 
     if ele.mode == 0
         invcosang = 1.0 / ele.cosang
         for c in 1:num_particles
-            if lost_flags[c] == 1
+            if isone(lost_flags[c])
                 continue
             end
             r6 = @view r_in[(c-1)*6+1:c*6] 
@@ -22,7 +22,7 @@ function pass!(ele::InvLorentzBoost, r_in::Array{Float64,1}, num_particles::Int6
     if ele.mode == 0
         invcosang = 1.0 / ele.cosang
         for c in 1:num_particles
-            if lost_flags[c] == 1
+            if isone(lost_flags[c])
                 continue
             end
             r6 = @view r_in[(c-1)*6+1:c*6] 
@@ -42,7 +42,7 @@ function pass_P!(ele::LorentzBoost, r_in::Array{Float64,1}, num_particles::Int64
         invcosang = 1.0 / ele.cosang
         Threads.@threads for c in 1:num_particles
         # for c in 1:num_particles
-            if lost_flags[c] == 1
+            if isone(lost_flags[c])
                 continue
             end
             r6 = @view r_in[(c-1)*6+1:c*6] 
@@ -62,7 +62,7 @@ function pass_P!(ele::InvLorentzBoost, r_in::Array{Float64,1}, num_particles::In
         invcosang = 1.0 / ele.cosang
         Threads.@threads for c in 1:num_particles
         # for c in 1:num_particles
-            if lost_flags[c] == 1
+            if isone(lost_flags[c])
                 continue
             end
             r6 = @view r_in[(c-1)*6+1:c*6] 

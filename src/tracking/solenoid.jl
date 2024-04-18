@@ -20,10 +20,10 @@ function pass!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, part
                 end
     
                 # Misalignment at entrance
-                if T1 != zeros(6)
+                if !iszero(T1)
                     addvv!(r6, T1)
                 end
-                if R1 != zeros(6, 6)
+                if !iszero(R1)
                     multmv!(r6, R1)
                 end
     
@@ -40,10 +40,10 @@ function pass!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, part
                 r6[4] = (x*H*S*S - xpr*C*S - y*C*S*H + ypr*C*C) / p_norm
                 r6[5] += ele.len*(H*H*(x*x+y*y) + 2.0*H*(xpr*y-ypr*x) +xpr*xpr+ypr*ypr)/2.0
     
-                if R2 != zeros(6, 6)
+                if !iszero(R2)
                     multmv!(r6, R2)
                 end
-                if T2 != zeros(6) 
+                if !iszero(T2)
                     addvv!(r6, T2)
                 end
 
@@ -91,10 +91,10 @@ function pass_P!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, pa
                 end
     
                 # Misalignment at entrance
-                if T1 != zeros(6)
+                if !iszero(T1)
                     addvv!(r6, T1)
                 end
-                if R1 != zeros(6, 6)
+                if !iszero(R1)
                     multmv!(r6, R1)
                 end
     
@@ -111,14 +111,14 @@ function pass_P!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, pa
                 r6[4] = (x*H*S*S - xpr*C*S - y*C*S*H + ypr*C*C) / p_norm
                 r6[5] += ele.len*(H*H*(x*x+y*y) + 2.0*H*(xpr*y-ypr*x) +xpr*xpr+ypr*ypr)/2.0
     
-                if R2 != zeros(6, 6)
+                if !iszero(R2)
                     multmv!(r6, R2)
                 end
-                if T2 != zeros(6) 
+                if !iszero(T2)
                     addvv!(r6, T2)
                 end
 
-                if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit || isnan(r6[1])
+                if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1])
                     lost_flags[c] = 1
                 end
             end

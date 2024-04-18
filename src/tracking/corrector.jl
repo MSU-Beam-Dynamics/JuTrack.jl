@@ -16,10 +16,10 @@ function CorrectorPass!(r::Array{Float64,1}, le::Float64, xkick::Float64, ykick:
             end
             NormL = le * p_norm
             # Misalignment at entrance
-            if T1 != zeros(6)
+            if !iszero(T1)
                 addvv!(r6, T1)
             end
-            if R1 != zeros(6, 6)
+            if !iszero(R1)
                 multmv!(r6, R1)
             end
 
@@ -34,13 +34,13 @@ function CorrectorPass!(r::Array{Float64,1}, le::Float64, xkick::Float64, ykick:
 
 
             # Misalignment at exit
-            if R2 != zeros(6, 6)
+            if !iszero(R2)
                 multmv!(r6, R2)
             end
-            if T2 != zeros(6)
+            if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit || isnan(r6[1])
+            if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end
@@ -76,10 +76,10 @@ function CorrectorPass_P!(r::Array{Float64,1}, le::Float64, xkick::Float64, ykic
             end
             NormL = le * p_norm
             # Misalignment at entrance
-            if T1 != zeros(6)
+            if !iszero(T1)
                 addvv!(r6, T1)
             end
-            if R1 != zeros(6, 6)
+            if !iszero(R1)
                 multmv!(r6, R1)
             end
 
@@ -93,13 +93,13 @@ function CorrectorPass_P!(r::Array{Float64,1}, le::Float64, xkick::Float64, ykic
    		    r6[4] += ykick
 
             # Misalignment at exit
-            if R2 != zeros(6, 6)
+            if !iszero(R2)
                 multmv!(r6, R2)
             end
-            if T2 != zeros(6)
+            if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit || isnan(r6[1])
+            if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end

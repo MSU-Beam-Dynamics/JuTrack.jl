@@ -1,3 +1,5 @@
+# strong beam-beam is still under development
+# don't use this file for now
 using SpecialFunctions
 using Statistics
 # using StaticArrays

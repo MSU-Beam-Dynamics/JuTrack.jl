@@ -8,32 +8,11 @@ using Plots
 Enzyme.API.runtimeActivity!(true)
 
 
-
-# crabid = findelem(RING, CRABCAVITY)
-# ip8id = findelem(RING, :name, "IP8")
-# ip6id = findelem(RING, :name, "IP6")
-
-# thetac = 25e-3
 E0 = 17.846262619763e9
-# omega = 394.0e6*2*pi
-# c = 2.99792458e8
-
-# # crab2 - IP8 - crab3
-# R12_crab2 = sqrt(beta[crabid[2],1]*beta[ip8id[1],1])
-# V_crab2 = c * E0 * thetac/ 2/ omega / R12_crab2
-# R12_crab3 = sqrt(beta[crabid[3],1]*beta[ip8id[1],1])
-# V_crab3 = c * E0 * thetac/ 2/ omega / R12_crab3
-
-# # crab4 - IP6 - crab1
-# R12_crab4 = sqrt(beta[crabid[4],1]*beta[ip6id[1],1])
-# V_crab4 = c * E0 * thetac/ 2/ omega / R12_crab4
-# R12_crab1 = sqrt(beta[crabid[1],1]*beta[ip6id[1],1])
-# V_crab1 = c * E0 * thetac/ 2/ omega / R12_crab1
 
 
 ESR_crab = deserialize("test/esr_main_rad.jls")
 ESR_nocrab = deserialize("test/esr_main_rad_craboff.jls")
-
 
 function get_phase14(x3, RING)
     # change the 3rd quad, optimize phase advance between CC1-35 and CC4-5533
@@ -193,30 +172,3 @@ for i in 2:7
     plot!(1:plot_steps, grad_vals[i, 1:plot_steps], label=full_label, line=:dash, marker=:circle)
 end
 plot(p1, p2, p3, layout = (3, 1), size=(800, 650))
-
-
-function get_phase14_zero1(x1, x2, x3, x4, x5, x6, x7, RING)
-    changed_idx = [9,13,17,23,27,31,5537]
-    new_D1 = KQUAD(len=RING[9].len, k1=x1)
-    new_D2 = KQUAD(len=RING[13].len, k1=x2)
-    new_D3 = KQUAD(len=RING[17].len, k1=x3)
-    new_D4 = KQUAD(len=RING[23].len, k1=x4)
-    new_D5 = KQUAD(len=RING[27].len, k1=x5)
-    new_D6 = KQUAD(len=RING[31].len, k1=x6)
-    new_D7 = KQUAD(len=RING[5537].len, k1=x7)
-    changed_ele = [new_D1, new_D2, new_D3, new_D4, new_D5, new_D6, new_D7]
-    refpts = [i for i in 1:length(RING)]
-    twi = ADtwissring(RING, 0.0, 1, refpts, changed_idx, changed_ele)
-
-    phase41 = twi[35].dmux + twi[end].dmux - twi[5533].dmux
-
-    return phase41 - 2*pi
-end
-
-# result = autodiff(Forward, get_phase14_zero1, BatchDuplicated, BatchDuplicated(xinit[1], (1.0,0.0,0.0,0.0,0.0,0.0,0.0)), BatchDuplicated(xinit[2], (0.0,1.0,0.0,0.0,0.0,0.0,0.0)),
-# BatchDuplicated(xinit[3], (0.0,0.0,1.0,0.0,0.0,0.0,0.0)), BatchDuplicated(xinit[4], (0.0,0.0,0.0,1.0,0.0,0.0,0.0)), BatchDuplicated(xinit[5], (0.0,0.0,0.0,0.0,1.0,0.0,0.0)),
-# BatchDuplicated(xinit[6], (1.0,0.0,0.0,0.0,0.0,1.0,0.0)), BatchDuplicated(xinit[7], (1.0,0.0,0.0,0.0,0.0,0.0,1.0)), Const(ESR_perturb))
-
-# result = autodiff(Forward, get_phase14_zero, BatchDuplicated, BatchDuplicated(xinit, ([1.0,0.0,0.0,0.0,0.0,0.0,0.0], 
-# [0.0,1.0,0.0,0.0,0.0,0.0,0.0], [0.0,0.0,1.0,0.0,0.0,0.0,0.0], [0.0,0.0,0.0,1.0,0.0,0.0,0.0], [0.0,0.0,0.0,0.0,1.0,0.0,0.0], 
-# [0.0,0.0,0.0,0.0,0.0,1.0,0.0], [0.0,0.0,0.0,0.0,0.0,0.0,1.0])), Const(ESR_perturb))

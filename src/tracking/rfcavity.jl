@@ -35,7 +35,7 @@ function RFCavityPass!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq::F
                 # r6[6] += -nv * sin(2 * pi * freq * ((-r6[5] - lag)  - (h / freq - T0) * nturn) - philag)
                 drift6!(r6, halflength)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit || isnan(r6[1])
+            if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end
@@ -96,7 +96,7 @@ function RFCavityPass_P!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq:
                 r6[6] += -nv * sin(2 * pi * freq * ((r6[5] - lag) / C0 - (h / freq - T0) * nturn) - philag)
                 drift6!(r6, halflength)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit|| isnan(r6[1])
+            if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end

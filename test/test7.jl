@@ -4,21 +4,19 @@ include("ssrf_ring.jl")
 using Plots  
 using Enzyme
 using ProgressMeter
+using LinearAlgebra
+using LaTeXStrings
 
 RING = ssrf(-1.063770, 0)
 xlist = randn(1000) * 0.003 
 ylist = randn(1000) * 0.003 
-# particle = zeros(1000, 6)
-# particle[:, 1] = xlist
-# particle[:, 3] = ylist
 
-# xlist = range(-0.005, stop=0.005, length=1000)
 
 
 function final_x(x)
     global RING
     beam = Beam([x[1] x[2] x[3] x[4] 0.0 0.0], energy=3.5e9)
-    ringpass!(RING, beam, 1000)
+    ringpass!(RING, beam, 1)
     return beam.r
 end
 
@@ -31,42 +29,66 @@ for i in 1:1000
     sleep(0.1)
 end
 
-grad_m = zeros(1000, 12)
+grad_m = zeros(1000, 24)
 for i in 1:1000
     grad_m[i, :] = grad[i]
 end
 
-# plot x-y with grad_m as color
-using LaTeXStrings
-p1=scatter(xlist, ylist, zcolor=log10.(abs.(grad_m[:,1])), color=:viridis, markerstrokewidth=0, label=L"log(|dx_{final}/dx_{init}|)", xlabel="x(m)", ylabel="y(m)", colorbar=true, markersize=2, colormap=:jet)
-p2=scatter(xlist, ylist, zcolor=log10.(abs.(grad_m[:,2])), color=:viridis, markerstrokewidth=0, label=L"log(|dp_x_{final}/dx_{init}|)", xlabel="x(m)", ylabel="y(m)", colorbar=true, markersize=2, colormap=:jet)
-p3=scatter(xlist, ylist, zcolor=log10.(abs.(grad_m[:,3])), color=:viridis, markerstrokewidth=0, label=L"log(|dy_{final}/dx_{init}|)", xlabel="x(m)", ylabel="y(m)", colorbar=true, markersize=2, colormap=:jet)
-p4=scatter(xlist, ylist, zcolor=log10.(abs.(grad_m[:,4])), color=:viridis, markerstrokewidth=0, label=L"log(|dp_y_{final}/dx_{init}|)", xlabel="x(m)", ylabel="y(m)", colorbar=true, markersize=2, colormap=:jet)
-plot(p1, p2, p3, p4, layout=(2,2), size=(850, 600))
+# 
+function eigen_jacobian(J)
+    # J is jacobian obtained from Enzyme. J is 24 * 1 Vector. 
+    A = zeros(6, 4)
 
-p1=scatter(xlist, ylist, zcolor=log10.(abs.(grad_m[:,7])), color=:viridis, markerstrokewidth=0, label=L"log(|dx_{final}/dy_{init}|)", xlabel="x(m)", ylabel="y(m)", colorbar=true, markersize=2, colormap=:jet)
-p2=scatter(xlist, ylist, zcolor=log10.(abs.(grad_m[:,8])), color=:viridis, markerstrokewidth=0, label=L"log(|dp_x_{final}/dy_{init}|)", xlabel="x(m)", ylabel="y(m)", colorbar=true, markersize=2, colormap=:jet)
-p3=scatter(xlist, ylist, zcolor=log10.(abs.(grad_m[:,9])), color=:viridis, markerstrokewidth=0, label=L"log(|dy_{final}/dy_{init}|)", xlabel="x(m)", ylabel="y(m)", colorbar=true, markersize=2, colormap=:jet)
-p4=scatter(xlist, ylist, zcolor=log10.(abs.(grad_m[:,10])), color=:viridis, markerstrokewidth=0, label=L"log(|dp_y_{final}/dy_{init}|)", xlabel="x(m)", ylabel="y(m)", colorbar=true, markersize=2, colormap=:jet)
-plot(p1, p2, p3, p4, layout=(2,2), size=(850, 600))
+    # derivative wrt x
+    A[1, 1] = J[1]
+    A[2, 1] = J[2]
+    A[3, 1] = J[3]
+    A[4, 1] = J[4]
+    A[5, 1] = J[5]
+    A[6, 1] = J[6]
+    # derivative wrt px
+    A[1, 2] = J[7]
+    A[2, 2] = J[8]
+    A[3, 2] = J[9]
+    A[4, 2] = J[10]
+    A[5, 2] = J[11]
+    A[6, 2] = J[12]
+    # derivative wrt y
+    A[1, 3] = J[13]
+    A[2, 3] = J[14]
+    A[3, 3] = J[15]
+    A[4, 3] = J[16]
+    A[5, 3] = J[17]
+    A[6, 3] = J[18]
+    # derivative wrt py
+    A[1, 4] = J[19]
+    A[2, 4] = J[20]
+    A[3, 4] = J[21]
+    A[4, 4] = J[22]
+    A[5, 4] = J[23]
+    A[6, 4] = J[24]
+    eig_result = eigen(A[1:4, 1:4])
+end
 
+eigens = zeros(ComplexF64, 1000, 4)
+for i in 1:1000
+    eigens[i, :] = eigen_jacobian(grad_m[i, :]).values
+end
 
-# na = 13
-# nl = 20
-# angle_list = range(0, stop=pi, length=na)
-# xl = range(0.001, stop=0.02, length=nl)
-# particle = zeros(na*nl, 6)
-# for i in 1:na
-#     for j in 1:nl
-#         particle[(i-1)*nl+j, 1] = xl[j]*cos(angle_list[i])
-#         particle[(i-1)*nl+j, 3] = xl[j]*sin(angle_list[i])
-#     end
-# end
-# plot(particle[:,1], particle[:,3], seriestype=:scatter, label="Initial particle distribution")
-# beam = Beam(particle, energy=3.5e9)
-# pringpass!(RING, beam, 1000)
-# lost_flag = beam.lost_flag
-# index = findall(lost_flag .== 0)
-# index1 = findall(lost_flag .== 1)
-# plot(particle[index,1], particle[index,3], seriestype=:scatter, label="Survived")
-# plot!(particle[index1,1], particle[index1,3], seriestype=:scatter, label="Lost", xlabel="x(m)", ylabel="y(m)")
+vector_len = zeros(1000, 4)
+for i in 1:1000
+    e1 = eigen_jacobian(grad_m[i, :]).vectors
+    vector_len[i, 1] = norm(e1[1, :])
+    vector_len[i, 2] = norm(e1[2, :])
+    vector_len[i, 3] = norm(e1[3, :])
+    vector_len[i, 4] = norm(e1[4, :])
+end
+
+imag_list = zeros(1000, 4)
+real_list = zeros(1000, 4)
+for i in 1:1000
+    imag_list[i, :] = imag(eigens[i, :])
+    real_list[i, :] = real(eigens[i, :])
+end
+scatter(real_list[:,1], imag_list[:,1], label="1", xlabel="Real", ylabel="Imaginary")
+scatter!(real_list[:,2], imag_list[:,2], label="2")

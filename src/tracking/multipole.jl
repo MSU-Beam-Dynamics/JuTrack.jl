@@ -92,12 +92,12 @@ function StrMPoleSymplectic4Pass!(r::Array{Float64,1}, le::Float64, A::Array{Flo
     K1 = SL*KICK1
     K2 = SL*KICK2
 
-    if FringeQuadEntrance==2 && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
+    if FringeQuadEntrance==2 #&& !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
         useLinFrEleEntrance = 1
     else
         useLinFrEleEntrance = 0
     end
-    if FringeQuadExit==2 && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
+    if FringeQuadExit==2 #&& !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
         useLinFrEleExit = 1
     else
         useLinFrEleExit = 0
@@ -121,10 +121,10 @@ function StrMPoleSymplectic4Pass!(r::Array{Float64,1}, le::Float64, A::Array{Flo
                 NormL2 = L2 / (1.0 + r6[6])
             end
             # Misalignment at entrance
-            if T1 != zeros(6)
+            if !iszero(T1)
                 addvv!(r6, T1)
             end
-            if R1 != zeros(6, 6)
+            if !iszero(R1)
                 multmv!(r6, R1)
             end
 
@@ -156,13 +156,13 @@ function StrMPoleSymplectic4Pass!(r::Array{Float64,1}, le::Float64, A::Array{Flo
             end
 
             # Misalignment at exit
-            if R2 != zeros(6, 6)
+            if !iszero(R2)
                 multmv!(r6, R2)
             end
-            if T2 != zeros(6)
+            if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit || isnan(r6[1])
+            if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end
@@ -196,12 +196,12 @@ function StrMPoleSymplectic4RadPass!(r::Array{Float64,1}, le::Float64, A::Array{
     K1 = SL*KICK1
     K2 = SL*KICK2
 
-    if FringeQuadEntrance==2 && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
+    if FringeQuadEntrance==2# && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
         useLinFrEleEntrance = 1
     else
         useLinFrEleEntrance = 0
     end
-    if FringeQuadExit==2 && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
+    if FringeQuadExit==2#&& !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
         useLinFrEleExit = 1
     else
         useLinFrEleExit = 0
@@ -218,10 +218,10 @@ function StrMPoleSymplectic4RadPass!(r::Array{Float64,1}, le::Float64, A::Array{
         r6 = @view r[(c-1)*6+1:c*6]
         if !isnan(r6[1])
             # Misalignment at entrance
-            if T1 != zeros(6)
+            if !iszero(T1)
                 addvv!(r6, T1)
             end
-            if R1 != zeros(6, 6)
+            if !iszero(R1)
                 multmv!(r6, R1)
             end
 
@@ -253,13 +253,13 @@ function StrMPoleSymplectic4RadPass!(r::Array{Float64,1}, le::Float64, A::Array{
             end
 
             # Misalignment at exit
-            if R2 != zeros(6, 6)
+            if !iszero(R2)
                 multmv!(r6, R2)
             end
-            if T2 != zeros(6)
+            if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit || isnan(r6[1])
+            if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end
@@ -403,12 +403,12 @@ function StrMPoleSymplectic4Pass_P!(r::Array{Float64,1}, le::Float64, A::Array{F
     K1 = SL*KICK1
     K2 = SL*KICK2
 
-    if FringeQuadEntrance==2 && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
+    if FringeQuadEntrance==2 #&& !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
         useLinFrEleEntrance = 1
     else
         useLinFrEleEntrance = 0
     end
-    if FringeQuadExit==2 && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
+    if FringeQuadExit==2 #&& !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
         useLinFrEleExit = 1
     else
         useLinFrEleExit = 0
@@ -431,10 +431,10 @@ function StrMPoleSymplectic4Pass_P!(r::Array{Float64,1}, le::Float64, A::Array{F
                 NormL2 = L2 / (1.0 + r6[6])
             end
             # Misalignment at entrance
-            if T1 != zeros(6)
+            if !iszero(T1)
                 addvv!(r6, T1)
             end
-            if R1 != zeros(6, 6)
+            if !iszero(R1)
                 multmv!(r6, R1)
             end
 
@@ -467,13 +467,13 @@ function StrMPoleSymplectic4Pass_P!(r::Array{Float64,1}, le::Float64, A::Array{F
             end
 
             # Misalignment at exit
-            if R2 != zeros(6, 6)
+            if !iszero(R2)
                 multmv!(r6, R2)
             end
-            if T2 != zeros(6)
+            if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit || isnan(r6[1])
+            if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end
@@ -528,10 +528,10 @@ function StrMPoleSymplectic4RadPass_P!(r::Array{Float64,1}, le::Float64, A::Arra
         r6 = @view r[(c-1)*6+1:c*6]
         if !isnan(r6[1])
             # Misalignment at entrance
-            if T1 != zeros(6)
+            if !iszero(T1)
                 addvv!(r6, T1)
             end
-            if R1 != zeros(6, 6)
+            if !iszero(R1)
                 multmv!(r6, R1)
             end
 
@@ -579,13 +579,13 @@ function StrMPoleSymplectic4RadPass_P!(r::Array{Float64,1}, le::Float64, A::Arra
             # end
 
             # Misalignment at exit
-            if R2 != zeros(6, 6)
+            if !iszero(R2)
                 multmv!(r6, R2)
             end
-            if T2 != zeros(6)
+            if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if r6[1] > CoordLimit || r6[2] > AngleLimit || r6[1] < -CoordLimit || r6[2] < -AngleLimit || isnan(r6[1])
+            if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end
