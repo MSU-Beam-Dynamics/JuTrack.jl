@@ -5,8 +5,6 @@ A Julia-based package that enables advanced auto differentiation (AD) for symple
 Known issues
 1. Backward AD is not enable for most elements. Use Forward AD instead.
 2. To deal with large lattice file, use Julia vector array instead of Julia tuple for better efficiency. 
-3. Create long lattice arrays in the differentiated function may result in an error. To avoid it, please create/load the lattice before the differentiation, and then take it as a constant variable for the differentiated function. 
-E.g., for a function f(k, lattice) = betax, call AD with autodiff(Forward, Duplicated, Duplicated(k, 1.0), Const(lattice_vector)), instead of using a function f(k) that creates the lattice in it.
-4. Current stable version is on Julia 1.9.4
+3. Create long lattice arrays in the differentiated function may result in an error. To avoid it, please create/load the lattice before the differentiation, and then take it as a constant variable or global variable for the differentiated function. 
+4. Current stable version is on Julia 1.9.4. Please up/downgrade the Julia version if there is a issue.
 
-[![Build Status](https://github.com/Jinyu95/JuTrack.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/Jinyu95/JuTrack.jl/actions/workflows/CI.yml?query=branch%3Amain)
