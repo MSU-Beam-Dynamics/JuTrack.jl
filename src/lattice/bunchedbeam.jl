@@ -1,5 +1,5 @@
-using LinearAlgebra
-using Distributions
+# using LinearAlgebra
+# using Distributions
 
 # linear algebra functions
 function det1(A::Matrix{Float64})
@@ -62,9 +62,9 @@ function det1(A::Matrix{Float64})
     return det_val
 end
 
-function diagm(v)
+function diagm1(v)
     n = length(v)
-    M = zeros(eltype(v), n, n)  
+    M = zeros(n, n)  
     for i in 1:n
         M[i, i] = v[i] 
     end
@@ -125,9 +125,10 @@ end
 function initilize_6DGaussiandist!(beam::Beam, optics::AbstractOptics4D, lmap::AbstractLongitudinalMap, cutoff::Float64=5.0)
     # 6D Gaussian distribution
 
-    dist=Truncated(Normal(0.0,1.0),-cutoff,cutoff)
+    # dist=Truncated(Normal(0.0,1.0),-cutoff,cutoff)
 
-    beam.r = rand(dist, beam.nmacro, 6)
+    # beam.r = rand(dist, beam.nmacro, 6)
+    beam.r = randn(beam.nmacro, 6)
 
     get_centroid!(beam)
 
@@ -142,9 +143,9 @@ function initilize_6DGaussiandist!(beam::Beam, optics::AbstractOptics4D, lmap::A
 
     get_2nd_moment!(beam)
     
-    eigval,eigvec=eigen(beam.moment2nd)
+    eigval,eigvec=qr_eigen(beam.moment2nd)
     
-    mscale=eigvec * diagm(1.0 ./ sqrt.(eigval)) * eigvec'
+    mscale=eigvec * diagm1(1.0 ./ sqrt.(eigval)) * eigvec'
     # # #beam.dist=mscale*beam.dist
     for c in 1:beam.nmacro
         beam.temp1[c]  = mscale[1,1] * beam.r[c, 1] + mscale[1,2] * beam.r[c, 2] + mscale[1,3] * beam.r[c, 3] + mscale[1,4] * beam.r[c, 4] + mscale[1,5] * beam.r[c, 5] + mscale[1,6] * beam.r[c, 6]
@@ -182,8 +183,8 @@ end
 function histogram1DinZ!(beam::Beam, nbins::Int64, inzindex, zhist, zhist_edges) 
     # histogram in z
     num_macro=beam.nmacro
-    zmax=maximum(beam.r[:, 5])
-    zmin=minimum(beam.r[:, 5])
+    zmax=maximum(abs.(beam.r[:, 5]))
+    zmin=-zmax
     zhist .= 0.0
 
     total_range_start = zmin - (zmax - zmin) / nbins

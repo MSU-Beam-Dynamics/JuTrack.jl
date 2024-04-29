@@ -40,8 +40,10 @@ include("lattice/optics.jl")
 include("lattice/bunchedbeam.jl")
 
 include("utils/lattice_utils.jl")
+include("utils/matrix.jl")
 export Beam
 export m_e, m_p, m_goldion, CGAMMA, CoordLimit, AngleLimit, use_exact_Hamiltonian, use_exact_drift
+export qr_eigen, diag1
 export CRABCAVITY, easyCRABCAVITY, AccelCavity, LorentzBoost, InvLorentzBoost, StrongGaussianBeam, StrongThinGaussianBeam, AbstractStrongBeamBeam
 export LongitudinalRFMap, AbstractLongitudinalRFMap, AbstractTransferMap, AbstractTransverseMap
 export LongitudinalRLCWake, LongitudinalWake

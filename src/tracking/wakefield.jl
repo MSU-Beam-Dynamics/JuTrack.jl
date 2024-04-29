@@ -78,12 +78,16 @@ function LongiWakefieldPass!(r, num_macro, rlcwake, inzindex, eN_b2E, nbins, zhi
     end
     
     wakepotential = zeros(nbins)
+    
+    halfzn = nbins ÷ 2
     @inbounds for i=1:nbins
-        for j=i:nbins
-            wakepotential[i]+=zhist[j]*wakefield[nbins-j+i]/num_macro
+        for j=-halfzn:halfzn
+            if i-j>0 && i-j<=nbins
+                wakepotential[i]+=wakefield[j+halfzn+1]*zhist[i-j]/num_macro
+            end
         end
     end
-    
+
     wakeatedge = zeros(nbins+1)
     wakeatedge[2:end-1] .= ((wakepotential[1:end-1]) .+ (wakepotential[2:end])) ./ 2.0
     wakeatedge[1] = 2*wakeatedge[2]-wakeatedge[3]
@@ -112,9 +116,13 @@ function LongiWakefieldPass_P!(r, num_macro, rlcwake, inzindex, eN_b2E, nbins, z
     end
     
     wakepotential = zeros(nbins)
-    @inbounds for i=1:nbins
-        for j=i:nbins
-            wakepotential[i]+=zhist[j]*wakefield[nbins-j+i]/num_macro
+
+    halfzn = nbins ÷ 2
+    @inbounds @Threads.threads for i=1:nbins
+        for j=-halfzn:halfzn
+            if i-j>0 && i-j<=nbins
+                wakepotential[i]+=wakefield[j+halfzn+1]*zhist[i-j]/num_macro
+            end
         end
     end
     

@@ -81,5 +81,7 @@ function Beam(energy::Float64, np::Int, nmacro::Int; charge::Float64=-1.0, mass:
     return Beam(r, np, nmacro, energy, lost_flag, charge, mass, gamma, beta, atn, classrad0, radconst, T0, 1, znbin, inzindex, zhist, zhist_edges, zeros(Float64, nmacro), zeros(Float64, nmacro), zeros(Float64, nmacro), zeros(Float64, nmacro), zeros(Float64, nmacro), emittance, centroid, zeros(Float64, 6, 6), zeros(Float64, 6))
 end
 
-
+function Beam(beam::Beam)
+    return Beam(beam.r, beam.np, beam.nmacro, beam.energy, beam.lost_flag, beam.charge, beam.mass, beam.gamma, beam.beta, beam.atomnum, beam.classrad0, beam.radconst, beam.T0, beam.nturn, beam.znbin, beam.inzindex, beam.zhist, beam.zhist_edges, beam.temp1, beam.temp2, beam.temp3, beam.temp4, beam.temp5, beam.emittance, beam.centroid, beam.moment2nd, beam.beamsize)
+end
 
