@@ -7,7 +7,7 @@ const m_goldion = 931.49410242e6 # charge 79, atomic number 197
 const CGAMMA =	8.846056192e-05
 use_exact_Hamiltonian = 0
 
-include("TPSA_Enzyme/TPSA.jl")
+include("TPSA/TPSA.jl")
 include("lattice/beam.jl")
 include("lattice/canonical_elements.jl")
 include("tracking/bend.jl")

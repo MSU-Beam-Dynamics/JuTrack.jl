@@ -126,8 +126,8 @@ end
     fint1::Float64 = 0.0
     fint2::Float64 = 0.0
     gap::Float64 = 0.0
-    FringeBendEntrance::Int64 = 0
-    FringeBendExit::Int64 = 0
+    FringeBendEntrance::Int64 = 1
+    FringeBendExit::Int64 = 1
     FringeQuadEntrance::Int64 = 0
     FringeQuadExit::Int64 = 0
     FringeIntM0::Array{Float64,1} = zeros(5)
@@ -173,7 +173,7 @@ struct RBEND <: AbstractElement
 end
 function RBEND(;name::String = "RBend", len::Float64 = 0.0, angle::Float64 = 0.0, PolynomA::Array{Float64,1} = zeros(4), 
                 PolynomB::Array{Float64,1} = zeros(4), MaxOrder::Int64 = 0, NumIntSteps::Int64 = 10, rad::Int64=0, fint1::Float64 = 0.0, 
-                fint2::Float64 = 0.0, gap::Float64 = 0.0, FringeBendEntrance::Int64 = 0, FringeBendExit::Int64 = 0, 
+                fint2::Float64 = 0.0, gap::Float64 = 0.0, FringeBendEntrance::Int64 = 1, FringeBendExit::Int64 = 1, 
                 FringeQuadEntrance::Int64 = 0, FringeQuadExit::Int64 = 0, FringeIntM0::Array{Float64,1} = zeros(5), 
                 FringeIntP0::Array{Float64,1} = zeros(5), T1::Array{Float64,1} = zeros(6), T2::Array{Float64,1} = zeros(6), 
                 R1::Array{Float64,2} = zeros(6,6), R2::Array{Float64,2} = zeros(6,6), RApertures::Array{Float64,1} = zeros(6), 
