@@ -36,7 +36,7 @@ function linepass!(line, particles::Beam)
     return nothing
 end
 
-function ADlinepass!(line, particles::Beam, changed_idx::Vector{Int}, changed_ele)
+function ADlinepass!(line, particles::Beam, changed_idx::Vector, changed_ele::Vector)
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     np = particles.nmacro
@@ -65,13 +65,13 @@ function ADlinepass!(line, particles::Beam, changed_idx::Vector{Int}, changed_el
     return nothing
 end
 
-function AD_ringpass!(line, particles::Beam, nturn::Int, changed_idx::Vector{Int}, changed_ele)
+function AD_ringpass!(line, particles::Beam, nturn::Int, changed_idx::Vector, changed_ele::Vector)
     for i in 1:nturn
         ADlinepass!(line, particles, changed_idx, changed_ele)    
     end
     return nothing
 end
-function AD_ringpass!(line, particles::Beam, nturn::Int, changed_idx::Vector{Int}, changed_ele, save::Bool)
+function AD_ringpass!(line, particles::Beam, nturn::Int, changed_idx::Vector, changed_ele::Vector, save::Bool)
     save_beam = []
     for i in 1:nturn
         ADlinepass!(line, particles, changed_idx, changed_ele)    
@@ -115,7 +115,7 @@ function linepass_TPSA!(line, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) whe
     end
     return nothing
 end
-function ADlinepass_TPSA!(line, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, changed_idx::Vector{Int}, changed_ele) where {T, TPS_Dim, Max_TPS_Degree}
+function ADlinepass_TPSA!(line, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, changed_idx::Vector, changed_ele::Vector) where {T, TPS_Dim, Max_TPS_Degree}
     if length(rin) != 6
         error("The length of TPSA must be 6")
     end

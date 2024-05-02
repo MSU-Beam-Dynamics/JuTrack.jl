@@ -11,8 +11,8 @@ Enzyme.API.runtimeActivity!(true)
 E0 = 17.846262619763e9
 
 
-ESR_crab = deserialize("test/esr_main_rad.jls")
-ESR_nocrab = deserialize("test/esr_main_rad_craboff.jls")
+ESR_crab = deserialize("test/esr_main_linearquad.jls")
+# ESR_nocrab = deserialize("test/esr_main_rad_craboff.jls")
 
 function get_phase14(x3, RING)
     # change the 3rd quad, optimize phase advance between CC1-35 and CC4-5533
@@ -156,7 +156,7 @@ end
 
 x0_vals, goal_vals, grad_vals = multi_val_op(xinit, 10, 1e-5, ESR_crab)
 
-plot_steps = 3
+plot_steps = 5
 p1 = plot(1:plot_steps, x0_vals[1, 1:plot_steps], title = L"Evolution\ of\ k", xlabel = L"Iterations", ylabel = L"Strength (m^{-1})", label=L"k_1", line=:dash, marker=:circle)
 for i in 2:7
     label_str = "k_{$i}"  

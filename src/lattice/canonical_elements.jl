@@ -224,6 +224,22 @@ end
 function VKICKER(;name="VKicker", len=0.0, ykick=0.0)
     return CORRECTOR(name, len, 0.0, ykick, zeros(6), zeros(6), zeros(6,6), zeros(6,6), "VKICKER")
 end
+
+# non-canonical elements
+@kwdef struct QUAD <: AbstractElement
+    name::String  = "Quad"                                      # element name  
+    len::Float64 = 0.0
+    k1::Float64 = 0.0                                           # use k1 if PolynomB is not given
+    rad::Int64 = 0
+    T1::Array{Float64,1} = zeros(6)
+    T2::Array{Float64,1} = zeros(6)
+    R1::Array{Float64,2} = zeros(6,6)
+    R2::Array{Float64,2} = zeros(6,6)         
+    RApertures::Array{Float64,1} = zeros(6)
+    EApertures::Array{Float64,1} = zeros(6)
+    eletype::String = "QUAD"
+end
+
 ###########################################
 # the following elements may not be symplectic and may not work with Enzyme
 struct CRABCAVITY <: AbstractElement

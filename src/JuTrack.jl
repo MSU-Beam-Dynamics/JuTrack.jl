@@ -17,6 +17,7 @@ include("tracking/rfcavity.jl")
 include("tracking/thinmultipole.jl")
 include("tracking/corrector.jl")
 include("tracking/wakefield.jl")
+include("tracking/quad.jl")
 
 include("tracking/bend_TPSA.jl")
 include("tracking/drift_TPSA.jl")
@@ -53,6 +54,7 @@ export initilize_zslice!
 
 export CTPS, cst, findindex, PolyMap, getindexmap, tadd, tminus, tmult, tdiv, tpow, tsqrt, tsin, tcos, ttan, tcosh, tsinh, reassign!
 export AbstractElement, DRIFT, KQUAD, KSEXT, KOCT, SBEND, RBEND, RFCA, SOLENOID, MARKER, CORRECTOR, HKICKER, VKICKER, thinMULTIPOLE
+export QUAD
 export EdwardsTengTwiss, AbstractTwiss, twissPropagate, findm66, periodicEdwardsTengTwiss, Twissline, ADTwissline, twissring, ADfindm66, ADtwissring, ADperiodicEdwardsTengTwiss
 export linepass!, pass!, ringpass!, linepass_TPSA!, pass_TPSA!, ringpass_TPSA!
 export plinepass!, pringpass!, pass_P!, ADlinepass!, ADlinepass_TPSA!

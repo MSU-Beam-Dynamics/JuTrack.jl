@@ -248,7 +248,7 @@ function findm66(seq::Vector{AbstractElement}, dp::Float64, order::Int)
 	# 		z.map[2] z.map[3] z.map[4] z.map[5] z.map[6] z.map[7]]
 	return map
 end
-function ADfindm66(seq::Vector{AbstractElement}, dp::Float64, order::Int, changed_idx::Vector{Int}, changed_ele)
+function ADfindm66(seq::Vector{AbstractElement}, dp::Float64, order::Int, changed_idx::Vector, changed_ele::Vector)
 	x = CTPS(0.0, 1, 6, order)
 	px = CTPS(0.0, 2, 6, order)
 	y = CTPS(0.0, 3, 6, order)
@@ -268,7 +268,7 @@ function ADfindm66(seq::Vector{AbstractElement}, dp::Float64, order::Int, change
 	return map
 end
 
-function ADfindm66_refpts(seq::Vector{AbstractElement}, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector{Int}, changed_ele)
+function ADfindm66_refpts(seq::Vector{AbstractElement}, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector, changed_ele::Vector)
 	x = CTPS(0.0, 1, 6, order)
 	px = CTPS(0.0, 2, 6, order)
 	y = CTPS(0.0, 3, 6, order)
@@ -376,7 +376,7 @@ function Twissline(tin::EdwardsTengTwiss,seq::Vector{AbstractElement}, dp::Float
 	return ret_vector
 end
 
-function ADTwissline(tin::EdwardsTengTwiss,seq::Vector{AbstractElement}, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector{Int}, changed_ele)
+function ADTwissline(tin::EdwardsTengTwiss,seq::Vector{AbstractElement}, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector, changed_ele::Vector)
 	# if !is_increasing(refpts)
 	# 	error("The reference points must be in increasing order.")
 	# end
@@ -471,7 +471,7 @@ function periodicEdwardsTengTwiss(seq::Vector{AbstractElement}, dp, order::Int)
 	return EdwardsTengTwiss(betax,betay,alfx,alfy,gamx,gamy,eta[1],eta[2],eta[3],eta[4],0.0,0.0,smux,cmux,smuy,cmuy,R,1)
 end
 
-function ADperiodicEdwardsTengTwiss(seq::Vector{AbstractElement}, dp, order::Int, changed_idx::Vector{Int}, changed_ele)
+function ADperiodicEdwardsTengTwiss(seq::Vector{AbstractElement}, dp::Float64, order::Int, changed_idx::Vector, changed_ele::Vector)
 	M = ADfindm66(seq, dp, order, changed_idx, changed_ele)
 	A=@view M[1:2,1:2]
 	B=@view M[1:2,3:4]
@@ -538,7 +538,7 @@ function twissring(seq::Vector{AbstractElement}, dp::Float64, order::Int)
 	return twi
 end
 
-function ADtwissring(seq::Vector{AbstractElement}, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector{Int}, changed_ele)
+function ADtwissring(seq::Vector{AbstractElement}, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector, changed_ele::Vector)
 	twi0 = ADperiodicEdwardsTengTwiss(seq, dp, order, changed_idx, changed_ele)
 	nele = length(seq)
 	# refpts = [i for i in 1:nele]
