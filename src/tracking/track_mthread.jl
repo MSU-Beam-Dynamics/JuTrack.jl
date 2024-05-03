@@ -1,18 +1,3 @@
-function matrix_to_array(matrix::Matrix{Float64})
-    particles = vec(matrix)
-    return particles
-end
-
-function array_to_matrix(array::Vector{Float64}, n::Int)
-    particles = zeros(Float64, n, 6)
-    for i in 1:n
-        for j in 1:6
-            particles[i, j] = array[(i-1)*6+j]
-        end
-    end
-    return particles
-end
-
 function plinepass!(line, particles::Beam)
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag

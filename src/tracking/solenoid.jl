@@ -14,9 +14,9 @@ function pass!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, part
             r6 = @view r_in[(c-1)*6+1:c*6]
             if !isnan(r6[1]) 
                 if use_exact_Hamiltonian == 1
-                    p_norm = 1.0 / sqrt((1.0 + r_in[6])^2 - r_in[2]^2 - r_in[4]^2) # use exact p_norm
+                    p_norm = 1.0 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2) # use exact p_norm
                 else
-                    p_norm = 1.0 / sqrt(1.0 + r_in[6]) # use linearized p_norm
+                    p_norm = 1.0 / (1.0 + r6[6]) # use linearized p_norm
                 end
     
                 # Misalignment at entrance
@@ -47,7 +47,7 @@ function pass!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, part
                     addvv!(r6, T2)
                 end
 
-                if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1])
+                if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1]) || isinf(r6[1])
                     lost_flags[c] = 1
                 end
             end
@@ -59,7 +59,7 @@ function pass!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, part
             end
             r6 = @view r_in[(c-1)*6+1:c*6]
             drift6!(r6, ele.len)
-            if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1])
+            if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1]) || isinf(r6[1])
                 lost_flags[c] = 1
             end
         end
@@ -87,7 +87,7 @@ function pass_P!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, pa
                 if use_exact_Hamiltonian == 1
                     p_norm = 1.0 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
                 else
-                    p_norm = 1.0 / sqrt(1.0 + r6[6])
+                    p_norm = 1.0 / (1.0 + r6[6])
                 end
     
                 # Misalignment at entrance
@@ -118,7 +118,7 @@ function pass_P!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, pa
                     addvv!(r6, T2)
                 end
 
-                if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1])
+                if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1]) || isinf(r6[1])
                     lost_flags[c] = 1
                 end
             end
@@ -142,7 +142,7 @@ function pass_P!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, pa
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1])
+            if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1]) || isinf(r6[1])
                 lost_flags[c] = 1
             end
         end

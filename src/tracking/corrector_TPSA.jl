@@ -1,11 +1,7 @@
 function CorrectorPass_TPSA!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le::Float64, xkick::Float64, ykick::Float64,
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}) where {T, TPS_Dim, Max_TPS_Degree}
-
-    if false
-        p_norm = 1.0 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
-    else
-        p_norm = 1.0 / sqrt(1.0 + r[6])
-    end
+    
+    p_norm = 1.0 / (1.0 + r[6])
     NormL = le * p_norm
     # Misalignment at entrance
     if !iszero(T1)

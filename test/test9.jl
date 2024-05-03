@@ -5,7 +5,7 @@ using LinearAlgebra
 using Plots
 
 function HenonMap(x, p)
-    v = 0.195
+    v = 0.205
     lamda = 1.0
     x_new = cos(2*pi*v) * x + sin(2*pi*v) * (p - lamda*x^2)
     p_new = -sin(2*pi*v) * x + cos(2*pi*v) * (p - lamda*x^2)
@@ -26,7 +26,7 @@ end
 function henon_nturn(xin)
     x = xin[1]
     p = xin[2]
-    for j in 1:100
+    for j in 1:1000000
         x, p = HenonMap(x, p)
     end
 
@@ -68,4 +68,13 @@ p3 = scatter(data[idx, 1], data[idx, 2], zcolor=imag_list[idx, 1], label="Imag E
 p4 = scatter(data[idx, 1], data[idx, 2], zcolor=imag_list[idx, 2], label="Imag Eigenvalue2", markersize=2, colormap=:jet)
 plot(p1, p2, p3, p4, layout=(2, 2), size=(1200, 800))
 
-savefig("eigen_100turns.png")
+savefig("eigen_1000000turns.png")
+
+
+norm_real = sqrt.(real_list[idx, 1].^2 + real_list[idx, 2].^2)
+norm_imag = sqrt.(imag_list[idx, 1].^2 + imag_list[idx, 2].^2)
+idx1 = findall(x -> x < 10, log10.(norm_real))
+p5 = scatter(data[idx, 1][idx1], data[idx, 2][idx1], zcolor=log10.(norm_real[idx1]), label="Norm Real Eigenvalue", markersize=2, colormap=:jet)
+p6 = scatter(data[idx, 1][idx1], data[idx, 2][idx1], zcolor=norm_imag[idx1], label="Norm Imag Eigenvalue", markersize=2, colormap=:jet)
+plot(p5, p6, layout=(1, 2), size=(1200, 400))
+savefig("norm_eigen_1000000turns.png")

@@ -9,11 +9,8 @@ function CorrectorPass!(r::Array{Float64,1}, le::Float64, xkick::Float64, ykick:
         end
         r6 = @view r[(c-1)*6+1:c*6]
         if !isnan(r6[1])
-            if false
-                p_norm = 1.0 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
-            else
-                p_norm = 1.0 / sqrt(1.0 + r6[6])
-            end
+            p_norm = 1.0 / (1.0 + r6[6])
+            
             NormL = le * p_norm
             # Misalignment at entrance
             if !iszero(T1)
@@ -40,7 +37,7 @@ function CorrectorPass!(r::Array{Float64,1}, le::Float64, xkick::Float64, ykick:
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1])
+            if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1]) || isinf(r6[1])
                 lost_flags[c] = 1
             end
         end
@@ -69,10 +66,11 @@ function CorrectorPass_P!(r::Array{Float64,1}, le::Float64, xkick::Float64, ykic
         end
         r6 = @view r[(c-1)*6+1:c*6]
         if !isnan(r6[1])
-            if false
-                p_norm = 1.0 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
-            else
+            if 1.0 + r6[6] >= 0
                 p_norm = 1.0 / sqrt(1.0 + r6[6])
+            else
+                lost_flags[c] = 1
+                continue
             end
             NormL = le * p_norm
             # Misalignment at entrance
@@ -99,7 +97,7 @@ function CorrectorPass_P!(r::Array{Float64,1}, le::Float64, xkick::Float64, ykic
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1])
+            if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1]) || isinf(r6[1])
                 lost_flags[c] = 1
             end
         end

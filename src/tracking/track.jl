@@ -1,5 +1,11 @@
 function matrix_to_array(matrix::Matrix{Float64})
-    particles = vec(matrix)
+    particles = zeros(Float64, size(matrix, 1)*6)
+    for i in 1:size(matrix, 1)
+        for j in 1:6
+            particles[(i-1)*6+j] = matrix[i, j]
+        end
+    end
+
     return particles
 end
 
@@ -86,7 +92,9 @@ function ringpass!(line, particles::Beam, nturn::Int)
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     for i in 1:nturn
+        println("Turn ", i, particles.r[1968, 1], particles.r[1968, 2], particles.r[1968, 3], particles.r[1968, 4], particles.r[1968, 5], particles.r[1, 6])
         linepass!(line, particles)    
+        println("Turn ", i, particles.r[1968, 1], particles.r[1968, 2], particles.r[1968, 3], particles.r[1968, 4], particles.r[1968, 5], particles.r[1, 6])
     end
     return nothing
 end
