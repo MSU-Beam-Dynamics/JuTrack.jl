@@ -23,7 +23,7 @@ Pkg.activate(".")
 Pkg.instantiate()
 ```
 
-# To use this module, import it in Julia
+# Import the package in Julia
 ```
 include("path-to-the-package/src/JuTrack.jl")
 using .JuTrack
