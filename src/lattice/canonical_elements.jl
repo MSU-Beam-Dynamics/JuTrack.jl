@@ -344,6 +344,8 @@ struct StrongGaussianBeam <: AbstractStrongBeamBeam  # Strong Beam with transver
     nzslice::Int # Number of slices in z direction
     zslice_center::Vector{Float64} # z center of each slice
     zslice_npar::Vector{Float64} # amplitude of each slice
+    xoffsets::Vector{Float64} # x offset of each slice
+    yoffsets::Vector{Float64} # y offset of each slice
     function StrongGaussianBeam(charge::Float64, mass::Float64, atomnum::Float64, 
             np::Int, energy::Float64, op::AbstractOptics4D, bs::Vector{Float64}, nz::Int)
         momentum=sqrt(energy*energy-mass*mass)  
@@ -351,6 +353,6 @@ struct StrongGaussianBeam <: AbstractStrongBeamBeam  # Strong Beam with transver
         beta=momentum/energy
         classrad0=charge*charge/(atomnum*mass)/4/pi/55.26349406*1e-6
         radconst=4*pi/3*classrad0/mass/mass/mass
-        new(charge,mass,atomnum,classrad0,radconst,np,energy,momentum,gamma,beta, op, bs, nz, zeros(nz), zeros(nz))
+        new(charge,mass,atomnum,classrad0,radconst,np,energy,momentum,gamma,beta, op, bs, nz, zeros(nz), zeros(nz), zeros(nz), zeros(nz))
     end  
 end

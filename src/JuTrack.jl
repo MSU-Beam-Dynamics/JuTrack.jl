@@ -45,7 +45,7 @@ include("utils/matrix.jl")
 export Beam
 export m_e, m_p, m_goldion, CGAMMA, CoordLimit, AngleLimit, use_exact_Hamiltonian, use_exact_drift
 export qr_eigen, diag1
-export CRABCAVITY, easyCRABCAVITY, AccelCavity, LorentzBoost, InvLorentzBoost, StrongGaussianBeam, StrongThinGaussianBeam, AbstractStrongBeamBeam
+export CRABCAVITY, easyCRABCAVITY, AccelCavity, LorentzBoost, InvLorentzBoost, StrongGaussianBeam, StrongThinGaussianBeam, AbstractStrongBeamBeam, crab_crossing_setup!, pass_lumi!
 export LongitudinalRFMap, AbstractLongitudinalRFMap, AbstractTransferMap, AbstractTransverseMap
 export LongitudinalRLCWake, LongitudinalWake
 export AbstractOptics, AbstractOptics2D, AbstractOptics4D, optics2D, optics4DUC

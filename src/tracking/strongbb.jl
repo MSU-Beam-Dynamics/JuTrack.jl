@@ -1,8 +1,21 @@
-# strong beam-beam is still under development
-# don't use this file for now
 using SpecialFunctions
-using Statistics
+using Enzyme
+import .EnzymeRules: forward # , reverse, augmented_primal
+using .EnzymeRules
+using SpecialFunctions
+# using Statistics
 # using StaticArrays
+function erfcx_AD(z)
+    return [erfcx(z[1])]
+end
+
+function forward(func::Const{typeof(erfcx_AD)}, ::Type{<:Duplicated}, z::Duplicated)
+    println("Using custom rule for forward mode on erfcx function!")
+    ret = func.val(z.val)  
+    z_derivative = -2.0/sqrt(pi) .+ 2.0 .* z.val .* ret 
+    z.dval .= z_derivative .* z.dval
+    return Duplicated(ret, z.dval)
+end
 
 function normal_mat(op2d::optics2D)
     return [1.0/sqrt(op2d.beta) 0.0; op2d.alpha/sqrt(op2d.beta)  sqrt(op2d.beta)]
@@ -32,6 +45,15 @@ function new_collect(zmin, zmax, n)
     end
     return v
 end
+
+function crab_crossing_setup!(beam::StrongGaussianBeam, crossing_angle::Float64, ccs::Vararg{easyCRABCAVITY})
+    beam.xoffsets .= (crossing_angle / 2.0) .* beam.zslice_center
+    for cc in ccs
+        beam.xoffsets .+= (cc.halfthetac / 2.0 / cc.k) .* sin.((-cc.k) .* beam.zslice_center .+ cc.phi)
+    end
+    return nothing
+end
+
 function initilize_zslice!(beam::StrongGaussianBeam, profile::Symbol, slice_type::Symbol, zrange::Float64=5.0)
     zmin=-zrange*beam.beamsize[3]
     zmax=zrange*beam.beamsize[3]
@@ -94,10 +116,10 @@ function Bassetti_Erskine_xgty!(res::AbstractVector, x::Float64, y::Float64, sig
     end
     termexp=exp(-x*x/2/sigmax/sigmax-y*y/2/sigmay/sigmay)
 	sqrtδsigma2=sqrt(Complex(2*(sigmax*sigmax-sigmay*sigmay)))
-	term1=erfcx(-1.0im*(x+1.0im*y)/sqrtδsigma2)
-	term2=erfcx(-1im*(x*sigmay/sigmax+1im*y*sigmax/sigmay)/sqrtδsigma2)
+	term1=erfcx_AD([-1.0im*(x+1.0im*y)/sqrtδsigma2])
+	term2=erfcx_AD([-1im*(x*sigmay/sigmax+1im*y*sigmax/sigmay)/sqrtδsigma2])
 	
-	complex_e=-1im*2*sqrt(pi)/sqrtδsigma2*(term1-termexp*term2)
+	complex_e=-1im*2*sqrt(pi)/sqrtδsigma2*(term1[1]-termexp*term2[1])
 	res[1]=real(complex_e)
     res[2]=-imag(complex_e)
     res[3]=termexp/2.0/π/sigmax/sigmay
@@ -114,10 +136,10 @@ function Bassetti_Erskine_ygtx!(res::AbstractVector, x::Float64, y::Float64, sig
     end
     termexp=exp(-x*x/2/sigmax/sigmax-y*y/2/sigmay/sigmay)
 	sqrtδsigma2=sqrt(Complex(2*(sigmax*sigmax-sigmay*sigmay)))
-	term1=erfcx(-1.0im*(x+1.0im*y)/sqrtδsigma2)
-	term2=erfcx(-1im*(x*sigmay/sigmax+1im*y*sigmax/sigmay)/sqrtδsigma2)
+	term1=erfcx_AD([-1.0im*(x+1.0im*y)/sqrtδsigma2])
+	term2=erfcx_AD([-1im*(x*sigmay/sigmax+1im*y*sigmax/sigmay)/sqrtδsigma2])
 	
-	complex_e=-1im*2*sqrt(pi)/sqrtδsigma2*(term1-termexp*term2)
+	complex_e=-1im*2*sqrt(pi)/sqrtδsigma2*(term1[1]-termexp*term2[1])
     res[1]=real(complex_e)
     res[2]=-imag(complex_e)
     res[3]=termexp/2.0/π/sigmax/sigmay
@@ -177,5 +199,11 @@ function pass!(sgb::StrongGaussianBeam, r_in::Array{Float64,1}, num_macro::Int, 
     lumi=track_sbb!(r_in, num_macro, wb.temp1, wb.temp2, wb.temp3, wb.temp4, wb.temp5, sgb, factor)
     lumi *= wb.np / wb.nmacro
     return nothing
+end
+
+function pass_lumi!(sgb::StrongGaussianBeam, r_in::Array{Float64,1}, num_macro::Int, wb::Beam)
+    factor=wb.classrad0/wb.gamma*wb.charge*sgb.charge
+    lumi=track_sbb!(r_in, num_macro, wb.temp1, wb.temp2, wb.temp3, wb.temp4, wb.temp5, sgb, factor)
+    lumi *= wb.np / wb.nmacro
 end
 

@@ -34,7 +34,7 @@ function tuning_test(target)
         grad = gradient(Forward, twiss_test, x0)
         x0[1] -= step * grad[1]
         beta1 = twiss_test(x0)
-        println("beta0: ", beta0, " beta1: ", beta1, "grad:", grad, "at step ", i)
+        println("beta0: ", beta0, " beta1: ", beta1, " grad:", grad, " at step ", i)
         push!(x0_vals, x0[1])
         push!(beta_vals, beta1)
         push!(grad_vals, grad[1])
