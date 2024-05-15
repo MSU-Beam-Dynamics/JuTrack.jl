@@ -10,12 +10,15 @@ A Julia-based package that enables advanced auto differentiation (AD) for symple
 ```
 git clone https://github.com/MSU-Beam-Dynamics/JuTrack.jl.git
 ```
+
 * Install dependencies
+
 Open Julia REPL. Move the the package folder.
 ```
 cd("path-to-the-package")
 ```
-Install the required dependencies
+
+* Install the required dependencies
 ```
 using Pkg
 Pkg.activate(".")
@@ -29,8 +32,11 @@ using .JuTrack
 ```
 
 # Known issues
-1. This package currently supports forward AD. Backward AD is still under development.
-2. For large lattice files, Julia vector array will be much more efficiency than Julia tuple. 
-3. Creating long lattice arrays in the differentiated function may result in an error. To avoid it, please create/load the lattice before the differentiation, and then take it as a constant variable or global variable for the differentiated function. 
-4. Current stable version is on Julia 1.9.4. Please up/downgrade the Julia version if there is a issue.
+* This package currently supports forward AD. Backward AD is still under development.
+
+* For large lattice files, Julia vector array will be much more efficiency than Julia tuple. 
+
+* Creating long lattice arrays in the differentiated function may result in an error. To avoid it, please create/load the lattice before the differentiation, and then take it as a constant variable or global variable for the differentiated function. 
+
+* Current stable version is on Julia 1.9.4. Please up/downgrade the Julia version if there is a issue.
 
