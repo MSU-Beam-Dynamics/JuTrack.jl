@@ -11,7 +11,7 @@ A Julia-based package that enables advanced auto differentiation (AD) for symple
 git clone https://github.com/MSU-Beam-Dynamics/JuTrack.jl.git
 ```
 
-* Open Julia REPL. Move the the package folder.
+* Open Julia REPL. Move to the package folder.
 ```
 cd("path-to-the-package")
 ```
