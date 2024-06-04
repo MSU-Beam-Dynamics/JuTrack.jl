@@ -30,18 +30,19 @@ using .JuTrack
 ```
 
 # Parallel computing setting
-* This package uses Julias multi-threading for parallel computing. Before using it, one has to set up the number of threads.
+This package uses Julias multi-threading for parallel computing. Before using it, one has to set up the number of threads.
 On Linux or macOS:
 ```
 export JULIA_NUM_THREADS=N
 ``` 
-or add the above line to your .bashrc file
+or add the above line to your .bashrc file.
 
 On Windows:
-Open the Start Search, type in “Environment Variables,” and select “Edit the system environment variables” > “Environment Variables.”
-Under “System variables,” click “New” and add JULIA_NUM_THREADS as the variable name and N (the number of threads you wish to use) as the variable value.
+Maually add JULIA_NUM_THREADS as the variable name and N (the number of threads you wish to use) as the variable value in system variable.
 
-It is recommended using VS code to permanently set up the Julia environment. Ensure that you have the Julia extension for VS Code installed. Open the Command Palette (Ctrl+Shift+P or Cmd+Shift+P on macOS). Type "Preferences: Open Settings (JSON)" and select it to open the settings file. Add or modify the Julia settings to include the environment variable like this:
+It is recommended to use VS code to permanently set up the Julia environment. 
+Ensure that you have the Julia extension for VS Code installed. Open the Command Palette (Ctrl+Shift+P or Cmd+Shift+P on macOS). Type "Preferences: Open Settings (JSON)" and select it to open the settings file. 
+Add or modify the Julia settings to include the environment variable like this:
 ```
 "julia.executablePath": "path/to/julia", // change it to your Julia path
 "julia.environmentVariables": {
@@ -49,20 +50,19 @@ It is recommended using VS code to permanently set up the Julia environment. Ens
 }
 ```
 
-Verify the Configuration
 To check if the multi-threading is set up correctly, open the Julia REPL, and type:
 ```
 println(Threads.nthreads())
 ```
 
-* Parallel computing is called with
+Parallel computing is called with
 ```
 plinepass(beamline, beam)
 ```
 or 
-'''
+```
 pringpass(beamline, beam)
-'''
+```
 
 # Known issues
 * This package currently supports forward AD. Backward AD is still under development.
