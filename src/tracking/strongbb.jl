@@ -1,5 +1,5 @@
 using SpecialFunctions
-using Enzyme
+# using Enzyme
 import .EnzymeRules: forward # , reverse, augmented_primal
 using .EnzymeRules
 using SpecialFunctions
@@ -10,7 +10,7 @@ function erfcx_AD(z)
 end
 
 function forward(func::Const{typeof(erfcx_AD)}, ::Type{<:Duplicated}, z::Duplicated)
-    println("Using custom rule for forward mode on erfcx function!")
+    # println("Using custom rule for forward mode on erfcx function!")
     ret = func.val(z.val)  
     z_derivative = -2.0/sqrt(pi) .+ 2.0 .* z.val .* ret 
     z.dval .= z_derivative .* z.dval
@@ -193,6 +193,44 @@ function track_sbb!(rin, num_macro, temp1, temp2, temp3, temp4, temp5, sgb::Stro
 
 end
 
+function track_sbb_P!(rin, num_macro, temp1, temp2, temp3, temp4, temp5, sgb::StrongGaussianBeam, factor::Float64) 
+    #factor=wb.particle.classrad0/wb.gamma*wb.particle.charge*sgb.particle.charge
+    # error("Strong beam-beam using parallel computing is not implemented yet.")
+
+    # lumi=0.0
+    
+    @inbounds for i in 1:sgb.nzslice
+        # local_sums = zeros(Float64, Threads.nthreads())
+        Threads.@threads for j in 1:num_macro
+            fieldvec = zeros(3)
+            r6 = @view rin[(j-1)*6+1:j*6]
+            # temp1: collision zlocation, temp2: beamsize x, temp3: beamsize y, temp4: beta x, temp5: beta y
+            temp1[j] = (r6[5] .+ sgb.zslice_center[i])./2.0
+            temp4[j] = sgb.optics.optics_x.beta .+ sgb.optics.optics_x.gamma .* temp1[j] .* temp1[j] .- 2.0 .* sgb.optics.optics_x.alpha .* temp1[j]
+            temp2[j] = sgb.beamsize[1] .* sqrt.(temp4[j] ./ sgb.optics.optics_x.beta)
+            temp5[j] = sgb.optics.optics_y.beta .+ sgb.optics.optics_y.gamma .* temp1[j] .* temp1[j] .- 2.0 .* sgb.optics.optics_y.alpha .* temp1[j]
+            temp3[j] = sgb.beamsize[2] .* sqrt.(temp5[j] ./ sgb.optics.optics_y.beta)
+        
+            # temp4 and temp5 are free to change now.
+            r6[1] += (r6[2] .* temp1[j])
+            r6[3] += (r6[4] .* temp1[j])
+            Bassetti_Erskine!(fieldvec, r6[1], r6[3], temp2[j], temp3[j])
+            r6[2] += (sgb.zslice_npar[i]*factor) * fieldvec[1]
+            r6[4] += (sgb.zslice_npar[i]*factor) * fieldvec[2]
+            # tid = Threads.threadid()
+            # local_sums[tid] += fieldvec[3]
+
+            r6[1] -= (r6[2] .* temp1[j])
+            r6[3] -= (r6[4] .* temp1[j])
+        end
+        # slicelumi = sum(local_sums)
+        # lumi += slicelumi * sgb.zslice_npar[i] #  Will do it outside* wb.num_particle / wb.num_macro
+    end
+
+    return nothing
+
+end
+
 
 function pass!(sgb::StrongGaussianBeam, r_in::Array{Float64,1}, num_macro::Int, wb::Beam)
     factor=wb.classrad0/wb.gamma*wb.charge*sgb.charge
@@ -207,3 +245,18 @@ function pass_lumi!(sgb::StrongGaussianBeam, r_in::Array{Float64,1}, num_macro::
     lumi *= wb.np / wb.nmacro
 end
 
+function pass_P!(sgb::StrongGaussianBeam, r_in::Array{Float64,1}, num_macro::Int, wb::Beam)
+    error("Strong beam-beam using parallel computing is not implemented yet.")
+
+    factor=wb.classrad0/wb.gamma*wb.charge*sgb.charge
+    track_sbb_P!(r_in, num_macro, wb.temp1, wb.temp2, wb.temp3, wb.temp4, wb.temp5, sgb, factor)
+    
+    return nothing
+end
+
+function pass_lumi_P!(sgb::StrongGaussianBeam, r_in::Array{Float64,1}, num_macro::Int, wb::Beam)
+    error("Strong beam-beam using parallel computing is not implemented yet.")
+    factor=wb.classrad0/wb.gamma*wb.charge*sgb.charge
+    lumi=track_sbb_P!(r_in, num_macro, wb.temp1, wb.temp2, wb.temp3, wb.temp4, wb.temp5, sgb, factor)
+    lumi *= wb.np / wb.nmacro
+end

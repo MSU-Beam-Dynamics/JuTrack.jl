@@ -1,12 +1,10 @@
 include("../src/JuTrack.jl")
 include("ssrf_ring.jl")
 using. JuTrack
-using Enzyme
 using Serialization
 using Plots
 
 ESR = deserialize("test/esr_main_rad.jls")
-ESR_nocrab = deserialize("test/esr_main_rad_craboff.jls")
 ESR_norad = deserialize("test/esr_main.jls")
 E0 = 17.846262619763e9
 
@@ -36,4 +34,3 @@ index = findall(lost_flag .== 0)
 index1 = findall(lost_flag .== 1)
 plot(particle[index,1], particle[index,3], seriestype=:scatter, label="Survived")
 plot!(particle[index1,1], particle[index1,3], seriestype=:scatter, label="Lost", xlabel="x(m)", ylabel="y(m)")
-savefig("DA_CCoff_radoff.png")

@@ -1,8 +1,6 @@
 include("../src/JuTrack.jl")
 using. JuTrack
-using Enzyme
-using BenchmarkTools
-Enzyme.API.runtimeActivity!(true)
+# Enzyme.API.runtimeActivity!(true)
 
 # an simple example that optimize the transfer matrix of a ring
 

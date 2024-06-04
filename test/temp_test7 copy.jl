@@ -6,11 +6,12 @@ using Enzyme
 using ProgressMeter
 using LinearAlgebra
 using LaTeXStrings
+using DelimitedFiles
 
 RING = ssrf(-1.063770, 0)
 # x: -0.04 to 0.04
-xlist = [-0.04 + 0.001 * i for i in 0:80]
-ylist = [0.0 + 0.001 * i for i in 0:40]
+xlist = [-0.01 + 0.001 * i for i in 0:20]
+ylist = [0.0 + 0.001 * i for i in 0:10]
 N = length(xlist) * length(ylist)
 
 particles = zeros(length(xlist) * length(ylist), 6)
@@ -22,9 +23,11 @@ for i in 1:length(xlist)
 end
 
 beam = Beam(copy(particles), energy=3.5e9)
-pringpass!(RING, beam, 1)
+pringpass!(RING, beam, 1000)
 survived = findall(x -> x == 0, beam.lost_flag)
-
+# save
+final_x = [particles[survived, :] beam.r[survived, :]]
+writedlm("final_x_1000turn.txt", final_x)
 
 function eigen_TPSA(xx)
     global RING

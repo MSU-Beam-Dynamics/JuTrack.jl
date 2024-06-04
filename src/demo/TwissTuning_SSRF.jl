@@ -1,10 +1,9 @@
-include("../src/JuTrack.jl")
+include("../JuTrack.jl")
 include("ssrf_ring.jl")
 using. JuTrack
-using Enzyme
 using BenchmarkTools
 using Plots
-Enzyme.API.runtimeActivity!(true)
+# Enzyme.API.runtimeActivity!(true)
 
 
 SSRF = ssrf(-1.063770, 0)

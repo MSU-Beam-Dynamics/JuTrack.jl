@@ -2,7 +2,6 @@ include("../src/JuTrack.jl")
 using .JuTrack
 include("ssrf_ring.jl")
 using Plots  
-using Enzyme
 using ProgressMeter
 using LinearAlgebra
 using LaTeXStrings

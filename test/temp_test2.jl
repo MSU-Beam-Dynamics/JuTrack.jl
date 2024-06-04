@@ -1,17 +1,32 @@
 include("../src/JuTrack.jl")
 using. JuTrack
 using Serialization
-using Enzyme
 using LaTeXStrings
 using Plots
 
-Enzyme.API.runtimeActivity!(true)
 
 
 E0 = 17.846262619763e9
 
-
-ESR_crab = deserialize("test/esr_main_linearquad.jls")
+function linepass1!(line, particles::Beam)
+    # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
+    # Check if the particle is lost by checking the lost_flag
+    np = particles.nmacro
+    particles6 = matrix_to_array(particles.r)
+    if length(particles6) != np*6
+        error("The number of particles does not match the length of the particle array")
+    end
+    save_particles = zeros(length(line), 6)
+    for i in eachindex(line)
+        # ele = line[i]
+        pass!(line[i], particles6, np, particles)        
+        save_particles[i, :] = particles6
+    end
+    rout = array_to_matrix(particles6, np)
+    particles.r = rout
+    return save_particles
+end
+ESR_crab = deserialize("src/demo/esr_main_linearquad.jls")
 # ESR_nocrab = deserialize("test/esr_main_rad_craboff.jls")
 
 function get_phase14(x3, RING)
@@ -146,7 +161,7 @@ function multi_val_op(x0, niter, step, RING)
         x0_vals[:, i] = x0
         push!(goal_vals, new_phase)
         grad_vals[:, i] = [grad9[2], grad13[2], grad17[2], grad23[2], grad27[2], grad31[2], grad5537[2]]
-        if abs(new_phase) < target 
+        if new_phase < target 
             println("tuning finished at step ", i)
             break
         end
@@ -154,7 +169,7 @@ function multi_val_op(x0, niter, step, RING)
     return x0_vals, goal_vals, grad_vals
 end
 
-x0_vals, goal_vals, grad_vals = multi_val_op(xinit, 10, 1e-5, ESR_crab)
+x0_vals, goal_vals, grad_vals = multi_val_op(xinit, 10, 1e-6, ESR_crab)
 
 plot_steps = 5
 p1 = plot(1:plot_steps, x0_vals[1, 1:plot_steps], title = L"Evolution\ of\ k", xlabel = L"Iterations", ylabel = L"Strength (m^{-1})", label=L"k_1", line=:dash, marker=:circle)

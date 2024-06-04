@@ -1,9 +1,8 @@
 include("../src/JuTrack.jl")
 using .JuTrack
-using Plots  
 using LaTeXStrings
-using Enzyme
-Enzyme.API.runtimeActivity!(true)
+# using Enzyme
+# Enzyme.API.runtimeActivity!(true)
 
 
 
@@ -39,33 +38,6 @@ end
 
 grad = autodiff(Forward, f, Duplicated,  Duplicated(180e9, 1.0)) # 11.713 s (1750155 allocations: 74.56 GiB)
 println(grad)
-
-# @btime begin
-#     grad = autodiff(Forward, fp, Duplicated,  Duplicated(180e9, 1.0))
-# end
-
-
-# xinit = 1000.0
-# f(xinit)
-
-# for i in 1:10
-#     global xinit
-#     grad = autodiff(Forward, f, Duplicated,  Duplicated(xinit, 1.0))
-#     xinit -= 1e11 * grad[2][1]
-#     println(xinit)
-#     println(grad)
-# end
-# function calculate_emittance(x, px)
-#     mean_x = mean(x)
-#     mean_px = mean(px)
-#     mean_xpx = mean(x .* px)
-
-#     var_x = mean(x .^ 2) - mean_x^2
-#     var_px = mean(px .^ 2) - mean_px^2
-
-#     emittance = sqrt(var_x * var_px - mean_xpx^2)
-#     return emittance
-# end
 
 
 

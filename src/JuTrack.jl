@@ -1,4 +1,6 @@
 module JuTrack
+using Enzyme
+Enzyme.API.runtimeActivity!(true) # this is temporarily used
 const CoordLimit = 1.0
 const AngleLimit = 1.0
 const m_e = 0.51099895e6
@@ -45,7 +47,8 @@ include("utils/matrix.jl")
 export Beam
 export m_e, m_p, m_goldion, CGAMMA, CoordLimit, AngleLimit, use_exact_Hamiltonian, use_exact_drift
 export qr_eigen, diag1
-export CRABCAVITY, easyCRABCAVITY, AccelCavity, LorentzBoost, InvLorentzBoost, StrongGaussianBeam, StrongThinGaussianBeam, AbstractStrongBeamBeam, crab_crossing_setup!, pass_lumi!
+export CRABCAVITY, easyCRABCAVITY, AccelCavity, LorentzBoost, InvLorentzBoost, StrongGaussianBeam, 
+    StrongThinGaussianBeam, AbstractStrongBeamBeam, crab_crossing_setup!, pass_lumi!, pass_lumi_P!, Bassetti_Erskine!
 export LongitudinalRFMap, AbstractLongitudinalRFMap, AbstractTransferMap, AbstractTransverseMap
 export LongitudinalRLCWake, LongitudinalWake
 export AbstractOptics, AbstractOptics2D, AbstractOptics4D, optics2D, optics4DUC
@@ -61,4 +64,5 @@ export plinepass!, pringpass!, pass_P!, ADlinepass!, ADlinepass_TPSA!
 export matrix_to_array, array_to_matrix
 export total_length, spos, findelem, plot_optics
 export ADfindm66_refpts
+export autodiff, Forward, gradient, jacobian, Duplicated, DuplicatedNoNeed, Const, Val, Enzyme
 end

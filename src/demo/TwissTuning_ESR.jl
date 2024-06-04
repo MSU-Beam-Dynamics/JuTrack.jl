@@ -1,11 +1,8 @@
-include("../src/JuTrack.jl")
+include("../JuTrack.jl")
 using. JuTrack
-using Enzyme
 using BenchmarkTools
 using Plots
 using Serialization
-Enzyme.API.runtimeActivity!(true)
-
 
 function twiss_test(xx, esr)
     changed_idx = [3]
@@ -19,11 +16,11 @@ function twiss_test(xx, esr)
     return Twi.betax
 end
 
-esr = deserialize("test/esr_main_linearquad.jls")
+esr = deserialize("src/demo/esr_main_linearquad.jls")
 grad = autodiff(Forward, twiss_test, Duplicated, Duplicated(-0.2278853772, 1.0),  Const(esr))
 println(grad)
 function tuning_test(target)
-    esr = deserialize("test/esr_main_linearquad.jls")
+    esr = deserialize("src/demo/esr_main_linearquad.jls")
 
     x0 = -0.2278853772
     # x0 = -4.0
@@ -41,7 +38,7 @@ function tuning_test(target)
         grad = autodiff(Forward, twiss_test, DuplicatedNoNeed, Duplicated(x0, 1.0),  Const(esr))
         x0 -= step * grad[1]
         beta1 = twiss_test(x0, esr)
-        println("beta0: ", beta0, " beta1: ", beta1, "grad:", grad, "at step ", i)
+        println("beta0: ", beta0, " beta1: ", beta1, " grad:", grad, "at step ", i)
         push!(x0_vals, x0)
         push!(beta_vals, beta1)
         push!(grad_vals, grad[1])
@@ -61,16 +58,3 @@ p3 = plot(1:length(grad_vals), grad_vals, title = L"Evolution\ of\ \frac{\partia
     ylabel = L"\partial \beta_x /\partial k_1", legend = false, line=:dash, marker=:circle)
 plot(p1, p2, p3, layout = (3, 1), size=(800, 650))
 
-# twi_matrix = zeros(length(esr), 7)
-# for i in eachindex(esr)
-#     twi_matrix[i, 1] = pos[i]
-#     twi_matrix[i, 2] = twi[i].betax
-#     twi_matrix[i, 3] = twi[i].betay
-#     twi_matrix[i, 4] = twi[i].alphax
-#     twi_matrix[i, 5] = twi[i].alphay
-#     twi_matrix[i, 6] = twi[i].dx
-#     twi_matrix[i, 7] = twi[i].dy
-# end
-# # save the matrix as a text file
-# using DelimitedFiles
-# writedlm("twiss_matrix.txt", twi_matrix)
