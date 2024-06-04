@@ -30,7 +30,7 @@ using .JuTrack
 ```
 
 # Parallel computing setting
-This package uses Julias multi-threading for parallel computing. Before using it, one has to set up the number of threads.
+This package uses Julia's multi-threading for parallel computing. Before using it, one has to set up the number of threads.
 On Linux or macOS:
 ```
 export JULIA_NUM_THREADS=N
@@ -61,7 +61,7 @@ plinepass(beamline, beam)
 ```
 or 
 ```
-pringpass(beamline, beam)
+pringpass(beamline, beam, nturns)
 ```
 
 # Known issues
