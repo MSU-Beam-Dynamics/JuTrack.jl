@@ -1,16 +1,17 @@
 include("../src/JuTrack.jl")
-using .JuTrack
 include("../src/demo/ssrf_ring.jl")
+using .JuTrack
+using Serialization
 using Plots  
-using Enzyme
 using LinearAlgebra
 using LaTeXStrings
 using DelimitedFiles
 
+# RING = deserialize("src/demo/spear3.jls")
 RING = ssrf(-1.063770, 0)
 # x: -0.04 to 0.04
 angle_list = [ 0 + pi/36 * i for i in 0:36]
-amp_list = [0.0 + 0.001 * i for i in 0:40]
+amp_list = [0.001 + 0.001 * i for i in 0:40]
 
 N = length(angle_list) * length(amp_list)
 particles = zeros(length(angle_list) * length(amp_list), 6)
@@ -21,8 +22,8 @@ for i in 1:length(angle_list)
     end
 end
 
-beam = Beam(copy(particles), energy=3.5e9)
-pringpass!(RING, beam, 1)
+beam = Beam(copy(particles), energy=3.0e9)
+ringpass!(RING, beam, 1)
 survived = findall(x -> x == 0, beam.lost_flag)
 
 N_survived = length(survived)
@@ -46,75 +47,146 @@ function TPSA_track_jacobian(amp, angle)
     for i in 1:6
         jaco[i, :] = rin[i].map[2:7]
     end
-    eigenvalues, eigenvectors = qr_eigen(jaco)
-    return eigenvalues
+    # eigenvalues, eigenvectors = qr_eigen(jaco)
+    eigenvalues, eigenvectors = eigen(jaco)
+    return eigenvalues, eigenvectors
 end
 
-eigens = zeros(N_survived, 6)
-for i in 1:N_survived
-    angle = atan(survived_particles[i, 3], survived_particles[i, 1])
-    amplitude = sqrt(survived_particles[i, 1]^2 + survived_particles[i, 3]^2)
-    eigenvalues = TPSA_track_jacobian(amplitude, angle)
-    eigens[i, :] = eigenvalues
-    println("Progress: ", i, "/", N_survived)
-end
-idx = findall(x -> x < 10, abs.(eigens[:,1]))
-# disable legend
-p1 = scatter(survived_particles[idx,1],survived_particles[idx,3],title=L"eigenvalue_1", colormap=:jet, markersize=3, legend=false, zcolor=eigens[idx,1], colorbar=true)
-idx = findall(x -> x < 10, abs.(eigens[:,1]))
-p2 = scatter(survived_particles[idx,1],survived_particles[idx,3], title=L"eigenvalue_2", colormap=:jet, markersize=3, legend=false ,zcolor=eigens[idx,2], colorbar=true)
-idx = findall(x -> x < 10, abs.(eigens[:,1]))
-p3 = scatter(survived_particles[idx,1],survived_particles[idx,3], title=L"eigenvalue_3", colormap=:jet, markersize=3, legend=false,zcolor=eigens[idx,3], colorbar=true)
-idx = findall(x -> x < 10, abs.(eigens[:,1]))
-p4 = scatter(survived_particles[idx,1],survived_particles[idx,3], title=L"eigenvalue_4", colormap=:jet, markersize=3, legend=false,zcolor=eigens[idx,4], colorbar=true)
-p5 = scatter(survived_particles[:,1],survived_particles[:,3], title=L"eigenvalue_5", colormap=:jet, markersize=3, legend=false,zcolor=eigens[:,5], colorbar=true)
-p6 = scatter(survived_particles[:,1],survived_particles[:,3], title=L"eigenvalue_6", colormap=:jet, markersize=3, legend=false,zcolor=eigens[:,6], colorbar=true)
-plot(p1, p2, p3, p4, p5, p6, layout=(2,3), size=(1200,450))
-# savefig("eigenvalues_abslessthan10.png")
-# for i in 1046:N_survived
+
+# complex eigenvalues
+# eigens = zeros(Complex{Float64}, N_survived, 6)
+# vec = zeros(Complex{Float64}, N_survived, 6, 6)
+# for i in 1:N_survived
 #     angle = atan(survived_particles[i, 3], survived_particles[i, 1])
 #     amplitude = sqrt(survived_particles[i, 1]^2 + survived_particles[i, 3]^2)
-#     gradx = autodiff(Forward, TPSA_track_jacobian, DuplicatedNoNeed, Duplicated(amplitude, 1.0), Const(angle))
-#     open("outputx.csv", "a") do file
-#         # Append a row of data
-#         writedlm(file, reshape(gradx[1], 1, :), ',')
-#     end
+#     eigenvalues,  eigenvectors = TPSA_track_jacobian(amplitude, angle)
+#     eigens[i, :] = eigenvalues
+#     vec[i, :, :] = eigenvectors
 #     println("Progress: ", i, "/", N_survived)
 # end
 
-# gradx = readdlm("outputx.csv", ',', Float64)
-# idx = findall(x -> x != 0, gradx[:,1])
-# p1 = scatter(survived_particles[idx,1],survived_particles[idx,3],zcolor=log10.(abs.(gradx[idx,1])), title=L"de_1/dx", colormap=:jet)
-# idx = findall(x -> x != 0, gradx[:,2])
-# p2 = scatter(survived_particles[idx,1],survived_particles[idx,3],zcolor=log10.(abs.(gradx[idx,2])), title=L"de_2/dx", colormap=:jet)
-# idx = findall(x -> x != 0, gradx[:,3])
-# p3 = scatter(survived_particles[idx,1],survived_particles[idx,3],zcolor=log10.(abs.(gradx[idx,3])), title=L"de_3/dx", colormap=:jet)
-# idx = findall(x -> x != 0, gradx[:,4])
-# p4 = scatter(survived_particles[idx,1],survived_particles[idx,3],zcolor=log10.(abs.(gradx[idx,4])), title=L"de_4/dx", colormap=:jet)
-# idx = findall(x -> x != 0, gradx[:,5])
-# p5 = scatter(survived_particles[idx,1],survived_particles[idx,3],zcolor=log10.(abs.(gradx[idx,5])), title=L"de_5/dx", colormap=:jet)
-# plot(p1, p2, p3, p4, p5, layout=(2,3), size=(1200,600))
+function normalize(v)
+    return v / norm(v)
+end
+function cosine_similarity(v1, v2)
+    return abs(dot(v1, v2)) / (norm(v1) * norm(v2))
+end
 
+function track_eigen(Jacobian_previous, Jacobian_current)
+    # Calculate eigenvalues and eigenvectors
+    eigenvalues_prev, eigenvectors_prev = eigen(Jacobian_previous)
+    eigenvalues_curr, eigenvectors_curr = eigen(Jacobian_current)
+    
+    # Normalize eigenvectors
+    eigenvectors_prev = [normalize(vec) for vec in eachcol(eigenvectors_prev)]
+    eigenvectors_curr = [normalize(vec) for vec in eachcol(eigenvectors_curr)]
+    
+    # Initialize a list to track matched eigenvalues
+    matched_eigenvalues = Complex{Float64}[]
+    matched_eigenvectors = zeros(Complex{Float64}, 6, 6)
+    
+    # Iterate over previous eigenvectors
+    i = 1
+    for vec_prev in eigenvectors_prev
+        best_match_idx = -1
+        best_similarity = -Inf
+        
+        # Compare with current eigenvectors
+        for (j, vec_curr) in enumerate(eigenvectors_curr)
+            similarity = cosine_similarity(vec_prev, vec_curr)
+            if similarity > best_similarity
+                best_similarity = similarity
+                best_match_idx = j
+            end
+        end
+        
+        # Match eigenvalues based on best eigenvector alignment
+        push!(matched_eigenvalues, eigenvalues_curr[best_match_idx])
+        matched_eigenvectors[:, i] = eigenvectors_curr[best_match_idx]
+        i += 1
+    end
+    
+    return matched_eigenvalues, matched_eigenvectors
+end
 
+function track_eigenvalues(eigenvectors_prev, Jacobian_current)
+    # Calculate eigenvalues and eigenvectors
+    eigenvalues_curr, eigenvectors_curr = eigen(Jacobian_current)
+    
+    # Normalize eigenvectors
+    eigenvectors_prev = [normalize(vec) for vec in eachcol(eigenvectors_prev)]
+    eigenvectors_curr = [normalize(vec) for vec in eachcol(eigenvectors_curr)]
+    
+    # Initialize a list to track matched eigenvalues
+    matched_eigenvalues = Complex{Float64}[]
+    matched_eigenvectors = zeros(Complex{Float64}, 6, 6)
+    
+    # Iterate over previous eigenvectors
+    for vec_prev in eigenvectors_prev
+        best_match_idx = -1
+        best_similarity = -Inf
+        
+        # Compare with current eigenvectors
+        for (j, vec_curr) in enumerate(eigenvectors_curr)
+            similarity = cosine_similarity(vec_prev, vec_curr)
+            if similarity > best_similarity
+                best_similarity = similarity
+                best_match_idx = j
+            end
+        end
+        
+        # Match eigenvalues based on best eigenvector alignment
+        push!(matched_eigenvalues, eigenvalues_curr[best_match_idx])
+    end
+    
+    return matched_eigenvalues
+end
 
-# idx = findall(x -> x != 0, gradx[:,1].^2 .+ gradx[:,2].^2 .+ gradx[:,3].^2 .+ gradx[:,4].^2 .+ gradx[:,5].^2 + grady[:,1].^2 .+ grady[:,2].^2 .+ grady[:,3].^2 .+ grady[:,4].^2 .+ grady[:,5].^2)
-# p5 = scatter(survived_particles[idx,1],survived_particles[idx,3],zcolor=log10.(gradx[idx,1].^2 .+ gradx[idx,2].^2 .+ gradx[idx,3].^2 
-#     .+ gradx[idx,4].^2 .+ gradx[idx,5].^2 + grady[idx,1].^2 .+ grady[idx,2].^2 .+ grady[idx,3].^2 .+ grady[idx,4].^2 .+ gradx[idx,5].^2), title=L"sum(eigenvalues^2)", colormap=:jet)
+x = amp_list[1] * cos(angle_list[1])
+y = amp_list[1] * sin(angle_list[1])
+rin = [CTPS(x, 1, 6, 1), CTPS(0.0, 2, 6, 1), CTPS(y, 3, 6, 1), CTPS(0.0, 4, 6, 1), CTPS(0.0, 5, 6, 1), CTPS(0.0, 6, 6, 1)]
+ringpass_TPSA!(RING, rin, 1)
+jaco_0 = zeros(6, 6)
+for i in 1:6
+    jaco_0[i, :] = rin[i].map[2:7]
+end
 
-# idx = findall(x -> x != 0, grady[:,1])
-# p6 = scatter(survived_particles[idx,1],survived_particles[idx,3],zcolor=log10.(abs.(grady[idx,1])), title=L"de_1/dy", colormap=:jet)
-# idx = findall(x -> x != 0, grady[:,2])
-# p7 = scatter(survived_particles[idx,1],survived_particles[idx,3],zcolor=log10.(abs.(grady[idx,2])), title=L"de_2/dy", colormap=:jet)
-# idx = findall(x -> x != 0, grady[:,3])
-# p8 = scatter(survived_particles[idx,1],survived_particles[idx,3],zcolor=log10.(abs.(grady[idx,3])), title=L"de_3/dy", colormap=:jet)
-# idx = findall(x -> x != 0, grady[:,4])
-# p9 = scatter(survived_particles[idx,1],survived_particles[idx,3],zcolor=log10.(abs.(grady[idx,4])), title=L"de_4/dy", colormap=:jet)
-# plot(p6, p7, p8, p9, layout=(2,2), size=(800,600))
+eigens = []
+for i in 1:length(angle_list)
+    if i > 0
+        x = amp_list[1] * cos(angle_list[i])
+        y = amp_list[1] * sin(angle_list[i])
+        rin = [CTPS(x, 1, 6, 1), CTPS(0.0, 2, 6, 1), CTPS(y, 3, 6, 1), CTPS(0.0, 4, 6, 1), CTPS(0.0, 5, 6, 1), CTPS(0.0, 6, 6, 1)]
+        ringpass_TPSA!(RING, rin, 1)
+        jaco_1 = zeros(6, 6)
+        for i in 1:6
+            jaco_1[i, :] = rin[i].map[2:7]
+        end
+        e_1, v_1 = track_eigen(jaco_0, jaco_1)
+    end
+    for j in 1:length(amp_list)
+        x = amp_list[j] * cos(angle_list[i])
+        y = amp_list[j] * sin(angle_list[i])
+        beam = Beam([x 0.0 y 0.0 0.0 0.0], energy=3.0e9)
+        ringpass!(RING, beam, 1)
+        if beam.lost_flag[1] == 1
+            continue
+        end
+        rin = [CTPS(x, 1, 6, 1), CTPS(0.0, 2, 6, 1), CTPS(y, 3, 6, 1), CTPS(0.0, 4, 6, 1), CTPS(0.0, 5, 6, 1), CTPS(0.0, 6, 6, 1)]
+        ringpass_TPSA!(RING, rin, 1)
+        jaco = zeros(6, 6)
+        for i in 1:6
+            jaco[i, :] = rin[i].map[2:7]
+        end
+        push!(eigens, track_eigenvalues(v_1, jaco))
+    end
+end
 
-# eigens = zeros(N_survived, 6)
-# for i in 1:N_survived
-#     eigens[i, :] = TPSA_track_jacobian(survived_particles[i, 1], survived_particles[i, 3])
-#     println("Progress: ", i, "/", N_survived)
-# end
+eigens_array = zeros(Complex{Float64}, length(eigens), 6)
+for i in 1:length(eigens)
+    eigens_array[i, :] = [eigens[i][1], eigens[i][2], eigens[i][3], eigens[i][4], eigens[i][5], eigens[i][6]]
+end
 
-# scatter(survived_particles[:,1],survived_particles[:,3],zcolor=log10.(eigens[:,1].^2 .+ eigens[:,2].^2 .+ eigens[:,3].^2 .+ eigens[:,4].^2), title=L"sum(eigenvalues^2)", colormap=:jet)
+# concatenate survived_particles and eigens_array
+survived_particles = hcat(survived_particles, eigens_array)
+# writedlm("Spear3_eigenvalues.csv", eigens, ',')

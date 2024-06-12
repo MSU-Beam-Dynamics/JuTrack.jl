@@ -42,6 +42,28 @@ function linepass!(line, particles::Beam)
     return nothing
 end
 
+function linepass!(line, particles::Beam, refpts::Vector)
+    # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
+    # Check if the particle is lost by checking the lost_flag
+    np = particles.nmacro
+    particles6 = matrix_to_array(particles.r)
+    if length(particles6) != np*6
+        error("The number of particles does not match the length of the particle array")
+    end
+    saved_particles = []
+    for i in eachindex(line)
+        # ele = line[i]
+        pass!(line[i], particles6, np, particles)        
+        if i in refpts
+            push!(saved_particles, copy(array_to_matrix(particles6, np)))
+        end
+    end
+    rout = array_to_matrix(particles6, np)
+    particles.r = rout
+    return saved_particles
+end
+
+
 function ADlinepass!(line, particles::Beam, changed_idx::Vector, changed_ele::Vector)
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag

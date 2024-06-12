@@ -30,7 +30,8 @@ function f(x)
     vbase=3.42*8.5e6
     ϕs=10.0
     vact=vbase/cos(ϕs*π/180.0)
-    mainRFe=AccelCavity(591e6, vact, 7560.0, π-ϕs*π/180.0)
+    freq = 591e6
+    mainRFe=AccelCavity(freq, vact, 7560.0, π-ϕs*π/180.0)
     tunex, tuney=50.08, 44.14
     αc=3.42/tunex/tunex
     lmap=LongitudinalRFMap(αc, mainRFe)

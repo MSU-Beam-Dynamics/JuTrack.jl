@@ -2,7 +2,7 @@
 # translated from MADX, esr-main-18GeV-2IP
 # translated by Jinyu Wan, 2024-03-11
 using Serialization
-include("../src/JuTrack.jl")
+include("../JuTrack.jl")
 using. JuTrack
 
 clight = 299792458.0 # m/s

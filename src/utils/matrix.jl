@@ -35,7 +35,7 @@ function diag1(A)
     return d
 end
 
-function qr_eigen(A; max_iters=1000, tolerance=1e-10)
+function qr_eigen(A; max_iters=10000, tolerance=1e-10)
     n, m = size(A)
     if n != m
         error("Matrix must be square")
