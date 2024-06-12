@@ -25,6 +25,8 @@ Pkg.instantiate()
 
 # Import the package in Julia
 ```
+using Pkg # optional if you are using another Julia environment
+Pkg.activate(".") # optional if you are using another Julia environment
 include("path-to-the-package/src/JuTrack.jl")
 using .JuTrack
 ```
@@ -56,7 +58,7 @@ To check if the multi-threading is set up correctly, open the Julia REPL, and ty
 println(Threads.nthreads())
 ```
 
-Parallel computing is called with
+Parallel computing is available for multi-particle tracking using:
 ```
 plinepass(beamline, beam)
 ```
@@ -68,9 +70,7 @@ pringpass(beamline, beam, nturns)
 # Known issues
 * This package currently supports forward AD. Backward AD is still under development.
 
-* For large lattice files, Julia vector array will be much more efficiency than Julia tuple. 
-
-* Creating long lattice arrays in the differentiated function may result in an error. To avoid it, please create/load the lattice before the differentiation, and then take it as a constant variable or global variable for the differentiated function. 
+* Creating long lattice vectors in the differentiated function may result in an error. To avoid it, please create/load the lattice before the differentiation, and then take it as a constant variable or global variable for the differentiated function. 
 
 * Current stable version is on Julia 1.9.4. Please up/downgrade the Julia version if there is a issue.
 
