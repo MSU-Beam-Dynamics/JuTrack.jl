@@ -2,7 +2,7 @@
 # translated from AT lattice using translate_AT2Julia.m
 
 using Serialization
-include("../JuTrack.jl")
+include("../../JuTrack.jl")
 using. JuTrack
 
 RF = RFCA(name="RF", len=0.0000000000, volt=0.0, h=372.0000000000, freq=4.7630000575e+08, energy=3.0000000000e+09)
