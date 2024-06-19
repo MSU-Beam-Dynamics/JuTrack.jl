@@ -338,7 +338,7 @@ function findm66_refpts(seq::Vector{AbstractElement}, dp::Float64, order::Int, r
 	return map_list
 end
 
-function Twissline(tin::EdwardsTengTwiss,seq::Vector{AbstractElement}, dp::Float64, order::Int, endindex::Int)
+function twissline(tin::EdwardsTengTwiss,seq::Vector{AbstractElement}, dp::Float64, order::Int, endindex::Int)
 	# obtain M through tracking
     ret = tin
     ss = 0.0
@@ -350,7 +350,7 @@ function Twissline(tin::EdwardsTengTwiss,seq::Vector{AbstractElement}, dp::Float
 	return ret
 end
 
-function Twissline(tin::EdwardsTengTwiss,seq::Vector{AbstractElement}, dp::Float64, order::Int, refpts::Vector{Int})
+function twissline(tin::EdwardsTengTwiss,seq::Vector{AbstractElement}, dp::Float64, order::Int, refpts::Vector{Int})
 	# if !is_increasing(refpts)
 	# 	error("The reference points must be in increasing order.")
 	# end
@@ -376,7 +376,7 @@ function Twissline(tin::EdwardsTengTwiss,seq::Vector{AbstractElement}, dp::Float
 	return ret_vector
 end
 
-function ADTwissline(tin::EdwardsTengTwiss,seq::Vector{AbstractElement}, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector, changed_ele::Vector)
+function ADtwissline(tin::EdwardsTengTwiss,seq::Vector{AbstractElement}, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector, changed_ele::Vector)
 	# if !is_increasing(refpts)
 	# 	error("The reference points must be in increasing order.")
 	# end
@@ -534,7 +534,7 @@ function twissring(seq::Vector{AbstractElement}, dp::Float64, order::Int)
 	twi0 = periodicEdwardsTengTwiss(seq, dp, order)
 	nele = length(seq)
 	refpts = [i for i in 1:nele]
-	twi = Twissline(twi0, seq, dp, order, refpts)
+	twi = twissline(twi0, seq, dp, order, refpts)
 	return twi
 end
 
@@ -542,7 +542,7 @@ function ADtwissring(seq::Vector{AbstractElement}, dp::Float64, order::Int, refp
 	twi0 = ADperiodicEdwardsTengTwiss(seq, dp, order, changed_idx, changed_ele)
 	nele = length(seq)
 	# refpts = [i for i in 1:nele]
-	twi = ADTwissline(twi0, seq, dp, order, refpts, changed_idx, changed_ele)
+	twi = ADtwissline(twi0, seq, dp, order, refpts, changed_idx, changed_ele)
 	return twi
 end
 

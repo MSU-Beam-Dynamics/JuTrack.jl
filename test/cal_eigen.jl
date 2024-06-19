@@ -51,19 +51,33 @@ function TPSA_track_jacobian(amp, angle)
     eigenvalues, eigenvectors = eigen(jaco)
     return eigenvalues, eigenvectors
 end
+function TPSA_track_jacobian(amp, angle)
+    x = amp * cos(angle)
+    y = amp * sin(angle)
+    X = CTPS(x, 1, 6, 10)
+    PX = CTPS(0.0, 2, 6, 10)
+    Y = CTPS(y, 3, 6, 10)
+    PY = CTPS(0.0, 4, 6, 10)
+    Z = CTPS(0.0, 5, 6, 10)
+    DELTA = CTPS(0.0, 6, 6, 10)
+    rin = [X, PX, Y, PY, Z, DELTA]
+    E1 = KQUAD(name="Q1", k1=2.0, len=0.34)
+    ringpass_TPSA!([E1], rin, 1)
+    jaco = zeros(6, 6)
+    for i in 1:6
+        jaco[i, :] = rin[i].map[2:7]
+    end
+    eigenvalues, eigenvectors = eigen(jaco)
+    deteminant = det(jaco)
+    return jaco, deteminant, eigenvalues, eigenvectors
+end
+for i in 1:N_survived
+    angle = atan(survived_particles[i, 3], survived_particles[i, 1])
+    amplitude = sqrt(survived_particles[i, 1]^2 + survived_particles[i, 3]^2)
+    jaco, det, eigenvalues, eigenvectors = TPSA_track_jacobian(amplitude, angle)
+    println("Progress: ", i, "/", N_survived, " Determinant: ", det, "eigen: ", abs.(eigenvalues))
+end
 
-
-# complex eigenvalues
-# eigens = zeros(Complex{Float64}, N_survived, 6)
-# vec = zeros(Complex{Float64}, N_survived, 6, 6)
-# for i in 1:N_survived
-#     angle = atan(survived_particles[i, 3], survived_particles[i, 1])
-#     amplitude = sqrt(survived_particles[i, 1]^2 + survived_particles[i, 3]^2)
-#     eigenvalues,  eigenvectors = TPSA_track_jacobian(amplitude, angle)
-#     eigens[i, :] = eigenvalues
-#     vec[i, :, :] = eigenvectors
-#     println("Progress: ", i, "/", N_survived)
-# end
 
 function normalize(v)
     return v / norm(v)
@@ -73,7 +87,6 @@ function cosine_similarity(v1, v2)
 end
 
 function track_eigen(Jacobian_previous, Jacobian_current)
-    # Calculate eigenvalues and eigenvectors
     eigenvalues_prev, eigenvectors_prev = eigen(Jacobian_previous)
     eigenvalues_curr, eigenvectors_curr = eigen(Jacobian_current)
     
@@ -81,11 +94,9 @@ function track_eigen(Jacobian_previous, Jacobian_current)
     eigenvectors_prev = [normalize(vec) for vec in eachcol(eigenvectors_prev)]
     eigenvectors_curr = [normalize(vec) for vec in eachcol(eigenvectors_curr)]
     
-    # Initialize a list to track matched eigenvalues
     matched_eigenvalues = Complex{Float64}[]
     matched_eigenvectors = zeros(Complex{Float64}, 6, 6)
     
-    # Iterate over previous eigenvectors
     i = 1
     for vec_prev in eigenvectors_prev
         best_match_idx = -1
@@ -110,18 +121,14 @@ function track_eigen(Jacobian_previous, Jacobian_current)
 end
 
 function track_eigenvalues(eigenvectors_prev, Jacobian_current)
-    # Calculate eigenvalues and eigenvectors
     eigenvalues_curr, eigenvectors_curr = eigen(Jacobian_current)
     
-    # Normalize eigenvectors
     eigenvectors_prev = [normalize(vec) for vec in eachcol(eigenvectors_prev)]
     eigenvectors_curr = [normalize(vec) for vec in eachcol(eigenvectors_curr)]
     
-    # Initialize a list to track matched eigenvalues
     matched_eigenvalues = Complex{Float64}[]
     matched_eigenvectors = zeros(Complex{Float64}, 6, 6)
     
-    # Iterate over previous eigenvectors
     for vec_prev in eigenvectors_prev
         best_match_idx = -1
         best_similarity = -Inf
@@ -187,6 +194,5 @@ for i in 1:length(eigens)
     eigens_array[i, :] = [eigens[i][1], eigens[i][2], eigens[i][3], eigens[i][4], eigens[i][5], eigens[i][6]]
 end
 
-# concatenate survived_particles and eigens_array
 survived_particles = hcat(survived_particles, eigens_array)
 # writedlm("Spear3_eigenvalues.csv", eigens, ',')
