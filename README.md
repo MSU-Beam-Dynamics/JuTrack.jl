@@ -48,7 +48,7 @@ LINE = [D1, Q1, D2, B1, D3, Q2, D4, B2, D5, B2, D4, Q2, D3, B1, D2, Q1, D1]
 
 # Particle tracking
 ```
-# Particles' coordinates are represent as a N * 6 matrix, saved in beam.r
+# Particles' coordinates are represented as a N * 6 matrix, saved in beam.r
 particles = rand(10, 6) / 1000
 # Create the beam
 beam = Beam(particles, energy=3.5e9)
@@ -63,26 +63,38 @@ println(beam.r)
 twi = twissring(RING, 0.0, 1)
 ```
 
-# Aotumatic differentiation
+# Automatic differentiation
 ```
-# Obtain derivatives of tracking result w.r.t the initial coordinate x0
-# The warm-up time may be long due to Julia's JIT feature. The computation will be fast after the compilation is done. 
-function tracking(x)
-    beam = Beam([x 0.0 0.0 0.0 0.0 0.0], energy=3.5e9)
-    ringpass!(LINE, beam, 1)
+# Obtain derivatives of tracking result w.r.t the quadrupole strength
+function tracking_wrt_k1(x)
+    D1 = DRIFT(len=1.0)
+    D2 = DRIFT(len=1.0)
+    Q1 = KQUAD(len=1.0, k1=x) 
+    Q2 = KQUAD(len=1.0, k1=0.3)
+    B1 = SBEND(len= 0.6, angle=pi/15.0)
+    B2 = SBEND(len= 0.6, angle=-pi/15.0)
+
+    # Create the lattice as a Julia vector
+    beam = Beam([0.1 0.0 0.0 0.0 0.0 0.0], energy=3.5e9)
+
+    # !!! creating a large lattice in the function may result in an error
+    # !!! create/load the lattice outside of the function if it is large
+    LINE = [D1, Q1, D2, Q2] 
+    linepass!(LINE, beam)
     return beam.r
 end
-x0 = 0.01
-result = autodiff(Forward, tracking, Duplicated, Duplicated(x0, 1.0))
+k1 = -0.9
+results, derivatives = autodiff(Forward, tracking_wrt_k1, Duplicated, Duplicated(k1, 1.0))
 ```
+
 ```
-# obtain 4*4 Jacobian matrix of a lattice of specific initial condition [0.01 0.0 0.01 0.0]
+# Obtain 4*4 Jacobian matrix of a lattice of specific initial condition [0.01 0.0 0.01 0.0],
 function obtain_jacobian(x)
     beam = Beam([x[1] x[2] x[3] x[4] 0.0 0.0], energy=3.5e9)
     ringpass!(LINE, beam, 1)
     return beam.r[1:4]
 end
-g = jacobian(Forward, obtain_jacobian, [0.01, 0.0, 0.01, 0.0], Val(4))
+J = jacobian(Forward, obtain_jacobian, [0.01, 0.0, 0.01, 0.0], Val(4))
 ```
 
 # Parallel computing setting
