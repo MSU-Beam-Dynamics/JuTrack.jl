@@ -51,10 +51,6 @@ LINE = [D1, Q1, D2, B1, D3, Q2, D4, B2, D5, B2, D4, Q2, D3, B1, D2, Q1, D1]
 Particles' coordinates are represented as a N * 6 matrix, saved in beam.r
 ```
 particles = rand(10, 6) / 1000
-```
-
-Create the beam
-```
 beam = Beam(particles, energy=3.5e9)
 ```
 
