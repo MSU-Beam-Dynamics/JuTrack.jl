@@ -87,8 +87,9 @@ function tracking_wrt_k1(x)
 
     beam = Beam([0.1 0.0 0.0 0.0 0.0 0.0], energy=3.5e9)
 
-    # !!! creating a large lattice in the function as following will be slow and may result in an error
-    # !!! create/load the lattice outside of the function if it is large
+    # !!! Creating a large lattice in the function you try to differentiate 
+    # !!! will slow the computation and may result in an error.
+    # !!! Create/load the lattice outside of the function if it is large.
     LINE = [D1, Q1, D2, Q2] 
     linepass!(LINE, beam)
     return beam.r
@@ -97,7 +98,7 @@ k1 = -0.9
 results, derivatives = autodiff(Forward, tracking_wrt_k1, Duplicated, Duplicated(k1, 1.0))
 ```
 
-For large lattice, use it as global variable or const. Inconvenient but necessary.
+For large lattice, use it as global variable or const (inconvenient but necessary).
 Use ADlinepass or ADringpass! for tracking.
 ```
 # calculate the derivatives w.r.t the strength of Q1

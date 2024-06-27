@@ -66,3 +66,41 @@ function optics(Twi)
     dp[:, 4] = [Twi[i].dpy for i in eachindex(Twi)]
     return beta, alpha, gamma, mu, dp
 end
+
+function insert_space_charge(lattice, dphi, a, b, Nl, Nm)
+    # Insert space charge elements into the lattice every dphi phase advance
+    twi = twissring(lattice, 0.0, 1)
+    phi0 = 0.0
+    s0 = 0.0
+    s = spos(lattice)
+    insert_idx = [] 
+    insert_len = []
+
+    if twi[end].dmux < dphi
+        println("The phase advance of the whole ring is less than ", dphi, ", only one space charge element is inserted.")
+        sc = SPACECHARGE(effective_len=s[end], a=a, b=b, Nl=Nl, Nm=Nm)
+        new_lattice = [lattice..., sc]
+        return new_lattice
+    end
+    for i in 1:length(lattice)
+        if twi[i].dmux - phi0 > dphi
+            len = s[i] - s0
+            push!(insert_idx, i)
+            push!(insert_len, len)
+            s0 = s[i]
+            phi0 = twi[i].dmux
+        end
+    end
+
+    new_lattice = []
+    for i in 1:length(lattice)
+        push!(new_lattice, lattice[i])
+        if i in insert_idx
+            num = findfirst(x -> x == i, insert_idx)
+            sc = SPACECHARGE(effective_len=insert_len[num], a=a, b=b, Nl=Nl, Nm=Nm)
+            push!(new_lattice, sc)
+        end
+    end
+    println("Space charge elements are inserted at: ", insert_idx)
+    return new_lattice
+end

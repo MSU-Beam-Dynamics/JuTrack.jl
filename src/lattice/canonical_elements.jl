@@ -246,6 +246,18 @@ function VKICKER(;name="VKicker", len=0.0, ykick=0.0)
     return CORRECTOR(name, len, 0.0, ykick, zeros(6), zeros(6), zeros(6,6), zeros(6,6), "VKICKER")
 end
 
+@kwdef struct SPACECHARGE <: AbstractElement
+    # spectral space charge
+    # this element is treated as an integrated effect of space charge over a length of effective_len
+    name::String = "SPACECHARGE"
+    len::Float64 = 0.0
+    effective_len::Float64 = 0.0
+    Nl::Int64 = 15
+    Nm::Int64 = 15
+    a::Float64 = 10e-3
+    b::Float64 = 10e-3
+    eletype::String = "SPACECHARGE"
+end
 # non-canonical elements
 @kwdef struct QUAD <: AbstractElement
     name::String  = "Quad"                                      # element name  
