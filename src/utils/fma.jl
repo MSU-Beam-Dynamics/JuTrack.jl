@@ -87,11 +87,11 @@ function FMA(RING, beam, nturns)
     alphax = twi[1].alphax
     alphay = twi[1].alphay
 
-    x = zeros(nturn, beam.np)
-    px = zeros(nturn, beam.np)
-    y = zeros(nturn, beam.np)
-    py = zeros(nturn, beam.np)
-    for i in 1:nturn
+    x = zeros(nturns, beam.np)
+    px = zeros(nturns, beam.np)
+    y = zeros(nturns, beam.np)
+    py = zeros(nturns, beam.np)
+    for i in 1:nturns
         x[i,:] = rout[i][:,1] ./ sqrt(betax)
         px[i,:] = -rout[i][:,2] .* sqrt(betax) .- alphax .* x[i]
         y[i,:] = rout[i][:,3] ./ sqrt(betay)
@@ -103,8 +103,8 @@ function FMA(RING, beam, nturns)
     nuy1 = zeros(beam.np)
     nuy2 = zeros(beam.np)
     for i in 1:beam.np
-        nux1[i], nux2[i] = naff(nturn, x[:,i], px[:,i])
-        nuy1[i], nuy2[i] = naff(nturn, y[:,i], py[:,i])
+        nux1[i], nux2[i] = naff(nturns, x[:,i], px[:,i])
+        nuy1[i], nuy2[i] = naff(nturns, y[:,i], py[:,i])
     end
 
     diff_nux = log10.((nux2 .- nux1).^2 .+ (nuy2 .- nuy1).^2)

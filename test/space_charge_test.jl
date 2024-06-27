@@ -55,5 +55,5 @@ end
 beam = Beam(copy(particles), 3.5e9, current=3.0)
 beam1 = Beam(copy(particles), 3.5e9, current=3.0)
 
-diff_nux, nux1, nux2, nuy1, nuy2 = fma(RING, beam, 1000)
-diff_nux1, nux11, nux21, nuy11, nuy21 = fma(new_RING, beam1, 1000)
+diff_nux, nux1, nux2, nuy1, nuy2 = FMA(RING, beam, 1000)
+diff_nux1, nux11, nux21, nuy11, nuy21 = FMA(new_RING, beam1, 1000)
