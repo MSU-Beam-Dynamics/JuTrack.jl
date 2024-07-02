@@ -5,7 +5,7 @@
 # Email: wan@frib.msu.edu
 # Version: 1.0
 # Created Date: 11-01-2023
-# Modified Date: 11-13-2023
+# Modified Date: 07-02-2024
 include("polymap.jl")
 # using StaticArrays
 
@@ -47,7 +47,6 @@ function CTPS(a::T, n::Int, TPS_Dim::Int, Max_TPS_Degree::Int) where T
     if n <= TPS_Dim && n > 0
         terms = binomial(TPS_Dim + Max_TPS_Degree, Max_TPS_Degree)
         map  = zeros(T, terms)
-        # map = zeros(SVector{terms, T})
         map[n+1] = one(T)
         map[1] = a
         polymap = getOrCreatePolyMap(TPS_Dim, Max_TPS_Degree)
@@ -86,11 +85,7 @@ function findindex(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, indexmap::Vector{Int}
     for i in 1:length(indexmap)
         sum[i] = indexmap[i]
     end
-    # sum = copy(indexmap)
-    # sum_buffer = Zygote.Buffer(sum) # Buffer for Zygote
-    # for i in 1:length(sum_buffer)
-    #     sum_buffer[i] = sum[i]
-    # end
+
     for i in 2:dim+1
         if indexmap[i] < 0
             error("The index map has invalid component")
@@ -108,47 +103,6 @@ function findindex(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, indexmap::Vector{Int}
     return result
 end
 
-# function findpower(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, n::Int) where {T, TPS_Dim, Max_TPS_Degree}
-#     if n < ctps.terms
-#         return getindexmap(ctps.polymap[], n)
-#     else
-#         error("The index is out of range")
-#     end
-# end
-
-# function redegree!(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, degree::Int) where {T, TPS_Dim, Max_TPS_Degree}
-#     ctps.degree = min(degree, Max_TPS_Degree)
-#     ctps.terms = binomial(TPS_Dim + ctps.degree, ctps.degree)
-#     new_map = [i <= length(ctps.map) ? ctps.map[i] : zero(T) for i in 1:ctps.terms]
-#     ctps.map = new_map
-# end
-# function redegree(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, degree::Int) where {T, TPS_Dim, Max_TPS_Degree}
-#     degree = min(degree, Max_TPS_Degree)
-#     terms = binomial(TPS_Dim + degree, degree)
-#     new_map = zeros(T, terms)
-#     for i in 1:ctps.terms
-#         new_map[i] = ctps.map[i]
-#     end
-#     # new_map = [i <= length(ctps.map) ? ctps.map[i] : 0.0 for i in 1:terms]
-#     # polymap = getOrCreatePolyMap(TPS_Dim, Max_TPS_Degree)
-#     ctps_new = CTPS{T, TPS_Dim, Max_TPS_Degree}(degree, terms, new_map, ctps.polymap)
-#     return ctps_new
-# end
-# function redegree(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, degree::Int) where {T, TPS_Dim, Max_TPS_Degree}
-#     degree = min(degree, Max_TPS_Degree)
-#     terms = binomial(TPS_Dim + degree, degree)
-#     new_map = zeros(T, terms)
-#     new_map_buffer = Zygote.Buffer(new_map)
-#     for i in 1:ctps.terms
-#         new_map_buffer[i] = ctps.map[i]
-#     end
-#     for i in ctps.terms+1:terms
-#         new_map_buffer[i] = zero(T)
-#     end
-#     new_map = copy(new_map_buffer)
-#     ctps_new = CTPS{T, TPS_Dim, Max_TPS_Degree}(degree, terms, new_map, PolyMap(TPS_Dim, Max_TPS_Degree))
-#     return ctps_new
-# end
 function assign!(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::T, n_var::Int) where {T, TPS_Dim, Max_TPS_Degree}
     if n_var <= TPS_Dim && n_var > 0
         map = ctps.map
@@ -179,12 +133,6 @@ function reassign!(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::T, n_var::Int) whe
     end
 end
 
-# function element(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, ind::Int) where {T, TPS_Dim, Max_TPS_Degree}
-#     if ind < 1 || ind > ctps.terms
-#         error("Element index out of range in CTPS")
-#     end
-#     return ctps.map[ind]
-# end
 
 function element(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, ind::Vector{Int}) where {T, TPS_Dim, Max_TPS_Degree}
     result = findindex(ctps, ind)
@@ -286,11 +234,6 @@ function +(ctps1::CTPS{T, TPS_Dim, Max_TPS_Degree}, ctps2::CTPS{T, TPS_Dim, Max_
         ctps_new.map[i] += ctps2.map[i]
     end
     return ctps_new
-    # ctps_map_buffer = zeros(T, ctps1.terms)
-    # for i in 1:ctps2.terms
-    #     ctps_map_buffer[i] = ctps1.map[i] + ctps2.map[i]
-    # end
-    # return CTPS{T, TPS_Dim, Max_TPS_Degree}(ctps1.degree, ctps1.terms, ctps_map_buffer, ctps1.polymap)
 end
 
 
@@ -310,23 +253,11 @@ function -(ctps1::CTPS{T, TPS_Dim, Max_TPS_Degree}, ctps2::CTPS{T, TPS_Dim, Max_
         ctps_new.map[i] -= ctps2.map[i]
     end
     return ctps_new
-    # ctps_map_buffer = zeros(T, ctps1.terms)
-    # for i in 1:ctps2.terms
-    #     ctps_map_buffer[i] = ctps1.map[i] - ctps2.map[i]
-    # end
-    # return CTPS{T, TPS_Dim, Max_TPS_Degree}(ctps1.degree, ctps1.terms, ctps_map_buffer, ctps1.polymap)
 end
 function -(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::T) where {T, TPS_Dim, Max_TPS_Degree}
     ctps_new = CTPS(ctps)
     ctps_new.map[1] -= a
     return ctps_new
-    # ctps_map_buffer = zeros(T, ctps.terms)
-    # ctps_map_buffer[1] = ctps.map[1] - a
-    # for i in 2:ctps.terms
-    #     ctps_map_buffer[i] = ctps.map[i]
-    # end
-    # ctps_new = CTPS{T, TPS_Dim, Max_TPS_Degree}(ctps.degree, ctps.terms, ctps_map_buffer, ctps.polymap)
-    # return ctps_new
 end
 function -(a::T, ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
     ctps_new = CTPS(ctps)
@@ -335,47 +266,17 @@ function -(a::T, ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_
         ctps_new.map[i] = -ctps_new.map[i]
     end
     return ctps_new
-    # ctps_map_buffer = zeros(T, ctps.terms)
-    # ctps_map_buffer[1] = a - ctps.map[1]
-    # for i in 2:ctps.terms
-    #     ctps_map_buffer[i] = -ctps.map[i]
-    # end
-    # ctps_new = CTPS{T, TPS_Dim, Max_TPS_Degree}(ctps.degree, ctps.terms, ctps_map_buffer, ctps.polymap)
-    # return ctps_new
 end
 function -(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
     ctps_new = CTPS(ctps)
     for i in eachindex(ctps_new.map)
         ctps_new.map[i] = -ctps_new.map[i]
     end
-    # ctps_map_buffer = zeros(T, ctps.terms)
-    # for i in 1:ctps.terms
-    #     ctps_map_buffer[i] = -ctps.map[i]
-    # end
-    # ctps_new = CTPS{T, TPS_Dim, Max_TPS_Degree}(ctps.degree, ctps.terms, ctps_map_buffer, ctps.polymap)
     return ctps_new
 end
 
 # *
 function *(ctps1::CTPS{T, TPS_Dim, Max_TPS_Degree}, ctps2::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
-    # if ctps2.degree == 0
-    #     ctps_map_buffer = zeros(T, ctps1.terms)
-    #     for i in 1:ctps1.terms
-    #         ctps_map_buffer[i] = ctps1.map[i] * ctps2.map[1]
-    #     end
-    #     # map = ctps1.map * ctps2.map[1]
-    #     ctps_new = CTPS{T, TPS_Dim, Max_TPS_Degree}(ctps1.degree, ctps1.terms, ctps_map_buffer, ctps1.polymap)
-    #     return ctps_new
-    # elseif ctps1.degree == 0
-    #     ctps_map_buffer = zeros(T, ctps2.terms)
-    #     for i in 1:ctps2.terms
-    #         ctps_map_buffer[i] = ctps2.map[i] * ctps1.map[1]
-    #     end
-    #     # map = ctps2.map * ctps1.map[1]
-    #     ctps_new = CTPS{T, TPS_Dim, Max_TPS_Degree}(ctps2.degree, ctps2.terms, ctps_map_buffer, ctps2.polymap)
-    #     return ctps_new
-    # end
-
     ctps_new = CTPS(ctps1)
     # ctps_new = redegree(ctps1, ctps1.degree + ctps2.degree)
     ctps_map_buffer = ctps_new.map
@@ -406,18 +307,12 @@ function *(ctps1::CTPS{T, TPS_Dim, Max_TPS_Degree}, ctps2::CTPS{T, TPS_Dim, Max_
         end
     end
     return ctps_new
-    # return CTPS{T, TPS_Dim, Max_TPS_Degree}(ctps_new.degree, ctps_new.terms, ctps_map_buffer, ctps_new.polymap)
 end
 function *(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::T) where {T, TPS_Dim, Max_TPS_Degree}
     ctps_new = CTPS(ctps)
     for i in eachindex(ctps_new.map)
         ctps_new.map[i] *= a
     end
-    # map = zeros(T, length(ctps.map))
-    # for i in eachindex(map)
-    #     map[i] = ctps.map[i] * a
-    # end
-    # ctps_new = CTPS{T, TPS_Dim, Max_TPS_Degree}(ctps.degree, ctps.terms, map, ctps.polymap)
     return ctps_new
 end
 function *(a::T, ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
@@ -430,10 +325,8 @@ function inv(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_
         error("Divide by zero in CTPS")
     end
     temp = CTPS(ctps) - cst(ctps)
-    # sum = CTPS(zero(T), TPS_Dim, Max_TPS_Degree)
     term_by_oder = CTPS(1.0 / ctps.map[1], TPS_Dim, Max_TPS_Degree)
 
-    # sum = sum + term_by_oder
     sum = CTPS(term_by_oder)
     for i in 1:Max_TPS_Degree
         term_by_oder *= -temp/cst(ctps)
@@ -447,14 +340,6 @@ function /(ctps1::CTPS{T, TPS_Dim, Max_TPS_Degree}, ctps2::CTPS{T, TPS_Dim, Max_
         error("Divide by zero in CTPS")
     end
 
-    # if ctps2.degree == 0
-    #     map = ctps1.map
-    #     for i in eachindex(map)
-    #         map[i] /= ctps2.map[1]
-    #     end
-    #     return ctps1
-    # end
-
     return ctps1 * inv(ctps2)
 end
 function /(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::T) where {T, TPS_Dim, Max_TPS_Degree}
@@ -465,11 +350,6 @@ function /(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::T) where {T, TPS_Dim, Max_
     for i in eachindex(ctps_new.map)
         ctps_new.map[i] /= a
     end
-    # ctps_map_buffer = zeros(T, ctps.terms)
-    # for i in eachindex(ctps_map_buffer)
-    #     ctps_map_buffer[i] = ctps.map[i] / a
-    # end
-    # ctps_new = CTPS{T, TPS_Dim, Max_TPS_Degree}(ctps.degree, ctps.terms, ctps_map_buffer, ctps.polymap)
     return ctps_new
 end
 function /(a::T, ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
@@ -489,7 +369,7 @@ function exp(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_
     term_by_oder = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
     sum = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
     for i in 1:Max_TPS_Degree
-        index = 1.0 / factorial(i)
+        index = 1.0 / factorial_double(i)
         term_by_oder = term_by_oder * temp
         sum = sum + (term_by_oder * T(index))
     end
@@ -527,7 +407,7 @@ function sqrt(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS
     sum = term_by_oder/2.0
 
     for i in 2:Max_TPS_Degree
-        index = 1.0 * doublefactorial(2 * i - 3) / doublefactorial(2 * i)
+        index = 1.0 * doublefactorial_double(2 * i - 3) / doublefactorial_double(2 * i)
         term_by_oder = (-temp) * term_by_oder / cst(ctps)
         sum += term_by_oder * index
     end
@@ -590,25 +470,15 @@ function sin(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_
     is_odd_iteration = 1  
     for i in 1:Max_TPS_Degree
         if is_odd_iteration == 1
-            index = cos_a0 * (-1) ^ ((i - 1) / 2) / doublefactorial(i)
+            index = cos_a0 * (-1) ^ ((i - 1) / 2) / factorial_double(i)
         else
-            index = sin_a0 * (-1) ^ (i / 2) / doublefactorial(i)
+            index = sin_a0 * (-1) ^ (i / 2) / factorial_double(i)
         end
         term_by_oder = term_by_oder * temp
         sum = sum + (term_by_oder * index)
 
         is_odd_iteration = -is_odd_iteration 
     end
-
-    # for i in 1:Max_TPS_Degree
-    #     if mod(i, 2) == 1
-    #         index = cos_a0 * (-1) ^ ((i - 1) / 2) / doublefactorial(i)
-    #     else
-    #         index = sin_a0 * (-1) ^ (i / 2) / doublefactorial(i)
-    #     end
-    #     term_by_oder = term_by_oder * temp
-    #     sum = sum + (term_by_oder * index)
-    # end
     sum = sum + sin_a0
     return sum
 end
@@ -626,25 +496,15 @@ function cos(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_
     is_odd_iteration = 1  
     for i in 1:Max_TPS_Degree
         if is_odd_iteration == 1
-            index = sin_a0 * (-1) ^ ((i + 1) / 2) / doublefactorial(i)
+            index = sin_a0 * (-1) ^ ((i + 1) / 2) / factorial_double(i)
         else
-            index = cos_a0 * (-1) ^ (i / 2) / doublefactorial(i)
+            index = cos_a0 * (-1) ^ (i / 2) / factorial_double(i)
         end
         term_by_oder = term_by_oder * temp
         sum = sum + (term_by_oder * index)
     
         is_odd_iteration = -is_odd_iteration  
     end
-    
-    # for i in 1:Max_TPS_Degree
-    #     if mod(i, 2) == 1
-    #         index = sin_a0 * (-1) ^ ((i + 1) / 2) / factorial(i)
-    #     else
-    #         index = cos_a0 * (-1) ^ (i / 2) / factorial(i)
-    #     end
-    #     term_by_oder = term_by_oder * temp
-    #     sum = sum + (term_by_oder * index)
-    # end
     sum = sum + cos_a0
     return sum
 end
@@ -686,9 +546,9 @@ function sinh(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS
     is_odd_iteration = 1  
     for i in 1:Max_TPS_Degree
         if is_odd_iteration == 1
-            index = cosh_a0 / doublefactorial(i)
+            index = cosh_a0 / factorial_double(i)
         else
-            index = sinh_a0 / doublefactorial(i)
+            index = sinh_a0 / factorial_double(i)
         end
         term_by_oder = term_by_oder * temp
         sum = sum + (term_by_oder * index)
@@ -711,9 +571,9 @@ function cosh(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS
     is_odd_iteration = 1
     for i in 1:Max_TPS_Degree
         if is_odd_iteration == 1
-            index = sinh_a0 / doublefactorial(i)
+            index = sinh_a0 / factorial_double(i)
         else
-            index = cosh_a0 / doublefactorial(i)
+            index = cosh_a0 / factorial_double(i)
         end
         term_by_oder = term_by_oder * temp
         sum = sum + (term_by_oder * index)

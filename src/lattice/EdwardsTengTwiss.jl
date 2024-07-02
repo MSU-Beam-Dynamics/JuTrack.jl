@@ -122,17 +122,17 @@ end
 
 
 
-EdwardsTengTwiss(;betax::Float64,betay::Float64,
-			   alfx::Float64=0.0,alfy::Float64=0.0,
+EdwardsTengTwiss(betax::Float64,betay::Float64;
+			   alphax::Float64=0.0,alphay::Float64=0.0,
 			   dx::Float64=0.0,dy::Float64=0.0,
 			   dpx::Float64=0.0,dpy::Float64=0.0,
 			   mux::Float64=0.0,muy::Float64=0.0,
 			   R11::Float64=0.0,R12::Float64=0.0,
 			   R21::Float64=0.0,R22::Float64=0.0,
-			   mode::Int=1)=EdwardsTengTwiss(betax,betay,alfx,alfy,(1.0+alfx^2)/betax,(1.0+alfy^2)/betay,
-														  dx,dpx,dy,dpy,mux,muy,sin(mux),cos(mux),sin(muy),cos(muy),[R11 R12;R21 R22],mode)
-_symplectic_conjugate_2by2(M) = [M[2, 2] -M[1, 2]; -M[2, 1] M[1, 1]]
-function _matrixTransform_2by2(M)
+			   mode::Int=1)=EdwardsTengTwiss(betax,betay,alphax,alphay,(1.0+alphax^2)/betax,(1.0+alphay^2)/betay,
+											dx,dpx,dy,dpy,mux,muy,sin(mux),cos(mux),sin(muy),cos(muy),[R11 R12;R21 R22],mode)
+symplectic_conjugate_2by2(M) = [M[2, 2] -M[1, 2]; -M[2, 1] M[1, 1]]
+function matrixTransform_2by2(M)
 	m11 = M[1, 1]
 	m21 = M[2, 1]
 	m12 = M[1, 2]
@@ -149,12 +149,12 @@ function twissPropagate(tin::EdwardsTengTwiss,M::Matrix{Float64})
 	D=@view M[3:4,3:4]
 
 	R1=tin.R
-	_R1=_symplectic_conjugate_2by2(R1)
+	_R1=symplectic_conjugate_2by2(R1)
 	if tin.mode == 1
 		X=A-B*R1
 		t=det1(X)
 			if t>0.1
-				R=(D*R1-C)*_symplectic_conjugate_2by2(X)
+				R=(D*R1-C)*symplectic_conjugate_2by2(X)
 				R/=t
 				X/=sqrt(t)
 				Y=D+C*_R1
@@ -165,7 +165,7 @@ function twissPropagate(tin::EdwardsTengTwiss,M::Matrix{Float64})
 				X/=sqrt(det1(X))
 				Y=B+A*_R1
 				t=det1(Y)
-				R=-(D+C*_R1)*_symplectic_conjugate_2by2(Y)
+				R=-(D+C*_R1)*symplectic_conjugate_2by2(Y)
 				R/=t
 				Y/=sqrt(t)
 				mode=2
@@ -174,7 +174,7 @@ function twissPropagate(tin::EdwardsTengTwiss,M::Matrix{Float64})
 		X=B+A*_R1
 		t=det1(X)
 			if t>0.1
-				R=-(D+C*_R1)*_symplectic_conjugate_2by2(X)
+				R=-(D+C*_R1)*symplectic_conjugate_2by2(X)
 				R/=t
 				X/=sqrt(t)
 				Y=C-D*R1
@@ -185,7 +185,7 @@ function twissPropagate(tin::EdwardsTengTwiss,M::Matrix{Float64})
 				X/=sqrt(det1(X))
 				Y=A-B*R1
 				t=det1(Y)
-				R=(D*R1-C)*_symplectic_conjugate_2by2(Y)
+				R=(D*R1-C)*symplectic_conjugate_2by2(Y)
 				R/=t
 				Y/=sqrt(t)
 				mode=2
@@ -197,8 +197,8 @@ function twissPropagate(tin::EdwardsTengTwiss,M::Matrix{Float64})
 		error("Invalid mode.")
 	end
 
-	Nx=_matrixTransform_2by2(X)
-	Ny=_matrixTransform_2by2(Y)
+	Nx=matrixTransform_2by2(X)
+	Ny=matrixTransform_2by2(Y)
 	v1=Nx*[tin.betax;tin.alphax;tin.gammax]
 	v2=Ny*[tin.betay;tin.alphay;tin.gammay]
 	eta=(@view M[1:4,1:4])*[tin.dx,tin.dpx,tin.dy,tin.dpy]+(@view M[1:4,6])
@@ -431,9 +431,9 @@ function periodicEdwardsTengTwiss(seq::Vector{AbstractElement}, dp, order::Int)
 	B=@view M[1:2,3:4]
 	C=@view M[3:4,1:2]
 	D=@view M[3:4,3:4]
-	invalid_ret=EdwardsTengTwiss(;betax=1.0,betay=1.0,mode=0)
+	invalid_ret=EdwardsTengTwiss(1.0,1.0,mode=0)
 
-	Bbar_and_C=_symplectic_conjugate_2by2(B)+C
+	Bbar_and_C=symplectic_conjugate_2by2(B)+C
 	t1=0.5*(tr(A)-tr(D))
 	Δ=t1*t1+det1(Bbar_and_C)
 	Δ<0.0 && (println(stderr,"Failed to decouple periodic transfer matrix. The linear matrix is unstable.");return invalid_ret)
@@ -448,7 +448,7 @@ function periodicEdwardsTengTwiss(seq::Vector{AbstractElement}, dp, order::Int)
 	end
 
 	X=A-B*R
-	Y=D+C*_symplectic_conjugate_2by2(R)
+	Y=D+C*symplectic_conjugate_2by2(R)
 
 	# It should be equal to 1
 	(det1(X)<Float64(0.9) || det1(Y)<Float64(0.9))  && (println(stderr,"Failed to decouple the periodic transfer matrix with mode 1.");return invalid_ret)
@@ -477,9 +477,9 @@ function ADperiodicEdwardsTengTwiss(seq::Vector{AbstractElement}, dp::Float64, o
 	B=@view M[1:2,3:4]
 	C=@view M[3:4,1:2]
 	D=@view M[3:4,3:4]
-	invalid_ret=EdwardsTengTwiss(;betax=1.0,betay=1.0,mode=0)
+	invalid_ret=EdwardsTengTwiss(1.0,1.0,mode=0)
 
-	Bbar_and_C=_symplectic_conjugate_2by2(B)+C
+	Bbar_and_C=symplectic_conjugate_2by2(B)+C
 	t1=0.5*(tr(A)-tr(D))
 	Δ=t1*t1+det1(Bbar_and_C)
 	if Δ<0.0
@@ -497,7 +497,7 @@ function ADperiodicEdwardsTengTwiss(seq::Vector{AbstractElement}, dp::Float64, o
 	end
 
 	X=A-B*R
-	Y=D+C*_symplectic_conjugate_2by2(R)
+	Y=D+C*symplectic_conjugate_2by2(R)
 
 	# It should be equal to 1
 	if (det1(X)<Float64(0.9) || det1(Y)<Float64(0.9))
@@ -567,7 +567,7 @@ function normalMatrix(tin::EdwardsTengTwiss)
 		0.0 0.0 0.0 0.0 0.0 1.0]
 	λ=1.0/sqrt(abs(1.0+det1(tin.R)))
 	R=λ*tin.R
-	_R=_symplectic_conjugate_2by2(R)
+	_R=symplectic_conjugate_2by2(R)
 	O=[0.0 0.0;0.0 0.0]
 	U=[λ 0.0;0.0 λ]
 	if tin.mode==1

@@ -1,6 +1,7 @@
 function calculate_K(beam, I)
     m0 = beam.mass * 1.782662e-36 # kg
-    K = beam.charge * I / (2.0 * pi * epsilon_0 * m0 * speed_of_light^3 * beam.beta^3 * beam.gamma^3)
+    charge = abs(beam.charge * charge_e)
+    K = charge * I / (2.0 * pi * epsilon_0 * m0 * speed_of_light^3 * beam.beta^3 * beam.gamma^3)
     return K
 end
 
@@ -87,3 +88,21 @@ function pass!(ele::SPACECHARGE, r_in::Array{Float64,1}, num_particles::Int64, p
 end
 
 
+function pass_TPSA!(ele::SPACECHARGE, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) where {T, TPS_Dim, Max_TPS_Degree}
+    println("TPSA is not implemented for space charge yet.")
+    return nothing
+end
+
+function pass_P!(ele::SPACECHARGE, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+    println("Parallel computing is not implemented for space charge yet.")
+    lost_flags = particles.lost_flag
+    I = particles.current
+    dx = ele.a / ele.Nl
+    dy = ele.b / ele.Nm
+    v = speed_of_light * sqrt(1.0 - 1.0 / particles.gamma^2)
+    dt = ele.effective_len / v
+    K = calculate_K(particles, I)
+    
+    space_charge!(r_in, K, ele.Nl, ele.Nm, dx, dy, ele.a, ele.b, num_particles, dt)
+    return nothing
+end

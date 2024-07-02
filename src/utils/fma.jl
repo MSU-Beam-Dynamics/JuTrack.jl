@@ -79,9 +79,9 @@ function FMA(RING, beam, nturns)
     # RING: lattice
     # beam: Beam object. Avoid zero initial coordinates.
     # nturns: number of turns
-    rout = ringpass!(RING, beam, nturns, true)
-
     twi = twissring(RING, 0.0, 1)
+    rout = ringpass!(RING, beam, nturns, true)
+    
     betax = twi[1].betax
     betay = twi[1].betay
     alphax = twi[1].alphax

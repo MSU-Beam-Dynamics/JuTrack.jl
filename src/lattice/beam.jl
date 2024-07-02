@@ -32,7 +32,7 @@ function Beam(r::Matrix{Float64}, energy::Float64; np::Int=size(r, 1), charge::F
         emittance::Vector{Float64}=zeros(Float64, 3), centroid::Vector{Float64}=zeros(Float64, 6), T0::Float64=0.0, znbin::Int=100, current::Float64=0.0)  
     nmacro = size(r, 1)
     lost_flag = zeros(Int, nmacro)
-    gamma = energy / mass
+    gamma = (energy + mass) / mass
     beta = sqrt(1.0 - 1.0 / gamma^2)
     classrad0=charge*charge/(atn*mass)/4/pi/55.26349406*1e-6
     radconst=4*pi/3*classrad0/mass/mass/mass
@@ -45,7 +45,7 @@ function Beam(r::Matrix{Float64}; energy::Float64=1e9,np::Int=size(r, 1), charge
         emittance::Vector{Float64}=zeros(Float64, 3), centroid::Vector{Float64}=zeros(Float64, 6), T0::Float64=0.0, znbin::Int=100, current::Float64=0.0)
     nmacro = size(r, 1)
     lost_flag = zeros(Int, nmacro)
-    gamma = energy / mass
+    gamma = (energy + mass) / mass
     beta = sqrt(1.0 - 1.0 / gamma^2)
     classrad0=charge*charge/(atn*mass)/4/pi/55.26349406*1e-6
     radconst=4*pi/3*classrad0/mass/mass/mass
@@ -58,7 +58,7 @@ function Beam(;r::Matrix{Float64}=zeros(Float64, 1,6), energy::Float64=1e9, np::
         emittance::Vector{Float64}=zeros(Float64, 3), centroid::Vector{Float64}=zeros(Float64, 6), T0::Float64=0.0, znbin::Int=100, current::Float64=0.0)
     nmacro = size(r, 1)
     lost_flag = zeros(Int, nmacro)
-    gamma = energy / mass
+    gamma = (energy + mass) / mass
     beta = sqrt(1.0 - 1.0 / gamma^2)
     classrad0=charge*charge/(atn*mass)/4/pi/55.26349406*1e-6
     radconst=4*pi/3*classrad0/mass/mass/mass
@@ -72,7 +72,7 @@ function Beam(energy::Float64, np::Int, nmacro::Int; charge::Float64=-1.0, mass:
     emittance::Vector{Float64}=zeros(Float64, 3), centroid::Vector{Float64}=zeros(Float64, 6), T0::Float64=0.0, znbin::Int=100, current::Float64=0.0)
     r = zeros(Float64, nmacro, 6)
     lost_flag = zeros(Int, nmacro)
-    gamma = energy / mass
+    gamma = (energy + mass) / mass
     beta = sqrt(1.0 - 1.0 / gamma^2)
     classrad0=charge*charge/(atn*mass)/4/pi/55.26349406*1e-6
     radconst=4*pi/3*classrad0/mass/mass/mass
@@ -83,6 +83,15 @@ function Beam(energy::Float64, np::Int, nmacro::Int; charge::Float64=-1.0, mass:
 end
 
 function Beam(beam::Beam)
-    return Beam(beam.r, beam.np, beam.nmacro, beam.energy, beam.lost_flag, beam.charge, beam.mass, beam.gamma, beam.beta, beam.atomnum, beam.classrad0, beam.radconst, beam.T0, beam.nturn, beam.znbin, beam.inzindex, beam.zhist, beam.zhist_edges, beam.temp1, beam.temp2, beam.temp3, beam.temp4, beam.temp5, beam.emittance, beam.centroid, beam.moment2nd, beam.beamsize, beam.current)
+    r = copy(beam.r)
+    lost_flag = copy(beam.lost_flag)
+    inzindex = copy(beam.inzindex)
+    zhist = copy(beam.zhist)
+    zhist_edges = copy(beam.zhist_edges)
+    emittance = copy(beam.emittance)
+    centroid = copy(beam.centroid)
+    moment2nd = copy(beam.moment2nd)
+    beamsize = copy(beam.beamsize)
+    return Beam(r, beam.np, beam.nmacro, beam.energy, lost_flag, beam.charge, beam.mass, beam.gamma, beam.beta, beam.atomnum, beam.classrad0, beam.radconst, beam.T0, beam.nturn, beam.znbin, inzindex, zhist, zhist_edges, beam.temp1, beam.temp2, beam.temp3, beam.temp4, beam.temp5, emittance, centroid, moment2nd, beamsize, beam.current)
 end
 

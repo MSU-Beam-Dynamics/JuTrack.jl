@@ -11,7 +11,6 @@ function twiss_test(xx)
     # we don't suggest to create a long lattice inside the function. Use twiss_test(ring, xx) instead.
     # the ring can be set as Const in autodiff function
     # or use global variable 
-    global SSRF
     changed_idx = findelem(SSRF, :name, "QL1")
     changed_elems = [KQUAD(len=SSRF[changed_idx[1]].len, k1=xx[1]) for i in 1:length(changed_idx)]
     # twiss_in = EdwardsTengTwiss(betax=1.0,betay=2.0)

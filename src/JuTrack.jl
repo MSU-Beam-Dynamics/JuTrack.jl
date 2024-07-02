@@ -8,7 +8,8 @@ const m_p = 938.27208816e6
 const m_goldion = 931.49410242e6 # charge 79, atomic number 197
 const CGAMMA =	8.846056192e-05
 const epsilon_0 = 8.854187817e-12
-const speed_of_light = 2.99792458e8
+const speed_of_light = 2.99792458e8 # m/s
+const charge_e = 1.602176634e-19 # C
 use_exact_Hamiltonian = 0
 
 include("TPSA/TPSA.jl")

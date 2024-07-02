@@ -5,20 +5,24 @@
 # Email: wan@frib.msu.edu
 # Version: 1.0
 # Created Date: 11-01-2023
-# Modified Date: 11-06-2023
+# Modified Date: 07-02-2024
 
-# function factorial(n::Int)
-#     if n < 0
-#         return 0
-#     end
-#     return [1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880, 3628800, 39916800, 479001600][n + 1]
-# end
-
-function doublefactorial(n::Int)
-    if n < 0
-        return 0.0
+function factorial_double(n::Int)
+    # factorial function for double precision
+    if n <= 1
+        return 1.0
+    else
+        return n * factorial_double(n - 1)
     end
-    return [1.0, 1.0, 2.0, 6.0, 24.0, 120.0, 720.0, 5040.0, 40320.0, 362880.0, 3628800.0, 39916800.0, 479001600.0][n + 1]
+end
+
+function doublefactorial_double(n::Int)
+    # double factorial function for double precision
+    if n <= 1
+        return 1.0
+    else
+        return n * doublefactorial_double(n - 2)
+    end
 end
 
 function binomial(n::Int, m::Int)
@@ -35,18 +39,4 @@ function binomial(n::Int, m::Int)
     else
         return (n * binomial(n - 1, ml - 1)) ÷ ml
     end
-end
-
-
-function gcd(a::T, b::T) where T
-    b == 0 ? a : gcd(b, a % b)
-end
-
-function fraction_reduction(a::T, b::T) where T
-    if a == 0 || b == 0 
-        return
-    end
-    temp = gcd(abs(a), abs(b))
-    a /= temp
-    b /= temp
 end
