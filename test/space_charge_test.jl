@@ -1,8 +1,9 @@
 include("../src/JuTrack.jl")
 using .JuTrack
 using Distributions, Plots
+using ProgressMeter
 include("../src/demo/ssrf_ring.jl")
-RING = ssrf(-1.063770, 0)
+# RING = ssrf(-1.063770, 0)
 
 function insert_space_charge(lattice, dphi, a, b, Nl, Nm)
     twi = twissring(lattice, 0.0, 1)
@@ -42,7 +43,7 @@ function insert_space_charge(lattice, dphi, a, b, Nl, Nm)
 end
 
 
-new_RING = insert_space_charge(RING, pi/4, 10e-3, 10e-3, 15, 15)
+# new_RING = insert_space_charge(RING, pi/4, 10e-3, 10e-3, 15, 15)
 
 D1 = DRIFT(len=0.2)
 D2 = DRIFT(len=0.4)
@@ -64,12 +65,12 @@ SC_Q2 = SPACECHARGE(effective_len=0.1, a=a, b=b, Nl=nl, Nm=nm)
 line = [D1, Q1, D2, Q2, D3]
 line_sc = [D1, SC_D1, Q1, SC_Q1, D2, SC_D2, Q2, SC_Q2, D3, SC_D3]
 
-beam = Beam(zeros(5000, 6), energy=1.0e9, current=200.0, mass=m_p, charge=1.0, emittance=[1e-6, 1e-6, 0.0])
+beam = Beam(zeros(10000, 6), energy=1.0e9, current=200.0, mass=m_p, charge=1.0, emittance=[1e-6, 1e-6, 0.0])
 
 beta = beam.beta
 gamma = beam.gamma
 emit_norm = 1e-6
-emit_phys = emit_norm / (beta * gamma)
+emit_phys = emit_norm # / (beta * gamma)
 beam.emittance = [emit_phys, emit_phys, 0.0]
 
 
@@ -86,37 +87,56 @@ initilize_6DGaussiandist!(beam, opt, lmap)
 beam1 = Beam(beam)
 
 
-N = 1000
-new_emit = zeros(N, 3)
-new_emit1 = zeros(N, 3)
+N = 200000
+new_emit = zeros(N+1, 3)
+new_emit1 = zeros(N+1, 3)
+
+println("Start tracking")
+prog = Progress(N)
 for i in 1:N
+    # println("Turn: ", i)
+    if i == 1
+        get_emittance!(beam)
+        get_emittance!(beam1)
+        new_emit[i, :] = beam.emittance
+        new_emit1[i, :] = beam1.emittance
+    end
     linepass!(line, beam)
     linepass!(line_sc, beam1)
     get_emittance!(beam)
     get_emittance!(beam1)
-    new_emit[i, :] = beam.emittance
-    new_emit1[i, :] = beam1.emittance
+    new_emit[i+1, :] = beam.emittance
+    new_emit1[i+1, :] = beam1.emittance
+    next!(prog)
 end
 
-plot(layout = (1, 2), legend = false, size = (1000, 400))
-plot!(new_emit[:, 1].*1e6, title = "x emit", xlabel = "turns", ylabel = "emit (mm*mrad)", subplot = 1)
-plot!(new_emit[:, 2].*1e6, title = "y emit", xlabel = "turns", ylabel = "emit (mm*mrad)", subplot = 2)
-plot!(new_emit1[:, 1].*1e6, title = "x emit", xlabel = "turns", ylabel = "emit (mm*mrad)", subplot = 1)
-plot!(new_emit1[:, 2].*1e6, title = "y emit", xlabel = "turns", ylabel = "emit (mm*mrad)", subplot = 2)
+# using DelimitedFiles
+# # writedlm("emit.txt", new_emit)
+# new_emit = readdlm("emit.txt")
 
-# # Extract x, px, y, py
-# x = beam.r[:, 1]
-# px = beam.r[:, 2]
-# y = beam.r[:, 3]
-# py = beam.r[:, 4]
-# x1 = beam1.r[:, 1]
-# px1 = beam1.r[:, 2]
-# y1 = beam1.r[:, 3]
-# py1 = beam1.r[:, 4]
+# p1=plot(0:200, new_emit[1:100:end, 1].*1e6, title = "x emit", xlabel = "turns*100", ylabel = "emit (mm*mrad)", label = "without SC")
+# plot!(0:200, new_emit1[1:100:end, 1].*1e6, title = "x emit", xlabel = "turns*100", ylabel = "emit (mm*mrad)",  label = "with SC")
+# p2=plot(0:200, new_emit1[1:100:end, 2].*1e6, title = "y emit", xlabel = "turns*100", ylabel = "emit (mm*mrad)", label = "with SC")
+# plot!(0:200, new_emit[1:100:end, 2].*1e6, title = "y emit", xlabel = "turns*100", ylabel = "emit (mm*mrad)", label = "without SC")
+# plot(p1, p2, layout = (1, 2))
 
-# plot(layout = (2, 2), legend = false)
+using PyCall
+np = pyimport("numpy")
+plt = pyimport("matplotlib.pyplot")
 
-# plot!(x, px, seriestype = :scatter, subplot = 1, title = "x vs px", xlabel = "x", ylabel = "px", markersize = 1.0)
-# plot!(y, py, seriestype = :scatter, subplot = 2, title = "y vs py", xlabel = "y", ylabel = "py", markersize = 1.0)
-# plot!(x1, px1, seriestype = :scatter, subplot = 3, title = "x vs px", xlabel = "x", ylabel = "px", markersize = 1.0)
-# plot!(y1, py1, seriestype = :scatter, subplot = 4, title = "y vs py", xlabel = "y", ylabel = "py", markersize = 1.0)
+plt.figure(figsize=(9, 3))
+plt.subplot(1, 2, 1)
+plt.plot(np.arange(10001), new_emit[:, 1].*1e6, label="without SC")
+plt.plot(np.arange(10001), new_emit1[:, 1].*1e6, label="with SC")
+plt.xlabel("turns*100")
+plt.ylabel("emit (mm*mrad)")
+plt.title("x emit")
+plt.legend()
+plt.subplot(1, 2, 2)
+plt.plot(np.arange(10001), new_emit[:, 2].*1e6, label="without SC")
+plt.plot(np.arange(10001), new_emit1[:, 1].*1e6, label="with SC")
+plt.xlabel("turns")
+plt.ylabel("emit (mm*mrad)")
+plt.title("y emit")
+plt.legend()
+plt.show()

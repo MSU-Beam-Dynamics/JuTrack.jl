@@ -278,9 +278,7 @@ end
 # *
 function *(ctps1::CTPS{T, TPS_Dim, Max_TPS_Degree}, ctps2::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
     ctps_new = CTPS(ctps1)
-    # ctps_new = redegree(ctps1, ctps1.degree + ctps2.degree)
     ctps_map_buffer = ctps_new.map
-    # ctps_map_buffer = zeros(T, length(ctps_new.map))
     for i in eachindex(ctps_map_buffer)
         ctps_map_buffer[i] = 0.0
     end
@@ -301,7 +299,6 @@ function *(ctps1::CTPS{T, TPS_Dim, Max_TPS_Degree}, ctps2::CTPS{T, TPS_Dim, Max_
             for k in 1:TPS_Dim+1
                 temp[k] = temp1[k] + temp2[k]
             end
-            # temp = temp1 + temp2
             index = findindex(ctps_new, temp)
             ctps_map_buffer[index] += ctps1.map[i] * ctps2.map[j]
         end
