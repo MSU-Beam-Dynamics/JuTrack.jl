@@ -3,20 +3,19 @@ using. JuTrack
 # Enzyme.API.runtimeActivity!(true)
 
 # an simple example that optimize the transfer matrix of a ring
+Dr = DRIFT(name="Dr", len=0.5)
+HalfDr = DRIFT(name="HalfDr", len=0.25)
+p2Dr = DRIFT(name="p2Dr", len=0.2)
+SF = KSEXT(name="SF", len=0.1, k2=1.0)
+SD = KSEXT(name="SD", len=0.1, k2=-1.0)
+B1 = SBEND(name="B", len= 1.0, angle=2*pi/40.0)
+Q1 = KQUAD(name="Q1", len=0.5, k1=1.2) # optimized k1 starting from -1.0
+Q2 = KQUAD(name="Q2", len=0.5, k1=-1.2)
 
-D1 = DRIFT(len=1.0)
-B1 = SBEND(len= 1.0, angle=pi/6.0)
-Q1 = KQUAD(len=1.0, k1=-0.9325169994516977) # optimized k1 starting from -1.0
-Q2 = KQUAD(len=1.0, k1=0.3)
+cell = [HalfDr, B1, p2Dr, SF, p2Dr, Q1, Dr, B1, p2Dr, SD, p2Dr, Q2, HalfDr]
+ring = [cell..., cell..., cell..., cell..., cell..., cell..., cell..., cell..., cell..., cell...,
+        cell..., cell..., cell..., cell..., cell..., cell..., cell..., cell..., cell..., cell...]
 
-cell = [D1, B1, Q1, B1, Q2, B1, Q1, B1, D1]
-ring = [D1, B1, Q1, B1, Q2, B1, Q1, B1, D1, 
-        D1, B1, Q1, B1, Q2, B1, Q1, B1, D1, 
-        D1, B1, Q1, B1, Q2, B1, Q1, B1, D1]
-# particles = [0.001 0.0001 0.0 0.0 0.0 0.0; 0.0 0.0 0.0 0.0 0.0 0.0]
-# beam = Beam(particles)
-# linepass!(ring, beam)
-# println(beam.r)
 
 
 function f1(k, ring)

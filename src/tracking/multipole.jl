@@ -162,7 +162,7 @@ function StrMPoleSymplectic4Pass!(r::Array{Float64,1}, le::Float64, A::Array{Flo
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1]) || isinf(r6[1])
+            if maximum(abs.(r6)) > CoordLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end
@@ -259,7 +259,7 @@ function StrMPoleSymplectic4RadPass!(r::Array{Float64,1}, le::Float64, A::Array{
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1]) || isinf(r6[1])
+            if maximum(abs.(r6)) > CoordLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end
@@ -473,7 +473,7 @@ function StrMPoleSymplectic4Pass_P!(r::Array{Float64,1}, le::Float64, A::Array{F
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1]) || isinf(r6[1])
+            if maximum(abs.(r6)) > CoordLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end
@@ -585,7 +585,7 @@ function StrMPoleSymplectic4RadPass_P!(r::Array{Float64,1}, le::Float64, A::Arra
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if abs(r6[1]) > CoordLimit || abs(r6[2]) > AngleLimit || isnan(r6[1]) || isinf(r6[1])
+            if maximum(abs.(r6)) > CoordLimit || isnan(r6[1])
                 lost_flags[c] = 1
             end
         end
@@ -705,27 +705,3 @@ function pass_P!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, partic
     end
     return nothing
 end
-
-# function pass_P!(ele::thinMULTIPOLE, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
-#     # ele: thinMULTIPOLE
-#     # r_in: 6-by-num_particles array
-#     # num_particles: number of particles
-#     lost_flags = particles.lost_flag
-#     PolynomB = zeros(4)
-#     E0 = particles.energy
-
-#         PolynomB[1] = ele.PolynomB[1]
-#         PolynomB[2] = ele.PolynomB[2] 
-#         PolynomB[3] = ele.PolynomB[3] / 2.0
-#         PolynomB[4] = ele.PolynomB[4] / 6.0
-#         if ele.rad == 0
-#             StrMPoleSymplectic4Pass_P!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-#                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-#                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
-#         else
-#             StrMPoleSymplectic4RadPass_P!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-#                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-#                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
-#         end
-#     return nothing
-# end

@@ -53,7 +53,7 @@ end
 
 #     return philm, gamma2lm, rholm
 # end
-function calculate_philm(rin, Nl, Nm, dx, dy, a, b, Np)
+function calculate_philm(rin, Nl, Nm, dx, dy, a, b, Np, lost_flags)
     philm = zeros(Nl, Nm)
     gamma2lm = zeros(Nl, Nm)
     for i in 1:Nl
@@ -62,6 +62,9 @@ function calculate_philm(rin, Nl, Nm, dx, dy, a, b, Np)
             bm = j * pi / b
             gamma2lm[i, j] = al^2 + bm^2
             for k in 1:Np
+                if lost_flags[k] == 1
+                    continue
+                end
                 philm[i, j] += sin(al * rin[(k-1)*6 + 1]) * sin(bm * rin[(k-1)*6 + 3]) / gamma2lm[i, j]
             end
         end
@@ -100,8 +103,8 @@ end
 #     r_in[2:6:end] .-= dt * 4 * pi * K * (4 / (a * b * Np)) * px_term
 #     r_in[4:6:end] .-= dt * 4 * pi * K * (4 / (a * b * Np)) * py_term
 # end
-function space_charge!(r_in, K, Nl, Nm, dx, dy, a, b, Np, dt)
-    philm, gamma2lm = calculate_philm(r_in, Nl, Nm, dx, dy, a, b, Np)
+function space_charge!(r_in, K, Nl, Nm, dx, dy, a, b, Np, dt, lost_flags)
+    philm, gamma2lm = calculate_philm(r_in, Nl, Nm, dx, dy, a, b, Np, lost_flags)
     term1 = zeros(Np)
     term2 = zeros(Np)
 
@@ -131,7 +134,7 @@ function pass!(ele::SPACECHARGE, r_in::Array{Float64,1}, num_particles::Int64, p
     K = calculate_K(particles, I)
     m0 = particles.mass * 1.782662e-36 # kg
     # p0 = particles.gamma * particles.beta * m0 * speed_of_light
-    space_charge!(r_in, K, ele.Nl, ele.Nm, dx, dy, ele.a, ele.b, num_particles, dt)
+    space_charge!(r_in, K, ele.Nl, ele.Nm, dx, dy, ele.a, ele.b, num_particles, dt, lost_flags)
     return nothing
 end
 
@@ -142,7 +145,7 @@ function pass_TPSA!(ele::SPACECHARGE, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degr
 end
 
 function pass_P!(ele::SPACECHARGE, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
-    println("Parallel computing is not implemented for space charge yet.")
+    # println("Parallel computing is not implemented for space charge yet.")
     lost_flags = particles.lost_flag
     I = particles.current
     dx = ele.a / ele.Nl
@@ -153,6 +156,6 @@ function pass_P!(ele::SPACECHARGE, r_in::Array{Float64,1}, num_particles::Int64,
     # convert the mass from eV to kg
     m0 = particles.mass * 1.782662e-36 # kg
     # p0 = particles.gamma * particles.beta * m0 * speed_of_light
-    space_charge!(r_in, K, ele.Nl, ele.Nm, dx, dy, ele.a, ele.b, num_particles, dt)
+    space_charge!(r_in, K, ele.Nl, ele.Nm, dx, dy, ele.a, ele.b, num_particles, dt, lost_flags)
     return nothing
 end

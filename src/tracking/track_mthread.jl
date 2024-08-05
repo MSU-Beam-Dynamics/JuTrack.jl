@@ -24,4 +24,15 @@ function pringpass!(line::Vector{AbstractElement}, particles::Beam, nturn::Int)
     return nothing
 end
 
-
+function pringpass!(line, particles::Beam, nturn::Int, save::Bool)
+    # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
+    # Check if the particle is lost by checking the lost_flag
+    save_beam = []
+    for i in 1:nturn
+        plinepass!(line, particles)    
+        if save
+            push!(save_beam, copy(particles.r))
+        end
+    end
+    return save_beam
+end

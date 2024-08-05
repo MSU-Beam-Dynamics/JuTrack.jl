@@ -2,6 +2,8 @@ include("../src/JuTrack.jl")
 using .JuTrack
 using Distributions, Plots
 using ProgressMeter
+using DelimitedFiles
+
 include("../src/demo/ssrf_ring.jl")
 # RING = ssrf(-1.063770, 0)
 
@@ -48,13 +50,17 @@ end
 D1 = DRIFT(len=0.2)
 D2 = DRIFT(len=0.4)
 D3 = DRIFT(len=0.2)
-Q1 = KQUAD(len=0.1, k1=29.6)
-Q2 = KQUAD(len=0.1, k1=-29.6)
+Q1 = QUAD(len=0.1, k1=29.037)
+Q2 = QUAD(len=0.1, k1=-29.037)
+line = [D1, Q1, D2, Q2, D3]
+M66 = findm66(line, 0.0, 1)
+phase = acos((M66[1, 1] + M66[2, 2]) / 2)
+println("The phase advance of the whole ring is ", phase * 180 / pi, " degree.")
 
-a = 13e-3
-b = 13e-3
-nl = 12
-nm = 12
+a = 10e-3
+b = 10e-3
+nl = 15
+nm = 15
 SC_D1 = SPACECHARGE(effective_len=0.2, a=a, b=b, Nl=nl, Nm=nm)
 SC_D2 = SPACECHARGE(effective_len=0.4, a=a, b=b, Nl=nl, Nm=nm)
 SC_D3 = SPACECHARGE(effective_len=0.2, a=a, b=b, Nl=nl, Nm=nm)
@@ -62,15 +68,17 @@ SC_Q1 = SPACECHARGE(effective_len=0.1, a=a, b=b, Nl=nl, Nm=nm)
 SC_Q2 = SPACECHARGE(effective_len=0.1, a=a, b=b, Nl=nl, Nm=nm)
 
 
-line = [D1, Q1, D2, Q2, D3]
+
+
+
 line_sc = [D1, SC_D1, Q1, SC_Q1, D2, SC_D2, Q2, SC_Q2, D3, SC_D3]
 
-beam = Beam(zeros(10000, 6), energy=1.0e9, current=200.0, mass=m_p, charge=1.0, emittance=[1e-6, 1e-6, 0.0])
+beam = Beam(zeros(50000, 6), energy=1.0e9, current=450.0, mass=m_p, charge=1.0, emittance=[1e-6, 1e-6, 0.0])
 
 beta = beam.beta
 gamma = beam.gamma
 emit_norm = 1e-6
-emit_phys = emit_norm # / (beta * gamma)
+emit_phys = emit_norm  / (beta * gamma)
 beam.emittance = [emit_phys, emit_phys, 0.0]
 
 
@@ -82,14 +90,17 @@ mainRFe=AccelCavity(freq, vact, 7560.0, π-ϕs*π/180.0)
 tunex, tuney=50.08, 44.14
 αc=3.42/tunex/tunex
 lmap=LongitudinalRFMap(αc, mainRFe)
-opt=optics4DUC(1.0, 0.0, 1.0, 0.0)
+opt=optics4DUC(5.0, 0.0, 5.0, 0.0)
 initilize_6DGaussiandist!(beam, opt, lmap)
+beam.r[:, 5] .= 0.0
+beam.r[:, 6] .= 0.0
 beam1 = Beam(beam)
 
 
-N = 200000
+N = 50000
 new_emit = zeros(N+1, 3)
 new_emit1 = zeros(N+1, 3)
+NLOST = zeros(N)
 
 println("Start tracking")
 prog = Progress(N)
@@ -103,11 +114,16 @@ for i in 1:N
     end
     linepass!(line, beam)
     linepass!(line_sc, beam1)
+    NLOST[i] = sum(beam1.lost_flag)
     get_emittance!(beam)
     get_emittance!(beam1)
     new_emit[i+1, :] = beam.emittance
     new_emit1[i+1, :] = beam1.emittance
     next!(prog)
+    if mod(i, 1000) == 0
+        all_emit = [new_emit new_emit1]
+        writedlm("emit_withoutSC_withSC_1GeV_50000n_450A.txt", all_emit)
+    end
 end
 
 # using DelimitedFiles
@@ -123,20 +139,72 @@ end
 using PyCall
 np = pyimport("numpy")
 plt = pyimport("matplotlib.pyplot")
-
-plt.figure(figsize=(9, 3))
+N=25000
+plt.figure(figsize=(9, 4))
 plt.subplot(1, 2, 1)
-plt.plot(np.arange(10001), new_emit[:, 1].*1e6, label="without SC")
-plt.plot(np.arange(10001), new_emit1[:, 1].*1e6, label="with SC")
-plt.xlabel("turns*100")
-plt.ylabel("emit (mm*mrad)")
-plt.title("x emit")
+plt.plot(np.arange(N+1), new_emit[1:N+1, 1].*1e6, label="without SC")
+plt.plot(np.arange(N+1), new_emit1[1:N+1, 1].*1e6, label="with SC")
+plt.xlabel("periods", fontsize=16, fontname="Times New Roman")
+plt.ylabel("emit (mm*mrad)", fontsize=16, fontname="Times New Roman")
+plt.title("x emittance", fontsize=16, fontname="Times New Roman")
+plt.xticks(fontsize=14, fontname="Times New Roman")
+plt.yticks(fontsize=14, fontname="Times New Roman")
+# plt.yscale("log")
 plt.legend()
 plt.subplot(1, 2, 2)
-plt.plot(np.arange(10001), new_emit[:, 2].*1e6, label="without SC")
-plt.plot(np.arange(10001), new_emit1[:, 1].*1e6, label="with SC")
-plt.xlabel("turns")
-plt.ylabel("emit (mm*mrad)")
-plt.title("y emit")
-plt.legend()
+plt.plot(np.arange(N+1), new_emit[1:N+1, 2].*1e6, label="without SC")
+plt.plot(np.arange(N+1), new_emit1[1:N+1, 2].*1e6, label="with SC")
+plt.xlabel("periods", fontsize=16, fontname="Times New Roman")
+plt.ylabel("emit (mm*mrad)", fontsize=16, fontname="Times New Roman")
+plt.title("y emittance", fontsize=16, fontname="Times New Roman")
+plt.legend(prop=Dict("family"=>"Times New Roman"))
+plt.xticks(fontsize=14, fontname="Times New Roman")
+plt.yticks(fontsize=14, fontname="Times New Roman")
+# plt.yscale("log")
+plt.tight_layout()
 plt.show()
+
+emit_growth = zeros(N)
+for i in 1:N
+    emit_growth[i] = (new_emit1[i+1, 1] / new_emit[1, 1] * new_emit1[i+1, 2] / new_emit[1, 2] - 1) * 100
+end
+plt.plot(np.arange(N), emit_growth, label="emit growth")
+plt.xlabel("periods", fontsize=16, fontname="Times New Roman")
+plt.ylabel("emit growth (%)", fontsize=16, fontname="Times New Roman")
+plt.xticks(fontsize=14, fontname="Times New Roman")
+plt.yticks(fontsize=14, fontname="Times New Roman")
+plt.show()
+
+idx_sur = findall(x -> x == 0, beam1.lost_flag)
+plt.figure(figsize=(11, 8))
+plt.subplot(2, 2, 1)
+plt.scatter(beam.r[:, 1], beam.r[:, 2], s=0.1)
+plt.xlabel("x (m)", fontsize=16, fontname="Times New Roman")
+plt.ylabel("px", fontsize=16, fontname="Times New Roman")
+plt.title("Without space charge", fontsize=16, fontname="Times New Roman")
+plt.xlim(-0.008, 0.008)
+plt.ylim(-0.017, 0.017)
+plt.subplot(2, 2, 2)
+plt.scatter(beam1.r[idx_sur, 1], beam1.r[idx_sur, 2], s=0.1)
+plt.xlabel("x (m)", fontsize=16, fontname="Times New Roman")
+plt.ylabel("px", fontsize=16, fontname="Times New Roman")
+plt.title("With space charge", fontsize=16, fontname="Times New Roman")
+plt.xlim(-0.008, 0.008)
+plt.ylim(-0.017, 0.017)
+plt.subplot(2, 2, 3)
+plt.scatter(beam.r[:, 3], beam.r[:, 4], s=0.1)
+plt.xlabel("y (m)", fontsize=16, fontname="Times New Roman")
+plt.ylabel("py", fontsize=16, fontname="Times New Roman")
+plt.title("Without space charge", fontsize=16, fontname="Times New Roman")
+plt.xlim(-0.008, 0.008)
+plt.ylim(-0.017, 0.017)
+plt.subplot(2, 2, 4)
+plt.scatter(beam1.r[idx_sur, 3], beam1.r[idx_sur, 4], s=0.1)
+plt.xlabel("y (m)", fontsize=16, fontname="Times New Roman")
+plt.ylabel("py", fontsize=16, fontname="Times New Roman")
+plt.title("With space charge", fontsize=16, fontname="Times New Roman")
+plt.xlim(-0.008, 0.008)
+plt.ylim(-0.017, 0.017)
+plt.tight_layout()
+plt.show()
+

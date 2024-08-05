@@ -59,7 +59,7 @@ export LongitudinalRFMap, AbstractLongitudinalRFMap, AbstractTransferMap, Abstra
 export LongitudinalRLCWake, LongitudinalWake
 export AbstractOptics, AbstractOptics2D, AbstractOptics4D, optics2D, optics4DUC
 export initilize_6DGaussiandist!, get_emittance!, get_2nd_moment!, get_centroid!, histogram1DinZ!
-export initilize_zslice!
+export initilize_zslice!, twiss_2d, twiss_beam
 
 export CTPS, cst, findindex, PolyMap, getindexmap, reassign!
 export AbstractElement, DRIFT, KQUAD, KSEXT, KOCT, SBEND, RBEND, RFCA, SOLENOID, MARKER, CORRECTOR, HKICKER, VKICKER, thinMULTIPOLE
