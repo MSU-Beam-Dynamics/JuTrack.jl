@@ -1,4 +1,3 @@
-include("drift.jl")
 
 function RFCavityPass!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq::Float64, h::Float64, 
     lag::Float64, philag::Float64, nturn::Int, T0::Float64, num_particles::Int, lost_flags::Array{Int64,1})

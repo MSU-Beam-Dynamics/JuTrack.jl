@@ -2,65 +2,65 @@
 # using Distributions
 
 # linear algebra functions
-function det1(A::Matrix{Float64})
-    # Ensure the matrix is square
-    if size(A, 1) != size(A, 2)
-        error("Matrix must be square")
-    end
+# function det1(A::Matrix{Float64})
+#     # Ensure the matrix is square
+#     if size(A, 1) != size(A, 2)
+#         error("Matrix must be square")
+#     end
 
-    # LU decomposition
-    N = size(A, 1)
-    U = zeros(Float64, N, N)
-	for i = 1:N
-		U[i, :] = A[i, :]
-	end
-    L = zeros(Float64, N, N)
-	for i = 1:N
-		L[i, i] = 1.0
-	end
-    swaps = 0
+#     # LU decomposition
+#     N = size(A, 1)
+#     U = zeros(Float64, N, N)
+# 	for i = 1:N
+# 		U[i, :] = A[i, :]
+# 	end
+#     L = zeros(Float64, N, N)
+# 	for i = 1:N
+# 		L[i, i] = 1.0
+# 	end
+#     swaps = 0
 
-    L = zeros(Float64, N, N)
-    for i = 1:N
-        L[i, i] = 1.0
-    end
+#     L = zeros(Float64, N, N)
+#     for i = 1:N
+#         L[i, i] = 1.0
+#     end
 
-    for i = 1:N
-        # Find the pivot
-        pivot = i
-        for j = i+1:N
-            if abs(U[j, i]) > abs(U[pivot, i])
-                pivot = j
-            end
-        end
+#     for i = 1:N
+#         # Find the pivot
+#         pivot = i
+#         for j = i+1:N
+#             if abs(U[j, i]) > abs(U[pivot, i])
+#                 pivot = j
+#             end
+#         end
 
-        # Swap rows if necessary
-        if pivot != i
-            U[i, :], U[pivot, :] = U[pivot, :], U[i, :]
-            L[i, 1:i-1], L[pivot, 1:i-1] = L[pivot, 1:i-1], L[i, 1:i-1]
-            swaps += 1
-        end
+#         # Swap rows if necessary
+#         if pivot != i
+#             U[i, :], U[pivot, :] = U[pivot, :], U[i, :]
+#             L[i, 1:i-1], L[pivot, 1:i-1] = L[pivot, 1:i-1], L[i, 1:i-1]
+#             swaps += 1
+#         end
 
-        # Check for singular matrix
-        if U[i, i] == 0
-            return 0.0
-        end
+#         # Check for singular matrix
+#         if U[i, i] == 0
+#             return 0.0
+#         end
 
-        # Eliminate below
-        for j = i+1:N
-            L[j, i] = U[j, i] / U[i, i]
-            U[j, i:end] -= L[j, i] * U[i, i:end]
-        end
-    end
+#         # Eliminate below
+#         for j = i+1:N
+#             L[j, i] = U[j, i] / U[i, i]
+#             U[j, i:end] -= L[j, i] * U[i, i:end]
+#         end
+#     end
 
-    # Compute the determinant
-    det_val = (-1.0)^swaps
-    for i = 1:N
-        det_val *= U[i, i]
-    end
+#     # Compute the determinant
+#     det_val = (-1.0)^swaps
+#     for i = 1:N
+#         det_val *= U[i, i]
+#     end
 
-    return det_val
-end
+#     return det_val
+# end
 
 function diagm1(v)
     n = length(v)

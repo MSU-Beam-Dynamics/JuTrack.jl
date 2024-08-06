@@ -43,7 +43,6 @@ include("tracking/track_mthread.jl")
 include("tracking/lorentz.jl")
 include("tracking/crabcavity.jl")
 include("tracking/strongbb.jl")
-include("lattice/optics.jl")
 include("lattice/bunchedbeam.jl")
 
 include("utils/lattice_utils.jl")

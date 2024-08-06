@@ -1,4 +1,3 @@
-include("drift_TPSA.jl")
 function pass_TPSA!(ele::CRABCAVITY, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) where {T, TPS_Dim, Max_TPS_Degree}
     E = ele.energy
     gamma = E / m_e

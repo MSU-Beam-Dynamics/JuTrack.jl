@@ -1,4 +1,3 @@
-include("drift.jl")
 function pass!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
     lost_flags = particles.lost_flag
     T1 = ele.T1

@@ -1,4 +1,3 @@
-include("drift_TPSA.jl")
 function pass_TPSA!(ele::SOLENOID, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) where {T, TPS_Dim, Max_TPS_Degree}
     T1 = ele.T1
     R1 = ele.R1

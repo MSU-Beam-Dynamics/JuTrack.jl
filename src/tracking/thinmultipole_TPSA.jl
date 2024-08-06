@@ -1,6 +1,3 @@
-include("drift_TPSA.jl")
-include("multipole_TPSA.jl")
-
 function ThinMPolePass_TPSA!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le::Float64, 
     A::Array{Float64,1}, B::Array{Float64,1}, 
     # bax::Float64, bay::Float64,

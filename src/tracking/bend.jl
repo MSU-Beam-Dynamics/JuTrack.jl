@@ -1,5 +1,3 @@
-include("drift.jl")
-include("fringe.jl")
 
 function B2perp(bx, by, irho, x, xpr, y, ypr)
     v_norm2 = 1.0 / ((1.0 + x*irho)^2 + xpr^2 + ypr^2)

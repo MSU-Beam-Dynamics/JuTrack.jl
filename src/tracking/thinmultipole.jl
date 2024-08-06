@@ -1,4 +1,3 @@
-include("drift.jl")
 function strthinkick1!(r::AbstractVector{Float64}, A, B, L, max_order)
     # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
 
