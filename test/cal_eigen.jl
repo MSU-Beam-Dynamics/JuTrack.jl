@@ -1,6 +1,6 @@
-include("../src/JuTrack.jl")
+# include("../src/JuTrack.jl")
 include("../src/demo/ssrf_ring.jl")
-using .JuTrack
+using JuTrack
 using Serialization
 using Plots  
 using LinearAlgebra

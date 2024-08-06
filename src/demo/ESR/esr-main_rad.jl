@@ -2,8 +2,7 @@
 # translated from MADX, esr-main-18GeV-2IP
 # translated by Jinyu Wan, 2024-03-11
 using Serialization
-include("../../JuTrack.jl")
-using. JuTrack
+using JuTrack
 
 U0 = 3.75583138918653e7 # Energy loss per turn for reference particle
 clight = 299792458.0 # m/s

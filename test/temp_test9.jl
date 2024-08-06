@@ -1,5 +1,5 @@
-include("../src/JuTrack.jl")
-using .JuTrack
+# include("../src/JuTrack.jl")
+using JuTrack
 using LinearAlgebra
 using Plots
 

@@ -1,5 +1,4 @@
-include("../JuTrack.jl")
-using. JuTrack
+using JuTrack
 using BenchmarkTools
 using Plots
 using Serialization

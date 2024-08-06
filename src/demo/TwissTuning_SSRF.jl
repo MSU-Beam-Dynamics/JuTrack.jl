@@ -1,18 +1,19 @@
-include("../JuTrack.jl")
 include("ssrf_ring.jl")
-using. JuTrack
+using JuTrack
 using BenchmarkTools
 using Plots
 # Enzyme.API.runtimeActivity!(true)
 
 
 SSRF = ssrf(-1.063770, 0)
+changed_idx = [3]
 function twiss_test(xx)
     # we don't suggest to create a long lattice inside the function. Use twiss_test(ring, xx) instead.
     # the ring can be set as Const in autodiff function
     # or use global variable 
-    changed_idx = findelem(SSRF, :name, "QL1")
-    changed_elems = [KQUAD(len=SSRF[changed_idx[1]].len, k1=xx[1]) for i in 1:length(changed_idx)]
+    global SSRF, changed_idx
+    
+    changed_elems = [KQUAD(len=SSRF[changed_idx[1]].len, k1=xx[1])]
     # twiss_in = EdwardsTengTwiss(betax=1.0,betay=2.0)
     # twiss_out = ADTwissline(twiss_in, SSRF, 0.0, 1, [length(SSRF)], changed_idx, changed_elems)
     twi0 = ADperiodicEdwardsTengTwiss(SSRF, 0.0, 1, changed_idx, changed_elems)

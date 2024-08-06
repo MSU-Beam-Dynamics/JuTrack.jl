@@ -1,6 +1,6 @@
-include("../src/JuTrack.jl")
+# include("../src/JuTrack.jl")
 
-using. JuTrack
+using JuTrack
 using Serialization
 using Plots
 

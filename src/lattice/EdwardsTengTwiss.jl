@@ -338,12 +338,159 @@ function findm66_refpts(seq::Vector{AbstractElement}, dp::Float64, order::Int, r
 	return map_list
 end
 
+function fastfindm66(LATTICE, dp=0.0)
+    # assume the closed orbit is zero
+    NE = length(LATTICE)
+	DPstep = 3e-6
+    XYStep = 3e-8  # Default step size for numerical differentiation
+    scaling =  [XYStep, XYStep, XYStep, XYStep, DPstep, DPstep]
+    
+    # find initial orbit
+	orbitin = [0.0 0.0 0.0 0.0 dp 0.0]
+
+    # Build a diagonal matrix of initial conditions
+	# manually build the matrix
+    D6 = zeros(6, 6)
+    for i in 1:6
+        D6[i, i] = scaling[i] * 0.5
+    end
+    
+    RIN = zeros(13, 6)
+    for i in 1:6
+        RIN[i, :] = orbitin[1,:] .+ D6[i, :]
+    end
+    for i in 1:6
+        RIN[i+6, :] = orbitin[1,:] .- D6[i, :]
+    end
+    RIN[13, :] = orbitin
+
+    beam = Beam(RIN)
+    
+    linepass!(LATTICE, beam)
+    TMAT3 = transpose(beam.r)
+    M66 = (TMAT3[:,1:6] - TMAT3[:,7:12]) ./ scaling
+
+    return M66
+end
+
+function fastfindm66_refpts(LATTICE, dp::Float64, refpts::Vector{Int})
+    # assume the closed orbit is zero
+    NE = length(LATTICE)
+	DPstep = 3e-6
+    XYStep = 3e-8  # Default step size for numerical differentiation
+    scaling =  [XYStep, XYStep, XYStep, XYStep, DPstep, DPstep]
+    
+    # find initial orbit
+	orbitin = [0.0 0.0 0.0 0.0 dp 0.0]
+
+    # Build a diagonal matrix of initial conditions
+	# manually build the matrix
+    D6 = zeros(6, 6)
+    for i in 1:6
+        D6[i, i] = scaling[i] * 0.5
+    end
+    
+    RIN = zeros(13, 6)
+    for i in 1:6
+        RIN[i, :] = orbitin[1,:] .+ D6[i, :]
+    end
+    for i in 1:6
+        RIN[i+6, :] = orbitin[1,:] .- D6[i, :]
+    end
+    RIN[13, :] = orbitin
+
+    beam = Beam(RIN)
+    
+    rout = linepass!(LATTICE, beam, refpts)
+    M66_refpts = zeros(6, 6, length(refpts))
+    for i in 1:length(refpts)
+        TMAT3 = transpose(rout[i])
+        M66 = (TMAT3[:,1:6] - TMAT3[:,7:12]) ./ scaling
+        M66_refpts[:, :, i] = M66
+    end
+    return M66_refpts
+end
+
+function ADfastfindm66(LATTICE, dp, changed_idx, changed_ele)
+    # assume the closed orbit is zero
+    NE = length(LATTICE)
+	DPstep = 3e-6
+    XYStep = 3e-8  # Default step size for numerical differentiation
+    scaling =  [XYStep, XYStep, XYStep, XYStep, DPstep, DPstep]
+    
+    # find initial orbit
+	orbitin = [0.0 0.0 0.0 0.0 dp 0.0]
+
+    # Build a diagonal matrix of initial conditions
+	# manually build the matrix
+    D6 = zeros(6, 6)
+    for i in 1:6
+        D6[i, i] = scaling[i] * 0.5
+    end
+    
+    RIN = zeros(13, 6)
+    for i in 1:6
+        RIN[i, :] = orbitin[1,:] .+ D6[i, :]
+    end
+    for i in 1:6
+        RIN[i+6, :] = orbitin[1,:] .- D6[i, :]
+    end
+    RIN[13, :] = orbitin
+
+    beam = Beam(RIN)
+    
+    ADlinepass!(LATTICE, beam, changed_idx, changed_ele)
+    TMAT3 = transpose(beam.r)
+    M66 = (TMAT3[:,1:6] - TMAT3[:,7:12]) ./ scaling
+
+    return M66
+end
+
+function ADfastfindm66_refpts(LATTICE, dp::Float64, refpts::Vector{Int}, changed_idx, changed_ele)
+    # assume the closed orbit is zero
+    NE = length(LATTICE)
+	DPstep = 3e-6
+    XYStep = 3e-8  # Default step size for numerical differentiation
+    scaling =  [XYStep, XYStep, XYStep, XYStep, DPstep, DPstep]
+    
+    # find initial orbit
+	orbitin = [0.0 0.0 0.0 0.0 dp 0.0]
+
+    # Build a diagonal matrix of initial conditions
+	# manually build the matrix
+    D6 = zeros(6, 6)
+    for i in 1:6
+        D6[i, i] = scaling[i] * 0.5
+    end
+    
+    RIN = zeros(13, 6)
+    for i in 1:6
+        RIN[i, :] = orbitin[1,:] .+ D6[i, :]
+    end
+    for i in 1:6
+        RIN[i+6, :] = orbitin[1,:] .- D6[i, :]
+    end
+    RIN[13, :] = orbitin
+
+    beam = Beam(RIN)
+    
+    rout = ADlinepass!(LATTICE, beam, refpts, changed_idx, changed_ele)
+    M66_refpts = zeros(6, 6, length(refpts))
+    for i in 1:length(refpts)
+        TMAT3 = transpose(rout[i])
+        M66 = (TMAT3[:,1:6] - TMAT3[:,7:12]) ./ scaling
+        M66_refpts[:, :, i] = M66
+    end
+    return M66_refpts
+end
+
 function twissline(tin::EdwardsTengTwiss,seq::Vector{AbstractElement}, dp::Float64, order::Int, endindex::Int)
 	# obtain M through tracking
     ret = tin
     ss = 0.0
 	used_seq = seq[1:endindex]
-	M = findm66(used_seq, dp, order)
+	# M = findm66(used_seq, dp, order)
+	M = fastfindm66(used_seq, dp)
 	ret = twissPropagate(ret, M)
 	# ss = sum([mag.len for mag in used_seq])
 	# names = [mag.name for mag in used_seq]
@@ -361,18 +508,19 @@ function twissline(tin::EdwardsTengTwiss,seq::Vector{AbstractElement}, dp::Float
 	ret_vector = Vector{EdwardsTengTwiss}(undef, length(refpts))
     ret = tin
 
-	M_list = findm66_refpts(seq, dp, order, refpts)
+	# M_list = findm66_refpts(seq, dp, order, refpts)
+	# for i in 1:length(refpts)
+	# 	ret = twissPropagate(ret, M_list[i])
+	# 	ret_vector[i] = ret
+	# end
+
+	# use fastfindm66_refpts instead of findm66_refpts
+	M_list = fastfindm66_refpts(seq, dp, refpts)
 	for i in 1:length(refpts)
-		ret = twissPropagate(ret, M_list[i])
+		ret = twissPropagate(ret, M_list[:, :, i])
 		ret_vector[i] = ret
 	end
 
-	# ss = zeros(Float64, length(refpts))
-	# names = Vector{String}(undef, length(refpts))
-	# for i in 1:length(refpts)
-	# 	ss[i] = sum([mag.len for mag in seq[1:refpts[i]]])
-	# 	names[i] = seq[refpts[i]].name
-	# end
 	return ret_vector
 end
 
@@ -386,18 +534,18 @@ function ADtwissline(tin::EdwardsTengTwiss,seq::Vector{AbstractElement}, dp::Flo
 	# obtain M through tracking
 	ret_vector = Vector{EdwardsTengTwiss}(undef, length(refpts))    
 	ret = tin
-	M_list = ADfindm66_refpts(seq, dp, order, refpts, changed_idx, changed_ele)
+	# M_list = ADfindm66_refpts(seq, dp, order, refpts, changed_idx, changed_ele)
+	# for i in 1:length(refpts)
+	# 	ret = twissPropagate(ret, M_list[i])
+	# 	ret_vector[i] = ret
+	# end
+
+	# use ADfastfindm66_refpts instead of ADfindm66_refpts
+	M_list = ADfastfindm66_refpts(seq, dp, refpts, changed_idx, changed_ele)
 	for i in 1:length(refpts)
-		ret = twissPropagate(ret, M_list[i])
+		ret = twissPropagate(ret, M_list[:, :, i])
 		ret_vector[i] = ret
 	end
-
-	# ss = zeros(Float64, length(refpts))
-	# names = Vector{String}(undef, length(refpts))
-	# for i in 1:length(refpts)
-	# 	ss[i] = sum([mag.len for mag in seq[1:refpts[i]]])
-	# 	names[i] = seq[refpts[i]].name
-	# end
 	return ret_vector
 end
 
@@ -426,7 +574,8 @@ end
 
 
 function periodicEdwardsTengTwiss(seq::Vector{AbstractElement}, dp, order::Int)
-	M = findm66(seq, dp, order)
+	# M = findm66(seq, dp, order)
+	M = fastfindm66(seq, dp)
 	A=@view M[1:2,1:2]
 	B=@view M[1:2,3:4]
 	C=@view M[3:4,1:2]
@@ -472,7 +621,8 @@ function periodicEdwardsTengTwiss(seq::Vector{AbstractElement}, dp, order::Int)
 end
 
 function ADperiodicEdwardsTengTwiss(seq::Vector{AbstractElement}, dp::Float64, order::Int, changed_idx::Vector, changed_ele::Vector)
-	M = ADfindm66(seq, dp, order, changed_idx, changed_ele)
+	# M = ADfindm66(seq, dp, order, changed_idx, changed_ele)
+	M = ADfastfindm66(seq, dp, changed_idx, changed_ele)
 	A=@view M[1:2,1:2]
 	B=@view M[1:2,3:4]
 	C=@view M[3:4,1:2]
