@@ -1,5 +1,5 @@
 name = "JuTrack"
-uuid = "0a4037ed-bddc-44e0-8d87-c3566541acea"
+uuid = "a43d9089-7dde-42d4-b2b6-ab2f8db67ed6"
 version = "0.1.0"
 
 [deps]
@@ -8,6 +8,7 @@ CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 NLSolversBase = "d41bc354-129a-5804-8e4c-c37616107c6c"
 OpenBLAS_jll = "4536629a-c528-5b80-bd46-f80d51c5b363"
 Optim = "429524aa-4258-5aef-a3af-852621145aeb"
