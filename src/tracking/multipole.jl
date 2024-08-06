@@ -162,7 +162,7 @@ function StrMPoleSymplectic4Pass!(r::Array{Float64,1}, le::Float64, A::Array{Flo
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if maximum(abs.(r6)) > CoordLimit || isnan(r6[1])
+            if check_lost(r6)
                 lost_flags[c] = 1
             end
         end
@@ -259,7 +259,7 @@ function StrMPoleSymplectic4RadPass!(r::Array{Float64,1}, le::Float64, A::Array{
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if maximum(abs.(r6)) > CoordLimit || isnan(r6[1])
+            if check_lost(r6)
                 lost_flags[c] = 1
             end
         end
@@ -473,7 +473,7 @@ function StrMPoleSymplectic4Pass_P!(r::Array{Float64,1}, le::Float64, A::Array{F
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if maximum(abs.(r6)) > CoordLimit || isnan(r6[1])
+            if check_lost(r6)
                 lost_flags[c] = 1
             end
         end
@@ -585,7 +585,7 @@ function StrMPoleSymplectic4RadPass_P!(r::Array{Float64,1}, le::Float64, A::Arra
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if maximum(abs.(r6)) > CoordLimit || isnan(r6[1])
+            if check_lost(r6)
                 lost_flags[c] = 1
             end
         end

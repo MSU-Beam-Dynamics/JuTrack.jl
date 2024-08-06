@@ -81,7 +81,7 @@ function DriftPass!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64,1}, T
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if maximum(abs.(r6)) > CoordLimit || isnan(r6[1])
+            if check_lost(r6)
                 lost_flags[c] = 1
             end
         end
@@ -130,7 +130,7 @@ function DriftPass_P!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64,1},
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if maximum(abs.(r6)) > CoordLimit || isnan(r6[1])
+            if check_lost(r6)
                 lost_flags[c] = 1
             end
         end

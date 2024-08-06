@@ -170,3 +170,12 @@ function ringpass_TPSA!(line, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, ntu
     return nothing
 end
 
+function check_lost(r6::Array{Float64})
+    if isnan(r6[1]) || isinf(r6[1])
+        return true
+    end
+    if maximum(abs.(r6[1:4])) > CoordLimit || abs(r6[6]) > CoordLimit
+        return true
+    end
+    return false
+end

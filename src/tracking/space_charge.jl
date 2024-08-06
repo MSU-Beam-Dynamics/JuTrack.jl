@@ -73,41 +73,37 @@ function calculate_philm(rin, Nl, Nm, dx, dy, a, b, Np, lost_flags)
     return philm, gamma2lm
 end
 
-# function space_charge!(r_in, K, Nl, Nm, dx, dy, a, b, Np, dt)
-#     philm, gamma2lm, rholm = calculate_philm(r_in, Nl, Nm, dx, dy, a, b, Np)
-#     println("philm: ", philm)
-#     px_term = zeros(Np)
-#     py_term = zeros(Np)
+function calculate_philm_P(rin, Nl, Nm, dx, dy, a, b, Np, lost_flags)
+    philm = zeros(Nl, Nm)
+    gamma2lm = zeros(Nl, Nm)
+    for i in 1:Nl
+        for j in 1:Nm
+            al = i * pi / a
+            bm = j * pi / b
+            gamma2lm[i, j] = al^2 + bm^2
 
-#     # for i in 1:Np
-#         for j in 1:Np
-#             if mod(j, 100) == 0
-#                 println("ith particle: ", j)
-#             end
-#             for l in 1:Nl
-#                 for m in 1:Nm
-#                     al = l * pi / a
-#                     bm = m * pi / b
-#                     px_term .+= (al / gamma2lm[l, m]) *
-#                                   sin(al * r_in[(j-1)*6 + 1]) * sin(bm * r_in[(j-1)*6 + 3]) .*
-#                                   cos.(al * r_in[1:6:end]) .* sin.(bm * r_in[3:6:end])
-                    
-#                     py_term .+= (bm / gamma2lm[l, m]) *
-#                                   sin(al * r_in[(j-1)*6 + 1]) * sin(bm * r_in[(j-1)*6 + 3]) .*
-#                                   sin.(al * r_in[1:6:end]) .* cos.(bm * r_in[3:6:end])
-#                 end
-#             end
-#         end
-#     # end
+            local_sum = zeros(Threads.nthreads())  
+        
+            Threads.@threads for k in 1:Np
+                tid = Threads.threadid()
+                if lost_flags[k] == 1
+                    continue
+                end
+                local_sum[tid] += sin(al * rin[(k-1)*6 + 1]) * sin(bm * rin[(k-1)*6 + 3]) / gamma2lm[i, j]
+            end
+            
+            # Sum up all partial results from each thread
+            philm[i, j] = sum(local_sum)
+        end
+    end
+    philm .*= 4.0 * pi  * 4.0 / (a * b * Np)
+    return philm, gamma2lm
+end
 
-#     r_in[2:6:end] .-= dt * 4 * pi * K * (4 / (a * b * Np)) * px_term
-#     r_in[4:6:end] .-= dt * 4 * pi * K * (4 / (a * b * Np)) * py_term
-# end
 function space_charge!(r_in, K, Nl, Nm, dx, dy, a, b, Np, dt, lost_flags)
     philm, gamma2lm = calculate_philm(r_in, Nl, Nm, dx, dy, a, b, Np, lost_flags)
     term1 = zeros(Np)
     term2 = zeros(Np)
-
     for i in 1:Nl
         for j in 1:Nm
             al = i * pi / a
@@ -118,7 +114,34 @@ function space_charge!(r_in, K, Nl, Nm, dx, dy, a, b, Np, dt, lost_flags)
     end
     r_in[2:6:end] .-= (dt * K / 2.0) * term1
     r_in[4:6:end] .-= (dt * K / 2.0) * term2
+end
 
+function space_charge_P!(r_in, K, Nl, Nm, dx, dy, a, b, Np, dt, lost_flags)
+    philm, gamma2lm = calculate_philm_P(r_in, Nl, Nm, dx, dy, a, b, Np, lost_flags)
+    term1 = zeros(Np)
+    term2 = zeros(Np)
+
+    nthreads = Threads.nthreads()
+    term1_thread = [zeros(Np) for _ in 1:nthreads]  
+    term2_thread = [zeros(Np) for _ in 1:nthreads]
+
+    Threads.@threads for i in 1:Nl
+        tid = Threads.threadid()
+        for j in 1:Nm
+            al = i * pi / a
+            bm = j * pi / b
+            term1_thread[tid] .+= (philm[i, j] * al .* cos.(al .* r_in[1:6:end]) .* sin.(bm .* r_in[3:6:end]))
+            term2_thread[tid] .+= (philm[i, j] * bm .* sin.(al .* r_in[1:6:end]) .* cos.(bm .* r_in[3:6:end]))
+        end
+    end
+
+    # Combine results from all threads
+    for t in 1:nthreads
+        term1 .+= term1_thread[t]
+        term2 .+= term2_thread[t]
+    end
+    r_in[2:6:end] .-= (dt * K / 2.0) * term1
+    r_in[4:6:end] .-= (dt * K / 2.0) * term2
 end
 
 function pass!(ele::SPACECHARGE, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
@@ -138,7 +161,6 @@ function pass!(ele::SPACECHARGE, r_in::Array{Float64,1}, num_particles::Int64, p
     return nothing
 end
 
-
 function pass_TPSA!(ele::SPACECHARGE, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) where {T, TPS_Dim, Max_TPS_Degree}
     println("TPSA is not implemented for space charge yet.")
     return nothing
@@ -156,6 +178,6 @@ function pass_P!(ele::SPACECHARGE, r_in::Array{Float64,1}, num_particles::Int64,
     # convert the mass from eV to kg
     m0 = particles.mass * 1.782662e-36 # kg
     # p0 = particles.gamma * particles.beta * m0 * speed_of_light
-    space_charge!(r_in, K, ele.Nl, ele.Nm, dx, dy, ele.a, ele.b, num_particles, dt, lost_flags)
+    space_charge_P!(r_in, K, ele.Nl, ele.Nm, dx, dy, ele.a, ele.b, num_particles, dt, lost_flags)
     return nothing
 end

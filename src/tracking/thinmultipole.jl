@@ -65,7 +65,7 @@ function ThinMPolePass!(r::Array{Float64,1}, le::Float64, A::Array{Float64,1}, B
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if maximum(abs.(r6)) > CoordLimit || isnan(r6[1])
+            if check_lost(r6)
                 lost_flags[c] = 1
             end
         end
@@ -126,7 +126,7 @@ function ThinMPolePass_P!(r::Array{Float64,1}, le::Float64, A::Array{Float64,1},
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if maximum(abs.(r6)) > CoordLimit || isnan(r6[1])
+            if check_lost(r6)
                 lost_flags[c] = 1
             end
         end

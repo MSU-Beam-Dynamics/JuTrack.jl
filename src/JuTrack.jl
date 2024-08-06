@@ -66,7 +66,7 @@ export AbstractElement, DRIFT, KQUAD, KSEXT, KOCT, SBEND, RBEND, RFCA, SOLENOID,
 export QUAD
 export SPACECHARGE
 export EdwardsTengTwiss, AbstractTwiss, twissPropagate, findm66, periodicEdwardsTengTwiss, twissline, ADtwissline, twissring, ADfindm66, ADtwissring, ADperiodicEdwardsTengTwiss
-export linepass!, pass!, ringpass!, linepass_TPSA!, pass_TPSA!, ringpass_TPSA!
+export linepass!, pass!, ringpass!, linepass_TPSA!, pass_TPSA!, ringpass_TPSA!, check_lost
 export plinepass!, pringpass!, pass_P!, ADlinepass!, ADlinepass_TPSA!
 export matrix_to_array, array_to_matrix
 export total_length, spos, findelem, insert_space_charge

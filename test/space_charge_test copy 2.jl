@@ -67,9 +67,9 @@ beam = Beam(zeros(10001, 6), energy=1.0e9, current=50.0, mass=m_p, charge=1.0, e
 
 beta = beam.beta
 gamma = beam.gamma
-emit_norm = 1e-8
-emit_phys = emit_norm  / (beta * gamma)
-beam.emittance = [emit_phys, emit_phys, 0.0]
+# emit_norm = 1e-8
+# emit_phys = emit_norm  / (beta * gamma)
+# beam.emittance = [emit_phys, emit_phys, 0.0]
 
 
 vbase=3.42*8.5e6

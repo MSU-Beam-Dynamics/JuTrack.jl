@@ -37,7 +37,7 @@ function CorrectorPass!(r::Array{Float64,1}, le::Float64, xkick::Float64, ykick:
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if maximum(abs.(r6)) > CoordLimit || isnan(r6[1])
+            if check_lost(r6)
                 lost_flags[c] = 1
             end
         end
@@ -97,7 +97,7 @@ function CorrectorPass_P!(r::Array{Float64,1}, le::Float64, xkick::Float64, ykic
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if maximum(abs.(r6)) > CoordLimit || isnan(r6[1])
+            if check_lost(r6)
                 lost_flags[c] = 1
             end
         end
