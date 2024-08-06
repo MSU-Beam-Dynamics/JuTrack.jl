@@ -120,18 +120,18 @@ function pass_TPSA!(ele::SBEND, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) 
             ele.KickAngle)
     return nothing
 end
-function pass_TPSA!(ele::RBEND, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) where {T, TPS_Dim, Max_TPS_Degree}
-    # ele: RBEND
-    # r_in: 6-by-1 TPSA array
+# function pass_TPSA!(ele::RBEND, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) where {T, TPS_Dim, Max_TPS_Degree}
+#     # ele: RBEND
+#     # r_in: 6-by-1 TPSA array
 
-    irho = ele.angle / ele.len
-    BendSymplecticPass!(r_in, ele.len, irho, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
-            ele.e1, ele.e2,
-            ele.FringeBendEntrance, ele.FringeBendExit,
-            ele.fint1, ele.fint2, ele.gap,
-            ele.FringeQuadEntrance, ele.FringeQuadExit,
-            ele.FringeIntM0, ele.FringeIntP0,
-            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures,
-            ele.KickAngle)
-    return nothing
-end
+#     irho = ele.angle / ele.len
+#     BendSymplecticPass!(r_in, ele.len, irho, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
+#             ele.e1, ele.e2,
+#             ele.FringeBendEntrance, ele.FringeBendExit,
+#             ele.fint1, ele.fint2, ele.gap,
+#             ele.FringeQuadEntrance, ele.FringeQuadExit,
+#             ele.FringeIntM0, ele.FringeIntP0,
+#             ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures,
+#             ele.KickAngle)
+#     return nothing
+# end

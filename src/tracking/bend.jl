@@ -305,35 +305,35 @@ function pass!(ele::SBEND, r_in::Array{Float64,1}, num_particles::Int64, particl
     end
     return nothing
 end
-function pass!(ele::RBEND, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
-    # ele: RBEND
-    # r_in: 6-by-num_particles array
-    # num_particles: number of particles
-    # particles: Beam object
-    lost_flags = particles.lost_flag
-    irho = ele.angle / ele.len
-    E0 = particles.energy
-    if ele.rad == 0
-        BendSymplecticPass!(r_in, ele.len, irho, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
-            ele.e1, ele.e2,
-            ele.FringeBendEntrance, ele.FringeBendExit,
-            ele.fint1, ele.fint2, ele.gap,
-            ele.FringeQuadEntrance, ele.FringeQuadExit,
-            ele.FringeIntM0, ele.FringeIntP0,
-            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures,
-            ele.KickAngle, num_particles, lost_flags)
-    else
-        BendSymplecticPassRad!(r_in, ele.len, irho, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
-            ele.e1, ele.e2,
-            ele.FringeBendEntrance, ele.FringeBendExit,
-            ele.fint1, ele.fint2, ele.gap,
-            ele.FringeQuadEntrance, ele.FringeQuadExit,
-            ele.FringeIntM0, ele.FringeIntP0,
-            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures,
-            ele.KickAngle, E0, num_particles, lost_flags)
-    end
-    return nothing
-end
+# function pass!(ele::RBEND, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+#     # ele: RBEND
+#     # r_in: 6-by-num_particles array
+#     # num_particles: number of particles
+#     # particles: Beam object
+#     lost_flags = particles.lost_flag
+#     irho = ele.angle / ele.len
+#     E0 = particles.energy
+#     if ele.rad == 0
+#         BendSymplecticPass!(r_in, ele.len, irho, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
+#             ele.e1, ele.e2,
+#             ele.FringeBendEntrance, ele.FringeBendExit,
+#             ele.fint1, ele.fint2, ele.gap,
+#             ele.FringeQuadEntrance, ele.FringeQuadExit,
+#             ele.FringeIntM0, ele.FringeIntP0,
+#             ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures,
+#             ele.KickAngle, num_particles, lost_flags)
+#     else
+#         BendSymplecticPassRad!(r_in, ele.len, irho, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
+#             ele.e1, ele.e2,
+#             ele.FringeBendEntrance, ele.FringeBendExit,
+#             ele.fint1, ele.fint2, ele.gap,
+#             ele.FringeQuadEntrance, ele.FringeQuadExit,
+#             ele.FringeIntM0, ele.FringeIntP0,
+#             ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures,
+#             ele.KickAngle, E0, num_particles, lost_flags)
+#     end
+#     return nothing
+# end
 
 ######################
 # multi-threading
@@ -576,31 +576,31 @@ function pass_P!(ele::SBEND, r_in::Array{Float64,1}, num_particles::Int64, parti
     end
     return nothing
 end
-function pass_P!(ele::RBEND, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
-    # ele: RBEND
-    # r_in: 6-by-num_particles array
-    # num_particles: number of particles
-    lost_flags = particles.lost_flag
-    irho = ele.angle / ele.len
-    E0 = particles.energy
-    if ele.rad == 0
-        BendSymplecticPass_P!(r_in, ele.len, irho, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
-            ele.e1, ele.e2,
-            ele.FringeBendEntrance, ele.FringeBendExit,
-            ele.fint1, ele.fint2, ele.gap,
-            ele.FringeQuadEntrance, ele.FringeQuadExit,
-            ele.FringeIntM0, ele.FringeIntP0,
-            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures,
-            ele.KickAngle, num_particles, lost_flags)
-    else
-        BendSymplecticPassRad_P!(r_in, ele.len, irho, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
-            ele.e1, ele.e2,
-            ele.FringeBendEntrance, ele.FringeBendExit,
-            ele.fint1, ele.fint2, ele.gap,
-            ele.FringeQuadEntrance, ele.FringeQuadExit,
-            ele.FringeIntM0, ele.FringeIntP0,
-            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures,
-            ele.KickAngle, E0, num_particles, lost_flags)
-    end
-    return nothing
-end
+# function pass_P!(ele::RBEND, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+#     # ele: RBEND
+#     # r_in: 6-by-num_particles array
+#     # num_particles: number of particles
+#     lost_flags = particles.lost_flag
+#     irho = ele.angle / ele.len
+#     E0 = particles.energy
+#     if ele.rad == 0
+#         BendSymplecticPass_P!(r_in, ele.len, irho, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
+#             ele.e1, ele.e2,
+#             ele.FringeBendEntrance, ele.FringeBendExit,
+#             ele.fint1, ele.fint2, ele.gap,
+#             ele.FringeQuadEntrance, ele.FringeQuadExit,
+#             ele.FringeIntM0, ele.FringeIntP0,
+#             ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures,
+#             ele.KickAngle, num_particles, lost_flags)
+#     else
+#         BendSymplecticPassRad_P!(r_in, ele.len, irho, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
+#             ele.e1, ele.e2,
+#             ele.FringeBendEntrance, ele.FringeBendExit,
+#             ele.fint1, ele.fint2, ele.gap,
+#             ele.FringeQuadEntrance, ele.FringeQuadExit,
+#             ele.FringeIntM0, ele.FringeIntP0,
+#             ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures,
+#             ele.KickAngle, E0, num_particles, lost_flags)
+#     end
+#     return nothing
+# end
