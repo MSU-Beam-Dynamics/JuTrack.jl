@@ -37,6 +37,9 @@ include("tracking/corrector_TPSA.jl")
 include("tracking/track.jl")
 include("lattice/EdwardsTengTwiss.jl")
 
+include("tracking/fringe.jl")
+include("tracking/fringe_TPSA.jl")
+
 # multi-threading
 include("tracking/track_mthread.jl")
 
@@ -65,6 +68,7 @@ export AbstractElement, DRIFT, KQUAD, KSEXT, KOCT, SBEND, RBEND, RFCA, SOLENOID,
 export QUAD
 export SPACECHARGE
 export EdwardsTengTwiss, AbstractTwiss, twissPropagate, findm66, periodicEdwardsTengTwiss, twissline, ADtwissline, twissring, ADfindm66, ADtwissring, ADperiodicEdwardsTengTwiss
+export fastfindm66, fastfindm66_refpts, ADfastfindm66_refpts
 export linepass!, pass!, ringpass!, linepass_TPSA!, pass_TPSA!, ringpass_TPSA!, check_lost
 export plinepass!, pringpass!, pass_P!, ADlinepass!, ADlinepass_TPSA!
 export matrix_to_array, array_to_matrix

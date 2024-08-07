@@ -1,5 +1,4 @@
 # include("drift.jl")
-include("fringe.jl")
 
 function StrB2perp(bx::Float64, by::Float64, x::Float64, xpr::Float64, y::Float64, ypr::Float64)
     # Calculates sqr(|B x e|) , where e is a unit vector in the direction of velocity

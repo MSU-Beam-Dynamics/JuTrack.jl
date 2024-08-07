@@ -119,7 +119,7 @@ end
     e2::Float64 = 0.0
     PolynomA::Array{Float64,1} = zeros(4)
     PolynomB::Array{Float64,1} = zeros(4)
-    MaxOrder::Int64 = 3
+    MaxOrder::Int64 = 0
     NumIntSteps::Int64 = 10
     rad::Int64 = 0
     fint1::Float64 = 0.0
@@ -142,7 +142,7 @@ end
 end
 
 function RBEND(;name::String = "RBend", len::Float64 = 0.0, angle::Float64 = 0.0, PolynomA::Array{Float64,1} = zeros(4), 
-                PolynomB::Array{Float64,1} = zeros(4), MaxOrder::Int64=3, NumIntSteps::Int64 = 10, rad::Int64=0, fint1::Float64 = 0.0, 
+                PolynomB::Array{Float64,1} = zeros(4), MaxOrder::Int64=0, NumIntSteps::Int64 = 10, rad::Int64=0, fint1::Float64 = 0.0, 
                 fint2::Float64 = 0.0, gap::Float64 = 0.0, FringeBendEntrance::Int64 = 1, FringeBendExit::Int64 = 1, 
                 FringeQuadEntrance::Int64 = 0, FringeQuadExit::Int64 = 0, FringeIntM0::Array{Float64,1} = zeros(5), 
                 FringeIntP0::Array{Float64,1} = zeros(5), T1::Array{Float64,1} = zeros(6), T2::Array{Float64,1} = zeros(6), 

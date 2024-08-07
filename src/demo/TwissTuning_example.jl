@@ -6,22 +6,21 @@ using Plots
 
 
 SSRF = ssrf(-1.063770, 0)
-changed_idx = [3]
+
 function twiss_test(xx)
     # we don't suggest to create a long lattice inside the function. Use twiss_test(ring, xx) instead.
     # the ring can be set as Const in autodiff function
     # or use global variable 
-    global SSRF, changed_idx
-    
-    changed_elems = [KQUAD(len=SSRF[changed_idx[1]].len, k1=xx[1])]
-    # twiss_in = EdwardsTengTwiss(betax=1.0,betay=2.0)
-    # twiss_out = ADTwissline(twiss_in, SSRF, 0.0, 1, [length(SSRF)], changed_idx, changed_elems)
+    changed_idx = findelem(SSRF, :name, "QL1")
+    changed_elems = [KQUAD(len=0.32, k1=xx) for i in 1:length(changed_idx)]
     twi0 = ADperiodicEdwardsTengTwiss(SSRF, 0.0, 1, changed_idx, changed_elems)
+    # twi0 = periodicEdwardsTengTwiss(ring, 0.0, 1)
+    
     return twi0.betax
 end
-println(twiss_test([-1.063770*1.0]))
+
 function tuning_test(target)
-    x0 = [-1.063770*1.0]
+    x0 = -1.063770*1.0
     niter = 20
     step = 0.0001
 
@@ -30,11 +29,11 @@ function tuning_test(target)
     grad_vals = Float64[]
     for i in 1:niter
         beta0 = twiss_test(x0)
-        grad = gradient(Forward, twiss_test, x0)
-        x0[1] -= step * grad[1]
+        grad = autodiff(Forward, twiss_test, DuplicatedNoNeed, Duplicated(x0, 1.0))
+        x0 -= step * grad[1]
         beta1 = twiss_test(x0)
         println("beta0: ", beta0, " beta1: ", beta1, " grad:", grad, " at step ", i)
-        push!(x0_vals, x0[1])
+        push!(x0_vals, x0)
         push!(beta_vals, beta1)
         push!(grad_vals, grad[1])
         if beta1 < target

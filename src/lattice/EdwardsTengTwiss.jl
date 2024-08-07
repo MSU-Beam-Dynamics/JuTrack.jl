@@ -190,11 +190,11 @@ function twissPropagate(tin::EdwardsTengTwiss,M::Matrix{Float64})
 				Y/=sqrt(t)
 				mode=2
 			end
-	else
+	# else
 		#throw(AssertionError("Mode should be integer 1 or 2."))
 		# println(stderr,"Invalid mode.")
 		# return EdwardsTengTwiss(;betax=1.0,betay=1.0,mode=0)
-		error("Invalid mode.")
+		# error("Invalid mode.")
 	end
 
 	Nx=matrixTransform_2by2(X)
@@ -222,7 +222,7 @@ function twissPropagate(tin::EdwardsTengTwiss,M::Matrix{Float64})
 	return EdwardsTengTwiss(v1[1],v2[1],v1[2],v2[2],v1[3],v2[3],eta[1],eta[2],eta[3],eta[4],new_mux,new_muy,smux,cmux,smuy,cmuy,R,mode)
 end
 
-function findm66(seq::Vector{AbstractElement}, dp::Float64, order::Int)
+function findm66(seq, dp::Float64, order::Int)
 	x = CTPS(0.0, 1, 6, order)
 	px = CTPS(0.0, 2, 6, order)
 	y = CTPS(0.0, 3, 6, order)
@@ -248,7 +248,7 @@ function findm66(seq::Vector{AbstractElement}, dp::Float64, order::Int)
 	# 		z.map[2] z.map[3] z.map[4] z.map[5] z.map[6] z.map[7]]
 	return map
 end
-function ADfindm66(seq::Vector{AbstractElement}, dp::Float64, order::Int, changed_idx::Vector, changed_ele::Vector)
+function ADfindm66(seq, dp::Float64, order::Int, changed_idx::Vector, changed_ele::Vector)
 	x = CTPS(0.0, 1, 6, order)
 	px = CTPS(0.0, 2, 6, order)
 	y = CTPS(0.0, 3, 6, order)
@@ -268,7 +268,7 @@ function ADfindm66(seq::Vector{AbstractElement}, dp::Float64, order::Int, change
 	return map
 end
 
-function ADfindm66_refpts(seq::Vector{AbstractElement}, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector, changed_ele::Vector)
+function ADfindm66_refpts(seq, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector, changed_ele::Vector)
 	x = CTPS(0.0, 1, 6, order)
 	px = CTPS(0.0, 2, 6, order)
 	y = CTPS(0.0, 3, 6, order)
@@ -302,7 +302,7 @@ function ADfindm66_refpts(seq::Vector{AbstractElement}, dp::Float64, order::Int,
 	return map_list
 end
 
-function findm66_refpts(seq::Vector{AbstractElement}, dp::Float64, order::Int, refpts::Vector{Int})
+function findm66_refpts(seq, dp::Float64, order::Int, refpts::Vector{Int})
 	x = CTPS(0.0, 1, 6, order)
 	px = CTPS(0.0, 2, 6, order)
 	y = CTPS(0.0, 3, 6, order)
@@ -341,7 +341,7 @@ end
 function fastfindm66(LATTICE, dp=0.0)
     # assume the closed orbit is zero
     NE = length(LATTICE)
-	DPstep = 3e-6
+	DPstep = 3e-8
     XYStep = 3e-8  # Default step size for numerical differentiation
     scaling =  [XYStep, XYStep, XYStep, XYStep, DPstep, DPstep]
     
@@ -376,7 +376,7 @@ end
 function fastfindm66_refpts(LATTICE, dp::Float64, refpts::Vector{Int})
     # assume the closed orbit is zero
     NE = length(LATTICE)
-	DPstep = 3e-6
+	DPstep = 3e-8
     XYStep = 3e-8  # Default step size for numerical differentiation
     scaling =  [XYStep, XYStep, XYStep, XYStep, DPstep, DPstep]
     
@@ -399,12 +399,17 @@ function fastfindm66_refpts(LATTICE, dp::Float64, refpts::Vector{Int})
     end
     RIN[13, :] = orbitin
 
-    beam = Beam(RIN)
     
-    rout = linepass!(LATTICE, beam, refpts)
+    # rout = linepass!(LATTICE, beam, refpts)
     M66_refpts = zeros(6, 6, length(refpts))
     for i in 1:length(refpts)
-        TMAT3 = transpose(rout[i])
+		beam = Beam(copy(RIN))
+		if i == 1
+			linepass!(LATTICE[1:refpts[1]], beam)
+		else
+			linepass!(LATTICE[refpts[i-1]+1:refpts[i]], beam)
+		end
+        TMAT3 = transpose(beam.r)
         M66 = (TMAT3[:,1:6] - TMAT3[:,7:12]) ./ scaling
         M66_refpts[:, :, i] = M66
     end
@@ -414,7 +419,7 @@ end
 function ADfastfindm66(LATTICE, dp, changed_idx, changed_ele)
     # assume the closed orbit is zero
     NE = length(LATTICE)
-	DPstep = 3e-6
+	DPstep = 3e-8
     XYStep = 3e-8  # Default step size for numerical differentiation
     scaling =  [XYStep, XYStep, XYStep, XYStep, DPstep, DPstep]
     
@@ -449,7 +454,7 @@ end
 function ADfastfindm66_refpts(LATTICE, dp::Float64, refpts::Vector{Int}, changed_idx, changed_ele)
     # assume the closed orbit is zero
     NE = length(LATTICE)
-	DPstep = 3e-6
+	DPstep = 3e-8
     XYStep = 3e-8  # Default step size for numerical differentiation
     scaling =  [XYStep, XYStep, XYStep, XYStep, DPstep, DPstep]
     
@@ -472,12 +477,18 @@ function ADfastfindm66_refpts(LATTICE, dp::Float64, refpts::Vector{Int}, changed
     end
     RIN[13, :] = orbitin
 
-    beam = Beam(RIN)
+    # beam = Beam(RIN)
     
-    rout = ADlinepass!(LATTICE, beam, refpts, changed_idx, changed_ele)
+    # rout = ADlinepass!(LATTICE, beam, refpts, changed_idx, changed_ele)
     M66_refpts = zeros(6, 6, length(refpts))
     for i in 1:length(refpts)
-        TMAT3 = transpose(rout[i])
+		beam = Beam(copy(RIN))
+		if i == 1
+			linepass!(LATTICE[1:refpts[1]], beam)
+		else
+			linepass!(LATTICE[refpts[i-1]+1:refpts[i]], beam)
+		end
+        TMAT3 = transpose(beam.r)
         M66 = (TMAT3[:,1:6] - TMAT3[:,7:12]) ./ scaling
         M66_refpts[:, :, i] = M66
     end

@@ -1,4 +1,4 @@
-
+# include("fringe_TPSA.jl")
 
 function strthinkick!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A, B, L, max_order) where {T, TPS_Dim, Max_TPS_Degree}
     ### this section is type unstable

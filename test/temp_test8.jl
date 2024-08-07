@@ -3,14 +3,15 @@ using JuTrack
 using LaTeXStrings
 # using Enzyme
 # Enzyme.API.runtimeActivity!(true)
+# something wrong for current version
 
 
 
 function f(x1) # treat beam as a constant will lead to 0 gradient
     # particles = randn(50000, 6) / 1e3
     # ebeam = Beam(particles, znbin=2)
-    RLCwake = LongitudinalRLCWake(180e9, 5.5e3, x1)
-    D1 = DRIFT(len=1.0)
+    RLCwake = LongitudinalRLCWake(180e9, 5.5e3, 3.0)
+    D1 = DRIFT(len=x1)
     # RLCwake = KSEXT(len=1.0, k2= x1)
     # vbase=3.42*8.5e6
     # ϕs=10.0
@@ -36,7 +37,7 @@ function f(x1) # treat beam as a constant will lead to 0 gradient
     return ebeam.emittance
 end
 
-grad = autodiff(Forward, f, Duplicated,  Duplicated(180e9, 1.0)) # 11.713 s (1750155 allocations: 74.56 GiB)
+grad = autodiff(Forward, f, Duplicated,  Duplicated(1.0, 1.0)) # 11.713 s (1750155 allocations: 74.56 GiB)
 println(grad)
 
 

@@ -26,37 +26,37 @@ function linepass1!(line, particles::Beam)
     particles.r = rout
     return save_particles
 end
-ESR_crab = deserialize("src/demo/esr_main_linearquad.jls")
+ESR_crab = deserialize("src/demo/ESR/esr_main_linearquad.jls")
 # ESR_nocrab = deserialize("test/esr_main_rad_craboff.jls")
 
-function get_phase14(x3, RING)
-    # change the 3rd quad, optimize phase advance between CC1-35 and CC4-5533
-    changed_idx = [3]
-    new_D1 = KQUAD(len=RING[3].len, k1=x3)
-    changed_ele = [new_D1]
-    refpts = [i for i in 1:length(RING)]
-    twi = ADtwissring(RING, 0.0, 1, refpts, changed_idx, changed_ele)
+# function get_phase14(x3, RING)
+#     # change the 3rd quad, optimize phase advance between CC1-35 and CC4-5533
+#     changed_idx = [3]
+#     new_Q1 = KQUAD(len=RING[3].len, k1=x3)
+#     changed_ele = [new_Q1]
+#     refpts = [i for i in 1:length(RING)]
+#     twi = ADtwissring(RING, 0.0, 1, refpts, changed_idx, changed_ele)
 
-    phase41 = twi[35].dmux + twi[end].dmux - twi[5533].dmux
+#     phase41 = twi[35].dmux + twi[end].dmux - twi[5533].dmux
 
-    return phase41 - 2*pi
-end
+#     return phase41 - 2*pi
+# end
 
-function get_phase23(x, RING)
-    # change the 3rd quad, optimize phase advance between CC1-35 and CC4-5533
-    changed_idx = [3]
-    new_D1 = KQUAD(len=RING[3].len, k1=x)
-    changed_ele = [new_D1]
-    refpts = [i for i in 1:length(RING)]
-    twi = ADtwissring(RING, 0.0, 1, refpts, changed_idx, changed_ele)
+# function get_phase23(x, RING)
+#     # change the 3rd quad, optimize phase advance between CC1-35 and CC4-5533
+#     changed_idx = [3]
+#     new_Q1 = KQUAD(len=RING[3].len, k1=x)
+#     changed_ele = [new_Q1]
+#     refpts = [i for i in 1:length(RING)]
+#     twi = ADtwissring(RING, 0.0, 1, refpts, changed_idx, changed_ele)
 
-    phase23 = twi[952].dmux - twi[916].dmux
+#     phase23 = twi[952].dmux - twi[916].dmux
 
-    return phase23 - 2*pi
-end
+#     return phase23 - 2*pi
+# end
 
-phi14 = get_phase14(ESR_crab[3].k1, ESR_crab)
-phi23 = get_phase23(ESR_crab[3].k1, ESR_crab)
+# phi14 = get_phase14(ESR_crab[3].k1, ESR_crab)
+# phi23 = get_phase23(ESR_crab[3].k1, ESR_crab)
 
 function Q_perturb(ESR_crab)
     for i in eachindex(ESR_crab)
@@ -98,14 +98,15 @@ xinit = [ESR_perturb[9].k1; ESR_perturb[13].k1; ESR_perturb[17].k1; ESR_perturb[
 zero_idx = [9,13,17,23,27,31,5537]
 function get_phase14_zero(x)
     changed_idx = [9,13,17,23,27,31,5537]
-    new_D1 = KQUAD(len=ESR_crab[9].len, k1=x[1])
-    new_D2 = KQUAD(len=ESR_crab[13].len, k1=x[2])
-    new_D3 = KQUAD(len=ESR_crab[17].len, k1=x[3])
-    new_D4 = KQUAD(len=ESR_crab[23].len, k1=x[4])
-    new_D5 = KQUAD(len=ESR_crab[27].len, k1=x[5])
-    new_D6 = KQUAD(len=ESR_crab[31].len, k1=x[6])
-    new_D7 = KQUAD(len=ESR_crab[5537].len, k1=x[7])
-    changed_ele = [new_D1, new_D2, new_D3, new_D4, new_D5, new_D6, new_D7]
+    L = 0.25
+    new_Q1 = KQUAD(len=L, k1=x[1])
+    new_Q2 = KQUAD(len=L, k1=x[2])
+    new_Q3 = KQUAD(len=L, k1=x[3])
+    new_Q4 = KQUAD(len=L, k1=x[4])
+    new_Q5 = KQUAD(len=L, k1=x[5])
+    new_Q6 = KQUAD(len=L, k1=x[6])
+    new_Q7 = KQUAD(len=L, k1=x[7])
+    changed_ele = [new_Q1, new_Q2, new_Q3, new_Q4, new_Q5, new_Q6, new_Q7]
     refpts = [i for i in 1:length(ESR_crab)]
     # refpts = [35, 5533, length(ESR_crab)]
     twi = ADtwissring(ESR_crab, 0.0, 1, refpts, changed_idx, changed_ele)
@@ -117,14 +118,14 @@ end
 
 # function get_phase23_zero(x, RING)
 #     changed_idx = [9,13,17,23,27,31,5537]
-#     new_D1 = KQUAD(len=RING[9].len, k1=x[1])
-#     new_D2 = KQUAD(len=RING[13].len, k1=x[2])
-#     new_D3 = KQUAD(len=RING[17].len, k1=x[3])
-#     new_D4 = KQUAD(len=RING[23].len, k1=x[4])
-#     new_D5 = KQUAD(len=RING[27].len, k1=x[5])
-#     new_D6 = KQUAD(len=RING[31].len, k1=x[6])
-#     new_D7 = KQUAD(len=RING[5537].len, k1=x[7])
-#     changed_ele = [new_D1, new_D2, new_D3, new_D4, new_D5, new_D6, new_D7]
+#     new_Q1 = KQUAD(len=RING[9].len, k1=x[1])
+#     new_Q2 = KQUAD(len=RING[13].len, k1=x[2])
+#     new_Q3 = KQUAD(len=RING[17].len, k1=x[3])
+#     new_Q4 = KQUAD(len=RING[23].len, k1=x[4])
+#     new_Q5 = KQUAD(len=RING[27].len, k1=x[5])
+#     new_Q6 = KQUAD(len=RING[31].len, k1=x[6])
+#     new_Q7 = KQUAD(len=RING[5537].len, k1=x[7])
+#     changed_ele = [new_Q1, new_Q2, new_Q3, new_Q4, new_Q5, new_Q6, new_Q7]
 #     refpts = [i for i in 1:length(RING)]
 #     twi = ADtwissring(RING, 0.0, 1, refpts, changed_idx, changed_ele)
 
@@ -180,7 +181,7 @@ end
 
 x0_vals, goal_vals, grad_vals = multi_val_op(xinit, 10, 1e-5, ESR_crab)
 
-plot_steps = 5
+plot_steps = length(goal_vals)
 p1 = plot(1:plot_steps, x0_vals[1, 1:plot_steps], title = L"Evolution\ of\ k", xlabel = L"Iterations", ylabel = L"Strength (m^{-1})", label=L"k_1", line=:dash, marker=:circle,framestyle=:box)
 for i in 2:7
     label_str = "k_{$i}"  
@@ -197,4 +198,4 @@ for i in 2:7
     plot!(1:plot_steps, grad_vals[i, 1:plot_steps], label=full_label, line=:dash, marker=:circle)
 end
 plot(p1, p2, p3, layout = (3, 1), size=(800, 650))
-savefig("plot1.png")
+# savefig("plot1.png")

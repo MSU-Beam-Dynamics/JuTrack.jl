@@ -1,4 +1,4 @@
-
+# include("fringe.jl")
 function B2perp(bx, by, irho, x, xpr, y, ypr)
     v_norm2 = 1.0 / ((1.0 + x*irho)^2 + xpr^2 + ypr^2)
     return ((by * (1.0 + x*irho))^2 + (bx *(1.0 + x*irho))^2 + (bx*ypr - by*xpr)^2) * v_norm2

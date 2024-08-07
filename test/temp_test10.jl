@@ -2,6 +2,7 @@
 # Enzyme.API.runtimeActivity!(true)
 include("../src/JuTrack.jl")
 using .JuTrack
+# not work for current version
 # function erfcx_AD(z)
 #     return [erfcx(z[1])]
 # end
@@ -79,7 +80,7 @@ function f1(x)
     
     rin = matrix_to_array(ebeam.r)
     # pass_P!(pstrong, rin, ebeam.nmacro, ebeam)
-    plinepass!([pstrong], ebeam)
+    linepass!([pstrong], ebeam)
     get_emittance!(ebeam)
     return ebeam.emittance[1]
 
