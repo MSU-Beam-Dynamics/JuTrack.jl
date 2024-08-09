@@ -100,38 +100,6 @@ k1 = -0.9
 results, derivatives = autodiff(Forward, tracking_wrt_k1, Duplicated, Duplicated(k1, 1.0))
 ```
 
-For large lattice, use it as global variable or const (inconvenient but necessary).
-Use ADlinepass or ADringpass! for tracking.
-```
-# calculate the derivatives w.r.t the strength of Q1
-LINE = ... # assume LINE is a large lattice
-function tracking_wrt_k1(x1)
-    beam = Beam([0.1 0.0 0.0 0.0 0.0 0.0], energy=3.5e9)
-
-    idx = findelem(LINE, :name, "Q1")
-    elements = Vector{AbstractElement}(undef, length(idx))
-    for i in eachindex(idx)
-        elements[i] = KQUAD(len=LINE[idx[i]].len, k1=x1)
-    end
-    
-    # ADlinepass! and ADringpass! automatically change the element in the tracking
-    # without modifying the original lattice
-    ADlinepass!(LINE, beam, idx, elements)
-    return beam.r
-end
-k1 = 0.5
-results, derivatives = autodiff(Forward, tracking_wrt_k1, Duplicated, Duplicated(k1, 1.0))
-```
-
-or
-```
-function tracking_wrt_k1(x1, LINE)
-    ...
-end
-k1 = 0.5
-results, derivatives = autodiff(Forward, tracking_wrt_k1, Duplicated, Duplicated(k1, 1.0), Const(LINE))
-```
-
 # Parallel computation setting
 Multi-threading is available for multi-particle tracking. Before using it, one has to set up the number of threads.
 
@@ -151,7 +119,7 @@ Add or modify the Julia settings to include the environment variable like this:
 ```
 "julia.executablePath": "path/to/julia", // change it to your Julia path
 "julia.environmentVariables": {
-    "JULIA_NUM_THREADS": "4" // Adjust the number to the desired number of threads
+    "JULIA_NUM_THREADS": "48" // Adjust the number to the desired number of threads
 }
 ```
 
@@ -172,9 +140,5 @@ pringpass(beamline, beam, nturns)
 # Known issues
 * This package currently supports forward AD. Backward AD is still under development.
 
-* Creating long lattice vectors in the differentiated function can slow the differentiation and may result in an error. To avoid it, please create/load the lattice before the differentiation, and then take it as a constant variable or global variable for the differentiated function. 
-
-* Terminated with error code (-1073741819). This is a Windows-specific error code, indicating possible conflicts of the package with the memomry management of Windows system. It is always recommended to run it on Linux platform for better performance.
-
-* Current stable version is on Julia 1.9.4. Please up/downgrade the Julia version if there is a issue.
+* This package is developed and tested on Julia 1.9.4. Please up/downgrade the Julia version if there is a issue.
 
