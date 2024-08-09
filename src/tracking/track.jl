@@ -28,14 +28,7 @@ function linepass!(line, particles::Beam)
         error("The number of particles does not match the length of the particle array")
     end
     for i in eachindex(line)
-        # ele = line[i]
         pass!(line[i], particles6, np, particles)        
-        # if isnan(particles6[1]) || isinf(particles6[1])
-        #     println("The particle is lost at element ", i, "element name is ", line[i].name)
-        #     rout = array_to_matrix(particles6, np)
-        #     particles.r = rout
-        #     return nothing
-        # end
     end
     rout = array_to_matrix(particles6, np)
     particles.r = rout

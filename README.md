@@ -25,11 +25,13 @@ Pkg.instantiate()
 
 # Import the package in Julia
 ```
-using Pkg # optional if you are using another Julia environment
-Pkg.activate(".") # optional if you are using another Julia environment
-include("path-to-the-package/src/JuTrack.jl")
-using .JuTrack
+using Pkg 
+Pkg.add(path="path-to-the-package")
 ```
+```
+using JuTrack
+```
+
 # Lattice definition
 ```
 D1 = DRIFT(name="D1", len=1.0)

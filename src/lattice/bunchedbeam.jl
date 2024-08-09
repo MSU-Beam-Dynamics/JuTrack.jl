@@ -126,12 +126,8 @@ end
 
 function initilize_6DGaussiandist!(beam::Beam, optics::AbstractOptics4D, lmap::AbstractLongitudinalMap, cutoff::Float64=5.0)
     # 6D Gaussian distribution
-
-    # dist=Truncated(Normal(0.0,1.0),-cutoff,cutoff)
-
-    # beam.r = rand(dist, beam.nmacro, 6)
-    beam.r = randn(beam.nmacro, 6)
-
+    temp = randn(beam.nmacro, 6)
+    beam.r .= temp
     # cutoff the distribution
     # for c in 1:beam.nmacro
     #     for i in 1:6

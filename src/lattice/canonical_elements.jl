@@ -364,3 +364,60 @@ struct StrongGaussianBeam <: AbstractStrongBeamBeam  # Strong Beam with transver
         new(charge,mass,atomnum,classrad0,radconst,np,energy,momentum,gamma,beta, op, bs, nz, zeros(nz), zeros(nz), zeros(nz), zeros(nz))
     end  
 end
+
+
+# wake field
+function linear_interpolate(x, x_points, y_points)
+    """
+    Interpolates or extrapolates a value using linear interpolation.
+
+    x: The point to interpolate or extrapolate.
+    x_points: The x-coordinates of the data points.
+    y_points: The y-coordinates of the data points.
+
+    Returns the interpolated or extrapolated value at x.
+    """
+    if x <= x_points[1]
+        slope = (y_points[2] - y_points[1]) / (x_points[2] - x_points[1])
+        return y_points[1] + slope * (x - x_points[1])
+    elseif x >= x_points[end]
+        slope = (y_points[end] - y_points[end - 1]) / (x_points[end] - x_points[end - 1])
+        return y_points[end] + slope * (x - x_points[end])
+    else
+        for i in 2:length(x_points)
+            if x < x_points[i]
+                slope = (y_points[i] - y_points[i - 1]) / (x_points[i] - x_points[i - 1])
+                return y_points[i - 1] + slope * (x - x_points[i - 1])
+            end
+        end
+    end
+end
+
+@kwdef struct LongitudinalRLCWake <: AbstractElement
+    freq::Float64 = 0.0
+    Rshunt::Float64 = 0.0
+    Q0::Float64 = 0.0
+end
+function wakefieldfunc_RLCWake(rlcwake::LongitudinalRLCWake, t::Float64)
+    Q0p=sqrt(rlcwake.Q0^2 - 1.0/4.0)
+    w0 = 2*pi*rlcwake.freq
+    w0p= w0/rlcwake.Q0*Q0p
+    if t>0
+        return 0.0
+    else
+        return rlcwake.Rshunt * w0 /rlcwake.Q0 * (cos(w0p * t) +  sin(w0p * t) / 2 / Q0p) * exp(w0 * t / 2 / rlcwake.Q0)
+    end
+end
+
+struct LongitudinalWake <: AbstractElement
+    times::AbstractVector
+    wakefields::AbstractVector
+    wakefield::Function
+end
+function LongitudinalWake(times::AbstractVector, wakefields::AbstractVector, fliphalf::Float64=-1.0)
+    wakefield = function (t::Float64)
+        t>times[1]*fliphalf && return 0.0
+        return linear_interpolate(t*fliphalf, times, wakefields)
+    end
+    return LongitudinalWake(times, wakefields, wakefield)
+end

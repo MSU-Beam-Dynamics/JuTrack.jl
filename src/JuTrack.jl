@@ -58,7 +58,7 @@ export qr_eigen, diag1
 export CRABCAVITY, easyCRABCAVITY, AccelCavity, LorentzBoost, InvLorentzBoost, StrongGaussianBeam, 
     StrongThinGaussianBeam, AbstractStrongBeamBeam, crab_crossing_setup!, pass_lumi!, pass_lumi_P!, Bassetti_Erskine!
 export LongitudinalRFMap, AbstractLongitudinalRFMap, AbstractTransferMap, AbstractTransverseMap
-export LongitudinalRLCWake, LongitudinalWake
+export LongitudinalRLCWake, LongitudinalWake, wakefieldfunc_RLCWake
 export AbstractOptics, AbstractOptics2D, AbstractOptics4D, optics2D, optics4DUC
 export initilize_6DGaussiandist!, get_emittance!, get_2nd_moment!, get_centroid!, histogram1DinZ!
 export initilize_zslice!, twiss_2d, twiss_beam
