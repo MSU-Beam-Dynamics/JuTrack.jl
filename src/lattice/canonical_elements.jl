@@ -1,6 +1,6 @@
 abstract type AbstractElement end
 
-struct MARKER <: AbstractElement
+mutable struct MARKER <: AbstractElement
     name::String
     len::Float64
     eletype::String
@@ -8,7 +8,7 @@ struct MARKER <: AbstractElement
     MARKER(;name::String = "MARKER", len::Float64 = 0.0) = new(name, len, "MARKER")
 end
 
-struct DRIFT <: AbstractElement
+mutable struct DRIFT <: AbstractElement
     name::String
     len::Float64
     T1::Array{Float64,1}
@@ -26,7 +26,7 @@ struct DRIFT <: AbstractElement
 end
 
 
-struct KQUAD <: AbstractElement
+mutable struct KQUAD <: AbstractElement
     name::String
     len::Float64
     k1::Float64
@@ -65,7 +65,7 @@ struct KQUAD <: AbstractElement
     end
 end
 
-struct KSEXT <: AbstractElement
+mutable struct KSEXT <: AbstractElement
     name::String
     len::Float64
     k2::Float64
@@ -104,7 +104,7 @@ struct KSEXT <: AbstractElement
     end
 end
 
-struct KOCT <: AbstractElement
+mutable struct KOCT <: AbstractElement
     name::String
     len::Float64
     k3::Float64
@@ -143,7 +143,7 @@ struct KOCT <: AbstractElement
     end
 end
 
-struct thinMULTIPOLE <: AbstractElement
+mutable struct thinMULTIPOLE <: AbstractElement
     name::String
     len::Float64
     PolynomA::Array{Float64,1}
@@ -183,7 +183,7 @@ struct thinMULTIPOLE <: AbstractElement
     end
 end
 
-struct SBEND <: AbstractElement
+mutable struct SBEND <: AbstractElement
     name::String
     len::Float64
     angle::Float64
@@ -261,7 +261,7 @@ function RBEND(;name::String = "RBend", len::Float64 = 0.0, angle::Float64 = 0.0
                 EApertures=EApertures, KickAngle=KickAngle)
 end
 
-struct RFCA <: AbstractElement
+mutable struct RFCA <: AbstractElement
     name::String
     len::Float64
     volt::Float64
@@ -278,7 +278,7 @@ struct RFCA <: AbstractElement
     end
 end
 
-struct SOLENOID <: AbstractElement
+mutable struct SOLENOID <: AbstractElement
     name::String
     len::Float64
     ks::Float64 # rad/m
@@ -294,7 +294,7 @@ struct SOLENOID <: AbstractElement
     end
 end
 
-struct CORRECTOR <: AbstractElement
+mutable struct CORRECTOR <: AbstractElement
     name::String
     len::Float64
     xkick::Float64
@@ -319,7 +319,7 @@ function VKICKER(;name::String = "VKicker", len::Float64 = 0.0, ykick::Float64 =
     return CORRECTOR(name=name, len=len, xkick=0.0, ykick=ykick)
 end
 
-struct SPACECHARGE <: AbstractElement
+mutable struct SPACECHARGE <: AbstractElement
     # spectral space charge
     # this element is treated as an integrated effect of space charge over a length of effective_len
     name::String
@@ -339,7 +339,7 @@ end
 
 
 # non-canonical elements
-struct QUAD <: AbstractElement
+mutable struct QUAD <: AbstractElement
     name::String
     len::Float64
     k1::Float64
@@ -362,7 +362,7 @@ end
 
 ###########################################
 # the following elements may not be symplectic and may not work with Enzyme
-struct CRABCAVITY <: AbstractElement
+mutable struct CRABCAVITY <: AbstractElement
     name::String 
     len::Float64 
     volt::Float64  # voltage
@@ -380,7 +380,7 @@ struct CRABCAVITY <: AbstractElement
 end
 
 
-struct easyCRABCAVITY <: AbstractElement
+mutable struct easyCRABCAVITY <: AbstractElement
     name::String 
     len::Float64 
     halfthetac::Float64 
@@ -395,7 +395,7 @@ struct easyCRABCAVITY <: AbstractElement
     end
 end
 
-struct AccelCavity <: AbstractElement
+mutable struct AccelCavity <: AbstractElement
     name::String 
     len::Float64 
     volt::Float64  # voltage
@@ -415,13 +415,13 @@ end
 abstract type AbstractTransferMap <:AbstractElement end
 abstract type AbstractTransverseMap <:AbstractTransferMap end
 abstract type AbstractLongitudinalMap <:AbstractTransferMap end
-struct LongitudinalRFMap <: AbstractLongitudinalMap
+mutable struct LongitudinalRFMap <: AbstractLongitudinalMap
     alphac::Float64
     RF::AbstractElement
     LongitudinalRFMap(alphac::Float64, RF::AbstractElement)=new(alphac, RF)
 end
 
-struct LorentzBoost <: AbstractElement
+mutable struct LorentzBoost <: AbstractElement
     angle::Float64
     cosang::Float64
     tanang::Float64
@@ -429,7 +429,7 @@ struct LorentzBoost <: AbstractElement
     LorentzBoost(angle)=new(angle, cos(angle), tan(angle), 0)
 end
 
-struct InvLorentzBoost <: AbstractElement
+mutable struct InvLorentzBoost <: AbstractElement
     angle::Float64
     sinang::Float64
     cosang::Float64
@@ -442,7 +442,7 @@ end
 abstract type AbstractOptics end
 abstract type AbstractOptics2D <:AbstractOptics end
 abstract type AbstractOptics4D <:AbstractOptics end
-struct optics2D <: AbstractOptics2D
+mutable struct optics2D <: AbstractOptics2D
     beta::Float64
     alpha::Float64
     gamma::Float64
@@ -453,7 +453,7 @@ end
 optics2D(b::Float64, a::Float64, ph::Float64, eta::Float64, etap::Float64)=optics2D(b,a,(1.0+a^2)/b,ph,eta,etap)
 optics2D(b::Float64, a::Float64)=optics2D(b,a,(1.0+a^2)/b,0.0,0.0,0.0)
 
-struct optics4DUC <: AbstractOptics4D # 4D linear transformation uncoupled
+mutable struct optics4DUC <: AbstractOptics4D # 4D linear transformation uncoupled
     optics_x::optics2D
     optics_y::optics2D
 end
@@ -462,7 +462,7 @@ optics4DUC(bx::Float64, ax::Float64, by::Float64, ay::Float64)=optics4DUC(optics
 ######### strong beam-beam
 abstract type AbstractStrongBeamBeam <:AbstractElement end
 
-struct StrongThinGaussianBeam <: AbstractStrongBeamBeam
+mutable struct StrongThinGaussianBeam <: AbstractStrongBeamBeam
     amplitude::Float64
     rmssizex::Float64
     rmssizey::Float64
@@ -472,7 +472,7 @@ struct StrongThinGaussianBeam <: AbstractStrongBeamBeam
     StrongThinGaussianBeam(amp::Float64, rx::Float64, ry::Float64, zloc::Float64=0.0, xoff::Float64=0.0, yoff::Float64=0.0)=new(amp,rx,ry,zloc,xoff,yoff)
 end
 
-struct StrongGaussianBeam <: AbstractStrongBeamBeam  # Strong Beam with transverse Gaussian distribution
+mutable struct StrongGaussianBeam <: AbstractStrongBeamBeam  # Strong Beam with transverse Gaussian distribution
     # particle::ParticleType
     charge::Float64  
     mass::Float64  
@@ -530,7 +530,7 @@ function linear_interpolate(x, x_points, y_points)
     end
 end
 
-struct LongitudinalRLCWake <: AbstractElement
+mutable struct LongitudinalRLCWake <: AbstractElement
     freq::Float64
     Rshunt::Float64
     Q0::Float64
@@ -547,7 +547,7 @@ function wakefieldfunc_RLCWake(rlcwake::LongitudinalRLCWake, t::Float64)
     end
 end
 
-struct LongitudinalWake <: AbstractElement
+mutable struct LongitudinalWake <: AbstractElement
     times::AbstractVector
     wakefields::AbstractVector
     wakefield::Function
