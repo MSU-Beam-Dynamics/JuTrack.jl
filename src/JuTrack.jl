@@ -36,6 +36,7 @@ include("tracking/thinmultipole_TPSA.jl")
 include("tracking/corrector_TPSA.jl")
 include("tracking/track.jl")
 include("lattice/EdwardsTengTwiss.jl")
+include("lattice/ResonanceDrivingTerms.jl")
 
 include("tracking/fringe.jl")
 include("tracking/fringe_TPSA.jl")
@@ -52,6 +53,7 @@ include("utils/lattice_utils.jl")
 include("utils/matrix.jl")
 include("utils/dynamic_aperture.jl")
 include("utils/fma.jl")
+
 export Beam
 export m_e, m_p, m_goldion, speed_of_light, epsilon_0, CGAMMA, CoordLimit, AngleLimit, use_exact_Hamiltonian, use_exact_drift
 export qr_eigen, diag1
@@ -65,16 +67,20 @@ export initilize_zslice!, twiss_2d, twiss_beam
 
 export CTPS, cst, findindex, PolyMap, getindexmap, reassign!
 export AbstractElement, DRIFT, KQUAD, KSEXT, KOCT, SBEND, RBEND, RFCA, SOLENOID, MARKER, CORRECTOR, HKICKER, VKICKER, thinMULTIPOLE
-export QUAD
+export QUAD, buildlatt
 export SPACECHARGE
 export EdwardsTengTwiss, AbstractTwiss, twissPropagate, findm66, periodicEdwardsTengTwiss, twissline, ADtwissline, twissring, ADfindm66, ADtwissring, ADperiodicEdwardsTengTwiss
 export fastfindm66, fastfindm66_refpts, ADfastfindm66_refpts
 export linepass!, pass!, ringpass!, linepass_TPSA!, pass_TPSA!, ringpass_TPSA!, check_lost
 export plinepass!, pringpass!, pass_P!, ADlinepass!, ADlinepass_TPSA!
 export matrix_to_array, array_to_matrix
-export total_length, spos, findelem, insert_space_charge
+export total_length, spos, findelem, insert_space_charge, array_optics, get_len
 export ADfindm66_refpts
+
+function Duplicated(x::Float64, dx::Base.RefValue{Float64})
+    return Duplicated(x, dx[])
+end
 export autodiff, Forward, gradient, jacobian, Duplicated, DuplicatedNoNeed, Const, Val, Enzyme
 
-export dynamic_aperture, naff, FMA
+export dynamic_aperture, naff, FMA, computeRDT, ADcomputeRDT
 end

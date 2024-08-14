@@ -46,7 +46,7 @@ function translate_AT_to_Julia(THERING, filename)
                 element.FamName, eletype, element.FamName);
             case 'Corrector'
                 eletype = 'CORRECTOR';
-                juliaStr = sprintf('%s = %s("%s", %.10f, %.10f, %.10f, zeros(6), zeros(6), zeros(6,6), zeros(6,6), "CORRECTOR")\n', ...
+                juliaStr = sprintf('%s = %s(name="%s", len=%.10f, xkick=%.10f, ykick=%.10f)\n', ...
                 element.FamName, eletype, element.FamName, element.Length, ...
                 element.KickAngle(1), element.KickAngle(2));
             case 'Aperture'
@@ -65,7 +65,7 @@ function translate_AT_to_Julia(THERING, filename)
         juliaElements{end+1} = element.FamName;
     end
 
-    fprintf(fid, 'elements = [%s]\n', strjoin(juliaElements, ',\n'));
+    fprintf(fid, 'elements = [%s]\n', strjoin(juliaElements, ','));
 
     fclose(fid);  
 
