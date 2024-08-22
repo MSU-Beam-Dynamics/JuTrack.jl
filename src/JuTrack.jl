@@ -72,7 +72,7 @@ export SPACECHARGE
 export EdwardsTengTwiss, AbstractTwiss, twissPropagate, findm66, periodicEdwardsTengTwiss, twissline, ADtwissline, twissring, ADfindm66, ADtwissring, ADperiodicEdwardsTengTwiss
 export fastfindm66, fastfindm66_refpts, ADfastfindm66_refpts
 export linepass!, pass!, ringpass!, linepass_TPSA!, pass_TPSA!, ringpass_TPSA!, check_lost
-export plinepass!, pringpass!, pass_P!, ADlinepass!, ADlinepass_TPSA!
+export plinepass!, pringpass!, pass_P!, ADlinepass!, ADlinepass_TPSA!, ADringpass!#, ADpringpass!, ADplinepass!
 export matrix_to_array, array_to_matrix
 export total_length, spos, findelem, insert_space_charge, array_optics, get_len
 export ADfindm66_refpts

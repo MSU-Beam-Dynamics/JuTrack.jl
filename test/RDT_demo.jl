@@ -13,10 +13,10 @@ SDM_index = findelem(RING, :name, "SDM") # 0.21m, -17 /m^-3
 SFM_index = findelem(RING, :name, "SFM") # 0.21m, 15 /m^-3
 
 for i in 1:length(SDM_index)
-    RING[SDM_index[i]].PolynomB[3] = -10.0 
+    RING[SDM_index[i]].PolynomB[3] = -100.0 
 end
 for i in 1:length(SFM_index)
-    RING[SFM_index[i]].PolynomB[3] = 10.0 
+    RING[SFM_index[i]].PolynomB[3] = 100.0 
 end
 
 function obj(dlist)

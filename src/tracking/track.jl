@@ -132,13 +132,13 @@ function ADlinepass!(line, particles::Beam, refpts::Vector, changed_idx::Vector,
     return saved_particles
 end
 
-function AD_ringpass!(line, particles::Beam, nturn::Int, changed_idx::Vector, changed_ele::Vector)
+function ADringpass!(line, particles::Beam, nturn::Int, changed_idx::Vector, changed_ele::Vector)
     for i in 1:nturn
         ADlinepass!(line, particles, changed_idx, changed_ele)    
     end
     return nothing
 end
-function AD_ringpass!(line, particles::Beam, nturn::Int, changed_idx::Vector, changed_ele::Vector, save::Bool)
+function ADringpass!(line, particles::Beam, nturn::Int, changed_idx::Vector, changed_ele::Vector, save::Bool)
     save_beam = []
     for i in 1:nturn
         ADlinepass!(line, particles, changed_idx, changed_ele)    

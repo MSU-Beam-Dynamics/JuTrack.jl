@@ -4,7 +4,7 @@ A Julia-based package that enables advanced auto differentiation (AD) for symple
 
 # Installation
 
-* Install Julia 1.9.4 at [here](https://julialang.org/downloads/oldreleases/). Current version is developed based on Julia 1.9.4. Using an unexpected version may result in an error.
+* Install Julia 1.9.4 at [here](https://julialang.org/downloads/oldreleases/). Current version is developed based on Julia 1.9.4.
 
 * Download the package
 ```
@@ -130,11 +130,11 @@ println("Number of threads in use: ", Threads.nthreads())
 
 Parallel computing is available for multi-particle tracking using:
 ```
-plinepass(beamline, beam)
+plinepass!(beamline, beam)
 ```
 or 
 ```
-pringpass(beamline, beam, nturns)
+pringpass!(beamline, beam, nturns)
 ```
 
 # Known issues

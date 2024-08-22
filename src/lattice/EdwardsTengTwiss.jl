@@ -338,6 +338,48 @@ function findm66_refpts(seq, dp::Float64, order::Int, refpts::Vector{Int})
 	return map_list
 end
 
+function findorbit(ring, dp=0.0)
+    XYStep = 3e-8   # Step size for numerical differentiation
+    dps = 1e-12    # Convergence threshold
+    max_iterations = 20  # Max. iterations
+    Ri = [0.0 0.0 0.0 0.0 0.0 dp]  # Default initial guess for the orbit
+
+	D = zeros(5, 6)
+	for i in 1:4
+		D[i, i] = XYStep
+	end
+    # change = Inf
+    # I = zeros(4, 4)
+    # for i in 1:4
+    #     I[i, i] = 1.0
+    # end
+    for itercount in 1:max_iterations
+		RMATi = zeros(5, 6)
+		RMATi .+= D
+		for i in 1:5
+			RMATi[i, :] .+= Ri[1,:]
+		end
+
+        beam = Beam(RMATi)
+
+        linepass!(ring, beam)
+        
+        RMATf = beam.r'
+        Rf = RMATf[:,end]
+        # Compute the transverse part of the Jacobian
+        J4 = (RMATf[1:4,1:4] .- RMATf[1:4,5]) ./ XYStep
+        Ri_next = Ri + ([ (I - J4) \ reshape((Rf[1:4] - Ri[1:4]), 4, 1) ;0 ;0])'
+
+        change = sqrt(sum((Ri_next - Ri).^2))
+        Ri = Ri_next
+        if change < dps
+            break
+        end
+    end
+
+    return Ri
+end
+
 function fastfindm66(LATTICE, dp=0.0)
     # assume the closed orbit is zero
     NE = length(LATTICE)
