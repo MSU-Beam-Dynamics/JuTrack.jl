@@ -16,14 +16,14 @@ function f(x1, x2)
     # changed_ids = changed_id1
     # changed_elems = [KSEXT(len=0.21, k2=x1) for i in 1:length(changed_ids)]
     nturns = 1000
-    amp_max = 0.05
+    amp_nstep = 50
     amp_step = 0.001
     angle_steps = 11
     E = 3.0e9
 
     # println("number of threads used for parallel comptuing: ", Threads.nthreads())
     angle_list = [pi/(angle_steps-1) * i for i in 0:angle_steps-1]
-    amp_list = [amp_step * i for i in 1:Int(amp_max/amp_step)]
+    amp_list = [amp_step * i for i in 1:amp_nstep]
 
     particles = zeros(length(angle_list) * length(amp_list), 6)
     for i in 1:length(angle_list)
@@ -43,7 +43,7 @@ function f(x1, x2)
 end
 
 
-@time g1 = autodiff(Forward, f, Duplicated, Duplicated(-100.0, 1.0), Const(50.0))
+@time g1 = autodiff(Forward, f, Duplicated, Duplicated(-10.0, 1.0), Const(10.0))
 @time g2 = autodiff(Forward, f, Duplicated, Const(-100.0), Duplicated(50.0, 1.0))
 
 using Plots
@@ -67,9 +67,11 @@ function gradient_descent(x1_init, x2_init; lr=0.001, tol=1e-6, max_iter=100)
         grad_x1 = g1[2]
         grad_x2 = g2[2]
 
+        lr1 = lr *abs( g1[1] / grad_x1)
+        lr2 = lr *abs( g2[1] / grad_x2)
         # Update variables
-        x1 -= lr * grad_x1
-        x2 -= lr * grad_x2
+        x1 -= lr1 * grad_x1
+        x2 -= lr2 * grad_x2
         push!(x1_his, x1)
         push!(x2_his, x2)
         push!(g1_his, grad_x1)

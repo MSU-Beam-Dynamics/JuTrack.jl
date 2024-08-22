@@ -65,3 +65,26 @@ ds_track = get_ds(x, xp, delta)
 #         changednumber += 1
 #     end
 # end
+
+mutable struct Node
+    value::AbstractElement
+    next::Union{Node, Nothing}
+end
+
+struct Lattice
+    head::Union{Node, Nothing}
+end
+
+# Function to append elements to the lattice
+function append!(lattice::Lattice, element::AbstractElement)
+    new_node = Node(element, nothing)
+    if isnothing(lattice.head)
+        lattice.head = new_node
+    else
+        current = lattice.head
+        while !isnothing(current.next)
+            current = current.next
+        end
+        current.next = new_node
+    end
+end
