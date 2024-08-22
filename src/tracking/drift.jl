@@ -108,7 +108,7 @@ function DriftPass_P!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64,1},
     R1::Array{Float64,2}, R2::Array{Float64, 2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, 
     num_particles::Int, lost_flags::Array{Int64,1})
     Threads.@threads for c in 1:num_particles
-        if isone(lost_flags[c])
+        if lost_flags[c] == 1
             continue
         end
         r6 = @view r_in[(c-1)*6+1:c*6]

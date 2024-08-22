@@ -7,7 +7,7 @@ using Printf
 # the objective is to minimize the sum of the following terms:  h21000, h10110, h30000, h10200, h10020
 # the optimization variables are the sextupole strengths of SDM and SFM
 # the optimization is done by gradient descent. The gradient is calculated by autodiff @Enzyme
-RING = deserialize("src/demo/SPEAR3/spear3.jls")
+RING1 = deserialize("src/demo/SPEAR3/spear3.jls")
 
 twi = twissring(RING, 0.0, 1)
 beta, alpha, gamma, mu, dp = array_optics(twi)
@@ -66,25 +66,3 @@ ds_track = get_ds(x, xp, delta)
 #     end
 # end
 
-mutable struct Node
-    value::AbstractElement
-    next::Union{Node, Nothing}
-end
-
-struct Lattice
-    head::Union{Node, Nothing}
-end
-
-# Function to append elements to the lattice
-function append!(lattice::Lattice, element::AbstractElement)
-    new_node = Node(element, nothing)
-    if isnothing(lattice.head)
-        lattice.head = new_node
-    else
-        current = lattice.head
-        while !isnothing(current.next)
-            current = current.next
-        end
-        current.next = new_node
-    end
-end

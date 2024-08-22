@@ -1,4 +1,4 @@
-function plinepass!(line, particles::Beam)
+function plinepass!(line::Vector, particles::Beam)
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     np = particles.nmacro
@@ -14,7 +14,7 @@ function plinepass!(line, particles::Beam)
     return nothing
 end
 
-function ADplinepass!(line, particles::Beam, changed_idx::Vector, changed_ele::Vector)
+function ADplinepass!(line::Vector, particles::Beam, changed_idx::Vector, changed_ele::Vector)
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     np = particles.nmacro
@@ -44,7 +44,7 @@ function ADpringpass!(line::Vector, particles::Beam, nturn::Int, changed_idx::Ve
     return nothing
 end
 
-function pringpass!(line::Vector{AbstractElement}, particles::Beam, nturn::Int)
+function pringpass!(line::Vector, particles::Beam, nturn::Int)
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     for i in 1:nturn
@@ -53,7 +53,7 @@ function pringpass!(line::Vector{AbstractElement}, particles::Beam, nturn::Int)
     return nothing
 end
 
-function pringpass!(line, particles::Beam, nturn::Int, save::Bool)
+function pringpass!(line::Vector, particles::Beam, nturn::Int, save::Bool)
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     save_beam = []

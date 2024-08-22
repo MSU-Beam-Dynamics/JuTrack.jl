@@ -15,6 +15,7 @@ use_exact_Hamiltonian = 0
 include("TPSA/TPSA.jl")
 include("lattice/beam.jl")
 include("lattice/canonical_elements.jl")
+include("lattice/lattice.jl")
 include("tracking/bend.jl")
 include("tracking/drift.jl")
 include("tracking/multipole.jl")
@@ -35,6 +36,7 @@ include("tracking/crabcavity_TPSA.jl")
 include("tracking/thinmultipole_TPSA.jl")
 include("tracking/corrector_TPSA.jl")
 include("tracking/track.jl")
+include("tracking/track_vector.jl")
 include("lattice/EdwardsTengTwiss.jl")
 include("lattice/ResonanceDrivingTerms.jl")
 
@@ -57,6 +59,7 @@ include("utils/fma.jl")
 export Beam
 export m_e, m_p, m_goldion, speed_of_light, epsilon_0, CGAMMA, CoordLimit, AngleLimit, use_exact_Hamiltonian, use_exact_drift
 export qr_eigen, diag1
+export Lattice, add!, buildlattice
 export CRABCAVITY, easyCRABCAVITY, AccelCavity, LorentzBoost, InvLorentzBoost, StrongGaussianBeam, 
     StrongThinGaussianBeam, AbstractStrongBeamBeam, crab_crossing_setup!, pass_lumi!, pass_lumi_P!, Bassetti_Erskine!
 export LongitudinalRFMap, AbstractLongitudinalRFMap, AbstractTransferMap, AbstractTransverseMap
@@ -72,7 +75,7 @@ export SPACECHARGE
 export EdwardsTengTwiss, AbstractTwiss, twissPropagate, findm66, periodicEdwardsTengTwiss, twissline, ADtwissline, twissring, ADfindm66, ADtwissring, ADperiodicEdwardsTengTwiss
 export fastfindm66, fastfindm66_refpts, ADfastfindm66_refpts
 export linepass!, pass!, ringpass!, linepass_TPSA!, pass_TPSA!, ringpass_TPSA!, check_lost
-export plinepass!, pringpass!, pass_P!, ADlinepass!, ADlinepass_TPSA!, ADringpass!#, ADpringpass!, ADplinepass!
+export plinepass!, pringpass!, pass_P!, ADlinepass!, ADlinepass_TPSA!, ADringpass!, ADpringpass!, ADplinepass!
 export matrix_to_array, array_to_matrix
 export total_length, spos, findelem, insert_space_charge, array_optics, get_len
 export ADfindm66_refpts

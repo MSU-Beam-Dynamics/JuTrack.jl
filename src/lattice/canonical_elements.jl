@@ -559,10 +559,3 @@ function LongitudinalWake(times::AbstractVector, wakefields::AbstractVector, fli
     end
     return LongitudinalWake(times, wakefields, wakefield)
 end
-
-# build lattice
-function buildlatt(list)
-    line = Union{MARKER, DRIFT, RFCA, KQUAD, QUAD, KSEXT, KOCT, SBEND, thinMULTIPOLE, SOLENOID, CORRECTOR, 
-    CRABCAVITY, easyCRABCAVITY, LongitudinalRFMap, LorentzBoost, InvLorentzBoost, StrongThinGaussianBeam,
-    StrongGaussianBeam, LongitudinalRLCWake, LongitudinalWake, SPACECHARGE}[list...]
-end
