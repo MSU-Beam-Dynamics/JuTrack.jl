@@ -950,27 +950,9 @@ println(beam1.r.-beam.r)
 
 function f(x)
     beam = Beam([0.001 0.0 0.0 0.0 0.0 0.0; 0.001 0.001 0.0001 0.0001 0.0 0.0], energy=3e9)
-    RING = buildlattice()
-D1 = DRIFT(len=0.5)
-D2 = DRIFT(len=0.3)
-D3 = DRIFT(len=0.1)
-Q1 = QUAD(len=1.0, k1=1.5)
-Q2 = QUAD(len=1.0, k1=-1.5)
-S1 = SBEND(len=1.0, angle=pi/4)
-S2 = SBEND(len=1.0, angle=-pi/4)
-# add!(RING, D1)
-add!(RING, Q1)
-# add!(RING, D2)
-# add!(RING, S1)
-# add!(RING, D3)
-add!(RING, Q2)
-# add!(RING, D1)
-# add!(RING, S2)
-# add!(RING, D2)
-add!(RING, Q1)
-    # RING = spear()
-    Qnew = [QUAD(len=1.0, k1=x)]
-    ADplinepass!(RING, beam, [1], Qnew)
+    RING = spear()
+    Qnew = [QUAD(len= 0.3533895, k1=x)]
+    ADplinepass!(RING, beam, [5], Qnew)
     return beam.r[1,:]
 end
 
