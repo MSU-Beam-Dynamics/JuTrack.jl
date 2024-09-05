@@ -71,7 +71,7 @@ function translate_AT_to_Julia1(THERING, filename)
     remove_repeated_lines(filename, filename)
     
     fid = fopen(filename, 'a');
-    fprintf(fid, 'line = buildlattice()\n');
+    fprintf(fid, ['line = Lattice(nelems=',num2str(length(juliaElements)),')\n']);
     for i = 1:length(juliaElements)
         fprintf(fid, ['add!(line, ',juliaElements{i},')\n']);
     end

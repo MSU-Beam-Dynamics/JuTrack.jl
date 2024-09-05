@@ -1,7 +1,7 @@
 function linepass!(lattice::Lattice, particles::Beam)
     np = particles.nmacro
     particles6 = matrix_to_array(particles.r)
-    for i in 2:lattice.nelems+1
+    for i in 1:lattice.nelems
         if lattice.element_order[i][1] == 1
             pass!(lattice.rfcas[lattice.element_order[i][2]], particles6, np, particles)
         elseif lattice.element_order[i][1] == 2
@@ -45,9 +45,11 @@ function ADlinepass!(lattice::Lattice, particles::Beam, id::Vector{Int}, elems::
     np = particles.nmacro
     particles6 = matrix_to_array(particles.r)
     c = 1
-    for i in 2:lattice.nelems+1
+    for i in 1:lattice.nelems
+        # println("i = $(i), ADlinepass! element: $(lattice.element_order[i])")
         if i in id
             pass!(elems[c], particles6, np, particles)
+            # println("ADlinepass! element: $(elems[c])")
             c += 1
         else
             if lattice.element_order[i][1] == 1
@@ -107,7 +109,7 @@ end
 function plinepass!(lattice::Lattice, particles::Beam)
     np = particles.nmacro
     particles6 = matrix_to_array(particles.r)
-    for i in 2:lattice.nelems+1
+    for i in 1:lattice.nelems
         if lattice.element_order[i][1] == 1
             pass_P!(lattice.rfcas[lattice.element_order[i][2]], particles6, np, particles)
         elseif lattice.element_order[i][1] == 2
@@ -151,7 +153,7 @@ function ADplinepass!(lattice::Lattice, particles::Beam, id::Vector{Int}, elems:
     np = particles.nmacro
     particles6 = matrix_to_array(particles.r)
     c = 1
-    for i in 2:lattice.nelems+1
+    for i in 1:lattice.nelems
         if i in id
             pass_P!(elems[c], particles6, np, particles)
             c += 1

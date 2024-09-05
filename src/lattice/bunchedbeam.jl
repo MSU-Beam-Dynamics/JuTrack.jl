@@ -1,6 +1,6 @@
 # using LinearAlgebra
 # using Distributions
-
+using Random
 # linear algebra functions
 # function det1(A::Matrix{Float64})
 #     # Ensure the matrix is square
@@ -126,6 +126,7 @@ end
 
 function initilize_6DGaussiandist!(beam::Beam, optics::AbstractOptics4D, lmap::AbstractLongitudinalMap, cutoff::Float64=5.0)
     # 6D Gaussian distribution
+    Random.seed!(123)
     temp = randn(beam.nmacro, 6)
     beam.r .= temp
     # cutoff the distribution
