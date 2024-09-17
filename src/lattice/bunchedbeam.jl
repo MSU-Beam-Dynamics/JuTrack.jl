@@ -1,5 +1,5 @@
 # using LinearAlgebra
-# using Distributions
+using Distributions
 using Random
 # linear algebra functions
 # function det1(A::Matrix{Float64})
@@ -126,7 +126,7 @@ end
 
 function initilize_6DGaussiandist!(beam::Beam, optics::AbstractOptics4D, lmap::AbstractLongitudinalMap, cutoff::Float64=5.0)
     # 6D Gaussian distribution
-    Random.seed!(123)
+    # Random.seed!(123)
     temp = randn(beam.nmacro, 6)
     beam.r .= temp
     # cutoff the distribution
@@ -170,8 +170,8 @@ function initilize_6DGaussiandist!(beam::Beam, optics::AbstractOptics4D, lmap::A
         beam.r[c, 2] = beam.temp2[c] * sqrt(beam.emittance[1]/optics.optics_x.beta)
         beam.r[c, 3] = beam.temp3[c] * sqrt(beam.emittance[2]*optics.optics_y.beta)
         beam.r[c, 4] = beam.temp4[c] * sqrt(beam.emittance[2]/optics.optics_y.beta)
-        beam.r[c, 2] += beam.r[c, 1] * (optics.optics_x.alpha/optics.optics_x.beta)
-        beam.r[c, 4] += beam.r[c, 3] * (optics.optics_y.alpha/optics.optics_y.beta)
+        beam.r[c, 2] -= beam.r[c, 1] * (optics.optics_x.alpha/optics.optics_x.beta)
+        beam.r[c, 4] -= beam.r[c, 3] * (optics.optics_y.alpha/optics.optics_y.beta)
     end
 
     
@@ -224,20 +224,30 @@ function histogram1DinZ!(beam::Beam)
     return nothing
 end
 
-function twiss_2d(x, xp)
-    # Calculate second moments
-    x2_mean = mean(x.^2)
-    xp2_mean = mean(xp.^2)
-    xxp_mean = mean(x .* xp)
+function twiss_2d(x, px)
+    # Mean values
+    mean_x = mean(x)
+    mean_px = mean(px)
     
-    # Calculate emittance
-    emittance = sqrt(x2_mean * xp2_mean - xxp_mean.^2)
+    # Second moments
+    mean_x2 = mean(x.^2)
+    mean_px2 = mean(px.^2)
+    mean_xpx = mean(x .* px)
     
-    # Calculate beta function
-    beta = x2_mean / emittance
-    alpha = -xxp_mean / emittance
+    # Covariances
+    cov_x2 = mean_x2 - mean_x^2
+    cov_px2 = mean_px2 - mean_px^2
+    cov_xpx = mean_xpx - mean_x * mean_px
     
-    return beta, alpha, emittance
+    # Emittance
+    epsilon = sqrt(cov_x2 * cov_px2 - cov_xpx^2)
+    
+    # Twiss parameters
+    beta = cov_x2 / epsilon
+    gamma = cov_px2 / epsilon
+    alpha = -cov_xpx / epsilon
+    
+    return beta, alpha, epsilon
 end
 
 function twiss_beam(beam::Beam)
@@ -246,4 +256,66 @@ function twiss_beam(beam::Beam)
     beta_y, alpha_y, emit_y = twiss_2d(beam.r[:, 3], beam.r[:, 4])
     beta_z, alpha_z, emit_z = twiss_2d(beam.r[:, 5], beam.r[:, 6])
     return beta_x, alpha_x, emit_x, beta_y, alpha_y, emit_y, beta_z, alpha_z, emit_z
+end
+
+function Gauss3_Dist(distparam::Vector{Float64}, Npt::Int; seed::Int=3)
+    # Extract parameters from distparam
+    sigx    = distparam[1]
+    sigpx   = distparam[2]
+    muxpx   = distparam[3]
+    xscale  = distparam[4]
+    pxscale = distparam[5]
+    xmu1    = distparam[6]
+    xmu2    = distparam[7]
+    
+    sigy    = distparam[8]
+    sigpy   = distparam[9]
+    muypy   = distparam[10]
+    yscale  = distparam[11]
+    pyscale = distparam[12]
+    xmu3    = distparam[13]
+    xmu4    = distparam[14]
+    
+    sigz    = distparam[15]
+    sigpz   = distparam[16]
+    muzpz   = distparam[17]
+    zscale  = distparam[18]
+    pzscale = distparam[19]
+    xmu5    = distparam[20]
+    xmu6    = distparam[21]
+
+    # standard deviations
+    sig1 = sigx * xscale
+    sig2 = sigpx * pxscale
+    sig3 = sigy * yscale
+    sig4 = sigpy * pyscale
+    sig5 = sigz * zscale
+    sig6 = sigpz * pzscale
+
+    # normalization factors for correlations
+    sq12 = sqrt(1.0 - muxpx * muxpx)
+    sq34 = sqrt(1.0 - muypy * muypy)
+    sq56 = sqrt(1.0 - muzpz * muzpz)
+
+    Pts1 = zeros(Npt, 6)  # Rows: x, px, y, py, z, pz; Columns: particles
+
+    # Generate standard normal random numbers for positions and momenta
+    Random.seed!(seed)
+    x1 = randn(2, Npt)  # For x and px
+    x2 = randn(2, Npt)  # For y and py
+    x3 = randn(2, Npt)  # For z and pz
+
+    # Compute positions and momenta for x and px
+    Pts1[:, 1] = xmu1 .+ (sig1 .* x1[1, :] ./ sq12)
+    Pts1[:, 2] = xmu2 .+ (sig2 .* (-muxpx .* x1[1, :] ./ sq12 .+ x1[2, :]))
+
+    # Compute positions and momenta for y and py
+    Pts1[:, 3] = xmu3 .+ (sig3 .* x2[1, :] ./ sq34)
+    Pts1[:, 4] = xmu4 .+ (sig4 .* (-muypy .* x2[1, :] ./ sq34 .+ x2[2, :]))
+
+    # Compute positions and momenta for z and pz
+    Pts1[:, 5] = xmu5 .+ (sig5 .* x3[1, :] ./ sq56)
+    Pts1[:, 6] = xmu6 .+ (sig6 .* (-muzpz .* x3[1, :] ./ sq56 .+ x3[2, :]))
+
+    return Pts1
 end

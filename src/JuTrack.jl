@@ -25,6 +25,9 @@ include("tracking/corrector.jl")
 include("tracking/wakefield.jl")
 include("tracking/quad.jl")
 include("tracking/space_charge.jl")
+include("tracking/drift_SC.jl")
+include("tracking/quad_SC.jl")
+include("tracking/multipole_SC.jl")
 
 include("tracking/bend_TPSA.jl")
 include("tracking/drift_TPSA.jl")
@@ -66,12 +69,12 @@ export LongitudinalRFMap, AbstractLongitudinalRFMap, AbstractTransferMap, Abstra
 export LongitudinalRLCWake, LongitudinalWake, wakefieldfunc_RLCWake
 export AbstractOptics, AbstractOptics2D, AbstractOptics4D, optics2D, optics4DUC
 export initilize_6DGaussiandist!, get_emittance!, get_2nd_moment!, get_centroid!, histogram1DinZ!
-export initilize_zslice!, twiss_2d, twiss_beam
+export initilize_zslice!, twiss_2d, twiss_beam, Gauss3_Dist
 
 export CTPS, cst, findindex, PolyMap, getindexmap, reassign!
 export AbstractElement, DRIFT, KQUAD, KSEXT, KOCT, SBEND, RBEND, RFCA, SOLENOID, MARKER, CORRECTOR, HKICKER, VKICKER, thinMULTIPOLE
 export QUAD, buildlatt
-export SPACECHARGE
+export SPACECHARGE, QUAD_SC, DRIFT_SC, KQUAD_SC
 export EdwardsTengTwiss, AbstractTwiss, twissPropagate, findm66, periodicEdwardsTengTwiss, twissline, ADtwissline, twissring, ADfindm66, ADtwissring, ADperiodicEdwardsTengTwiss
 export fastfindm66, fastfindm66_refpts, ADfastfindm66_refpts
 export linepass!, pass!, ringpass!, linepass_TPSA!, pass_TPSA!, ringpass_TPSA!, check_lost

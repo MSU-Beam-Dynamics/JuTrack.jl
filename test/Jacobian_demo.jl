@@ -1,9 +1,9 @@
-# include("../src/JuTrack.jl")
+include("../src/demo/SPEAR3/spear3.jl")
 using JuTrack
 using Serialization
 using BenchmarkTools
 
-RING = deserialize("src/demo/spear3.jls")
+RING = spear3()
 
 
 function TPSA_track_jacobian(x, y)

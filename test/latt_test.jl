@@ -1,3 +1,5 @@
+# Build lattice with a specific lattice structure. 
+# Usually, using vector of Julia is more direct and convenient
 using JuTrack
 include("../src/demo/SPEAR3/spear3.jl")
 RING1 = spear3()

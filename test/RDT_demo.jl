@@ -6,9 +6,8 @@ using Printf
 # this example calculate the sum of third order resonance terms for the SPEAR3 lattice
 # the objective is to minimize the sum of the following terms:  h21000, h10110, h30000, h10200, h10020
 # the optimization variables are the sextupole strengths of SDM and SFM
-# the optimization is done by gradient descent. The gradient is calculated by autodiff @Enzyme
-RING = deserialize("src/demo/SPEAR3/spear3.jls")
-
+include("../src/demo/SPEAR3/spear3.jl")
+RING = spear3()
 SDM_index = findelem(RING, :name, "SDM") # 0.21m, -17 /m^-3
 SFM_index = findelem(RING, :name, "SFM") # 0.21m, 15 /m^-3
 

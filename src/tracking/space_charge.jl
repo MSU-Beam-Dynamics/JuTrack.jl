@@ -1,5 +1,5 @@
 function calculate_K(beam, I)
-    m0 = beam.mass * 1.782662e-36 # kg
+    m0 = beam.mass * 1.78266192e-36 # kg, may result in a slight round-off error
     charge = abs(beam.charge * charge_e)
     K = charge * I / (2.0 * pi * epsilon_0 * m0 * speed_of_light^3 * beam.beta^3 * beam.gamma^3)
     return K
@@ -56,6 +56,8 @@ end
 function calculate_philm(rin, Nl, Nm, dx, dy, a, b, Np, lost_flags)
     philm = zeros(Nl, Nm)
     gamma2lm = zeros(Nl, Nm)
+    xmin = minimum(rin[1:6:end])
+    ymin = minimum(rin[3:6:end])
     for i in 1:Nl
         for j in 1:Nm
             al = i * pi / a
@@ -65,7 +67,7 @@ function calculate_philm(rin, Nl, Nm, dx, dy, a, b, Np, lost_flags)
                 if lost_flags[k] == 1
                     continue
                 end
-                philm[i, j] += sin(al * rin[(k-1)*6 + 1]) * sin(bm * rin[(k-1)*6 + 3]) / gamma2lm[i, j]
+                philm[i, j] += sin(al * (rin[(k-1)*6 + 1].-xmin)) * sin(bm * (rin[(k-1)*6 + 3].-ymin)) / gamma2lm[i, j]
             end
         end
     end
@@ -76,6 +78,8 @@ end
 function calculate_philm_P(rin, Nl, Nm, dx, dy, a, b, Np, lost_flags)
     philm = zeros(Nl, Nm)
     gamma2lm = zeros(Nl, Nm)
+    xmin = minimum(rin[1:6:end])
+    ymin = minimum(rin[3:6:end])
     for i in 1:Nl
         for j in 1:Nm
             al = i * pi / a
@@ -89,7 +93,7 @@ function calculate_philm_P(rin, Nl, Nm, dx, dy, a, b, Np, lost_flags)
                 if lost_flags[k] == 1
                     continue
                 end
-                local_sum[tid] += sin(al * rin[(k-1)*6 + 1]) * sin(bm * rin[(k-1)*6 + 3]) / gamma2lm[i, j]
+                local_sum[tid] += sin(al * (rin[(k-1)*6 + 1].-xmin)) * sin(bm * (rin[(k-1)*6 + 3].-ymin)) / gamma2lm[i, j]
             end
             
             # Sum up all partial results from each thread
@@ -104,12 +108,14 @@ function space_charge!(r_in, K, Nl, Nm, dx, dy, a, b, Np, dt, lost_flags)
     philm, gamma2lm = calculate_philm(r_in, Nl, Nm, dx, dy, a, b, Np, lost_flags)
     term1 = zeros(Np)
     term2 = zeros(Np)
+    xmin = minimum(r_in[1:6:end])
+    ymin = minimum(r_in[3:6:end])
     for i in 1:Nl
         for j in 1:Nm
             al = i * pi / a
             bm = j * pi / b
-            term1 .+= (philm[i, j] * al .* cos.(al .* r_in[1:6:end]) .* sin.(bm .* r_in[3:6:end]))
-            term2 .+= (philm[i, j] * bm .* sin.(al .* r_in[1:6:end]) .* cos.(bm .* r_in[3:6:end]))
+            term1 .+= (philm[i, j] * al .* cos.(al .* (r_in[1:6:end].-xmin)) .* sin.(bm .* (r_in[3:6:end].-ymin)))
+            term2 .+= (philm[i, j] * bm .* sin.(al .* (r_in[1:6:end].-xmin)) .* cos.(bm .* (r_in[3:6:end].-ymin)))
         end
     end
     r_in[2:6:end] .-= (dt * K / 2.0) * term1
@@ -120,7 +126,8 @@ function space_charge_P!(r_in, K, Nl, Nm, dx, dy, a, b, Np, dt, lost_flags)
     philm, gamma2lm = calculate_philm_P(r_in, Nl, Nm, dx, dy, a, b, Np, lost_flags)
     term1 = zeros(Np)
     term2 = zeros(Np)
-
+    xmin = minimum(r_in[1:6:end])
+    ymin = minimum(r_in[3:6:end])
     nthreads = Threads.nthreads()
     term1_thread = [zeros(Np) for _ in 1:nthreads]  
     term2_thread = [zeros(Np) for _ in 1:nthreads]
@@ -130,8 +137,8 @@ function space_charge_P!(r_in, K, Nl, Nm, dx, dy, a, b, Np, dt, lost_flags)
         for j in 1:Nm
             al = i * pi / a
             bm = j * pi / b
-            term1_thread[tid] .+= (philm[i, j] * al .* cos.(al .* r_in[1:6:end]) .* sin.(bm .* r_in[3:6:end]))
-            term2_thread[tid] .+= (philm[i, j] * bm .* sin.(al .* r_in[1:6:end]) .* cos.(bm .* r_in[3:6:end]))
+            term1_thread[tid] .+= (philm[i, j] * al .* cos.(al .* (r_in[1:6:end].-xmin)) .* sin.(bm .* (r_in[3:6:end].-ymin)))
+            term2_thread[tid] .+= (philm[i, j] * bm .* sin.(al .* (r_in[1:6:end].-xmin)) .* cos.(bm .* (r_in[3:6:end].-ymin)))
         end
     end
 
@@ -173,7 +180,7 @@ function pass_P!(ele::SPACECHARGE, r_in::Array{Float64,1}, num_particles::Int64,
     dx = ele.a / ele.Nl
     dy = ele.b / ele.Nm
     # v = speed_of_light * sqrt(1.0 - 1.0 / particles.gamma^2)
-    dt = ele.effective_len
+    dt = ele.effective_len 
     K = calculate_K(particles, I)
     # convert the mass from eV to kg
     m0 = particles.mass * 1.782662e-36 # kg
