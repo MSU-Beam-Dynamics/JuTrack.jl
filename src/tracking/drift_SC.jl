@@ -68,8 +68,11 @@ function pass!(ele::DRIFT_SC, r_in::Array{Float64,1}, num_particles::Int64, part
     # num_particles: number of particles
     lost_flags = particles.lost_flag
     K = calculate_K(particles, particles.current)
-    DriftPass_SC!(r_in, ele.len, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags,
-        ele.a, ele.b, ele.Nl, ele.Nm, K)
+    lstep = ele.len / ele.Nsteps
+    for i in 1:ele.Nsteps
+        DriftPass_SC!(r_in, lstep, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags,
+            ele.a, ele.b, ele.Nl, ele.Nm, K)
+    end
     return nothing
 end
 
@@ -147,7 +150,10 @@ function pass_P!(ele::DRIFT_SC, r_in::Array{Float64,1}, num_particles::Int64, pa
     # num_particles: number of particles
     lost_flags = particles.lost_flag
     K = calculate_K(particles, particles.current)
-    DriftPass_SC_P!(r_in, ele.len, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags,
-        ele.a, ele.b, ele.Nl, ele.Nm, K)
+    lstep = ele.len / ele.Nsteps
+    for i in 1:ele.Nsteps
+        DriftPass_SC_P!(r_in, lstep, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags,
+            ele.a, ele.b, ele.Nl, ele.Nm, K)
+    end
     return nothing
 end

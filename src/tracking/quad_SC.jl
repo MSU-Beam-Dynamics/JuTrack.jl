@@ -149,9 +149,11 @@ function pass!(ele::QUAD_SC, r_in::Array{Float64,1}, num_particles::Int64, parti
     # num_particles: number of particles
     lost_flags = particles.lost_flag
     K = calculate_K(particles, particles.current)
-    QuadLinearPass_SC!(r_in, ele.len, ele.k1, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags,
-        particles.a, particles.b, particles.Nl, particles.Nm, K)
-    
+    lstep = ele.len/ele.Nsteps
+    for i in 1:ele.Nsteps
+        QuadLinearPass_SC!(r_in, lstep, ele.k1, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags,
+            particles.a, particles.b, particles.Nl, particles.Nm, K)
+    end
     return nothing
 end
 
@@ -306,8 +308,10 @@ function pass_P!(ele::QUAD_SC, r_in::Array{Float64,1}, num_particles::Int64, par
     # num_particles: number of particles
     lost_flags = particles.lost_flag
     K = calculate_K(particles, particles.current)
-    QuadLinearPass_SC!(r_in, ele.len, ele.k1, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags,
-        particles.a, particles.b, particles.Nl, particles.Nm, K)
-    
+    lstep = ele.len/ele.Nsteps
+    for i in 1:ele.Nsteps
+        QuadLinearPass_SC!(r_in, lstep, ele.k1, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags,
+            particles.a, particles.b, particles.Nl, particles.Nm, K)
+    end
     return nothing
 end

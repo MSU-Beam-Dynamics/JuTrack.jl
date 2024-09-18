@@ -37,12 +37,13 @@ mutable struct DRIFT_SC <: AbstractElement
     b::Float64
     Nl::Int64
     Nm::Int64
+    Nsteps::Int64
     eletype::String
 
     DRIFT_SC(;name::String = "DRIFT_SC", len::Float64 = 0.0, T1::Array{Float64,1} = zeros(6), 
         T2::Array{Float64,1} = zeros(6), R1::Array{Float64,2} = zeros(6,6), R2::Array{Float64,2} = zeros(6,6), 
         RApertures::Array{Float64,1} = zeros(6), EApertures::Array{Float64,1} = zeros(6), a::Float64 = 1.0, b::Float64 = 1.0,
-        Nl::Int64 = 10, Nm::Int64 = 10) = new(name, len, T1, T2, R1, R2, RApertures, EApertures, a, b, Nl, Nm, "DRIFT_SC")
+        Nl::Int64 = 10, Nm::Int64 = 10, Nsteps::Int64=1) = new(name, len, T1, T2, R1, R2, RApertures, EApertures, a, b, Nl, Nm, Nsteps, "DRIFT_SC")
 end
 
 mutable struct KQUAD <: AbstractElement
@@ -108,6 +109,7 @@ mutable struct KQUAD_SC <: AbstractElement
     b::Float64
     Nl::Int64
     Nm::Int64
+    Nsteps::Int64
     eletype::String
 
     function KQUAD_SC(;name::String = "Quad", len::Float64 = 0.0, k1::Float64 = 0.0, 
@@ -119,12 +121,12 @@ mutable struct KQUAD_SC <: AbstractElement
                     T2::Array{Float64,1} = zeros(Float64, 6), R1::Array{Float64,2} = zeros(Float64, 6, 6), 
                     R2::Array{Float64,2} = zeros(Float64, 6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6), 
                     EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{Float64,1} = zeros(Float64, 2),
-                    a::Float64 = 1.0, b::Float64 = 1.0, Nl::Int64 = 10, Nm::Int64 = 10)
+                    a::Float64 = 1.0, b::Float64 = 1.0, Nl::Int64 = 10, Nm::Int64 = 10, Nsteps::Int64=1)
         if k1 != 0.0 && PolynomB[2] == 0.0
             PolynomB[2] = k1
         end
         new(name, len, k1, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit, 
-            FringeIntM0, FringeIntP0, T1, T2, R1, R2, RApertures, EApertures, KickAngle, a, b, Nl, Nm, "KQUAD_SC")
+            FringeIntM0, FringeIntP0, T1, T2, R1, R2, RApertures, EApertures, KickAngle, a, b, Nl, Nm, Nsteps, "KQUAD_SC")
     end
 end
 
@@ -438,14 +440,15 @@ mutable struct QUAD_SC <: AbstractElement
     b::Float64
     Nl::Int64
     Nm::Int64
+    Nsteps::Int64
     eletype::String
     
     function QUAD_SC(;name::String = "Quad", len::Float64 = 0.0, k1::Float64 = 0.0, rad::Int64 = 0, 
                     T1::Array{Float64,1} = zeros(6), T2::Array{Float64,1} = zeros(6), 
                     R1::Array{Float64,2} = zeros(6,6), R2::Array{Float64,2} = zeros(6,6), 
                     RApertures::Array{Float64,1} = zeros(6), EApertures::Array{Float64,1} = zeros(6), 
-                    a::Float64 = 1.0, b::Float64 = 1.0, Nl::Int64 = 10, Nm::Int64 = 10)
-        new(name, len, k1, rad, T1, T2, R1, R2, RApertures, EApertures, a, b, Nl, Nm, "QUAD_SC")
+                    a::Float64 = 1.0, b::Float64 = 1.0, Nl::Int64 = 10, Nm::Int64 = 10, Nsteps::Int64=1)
+        new(name, len, k1, rad, T1, T2, R1, R2, RApertures, EApertures, a, b, Nl, Nm, Nsteps, "QUAD_SC")
     end
 end
 

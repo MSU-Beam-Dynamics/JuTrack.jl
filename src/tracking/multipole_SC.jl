@@ -341,18 +341,23 @@ function pass!(ele::KQUAD_SC, r_in::Array{Float64,1}, num_particles::Int64, part
     K = calculate_K(particles, particles.current)
     PolynomB = zeros(4)
     E0 = particles.energy
+    lstep = ele.len / ele.Nsteps
     if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
         PolynomB[2] = ele.k1
         if ele.rad == 0
-            StrMPoleSymplectic4Pass_SC!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
-                ele.a, ele.b, ele.Nl, ele.Nm, K)
+            for i in 1:ele.Nsteps
+                StrMPoleSymplectic4Pass_SC!(r_in, lstep, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+                    ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
+                    ele.a, ele.b, ele.Nl, ele.Nm, K)
+            end
         else
-            StrMPoleSymplectic4RadPass_SC!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
-                ele.a, ele.b, ele.Nl, ele.Nm, K)
+            for i in 1:ele.Nsteps
+                StrMPoleSymplectic4RadPass_SC!(r_in, lstep, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+                    ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
+                    ele.a, ele.b, ele.Nl, ele.Nm, K)
+            end
         end
     else
         PolynomB[1] = ele.PolynomB[1]
@@ -360,15 +365,19 @@ function pass!(ele::KQUAD_SC, r_in::Array{Float64,1}, num_particles::Int64, part
         PolynomB[3] = ele.PolynomB[3] / 2.0
         PolynomB[4] = ele.PolynomB[4] / 6.0
         if ele.rad == 0
-            StrMPoleSymplectic4Pass_SC!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
-                ele.a, ele.b, ele.Nl, ele.Nm, K)
+            for i in 1:ele.Nsteps
+                StrMPoleSymplectic4Pass_SC!(r_in, lstep, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+                    ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
+                    ele.a, ele.b, ele.Nl, ele.Nm, K)
+            end
         else
-            StrMPoleSymplectic4RadPass_SC!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
-                ele.a, ele.b, ele.Nl, ele.Nm, K)
+            for i in 1:ele.Nsteps
+                StrMPoleSymplectic4RadPass_SC!(r_in, lstep, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+                    ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
+                    ele.a, ele.b, ele.Nl, ele.Nm, K)
+            end
         end
     end
     return nothing

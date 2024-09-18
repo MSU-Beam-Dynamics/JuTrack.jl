@@ -50,14 +50,14 @@ function f(Q2L)
     nl = 12
     nm = 12
 
-    D1 = DRIFT_SC(len=D1L/4, a=a, b=b, Nl=nl, Nm=nm)
-    D2 = DRIFT_SC(len=D2L/8, a=a, b=b, Nl=nl, Nm=nm)
-    D3 = DRIFT_SC(len=D3L/4, a=a, b=b, Nl=nl, Nm=nm)
-    Q1 = KQUAD_SC(len=Q1L/4, k1=Q1k, NumIntSteps=20, a=a, b=b, Nl=nl, Nm=nm)
-    Q2 = KQUAD_SC(len=Q2L/4, k1=Q2k, NumIntSteps=20, a=a, b=b, Nl=nl, Nm=nm)
+    D1 = DRIFT_SC(len=D1L, a=a, b=b, Nl=nl, Nm=nm, Nsteps=4)
+    D2 = DRIFT_SC(len=D2L, a=a, b=b, Nl=nl, Nm=nm, Nsteps=8)
+    D3 = DRIFT_SC(len=D3L, a=a, b=b, Nl=nl, Nm=nm, Nsteps=4)
+    Q1 = KQUAD_SC(len=Q1L, k1=Q1k, NumIntSteps=20, a=a, b=b, Nl=nl, Nm=nm, Nsteps=4)
+    Q2 = KQUAD_SC(len=Q2L, k1=Q2k, NumIntSteps=20, a=a, b=b, Nl=nl, Nm=nm, Nsteps=4)
 
-    line_SC = [D1,D1,D1,D1, Q1,Q1,Q1,Q1, D2,D2,D2,D2,D2,D2,D2,D2, Q2,Q2,Q2,Q2, D3,D3,D3,D3]
-    
+    # line_SC = [D1,D1,D1,D1, Q1,Q1,Q1,Q1, D2,D2,D2,D2,D2,D2,D2,D2, Q2,Q2,Q2,Q2, D3,D3,D3,D3]
+    line_SC = [D1, Q1, D2, Q2, D3]
     N = 1
     new_emit= zeros(N+1, 3)
     for i in 1:N
@@ -107,14 +107,14 @@ grad_Q2L_fd = (f(0.1+1e-6) .- f(0.1-1e-6)) / 2e-6
 # using DelimitedFiles
 # writedlm("final.txt", final)
 
-# plt.figure(figsize=(7, 4))
-# plt.plot(np.arange(1, 8), final[:, 3], "+", label="FD, X", markersize=8)
-# plt.plot(np.arange(1, 8), final[:, 1], "x", label="AD, X", markersize=8)
-# plt.plot(np.arange(1, 8), final[:, 4], "*", label="FD, Y", markersize=8)
-# plt.plot(np.arange(1, 8), final[:, 2], "s", label="AD, Y", markersize=8, markerfacecolor="none")
-# plt.xticks(np.arange(1, 8), ["D1L", "Q1L", "Q1k", "D2L", "Q2L", "Q2k", "D3L"], fontsize=14, fontname="Times New Roman")
-# plt.yticks(np.arange(-0.5, 0.6, 0.1), fontsize=14, fontname="Times New Roman")
-# plt.legend(prop=Dict("family"=>"Times New Roman"), frameon=false)
-# plt.ylabel("Gradient", fontsize=16, fontname="Times New Roman")
-# plt.ylim(-0.5, 0.5)
-# plt.show()
+plt.figure(figsize=(7, 4))
+plt.plot(np.arange(1, 8), final[:, 3], "+", label="FD, X", markersize=8)
+plt.plot(np.arange(1, 8), final[:, 1], "x", label="AD, X", markersize=8)
+plt.plot(np.arange(1, 8), final[:, 4], "*", label="FD, Y", markersize=8)
+plt.plot(np.arange(1, 8), final[:, 2], "s", label="AD, Y", markersize=8, markerfacecolor="none")
+plt.xticks(np.arange(1, 8), ["D1L", "Q1L", "Q1k", "D2L", "Q2L", "Q2k", "D3L"], fontsize=14, fontname="Times New Roman")
+plt.yticks(np.arange(-0.5, 0.6, 0.1), fontsize=14, fontname="Times New Roman")
+plt.legend(prop=Dict("family"=>"Times New Roman"), frameon=false)
+plt.ylabel("Gradient", fontsize=16, fontname="Times New Roman")
+plt.ylim(-0.5, 0.5)
+plt.show()
