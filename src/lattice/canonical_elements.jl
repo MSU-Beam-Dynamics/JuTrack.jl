@@ -169,6 +169,51 @@ mutable struct KSEXT <: AbstractElement
     end
 end
 
+mutable struct KSEXT_SC <: AbstractElement
+    name::String
+    len::Float64
+    k2::Float64
+    PolynomA::Array{Float64,1}
+    PolynomB::Array{Float64,1}
+    MaxOrder::Int64
+    NumIntSteps::Int64
+    rad::Int64
+    FringeQuadEntrance::Int64
+    FringeQuadExit::Int64
+    FringeIntM0::Array{Float64,1}
+    FringeIntP0::Array{Float64,1}
+    T1::Array{Float64,1}
+    T2::Array{Float64,1}
+    R1::Array{Float64,2}
+    R2::Array{Float64,2}
+    RApertures::Array{Float64,1}
+    EApertures::Array{Float64,1}
+    KickAngle::Array{Float64,1}
+    a::Float64
+    b::Float64
+    Nl::Int64
+    Nm::Int64
+    Nsteps::Int64
+    eletype::String
+
+    function KSEXT_SC(;name::String = "Sext", len::Float64 = 0.0, k2::Float64 = 0.0, 
+                    PolynomA::Array{Float64,1} = zeros(Float64, 4), 
+                    PolynomB::Array{Float64,1} = zeros(Float64, 4), MaxOrder::Int64=2, 
+                    NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
+                    FringeQuadExit::Int64 = 0, FringeIntM0::Array{Float64,1} = zeros(Float64, 5), 
+                    FringeIntP0::Array{Float64,1} = zeros(Float64, 5), T1::Array{Float64,1} = zeros(Float64, 6), 
+                    T2::Array{Float64,1} = zeros(Float64, 6), R1::Array{Float64,2} = zeros(Float64, 6, 6), 
+                    R2::Array{Float64,2} = zeros(Float64, 6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6),
+                    EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{Float64,1} = zeros(Float64, 2),
+                    a::Float64 = 1.0, b::Float64 = 1.0, Nl::Int64 = 10, Nm::Int64 = 10, Nsteps::Int64=1)
+        if k2 != 0.0 && PolynomB[3] == 0.0
+            PolynomB[3] = k2
+        end
+        new(name, len, k2, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit, 
+            FringeIntM0, FringeIntP0, T1, T2, R1, R2, RApertures, EApertures, KickAngle, a, b, Nl, Nm, Nsteps, "KSEXT_SC")
+    end
+end
+
 mutable struct KOCT <: AbstractElement
     name::String
     len::Float64
@@ -205,6 +250,51 @@ mutable struct KOCT <: AbstractElement
         end
         new(name, len, k3, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit, 
             FringeIntM0, FringeIntP0, T1, T2, R1, R2, RApertures, EApertures, KickAngle, "KOCT")
+    end
+end
+
+mutable struct KOCT_SC <: AbstractElement
+    name::String
+    len::Float64
+    k3::Float64
+    PolynomA::Array{Float64,1}
+    PolynomB::Array{Float64,1}
+    MaxOrder::Int64
+    NumIntSteps::Int64
+    rad::Int64
+    FringeQuadEntrance::Int64
+    FringeQuadExit::Int64
+    FringeIntM0::Array{Float64,1}
+    FringeIntP0::Array{Float64,1}
+    T1::Array{Float64,1}
+    T2::Array{Float64,1}
+    R1::Array{Float64,2}
+    R2::Array{Float64,2}
+    RApertures::Array{Float64,1}
+    EApertures::Array{Float64,1}
+    KickAngle::Array{Float64,1}
+    a::Float64
+    b::Float64
+    Nl::Int64
+    Nm::Int64
+    Nsteps::Int64
+    eletype::String
+
+    function KOCT_SC(;name::String = "OCT", len::Float64 = 0.0, k3::Float64 = 0.0, 
+                    PolynomA::Array{Float64,1} = zeros(Float64, 4), 
+                    PolynomB::Array{Float64,1} = zeros(Float64, 4), MaxOrder::Int64=3, 
+                    NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
+                    FringeQuadExit::Int64 = 0, FringeIntM0::Array{Float64,1} = zeros(Float64, 5), 
+                    FringeIntP0::Array{Float64,1} = zeros(Float64, 5), T1::Array{Float64,1} = zeros(Float64, 6), 
+                    T2::Array{Float64,1} = zeros(Float64, 6), R1::Array{Float64,2} = zeros(Float64, 6, 6), 
+                    R2::Array{Float64,2} = zeros(Float64, 6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6),
+                    EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{Float64,1} = zeros(Float64, 2),
+                    a::Float64 = 1.0, b::Float64 = 1.0, Nl::Int64 = 10, Nm::Int64 = 10, Nsteps::Int64=1)
+        if k3 != 0.0 && PolynomB[4] == 0.0
+            PolynomB[4] = k3
+        end
+        new(name, len, k3, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit, 
+            FringeIntM0, FringeIntP0, T1, T2, R1, R2, RApertures, EApertures, KickAngle, a, b, Nl, Nm, Nsteps, "KOCT_SC")
     end
 end
 
@@ -301,6 +391,66 @@ mutable struct SBEND <: AbstractElement
     end
 end
 
+mutable struct SBEND_SC <: AbstractElement
+    name::String
+    len::Float64
+    angle::Float64
+    e1::Float64
+    e2::Float64
+    PolynomA::Array{Float64,1}
+    PolynomB::Array{Float64,1}
+    MaxOrder::Int64
+    NumIntSteps::Int64
+    rad::Int64
+    fint1::Float64
+    fint2::Float64
+    gap::Float64
+    FringeBendEntrance::Int64
+    FringeBendExit::Int64
+    FringeQuadEntrance::Int64
+    FringeQuadExit::Int64
+    FringeIntM0::Array{Float64,1}
+    FringeIntP0::Array{Float64,1}
+    T1::Array{Float64,1}
+    T2::Array{Float64,1}
+    R1::Array{Float64,2}
+    R2::Array{Float64,2}
+    RApertures::Array{Float64,1}
+    EApertures::Array{Float64,1}
+    KickAngle::Array{Float64,1}
+    a::Float64
+    b::Float64
+    Nl::Int64
+    Nm::Int64
+    Nsteps::Int64
+    eletype::String
+
+    function SBEND_SC(;name::String = "SBend", len::Float64 = 0.0, angle::Float64 = 0.0, e1::Float64 = 0.0, e2::Float64 = 0.0, 
+                    PolynomA::Array{Float64,1} = zeros(Float64, 4), PolynomB::Array{Float64,1} = zeros(Float64, 4), 
+                    MaxOrder::Int64=0, NumIntSteps::Int64 = 10, rad::Int64=0, fint1::Float64 = 0.0, fint2::Float64 = 0.0, 
+                    gap::Float64 = 0.0, FringeBendEntrance::Int64 = 1, FringeBendExit::Int64 = 1, 
+                    FringeQuadEntrance::Int64 = 0, FringeQuadExit::Int64 = 0, FringeIntM0::Array{Float64,1} = zeros(Float64, 5),
+                    FringeIntP0::Array{Float64,1} = zeros(Float64, 5), T1::Array{Float64,1} = zeros(Float64, 6),
+                    T2::Array{Float64,1} = zeros(Float64, 6), R1::Array{Float64,2} = zeros(Float64, 6, 6),
+                    R2::Array{Float64,2} = zeros(Float64, 6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6),
+                    EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{Float64,1} = zeros(Float64, 2),
+                    a::Float64 = 1.0, b::Float64 = 1.0, Nl::Int64 = 10, Nm::Int64 = 10, Nsteps::Int64=1)
+        if PolynomB[2] != 0.0
+            MaxOrder = 1
+        end
+        if PolynomB[3] != 0.0
+            MaxOrder = 2
+        end
+        if PolynomB[4] != 0.0
+            MaxOrder = 3
+        end
+        new(name, len, angle, e1, e2, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, fint1, fint2, gap, 
+            FringeBendEntrance, FringeBendExit, FringeQuadEntrance, FringeQuadExit, FringeIntM0, FringeIntP0, 
+            T1, T2, R1, R2, RApertures, EApertures, KickAngle, a, b, Nl, Nm, Nsteps, "SBEND_SC")
+    end
+end
+
+
 function RBEND(;name::String = "RBend", len::Float64 = 0.0, angle::Float64 = 0.0, PolynomA::Array{Float64,1} = zeros(4), 
                 PolynomB::Array{Float64,1} = zeros(4), MaxOrder::Int64=0, NumIntSteps::Int64 = 10, rad::Int64=0, fint1::Float64 = 0.0, 
                 fint2::Float64 = 0.0, gap::Float64 = 0.0, FringeBendEntrance::Int64 = 1, FringeBendExit::Int64 = 1, 
@@ -324,6 +474,32 @@ function RBEND(;name::String = "RBend", len::Float64 = 0.0, angle::Float64 = 0.0
                 FringeBendExit=FringeBendExit, FringeQuadEntrance=FringeQuadEntrance, FringeQuadExit=FringeQuadExit, 
                 FringeIntM0=FringeIntM0, FringeIntP0=FringeIntP0, T1=T1, T2=T2, R1=R1, R2=R2, RApertures=RApertures, 
                 EApertures=EApertures, KickAngle=KickAngle)
+end
+
+function RBEND_SC(;name::String = "RBend", len::Float64 = 0.0, angle::Float64 = 0.0, PolynomA::Array{Float64,1} = zeros(4), 
+                PolynomB::Array{Float64,1} = zeros(4), MaxOrder::Int64=0, NumIntSteps::Int64 = 10, rad::Int64=0, fint1::Float64 = 0.0, 
+                fint2::Float64 = 0.0, gap::Float64 = 0.0, FringeBendEntrance::Int64 = 1, FringeBendExit::Int64 = 1, 
+                FringeQuadEntrance::Int64 = 0, FringeQuadExit::Int64 = 0, FringeIntM0::Array{Float64,1} = zeros(5), 
+                FringeIntP0::Array{Float64,1} = zeros(5), T1::Array{Float64,1} = zeros(6), T2::Array{Float64,1} = zeros(6), 
+                R1::Array{Float64,2} = zeros(6,6), R2::Array{Float64,2} = zeros(6,6), RApertures::Array{Float64,1} = zeros(6), 
+                EApertures::Array{Float64,1} = zeros(6), KickAngle::Array{Float64,1} = zeros(2), a::Float64 = 1.0, b::Float64 = 1.0, 
+                Nl::Int64 = 10, Nm::Int64 = 10, Nsteps::Int64=1)
+    e1 = angle/2.0
+    e2 = angle/2.0
+    if PolynomB[2] != 0.0
+        MaxOrder = 1
+    end
+    if PolynomB[3] != 0.0
+        MaxOrder = 2
+    end
+    if PolynomB[4] != 0.0
+        MaxOrder = 3
+    end
+    return SBEND_SC(name=name, len=len, angle=angle, e1=e1, e2=e2, PolynomA=PolynomA, PolynomB=PolynomB, MaxOrder=MaxOrder, 
+                NumIntSteps=NumIntSteps, rad=rad, fint1=fint1, fint2=fint2, gap=gap, FringeBendEntrance=FringeBendEntrance, 
+                FringeBendExit=FringeBendExit, FringeQuadEntrance=FringeQuadEntrance, FringeQuadExit=FringeQuadExit, 
+                FringeIntM0=FringeIntM0, FringeIntP0=FringeIntP0, T1=T1, T2=T2, R1=R1, R2=R2, RApertures=RApertures, 
+                EApertures=EApertures, KickAngle=KickAngle, a=a, b=b, Nl=Nl, Nm=Nm, Nsteps=Nsteps)
 end
 
 mutable struct RFCA <: AbstractElement
