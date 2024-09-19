@@ -1,6 +1,7 @@
 function DriftPass_SC!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64,1}, T2::Array{Float64,1}, 
     R1::Array{Float64,2}, R2::Array{Float64, 2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, 
     num_particles::Int, lost_flags::Array{Int64,1}, a, b, Nl, Nm, K)
+    # Ref [Qiang, Ji. "Differentiable self-consistent space-charge simulation for accelerator design." Physical Review Accelerators and Beams 26.2 (2023): 024601.]
 
     # half-kick-half
     for c in 1:num_particles

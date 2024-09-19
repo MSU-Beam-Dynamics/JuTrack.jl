@@ -27,6 +27,7 @@ include("tracking/quad.jl")
 include("tracking/space_charge.jl")
 include("tracking/drift_SC.jl")
 include("tracking/quad_SC.jl")
+include("tracking/bend_SC.jl")
 include("tracking/multipole_SC.jl")
 
 include("tracking/bend_TPSA.jl")
@@ -74,7 +75,7 @@ export initilize_zslice!, twiss_2d, twiss_beam, Gauss3_Dist
 export CTPS, cst, findindex, PolyMap, getindexmap, reassign!
 export AbstractElement, DRIFT, KQUAD, KSEXT, KOCT, SBEND, RBEND, RFCA, SOLENOID, MARKER, CORRECTOR, HKICKER, VKICKER, thinMULTIPOLE
 export QUAD, buildlatt
-export SPACECHARGE, QUAD_SC, DRIFT_SC, KQUAD_SC, KSEXT_SC, KOCT_SC
+export SPACECHARGE, QUAD_SC, DRIFT_SC, KQUAD_SC, KSEXT_SC, KOCT_SC, SBEND_SC, RBEND_SC
 export EdwardsTengTwiss, AbstractTwiss, twissPropagate, findm66, periodicEdwardsTengTwiss, twissline, ADtwissline, twissring, ADfindm66, ADtwissring, ADperiodicEdwardsTengTwiss
 export fastfindm66, fastfindm66_refpts, ADfastfindm66_refpts
 export linepass!, pass!, ringpass!, linepass_TPSA!, pass_TPSA!, ringpass_TPSA!, check_lost

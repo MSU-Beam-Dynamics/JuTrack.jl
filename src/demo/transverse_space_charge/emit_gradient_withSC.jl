@@ -1,5 +1,4 @@
 # Calculate the gradient of the emittance with respect to the lattice parameters of a FODO cell under transverse space charge effects
-# So far we only have drift and quad elements for space charge tracking
 using JuTrack
 using Distributions
 using ProgressMeter
@@ -9,7 +8,7 @@ using PyCall
 np = pyimport("numpy")
 plt = pyimport("matplotlib.pyplot")
 
-function f(Q2L)
+function f(D3L)
     distparam = [
         3.677529920673089E-004  ,   # sigx
         8.428925532276500E-004 ,   # sigpx
@@ -39,9 +38,9 @@ function f(Q2L)
 
     D1L = 0.2
     D2L = 0.4
-    D3L = 0.2
+    # D3L = 0.2
     Q1L = 0.1
-    # Q2L = 0.1
+    Q2L = 0.1
     Q1k = 29.6
     Q2k = -29.6
     
@@ -79,30 +78,30 @@ end
 # grad_Q1L_fd = (f(0.1+1e-6) .- f(0.1-1e-6)) / 2e-6
 # grad_Q2k = autodiff(Forward, f, Duplicated, Duplicated(-29.6, 1.0))
 # grad_Q2k_fd = (f(-29.6+1e-6) .- f(-29.6-1e-6)) / 2e-6
-grad_Q2L = autodiff(Forward, f, Duplicated, Duplicated(0.1, 1.0))
-grad_Q2L_fd = (f(0.1+1e-6) .- f(0.1-1e-6)) / 2e-6
+# grad_Q2L = autodiff(Forward, f, Duplicated, Duplicated(0.1, 1.0))
+# grad_Q2L_fd = (f(0.1+1e-6) .- f(0.1-1e-6)) / 2e-6
 # grad_D1L = autodiff(Forward, f, Duplicated, Duplicated(0.2, 1.0))
 # grad_D1L_fd = (f(0.2+1e-6) .- f(0.2-1e-6)) / 2e-6
 # grad_D2L = autodiff(Forward, f, Duplicated, Duplicated(0.4, 1.0))
 # grad_D2L_fd = (f(0.4+1e-6) .- f(0.4-1e-6)) / 2e-6
-# grad_D3L = autodiff(Forward, f, Duplicated, Duplicated(0.2, 1.0))
-# grad_D3L_fd = (f(0.2+1e-6) .- f(0.2-1e-6)) / 2e-6
+grad_D3L = autodiff(Forward, f, Duplicated, Duplicated(0.2, 1.0))
+grad_D3L_fd = (f(0.2+1e-6) .- f(0.2-1e-6)) / 2e-6
 
-# final = zeros(7, 4)
-# final[1, 1:2] = grad_D1L[2][1:2]
-# final[2, 1:2] = grad_Q1L[2][1:2]
-# final[3, 1:2] = grad_Q1k[2][1:2]
-# final[4, 1:2] = grad_D2L[2][1:2]
-# final[5, 1:2] = grad_Q2L[2][1:2]
-# final[6, 1:2] = grad_Q2k[2][1:2]
-# final[7, 1:2] = grad_D3L[2][1:2]
-# final[1, 3:4] = grad_D1L_fd[1:2]
-# final[2, 3:4] = grad_Q1L_fd[1:2]
-# final[3, 3:4] = grad_Q1k_fd[1:2]
-# final[4, 3:4] = grad_D2L_fd[1:2]
-# final[5, 3:4] = grad_Q2L_fd[1:2]
-# final[6, 3:4] = grad_Q2k_fd[1:2]
-# final[7, 3:4] = grad_D3L_fd[1:2]
+final = zeros(7, 4)
+final[1, 1:2] = grad_D1L[2][1:2]
+final[2, 1:2] = grad_Q1L[2][1:2]
+final[3, 1:2] = grad_Q1k[2][1:2]
+final[4, 1:2] = grad_D2L[2][1:2]
+final[5, 1:2] = grad_Q2L[2][1:2]
+final[6, 1:2] = grad_Q2k[2][1:2]
+final[7, 1:2] = grad_D3L[2][1:2]
+final[1, 3:4] = grad_D1L_fd[1:2]
+final[2, 3:4] = grad_Q1L_fd[1:2]
+final[3, 3:4] = grad_Q1k_fd[1:2]
+final[4, 3:4] = grad_D2L_fd[1:2]
+final[5, 3:4] = grad_Q2L_fd[1:2]
+final[6, 3:4] = grad_Q2k_fd[1:2]
+final[7, 3:4] = grad_D3L_fd[1:2]
 
 # using DelimitedFiles
 # writedlm("final.txt", final)

@@ -1,3 +1,5 @@
+# Ref [Qiang, Ji. "Differentiable self-consistent space-charge simulation for accelerator design." Physical Review Accelerators and Beams 26.2 (2023): 024601.]
+
 function calculate_K(beam, I)
     m0 = beam.mass * 1.78266192e-36 # kg, may result in a slight round-off error
     charge = abs(beam.charge * charge_e)

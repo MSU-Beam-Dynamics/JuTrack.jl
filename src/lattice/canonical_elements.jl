@@ -37,7 +37,7 @@ mutable struct DRIFT_SC <: AbstractElement
     b::Float64
     Nl::Int64
     Nm::Int64
-    Nsteps::Int64
+    Nsteps::Int64 # Number of steps for space charge calculation. One step represents a half-kick-half.
     eletype::String
 
     DRIFT_SC(;name::String = "DRIFT_SC", len::Float64 = 0.0, T1::Array{Float64,1} = zeros(6), 
