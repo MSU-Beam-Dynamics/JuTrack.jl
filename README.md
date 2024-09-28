@@ -4,7 +4,7 @@ A Julia-based package that enables advanced auto differentiation (AD) for symple
 
 # Installation
 
-* Install Julia 1.9.4 at [here](https://julialang.org/downloads/oldreleases/). Current version is developed based on Julia 1.9.4.
+* Install Julia at [here](https://julialang.org/downloads/oldreleases/).
 
 * Download the package
 ```

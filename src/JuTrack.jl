@@ -1,6 +1,6 @@
 module JuTrack
 using Enzyme
-Enzyme.API.runtimeActivity!(true) # this is temporarily used
+# Enzyme.API.runtimeActivity!(true) # this is temporarily used
 const CoordLimit = 1.0
 const AngleLimit = 1.0
 const m_e = 0.51099895e6
@@ -61,8 +61,8 @@ include("utils/dynamic_aperture.jl")
 include("utils/fma.jl")
 
 export Beam
-export m_e, m_p, m_goldion, speed_of_light, epsilon_0, CGAMMA, CoordLimit, AngleLimit, use_exact_Hamiltonian, use_exact_drift
-export qr_eigen, diag1
+export m_e, m_p, m_goldion, charge_e, speed_of_light, epsilon_0, CGAMMA, CoordLimit, AngleLimit, use_exact_Hamiltonian, use_exact_drift
+export qr_eigen, diag1, randn_approx
 export Lattice, add!, buildlattice
 export CRABCAVITY, easyCRABCAVITY, AccelCavity, LorentzBoost, InvLorentzBoost, StrongGaussianBeam, 
     StrongThinGaussianBeam, AbstractStrongBeamBeam, crab_crossing_setup!, pass_lumi!, pass_lumi_P!, Bassetti_Erskine!
@@ -87,7 +87,7 @@ export ADfindm66_refpts
 function Duplicated(x::Float64, dx::Base.RefValue{Float64})
     return Duplicated(x, dx[])
 end
-export autodiff, Forward, gradient, jacobian, Duplicated, DuplicatedNoNeed, Const, Val, Enzyme, BatchDuplicated
+export autodiff, Forward, ForwardWithPrimal, gradient, jacobian, Duplicated, DuplicatedNoNeed, Const, Val, Enzyme, BatchDuplicated
 
 export dynamic_aperture, naff, FMA, computeRDT, ADcomputeRDT
 end

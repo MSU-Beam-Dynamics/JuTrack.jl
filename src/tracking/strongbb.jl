@@ -9,7 +9,7 @@ function erfcx_AD(z)
     return [erfcx(z[1])]
 end
 
-function forward(func::Const{typeof(erfcx_AD)}, ::Type{<:Duplicated}, z::Duplicated)
+function forward(config::FwdConfig, func::Const{typeof(erfcx_AD)}, ::Type{<:Duplicated}, z::Duplicated)
     # println("Using custom rule for forward mode on erfcx function!")
     ret = func.val(z.val)  
     z_derivative = -2.0/sqrt(pi) .+ 2.0 .* z.val .* ret 

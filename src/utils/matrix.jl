@@ -63,3 +63,11 @@ function qr_eigen(A; max_iters=10000, tolerance=1e-10)
     eigenvectors = Qk
     return eigenvalues, eigenvectors
 end
+
+function randn_approx(N::Int, M::Int)
+    s = zeros(N, M)
+    for _ in 1:12
+        s .+= rand(N, M)
+    end
+    return s .- 6.0
+end

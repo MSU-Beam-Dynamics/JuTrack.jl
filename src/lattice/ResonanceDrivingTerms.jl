@@ -7,7 +7,7 @@ function avedata(ring, dpp)
     # make the style consistent with AT
     beta_has_begin = [beta[end:end,:]; beta]
     alpha_has_begin = [alpha[end:end,:]; alpha]
-    mu_has_begin = [[0 0]; mu]
+    mu_has_begin = [[0.0 0.0]; mu]
     dp_has_begin = [dp[end:end,:]; dp]
 
     avebeta = beta_has_begin[1:end-1, :]
@@ -38,7 +38,7 @@ function avedata(ring, dpp)
     avedisp[long, [1, 3]] = 0.5 * (disp0[:, [1, 3]] + disp1[:, [1, 3]])
 
 
-    foc = []
+    foc = Int[]
     for i in eachindex(long)
         if :PolynomB in fieldnames(typeof(ring[long[i]])) && ring[long[i]].PolynomB[2] != 0
             push!(foc, i)
@@ -186,21 +186,21 @@ function computeDrivingTerms(s, betax, betay, phix, phiy, etax, Lista2L, Listb2L
 
         if abs(b2L) > 1e-6 || abs(b3L) > 1e-6
             if flags.Chromatic1
-                h11001 += (b3L * betax1 * etax1 / 2 - b2L * betax1 / 4) * nPeriods
-                h00111 += (b2L * betay1 / 4 - b3L * betay1 * etax1 / 2) * nPeriods
-                h20001 += (b3L * betax1 * etax1 / 2 - b2L * betax1 / 4) / 2 * (exp(ii * 2 * phix1)) * periodicFactor[6, 4]
-                h00201 += (b2L * betay1 / 4 - b3L * betay1 * etax1 / 2) / 2 * (ed[nE].py[2]) * periodicFactor[4, 6]
-                h10002 += (b3L*ed[nE].rbetax*etax1^2-b2L*ed[nE].rbetax*etax1)/2*ed[nE].px[1]*periodicFactor[5, 4]
+                h11001::ComplexF64 += (b3L * betax1 * etax1 / 2 - b2L * betax1 / 4) * nPeriods
+                h00111::ComplexF64 += (b2L * betay1 / 4 - b3L * betay1 * etax1 / 2) * nPeriods
+                h20001::ComplexF64 += (b3L * betax1 * etax1 / 2 - b2L * betax1 / 4) / 2 * (exp(ii * 2 * phix1)) * periodicFactor[6, 4]
+                h00201::ComplexF64 += (b2L * betay1 / 4 - b3L * betay1 * etax1 / 2) / 2 * (ed[nE].py[2]) * periodicFactor[4, 6]
+                h10002::ComplexF64 += (b3L*ed[nE].rbetax*etax1^2-b2L*ed[nE].rbetax*etax1)/2*ed[nE].px[1]*periodicFactor[5, 4]
             end
         end
 
         if abs(ed[nE].b3L) > 1e-6
             if flags.Geometric1
-                h21000 += b3L * ed[nE].rbetax * betax1 / 8 * ed[nE].px[1] * periodicFactor[5, 4]
-                h30000 += b3L * ed[nE].rbetax * betax1 / 24 * ed[nE].px[3] * periodicFactor[7, 4]
-                h10110 += -b3L * ed[nE].rbetax * betay1 / 4 * ed[nE].px[1] * periodicFactor[5, 4]
-                h10020 += -b3L * ed[nE].rbetax * betay1 / 8 * ed[nE].px[1] * conj(ed[nE].py[2]) * periodicFactor[5, 2]
-                h10200 += -b3L * ed[nE].rbetax * betay1 / 8 * ed[nE].px[1] * (ed[nE].py[2]) * periodicFactor[5, 6]
+                h21000::ComplexF64 += b3L * ed[nE].rbetax * betax1 / 8 * ed[nE].px[1] * periodicFactor[5, 4]
+                h30000::ComplexF64 += b3L * ed[nE].rbetax * betax1 / 24 * ed[nE].px[3] * periodicFactor[7, 4]
+                h10110::ComplexF64 += -b3L * ed[nE].rbetax * betay1 / 4 * ed[nE].px[1] * periodicFactor[5, 4]
+                h10020::ComplexF64 += -b3L * ed[nE].rbetax * betay1 / 8 * ed[nE].px[1] * conj(ed[nE].py[2]) * periodicFactor[5, 2]
+                h10200::ComplexF64 += -b3L * ed[nE].rbetax * betay1 / 8 * ed[nE].px[1] * (ed[nE].py[2]) * periodicFactor[5, 6]
             end
         end
 
@@ -211,17 +211,17 @@ function computeDrivingTerms(s, betax, betay, phix, phiy, etax, Lista2L, Listb2L
                 dnuy_dJy += 3 * b4L * (betay1^2) / (8 * π) * nPeriods
             end
             if flags.Geometric2
-                h22000 += 3 * b4L * betax1^2 / 32 * nPeriods
-                h11110 -= 3 * b4L * betax1 * betay1 / 8 * nPeriods
-                h00220 += 3 * b4L * betay1^2 / 32 * nPeriods
-                h31000 += b4L * betax1^2 / 16 * exp(ii * phix1 * 2) * periodicFactor[6, 4]
-                h40000 += b4L * betax1^2 / 64 * exp(ii * phix1 * 4) * periodicFactor[8, 4]
-                h20110 -= 3 * b4L * betax1 * betay1 / 16 * exp(ii * phix1 * 2) * periodicFactor[6, 4]
-                h11200 -= 3 * b4L * betax1 * betay1 / 16 * exp(ii * phiy1 * 2) * periodicFactor[4, 6]
-                h20020 -= 3 * b4L * betax1 * betay1 / 32 * exp(ii * phix1 * 2) * conj(exp(ii * phiy1 * 2)) * periodicFactor[6, 2]
-                h20200 -= 3 * b4L * betax1 * betay1 / 32 * exp(ii * phix1 * 2) * exp(ii * phiy1 * 2) * periodicFactor[6, 6]
-                h00310 += b4L * betay1^2 / 16 * exp(ii * phiy1 * 2) * periodicFactor[4, 6]
-                h00400 += b4L * betay1^2 / 64 * exp(ii * phiy1 * 4) * periodicFactor[4, 8]
+                h22000::ComplexF64 += 3 * b4L * betax1^2 / 32 * nPeriods
+                h11110::ComplexF64 -= 3 * b4L * betax1 * betay1 / 8 * nPeriods
+                h00220::ComplexF64 += 3 * b4L * betay1^2 / 32 * nPeriods
+                h31000::ComplexF64 += b4L * betax1^2 / 16 * exp(ii * phix1 * 2) * periodicFactor[6, 4]
+                h40000::ComplexF64 += b4L * betax1^2 / 64 * exp(ii * phix1 * 4) * periodicFactor[8, 4]
+                h20110::ComplexF64 -= 3 * b4L * betax1 * betay1 / 16 * exp(ii * phix1 * 2) * periodicFactor[6, 4]
+                h11200::ComplexF64 -= 3 * b4L * betax1 * betay1 / 16 * exp(ii * phiy1 * 2) * periodicFactor[4, 6]
+                h20020::ComplexF64 -= 3 * b4L * betax1 * betay1 / 32 * exp(ii * phix1 * 2) * conj(exp(ii * phiy1 * 2)) * periodicFactor[6, 2]
+                h20200::ComplexF64 -= 3 * b4L * betax1 * betay1 / 32 * exp(ii * phix1 * 2) * exp(ii * phiy1 * 2) * periodicFactor[6, 6]
+                h00310::ComplexF64 += b4L * betay1^2 / 16 * exp(ii * phiy1 * 2) * periodicFactor[4, 6]
+                h00400::ComplexF64 += b4L * betay1^2 / 64 * exp(ii * phiy1 * 4) * periodicFactor[4, 8]
             end
             
         end
@@ -252,58 +252,58 @@ function computeDrivingTerms(s, betax, betay, phix, phiy, etax, Lista2L, Listb2L
                     if flags.Geometric2
                         termSign = sign(ed[iE].s - ed[jE].s)
                         if termSign != 0
-                            h22000 += (1.0 / 64.0) * termSign * ii * ed[iE].b3L * ed[jE].b3L *
+                            h22000::ComplexF64 += (1.0 / 64.0) * termSign * ii * ed[iE].b3L * ed[jE].b3L *
                             sqrt(ed[iE].betax) * sqrt(ed[jE].betax) * ed[iE].betax * ed[jE].betax *
                             (ed[iE].px[3] * conj(ed[jE].px[3]) + 3 * ed[iE].px[1] * conj(ed[jE].px[1]))
-                            h31000 += (1.0 / 32.0) * termSign * ii * ed[iE].b3L * ed[jE].b3L *
+                            h31000::ComplexF64 += (1.0 / 32.0) * termSign * ii * ed[iE].b3L * ed[jE].b3L *
                             sqrt(ed[iE].betax) * sqrt(ed[jE].betax) * ed[iE].betax * ed[jE].betax *
                             ed[iE].px[3] * conj(ed[jE].px[1])
                         
                             t1 = conj(ed[iE].px[1]) * ed[jE].px[1]
                             t2 = ed[iE].px[1] * conj(ed[jE].px[1])
-                            h11110 += (1.0 / 16.0) * termSign * ii * ed[iE].b3L * ed[jE].b3L *
+                            h11110::ComplexF64 += (1.0 / 16.0) * termSign * ii * ed[iE].b3L * ed[jE].b3L *
                             sqrt(ed[iE].betax) * sqrt(ed[jE].betax) * ed[iE].betay *
                             (ed[jE].betax * (t1 - conj(t1)) + ed[jE].betay * ed[iE].py[2] * conj(ed[jE].py[2]) * (conj(t1) + t1))
     
                             t1 = exp(-ii * (ed[iE].phix - ed[jE].phix))
                             t2 = conj(t1)
-                            h11200 += (1.0 / 32.0) * termSign * ii * ed[iE].b3L * ed[jE].b3L *
+                            h11200::ComplexF64 += (1.0 / 32.0) * termSign * ii * ed[iE].b3L * ed[jE].b3L *
                             sqrt(ed[iE].betax) * sqrt(ed[jE].betax) * ed[iE].betay * exp(ii * (2 * ed[iE].phiy)) *
                             (ed[jE].betax * (t1 - t2) + 2 * ed[jE].betay * (t2 + t1))
                         
-                            h40000 += (1.0 / 64.0) * termSign * ii * ed[iE].b3L * ed[jE].b3L *
+                            h40000::ComplexF64 += (1.0 / 64.0) * termSign * ii * ed[iE].b3L * ed[jE].b3L *
                             sqrt(ed[iE].betax) * sqrt(ed[jE].betax) * ed[iE].betax * ed[jE].betax *
                             ed[iE].px[3] * ed[jE].px[1]
-                            h20020 += (1.0 / 64.0) * termSign * ii * ed[iE].b3L * ed[jE].b3L *
+                            h20020::ComplexF64 += (1.0 / 64.0) * termSign * ii * ed[iE].b3L * ed[jE].b3L *
                             sqrt(ed[iE].betax) * sqrt(ed[jE].betax) * ed[iE].betay *
                             (ed[jE].betax * conj(ed[iE].px[1] * ed[iE].py[2]) * ed[jE].px[3] -
                              (ed[jE].betax + 4 * ed[jE].betay) * ed[iE].px[1] * ed[jE].px[1] * conj(ed[iE].py[2]))
 
-                            h20110 += (1.0 / 32.0) * termSign * ii * ed[iE].b3L * ed[jE].b3L *
+                            h20110::ComplexF64 += (1.0 / 32.0) * termSign * ii * ed[iE].b3L * ed[jE].b3L *
                              sqrt(ed[iE].betax) * sqrt(ed[jE].betax) * ed[iE].betay *
                              (ed[jE].betax * (conj(ed[iE].px[1]) * ed[jE].px[3] - ed[iE].px[1] * ed[jE].px[1]) +
                               2 * ed[jE].betay * ed[iE].px[1] * ed[jE].px[1] * ed[iE].py[2] * conj(ed[jE].py[2]))
      
                             # Calculate h20200
-                            h20200 += (1.0 / 64.0) * termSign * ii * ed[iE].b3L * ed[jE].b3L *
+                            h20200::ComplexF64 += (1.0 / 64.0) * termSign * ii * ed[iE].b3L * ed[jE].b3L *
                              sqrt(ed[iE].betax) * sqrt(ed[jE].betax) * ed[iE].betay *
                              (ed[jE].betax * conj(ed[iE].px[1]) * ed[jE].px[3] * ed[iE].py[2] -
                               (ed[jE].betax - 4 * ed[jE].betay) * ed[iE].px[1] * ed[jE].px[1] * ed[iE].py[2])
      
                             # Calculate h00220
-                            h00220 += (1.0 / 64.0) * termSign * ii * ed[iE].b3L * ed[jE].b3L *
+                            h00220::ComplexF64 += (1.0 / 64.0) * termSign * ii * ed[iE].b3L * ed[jE].b3L *
                              sqrt(ed[iE].betax) * sqrt(ed[jE].betax) * ed[iE].betay * ed[jE].betay *
                              (ed[iE].px[1] * ed[iE].py[2] * conj(ed[jE].px[1] * ed[jE].py[2]) +
                               4 * ed[iE].px[1] * conj(ed[jE].px[1]) -
                               conj(ed[iE].px[1] * ed[jE].py[2]) * ed[jE].px[1] * ed[iE].py[2])
      
                             # Calculate h00310
-                            h00310 += (1.0 / 32.0) * termSign * ii * ed[iE].b3L * ed[jE].b3L *
+                            h00310::ComplexF64 += (1.0 / 32.0) * termSign * ii * ed[iE].b3L * ed[jE].b3L *
                              sqrt(ed[iE].betax) * sqrt(ed[jE].betax) * ed[iE].betay * ed[jE].betay * ed[iE].py[2] *
                              (ed[iE].px[1] * conj(ed[jE].px[1]) - conj(ed[iE].px[1]) * ed[jE].px[1])
      
                             # Calculate h00400
-                            h00400 += (1.0 / 64.0) * termSign * ii * ed[iE].b3L * ed[jE].b3L *
+                            h00400::ComplexF64 += (1.0 / 64.0) * termSign * ii * ed[iE].b3L * ed[jE].b3L *
                              sqrt(ed[iE].betax) * sqrt(ed[jE].betax) * ed[iE].betay * ed[jE].betay *
                              ed[iE].px[1] * conj(ed[jE].px[1]) * ed[iE].py[2] * ed[jE].py[2]
                         end
@@ -339,42 +339,6 @@ function juliaRDT(s, betax, betay, phix, phiy, etax, Lista2L, Listb2L, Listb3L, 
     flags = RDTflags(Geometric1, Geometric2, Chromatic1, Coupling1, TuneShifts)
     tune = [Tunex, Tuney]
     d = computeDrivingTerms(s, betax, betay, phix, phiy, etax, Lista2L, Listb2L, Listb3L, Listb4L, tune, flags, nPeriods)
-    
-    # outMatrixRe = zeros(Float64, 23)
-    # outMatrixIm = zeros(Float64, 23)
-    # outMatrixTSwA = zeros(Float64, 3)
-    
-    # # First-order geometric terms (real, imag)
-    # outMatrixRe[1], outMatrixIm[1] = d.h21000[2], d.h21000[3]
-    # outMatrixRe[2], outMatrixIm[2] = d.h30000[2], d.h30000[3]
-    # outMatrixRe[3], outMatrixIm[3] = d.h10110[2], d.h10110[3]
-    # outMatrixRe[4], outMatrixIm[4] = d.h10020[2], d.h10020[3]
-    # outMatrixRe[5], outMatrixIm[5] = d.h10200[2], d.h10200[3]
-    # # First order chromatic terms
-    # outMatrixRe[6], outMatrixIm[6] = d.h11001[2], d.h11001[3]
-    # outMatrixRe[7], outMatrixIm[7] = d.h00111[2], d.h00111[3]
-    # outMatrixRe[8], outMatrixIm[8] = d.h20001[2], d.h20001[3]
-    # outMatrixRe[9], outMatrixIm[9] = d.h00201[2], d.h00201[3]
-    # outMatrixRe[10], outMatrixIm[10] = d.h10002[2], d.h10002[3]
-    # # First order coupling terms
-    # outMatrixRe[11], outMatrixIm[11] = d.h10010[2], d.h10010[3]
-    # outMatrixRe[12], outMatrixIm[12] = d.h10100[2], d.h10100[3]
-    # # Second-order geometric terms
-    # outMatrixRe[13], outMatrixIm[13] = d.h22000[2], d.h22000[3]
-    # outMatrixRe[14], outMatrixIm[14] = d.h11110[2], d.h11110[3]
-    # outMatrixRe[15], outMatrixIm[15] = d.h00220[2], d.h00220[3]
-    # outMatrixRe[16], outMatrixIm[16] = d.h31000[2], d.h31000[3]
-    # outMatrixRe[17], outMatrixIm[17] = d.h40000[2], d.h40000[3]
-    # outMatrixRe[18], outMatrixIm[18] = d.h20110[2], d.h20110[3]
-    # outMatrixRe[19], outMatrixIm[19] = d.h11200[2], d.h11200[3]
-    # outMatrixRe[20], outMatrixIm[20] = d.h20020[2], d.h20020[3]
-    # outMatrixRe[21], outMatrixIm[21] = d.h20200[2], d.h20200[3]
-    # outMatrixRe[22], outMatrixIm[22] = d.h00310[2], d.h00310[3]
-    # outMatrixRe[23], outMatrixIm[23] = d.h00400[2], d.h00400[3]
-    # # tune shifts with amplitude
-    # outMatrixTSwA[1] = d.dnux_dJx
-    # outMatrixTSwA[2] = d.dnux_dJy
-    # outMatrixTSwA[3] = d.dnuy_dJy
     return d
 end
 
@@ -454,8 +418,10 @@ end
 function get_polynom(ele, AB, n)
     if AB == 1
         result = get_polynom_value(ele.PolynomA, n)
-    else AB == 2
+    elseif AB == 2
         result = get_polynom_value(ele.PolynomB, n)
+    else
+        result = 0.0
     end
     return result
 end
@@ -485,7 +451,7 @@ function ADavedata(ring, dpp, changed_ids, changed_elems)
     # make the style consistent with AT
     beta_has_begin = [beta[end:end,:]; beta]
     alpha_has_begin = [alpha[end:end,:]; alpha]
-    mu_has_begin = [[0 0]; mu]
+    mu_has_begin = [[0.0 0.0]; mu]
     dp_has_begin = [dp[end:end,:]; dp]
 
     avebeta = beta_has_begin[1:end-1, :]
@@ -621,11 +587,11 @@ function ADcomputeRDT(ring, index, changed_ids, changed_elems; chromatic=true, c
     b3L = zeros(length(indDQSO))
     b4L = zeros(length(indDQSO))
     for i in eachindex(indDQSO)
-        PolyA2 = 1.0
-        PolyB2 = 1.0
-        PolyB3 = 1.0
-        PolyB4 = 1.0
-        len_list = 1.0
+        PolyA2 = 0.0
+        PolyB2 = 0.0
+        PolyB3 = 0.0
+        PolyB4 = 0.0
+        len_list = 0.0
         if indDQSO[i] in changed_ids
             for j in eachindex(changed_ids)
                 if indDQSO[i] == changed_ids[j]

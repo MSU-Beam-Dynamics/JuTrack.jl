@@ -2,11 +2,7 @@ using LinearAlgebra # LinearAlgebra is not fully supported by Enzyme. E.g., det,
 abstract type AbstractTwiss end
 
 function det1(A::Matrix{Float64})
-    # Ensure the matrix is square
-    if size(A, 1) != size(A, 2)
-        error("Matrix must be square")
-    end
-
+    # determinant of a arbitrary matrix. Not used in the current implementation.
     # LU decomposition
     N = size(A, 1)
     U = zeros(Float64, N, N)
@@ -62,11 +58,47 @@ function det1(A::Matrix{Float64})
     return det_val
 end
 
+function det_small_matrix(A::Matrix{Float64})
+	nrows, ncols = size(A)
+	if nrows == 2
+	    return A[1,1]*A[2,2] - A[1,2]*A[2,1]
+	elseif nrows == 3
+	    return A[1,1]*(A[2,2]*A[3,3] - A[2,3]*A[3,2]) -
+           A[1,2]*(A[2,1]*A[3,3] - A[2,3]*A[3,1]) +
+           A[1,3]*(A[2,1]*A[3,2] - A[2,2]*A[3,1])
+	elseif nrows == 4
+		m = A  # Alias for brevity
+
+		# Compute the 4x4 determinant using the Laplace expansion
+		det_val = m[1,1]*(
+					 m[2,2]*(m[3,3]*m[4,4] - m[3,4]*m[4,3]) -
+					 m[2,3]*(m[3,2]*m[4,4] - m[3,4]*m[4,2]) +
+					 m[2,4]*(m[3,2]*m[4,3] - m[3,3]*m[4,2])
+				 ) - m[1,2]*(
+					 m[2,1]*(m[3,3]*m[4,4] - m[3,4]*m[4,3]) -
+					 m[2,3]*(m[3,1]*m[4,4] - m[3,4]*m[4,1]) +
+					 m[2,4]*(m[3,1]*m[4,3] - m[3,3]*m[4,1])
+				 ) + m[1,3]*(
+					 m[2,1]*(m[3,2]*m[4,4] - m[3,4]*m[4,2]) -
+					 m[2,2]*(m[3,1]*m[4,4] - m[3,4]*m[4,1]) +
+					 m[2,4]*(m[3,1]*m[4,2] - m[3,2]*m[4,1])
+				 ) - m[1,4]*(
+					 m[2,1]*(m[3,2]*m[4,3] - m[3,3]*m[4,2]) -
+					 m[2,2]*(m[3,1]*m[4,3] - m[3,3]*m[4,1]) +
+					 m[2,3]*(m[3,1]*m[4,2] - m[3,2]*m[4,1])
+				 )
+	
+		return det_val
+	end
+	println(stderr, "Matrix size not supported.")
+	return 0.0
+end
+
 function inv1(A::Matrix{Float64})
     nrows, ncols = size(A)
-    if nrows != ncols
-        error("Matrix must be square")
-    end
+    # if nrows != ncols
+    #     error("Matrix must be square")
+    # end
 
     augmented_matrix = [A I]
 
@@ -120,26 +152,74 @@ struct EdwardsTengTwiss <: AbstractTwiss
 	mode::Int
 end
 
+function EdwardsTengTwiss(betax::Float64, betay::Float64;
+	alphax::Float64 = 0.0, alphay::Float64 = 0.0,
+	dx::Float64 = 0.0, dy::Float64 = 0.0,
+	dpx::Float64 = 0.0, dpy::Float64 = 0.0,
+	mux::Float64 = 0.0, muy::Float64 = 0.0,
+	R11::Float64 = 0.0, R12::Float64 = 0.0,
+	R21::Float64 = 0.0, R22::Float64 = 0.0,
+	mode::Int = 1)
+# Calculate additional parameters
+gammax = (1.0 + alphax^2) / betax
+gammay = (1.0 + alphay^2) / betay
+sinmux = sin(mux)
+cosmux = cos(mux)
+sinmuy = sin(muy)
+cosmuy = cos(muy)
+dmux = mux  
+dmuy = muy  
 
+# Construct R without using array concatenation
+R = Matrix{Float64}(undef, 2, 2)
+R[1, 1] = R11
+R[1, 2] = R12
+R[2, 1] = R21
+R[2, 2] = R22
 
-EdwardsTengTwiss(betax::Float64,betay::Float64;
-			   alphax::Float64=0.0,alphay::Float64=0.0,
-			   dx::Float64=0.0,dy::Float64=0.0,
-			   dpx::Float64=0.0,dpy::Float64=0.0,
-			   mux::Float64=0.0,muy::Float64=0.0,
-			   R11::Float64=0.0,R12::Float64=0.0,
-			   R21::Float64=0.0,R22::Float64=0.0,
-			   mode::Int=1)=EdwardsTengTwiss(betax,betay,alphax,alphay,(1.0+alphax^2)/betax,(1.0+alphay^2)/betay,
-											dx,dpx,dy,dpy,mux,muy,sin(mux),cos(mux),sin(muy),cos(muy),[R11 R12;R21 R22],mode)
-symplectic_conjugate_2by2(M) = [M[2, 2] -M[1, 2]; -M[2, 1] M[1, 1]]
+# Return the struct instance
+return EdwardsTengTwiss(betax, betay, alphax, alphay, gammax, gammay,
+	  dx, dpx, dy, dpy, dmux, dmuy,
+	  sinmux, cosmux, sinmuy, cosmuy, R, mode)
+end
+
+function symplectic_conjugate_2by2(M)
+	M_new = Matrix{Float64}(undef, 2, 2)
+	M_new[1, 1] = M[2, 2]
+	M_new[1, 2] = -M[1, 2]
+	M_new[2, 1] = -M[2, 1]
+	M_new[2, 2] = M[1, 1]
+	return M_new
+end
+# EdwardsTengTwiss(betax::Float64,betay::Float64;
+# 			   alphax::Float64=0.0,alphay::Float64=0.0,
+# 			   dx::Float64=0.0,dy::Float64=0.0,
+# 			   dpx::Float64=0.0,dpy::Float64=0.0,
+# 			   mux::Float64=0.0,muy::Float64=0.0,
+# 			   R11::Float64=0.0,R12::Float64=0.0,
+# 			   R21::Float64=0.0,R22::Float64=0.0,
+# 			   mode::Int=1)=EdwardsTengTwiss(betax,betay,alphax,alphay,(1.0+alphax^2)/betax,(1.0+alphay^2)/betay,
+# 											dx,dpx,dy,dpy,mux,muy,sin(mux),cos(mux),sin(muy),cos(muy),[R11 R12;R21 R22],mode)
+# symplectic_conjugate_2by2(M) = [M[2, 2] -M[1, 2]; -M[2, 1] M[1, 1]]
 function matrixTransform_2by2(M)
 	m11 = M[1, 1]
 	m21 = M[2, 1]
 	m12 = M[1, 2]
 	m22 = M[2, 2]
-	return [m11*m11 -2m11*m12 m12*m12
-	-m11*m21 1.0+2m12*m21 -m12*m22
-	m21*m21 -2m21*m22 m22*m22]
+	M_new = zeros(Float64, 3, 3)
+	M_new[1, 1] = m11^2
+	M_new[1, 2] = -2 * m11 * m12
+	M_new[1, 3] = m12^2
+	M_new[2, 1] = -m11 * m21
+	M_new[2, 2] = 1.0 + 2 * m12 * m21
+	M_new[2, 3] = -m12 * m22
+	M_new[3, 1] = m21^2
+	M_new[3, 2] = -2 * m21 * m22
+	M_new[3, 3] = m22^2
+	# return [m11*m11 -2m11*m12 m12*m12
+	# -m11*m21 1.0+2m12*m21 -m12*m22
+	# m21*m21 -2m21*m22 m22*m22]
+	return M_new
 end
 
 function twissPropagate(tin::EdwardsTengTwiss,M::Matrix{Float64})
@@ -152,19 +232,19 @@ function twissPropagate(tin::EdwardsTengTwiss,M::Matrix{Float64})
 	_R1=symplectic_conjugate_2by2(R1)
 	if tin.mode == 1
 		X=A-B*R1
-		t=det1(X)
+		t=det_small_matrix(X)
 			if t>0.1
 				R=(D*R1-C)*symplectic_conjugate_2by2(X)
 				R/=t
 				X/=sqrt(t)
 				Y=D+C*_R1
-				Y/=sqrt(det1(Y))
+				Y/=sqrt(det_small_matrix(Y))
 				mode=1
 			else
 				X=C-D*R1
-				X/=sqrt(det1(X))
+				X/=sqrt(det_small_matrix(X))
 				Y=B+A*_R1
-				t=det1(Y)
+				t=det_small_matrix(Y)
 				R=-(D+C*_R1)*symplectic_conjugate_2by2(Y)
 				R/=t
 				Y/=sqrt(t)
@@ -172,19 +252,19 @@ function twissPropagate(tin::EdwardsTengTwiss,M::Matrix{Float64})
 			end
 	elseif tin.mode == Int(2) 
 		X=B+A*_R1
-		t=det1(X)
+		t=det_small_matrix(X)
 			if t>0.1
 				R=-(D+C*_R1)*symplectic_conjugate_2by2(X)
 				R/=t
 				X/=sqrt(t)
 				Y=C-D*R1
-				Y/=sqrt(det1(Y))
+				Y/=sqrt(det_small_matrix(Y))
 				mode=1
 			else
 				X=D+C*_R1
-				X/=sqrt(det1(X))
+				X/=sqrt(det_small_matrix(X))
 				Y=A-B*R1
-				t=det1(Y)
+				t=det_small_matrix(Y)
 				R=(D*R1-C)*symplectic_conjugate_2by2(Y)
 				R/=t
 				Y/=sqrt(t)
@@ -634,7 +714,7 @@ function periodicEdwardsTengTwiss(seq::Vector, dp, order::Int)
 
 	Bbar_and_C=symplectic_conjugate_2by2(B)+C
 	t1=0.5*(tr(A)-tr(D))
-	Δ=t1*t1+det1(Bbar_and_C)
+	Δ=t1*t1+det_small_matrix(Bbar_and_C)
 	Δ<0.0 && (println(stderr,"Failed to decouple periodic transfer matrix. The linear matrix is unstable.");return invalid_ret)
 
 	_sign= t1>0.0 ? Float64(-1) : 1.0
@@ -650,7 +730,7 @@ function periodicEdwardsTengTwiss(seq::Vector, dp, order::Int)
 	Y=D+C*symplectic_conjugate_2by2(R)
 
 	# It should be equal to 1
-	(det1(X)<Float64(0.9) || det1(Y)<Float64(0.9))  && (println(stderr,"Failed to decouple the periodic transfer matrix with mode 1.");return invalid_ret)
+	(det_small_matrix(X)<Float64(0.9) || det_small_matrix(Y)<Float64(0.9))  && (println(stderr,"Failed to decouple the periodic transfer matrix with mode 1.");return invalid_ret)
 
 	cmux=Float64(0.5)*(X[1,1]+X[2,2])
 	cmuy=Float64(0.5)*(Y[1,1]+Y[2,2])
@@ -681,7 +761,7 @@ function ADperiodicEdwardsTengTwiss(seq::Vector, dp::Float64, order::Int, change
 
 	Bbar_and_C=symplectic_conjugate_2by2(B)+C
 	t1=0.5*(tr(A)-tr(D))
-	Δ=t1*t1+det1(Bbar_and_C)
+	Δ=t1*t1+det_small_matrix(Bbar_and_C)
 	if Δ<0.0
 		println("Failed to decouple periodic transfer matrix. The linear matrix is unstable.")
 		return invalid_ret
@@ -700,7 +780,7 @@ function ADperiodicEdwardsTengTwiss(seq::Vector, dp::Float64, order::Int, change
 	Y=D+C*symplectic_conjugate_2by2(R)
 
 	# It should be equal to 1
-	if (det1(X)<Float64(0.9) || det1(Y)<Float64(0.9))
+	if (det_small_matrix(X)<Float64(0.9) || det_small_matrix(Y)<Float64(0.9))
 		println("Failed to decouple the periodic transfer matrix with mode 1.")
 		return invalid_ret
 	end
@@ -765,7 +845,7 @@ function normalMatrix(tin::EdwardsTengTwiss)
 		0.0 0.0 -tin.alphay/sby 1.0/sby 0.0 0.0
 		0.0 0.0 0.0 0.0 1.0 0.0
 		0.0 0.0 0.0 0.0 0.0 1.0]
-	λ=1.0/sqrt(abs(1.0+det1(tin.R)))
+	λ=1.0/sqrt(abs(1.0+det_small_matrix(tin.R)))
 	R=λ*tin.R
 	_R=symplectic_conjugate_2by2(R)
 	O=[0.0 0.0;0.0 0.0]

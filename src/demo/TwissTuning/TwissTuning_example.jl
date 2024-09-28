@@ -28,10 +28,10 @@ function tuning_test(target)
     grad_vals = Float64[]
     for i in 1:niter
         beta0 = twiss_test(x0)
-        grad = autodiff(Forward, twiss_test, DuplicatedNoNeed, Duplicated(x0, 1.0), Const(SSRF))
+        grad = autodiff(ForwardWithPrimal, twiss_test, Duplicated(x0, 1.0), Const(SSRF))
         x0 -= step * grad[1]
         beta1 = twiss_test(x0)
-        println("beta0: ", beta0, " beta1: ", beta1, " grad:", grad, " at step ", i)
+        println("beta0: ", beta0, " beta1: ", beta1, " grad:", grad[1], " at step ", i)
         push!(x0_vals, x0)
         push!(beta_vals, beta1)
         push!(grad_vals, grad[1])

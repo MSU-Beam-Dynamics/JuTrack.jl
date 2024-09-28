@@ -25,5 +25,5 @@ function f(k)
     return rin[1].map
 end
 
-grad_k = autodiff(Forward, f, Duplicated, Duplicated(10.0, 1.0))
-println("Derivatives of the TPSA coefficients with respect to the quadrupole strength k: ", grad_k[2])
+grad_k = autodiff(Forward, f, Duplicated(10.0, 1.0))
+println("Derivatives of the TPSA coefficients with respect to the quadrupole strength k: ", grad_k[1])

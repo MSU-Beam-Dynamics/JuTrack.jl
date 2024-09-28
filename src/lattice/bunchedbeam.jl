@@ -89,10 +89,10 @@ function get_2nd_moment!(beam::Beam)
     sums = zeros(6,6)
     
     for c in 1:length(idx_sur)
-        r6 = @view beam.r[idx_sur[c], :]
+        # r6 = @view beam.r[idx_sur[c], :]
         for i in 1:6
             for j in 1:6
-                sums[i, j] += r6[i] * r6[j]
+                sums[i, j] += beam.r[idx_sur[c], i] * beam.r[idx_sur[c], j]
             end
         end
     end
@@ -115,7 +115,7 @@ function get_emittance!(beam::Beam)
         end
     end
     @inbounds for i in 1:3
-        beam.emittance[i] = sqrt(det1(beam.moment2nd[2*i-1:2*i,2*i-1:2*i]))
+        beam.emittance[i] = sqrt(det_small_matrix(beam.moment2nd[2*i-1:2*i,2*i-1:2*i]))
     end
     @inbounds for i in 1:6
         beam.beamsize[i] = sqrt(beam.moment2nd[i, i])
@@ -127,7 +127,7 @@ end
 function initilize_6DGaussiandist!(beam::Beam, optics::AbstractOptics4D, lmap::AbstractLongitudinalMap, cutoff::Float64=5.0)
     # 6D Gaussian distribution
     # Random.seed!(123)
-    temp = randn(beam.nmacro, 6)
+    temp = randn_approx(beam.nmacro, 6)
     beam.r .= temp
     # cutoff the distribution
     # for c in 1:beam.nmacro
@@ -301,9 +301,9 @@ function Gauss3_Dist(distparam::Vector{Float64}, Npt::Int; seed::Int=3)
 
     # Generate standard normal random numbers for positions and momenta
     Random.seed!(seed)
-    x1 = randn(2, Npt)  # For x and px
-    x2 = randn(2, Npt)  # For y and py
-    x3 = randn(2, Npt)  # For z and pz
+    x1 = randn_approx(2, Npt)  # For x and px
+    x2 = randn_approx(2, Npt)  # For y and py
+    x3 = randn_approx(2, Npt)  # For z and pz
 
     # Compute positions and momenta for x and px
     Pts1[:, 1] = xmu1 .+ (sig1 .* x1[1, :] ./ sq12)

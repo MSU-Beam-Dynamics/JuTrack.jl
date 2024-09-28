@@ -5,7 +5,7 @@ function f(x1)
     D1 = DRIFT(len=0.1)
     D2 = DRIFT(len=0.1)
 
-    ebeam = Beam(randn(500, 6) / 1e4)
+    ebeam = Beam(randn_approx(500, 6) / 1e4)
     histogram1DinZ!(ebeam)
     line = [D1,RLCwake]
     linepass!(line, ebeam)

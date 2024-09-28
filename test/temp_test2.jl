@@ -62,7 +62,7 @@ function Q_perturb(ESR_crab)
     for i in eachindex(ESR_crab)
         if ESR_crab[i] isa KQUAD
             k1 = ESR_crab[i].k1
-            k1 = k1 * (1 + 0.001 * randn())
+            k1 = k1 * (1 + 0.001 * randn_approx())
             new_KQ = KQUAD(name=ESR_crab[i].name, len=ESR_crab[i].len, k1=k1)
             ESR_crab[i] = new_KQ
         end

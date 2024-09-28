@@ -25,6 +25,6 @@ function f1(x)
 end
 
 println(f1(95e-6))
-g = autodiff(Forward, f1, Duplicated, Duplicated(95e-6, 1.0))
+g = autodiff(Forward, f1, Duplicated(95e-6, 1.0))
 print("grad: ", g)
 

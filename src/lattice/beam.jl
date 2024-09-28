@@ -28,7 +28,7 @@ mutable struct Beam
     beamsize::Vector{Float64} # Beam size in x, px, y, py, z, pz
     current::Float64 # beam current for space charge calculation
 end
-function Beam(r::Matrix{Float64}, energy::Float64; np::Int=size(r, 1), charge::Float64=-1.0, mass::Float64=m_e, atn::Float64=1.0,
+function Beam(r::Matrix{Float64}, energy::Float64; np::Int=size(r, 1), charge::Float64=-1.0, mass::Float64=0.51099895e6, atn::Float64=1.0,
         emittance::Vector{Float64}=zeros(Float64, 3), centroid::Vector{Float64}=zeros(Float64, 6), T0::Float64=0.0, znbin::Int=99, current::Float64=0.0)  
     nmacro = size(r, 1)
     lost_flag = zeros(Int, nmacro)
@@ -41,7 +41,7 @@ function Beam(r::Matrix{Float64}, energy::Float64; np::Int=size(r, 1), charge::F
     zhist_edges = zeros(Float64, znbin+1)
     return Beam(r, np, nmacro, energy, lost_flag, charge, mass, gamma, beta, atn, classrad0, radconst, T0, 1, znbin, inzindex, zhist, zhist_edges, zeros(Float64, nmacro), zeros(Float64, nmacro), zeros(Float64, nmacro), zeros(Float64, nmacro), zeros(Float64, nmacro), emittance, centroid, zeros(Float64, 6, 6), zeros(Float64, 6), current)
 end
-function Beam(r::Matrix{Float64}; energy::Float64=1e9,np::Int=size(r, 1), charge::Float64=-1.0, mass::Float64=m_e, atn::Float64=1.0,
+function Beam(r::Matrix{Float64}; energy::Float64=1e9,np::Int=size(r, 1), charge::Float64=-1.0, mass::Float64=0.51099895e6, atn::Float64=1.0,
         emittance::Vector{Float64}=zeros(Float64, 3), centroid::Vector{Float64}=zeros(Float64, 6), T0::Float64=0.0, znbin::Int=99, current::Float64=0.0)
     nmacro = size(r, 1)
     lost_flag = zeros(Int, nmacro)
@@ -54,7 +54,7 @@ function Beam(r::Matrix{Float64}; energy::Float64=1e9,np::Int=size(r, 1), charge
     zhist_edges = zeros(Float64, znbin+1)
     return Beam(r, np, nmacro, energy, lost_flag, charge, mass, gamma, beta, atn, classrad0, radconst, T0, 1, znbin, inzindex, zhist, zhist_edges, zeros(Float64, nmacro), zeros(Float64, nmacro), zeros(Float64, nmacro), zeros(Float64, nmacro), zeros(Float64, nmacro), emittance, centroid, zeros(Float64, 6, 6), zeros(Float64, 6), current)
 end
-function Beam(;r::Matrix{Float64}=zeros(Float64, 1,6), energy::Float64=1e9, np::Int=size(r, 1), charge::Float64=-1.0, mass::Float64=m_e, atn::Float64=1.0,
+function Beam(;r::Matrix{Float64}=zeros(Float64, 1,6), energy::Float64=1e9, np::Int=size(r, 1), charge::Float64=-1.0, mass::Float64=0.51099895e6, atn::Float64=1.0,
         emittance::Vector{Float64}=zeros(Float64, 3), centroid::Vector{Float64}=zeros(Float64, 6), T0::Float64=0.0, znbin::Int=99, current::Float64=0.0)
     nmacro = size(r, 1)
     lost_flag = zeros(Int, nmacro)
@@ -68,7 +68,7 @@ function Beam(;r::Matrix{Float64}=zeros(Float64, 1,6), energy::Float64=1e9, np::
     return Beam(r, np, nmacro, energy, lost_flag, charge, mass, gamma, beta, atn, classrad0, radconst, T0, 1, znbin, inzindex, zhist, zhist_edges, zeros(Float64, nmacro), zeros(Float64, nmacro), zeros(Float64, nmacro), zeros(Float64, nmacro), zeros(Float64, nmacro), emittance, centroid, zeros(Float64, 6, 6), zeros(Float64, 6), current)
 end
 
-function Beam(energy::Float64, np::Int, nmacro::Int; charge::Float64=-1.0, mass::Float64=m_e, atn::Float64=1.0,
+function Beam(energy::Float64, np::Int, nmacro::Int; charge::Float64=-1.0, mass::Float64=0.51099895e6, atn::Float64=1.0,
     emittance::Vector{Float64}=zeros(Float64, 3), centroid::Vector{Float64}=zeros(Float64, 6), T0::Float64=0.0, znbin::Int=99, current::Float64=0.0)
     r = zeros(Float64, nmacro, 6)
     lost_flag = zeros(Int, nmacro)

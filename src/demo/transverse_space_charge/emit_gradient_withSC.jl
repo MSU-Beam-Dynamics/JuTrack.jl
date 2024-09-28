@@ -1,12 +1,8 @@
 # Calculate the gradient of the emittance with respect to the lattice parameters of a FODO cell under transverse space charge effects
 using JuTrack
-using Distributions
-using ProgressMeter
-using DelimitedFiles
-using LinearAlgebra
-using PyCall
-np = pyimport("numpy")
-plt = pyimport("matplotlib.pyplot")
+# using PyCall
+# np = pyimport("numpy")
+# plt = pyimport("matplotlib.pyplot")
 
 function f(D3L)
     distparam = [
@@ -55,7 +51,6 @@ function f(D3L)
     Q1 = KQUAD_SC(len=Q1L, k1=Q1k, NumIntSteps=20, a=a, b=b, Nl=nl, Nm=nm, Nsteps=4)
     Q2 = KQUAD_SC(len=Q2L, k1=Q2k, NumIntSteps=20, a=a, b=b, Nl=nl, Nm=nm, Nsteps=4)
 
-    # line_SC = [D1,D1,D1,D1, Q1,Q1,Q1,Q1, D2,D2,D2,D2,D2,D2,D2,D2, Q2,Q2,Q2,Q2, D3,D3,D3,D3]
     line_SC = [D1, Q1, D2, Q2, D3]
     N = 1
     new_emit= zeros(N+1, 3)
@@ -84,24 +79,25 @@ end
 # grad_D1L_fd = (f(0.2+1e-6) .- f(0.2-1e-6)) / 2e-6
 # grad_D2L = autodiff(Forward, f, Duplicated, Duplicated(0.4, 1.0))
 # grad_D2L_fd = (f(0.4+1e-6) .- f(0.4-1e-6)) / 2e-6
-grad_D3L = autodiff(Forward, f, Duplicated, Duplicated(0.2, 1.0))
+grad_D3L = autodiff(ForwardWithPrimal, f, Duplicated(0.2, 1.0))
 grad_D3L_fd = (f(0.2+1e-6) .- f(0.2-1e-6)) / 2e-6
 
-final = zeros(7, 4)
-final[1, 1:2] = grad_D1L[2][1:2]
-final[2, 1:2] = grad_Q1L[2][1:2]
-final[3, 1:2] = grad_Q1k[2][1:2]
-final[4, 1:2] = grad_D2L[2][1:2]
-final[5, 1:2] = grad_Q2L[2][1:2]
-final[6, 1:2] = grad_Q2k[2][1:2]
-final[7, 1:2] = grad_D3L[2][1:2]
-final[1, 3:4] = grad_D1L_fd[1:2]
-final[2, 3:4] = grad_Q1L_fd[1:2]
-final[3, 3:4] = grad_Q1k_fd[1:2]
-final[4, 3:4] = grad_D2L_fd[1:2]
-final[5, 3:4] = grad_Q2L_fd[1:2]
-final[6, 3:4] = grad_Q2k_fd[1:2]
-final[7, 3:4] = grad_D3L_fd[1:2]
+
+# final = zeros(7, 4)
+# final[1, 1:2] = grad_D1L[2][1:2]
+# final[2, 1:2] = grad_Q1L[2][1:2]
+# final[3, 1:2] = grad_Q1k[2][1:2]
+# final[4, 1:2] = grad_D2L[2][1:2]
+# final[5, 1:2] = grad_Q2L[2][1:2]
+# final[6, 1:2] = grad_Q2k[2][1:2]
+# final[7, 1:2] = grad_D3L[2][1:2]
+# final[1, 3:4] = grad_D1L_fd[1:2]
+# final[2, 3:4] = grad_Q1L_fd[1:2]
+# final[3, 3:4] = grad_Q1k_fd[1:2]
+# final[4, 3:4] = grad_D2L_fd[1:2]
+# final[5, 3:4] = grad_Q2L_fd[1:2]
+# final[6, 3:4] = grad_Q2k_fd[1:2]
+# final[7, 3:4] = grad_D3L_fd[1:2]
 
 # using DelimitedFiles
 # writedlm("final.txt", final)

@@ -33,19 +33,31 @@ function obj(dlist)
     end
     return tot_21000 + tot_10110 + tot_30000 + tot_10200 + tot_10020
 end
+
 function f(x1, x2)
+    # Find elements with names "SDM" and "SFM" in the RING
     changed_id1 = findelem(RING, :name, "SDM")
     changed_id2 = findelem(RING, :name, "SFM")
+    
+    # Combine the found element indices
     changed_ids = vcat(changed_id1, changed_id2)
-    changed_elems = [changed_ids[i] in changed_id1 ? KSEXT(len=0.21, k2=x1) : KSEXT(len=0.21, k2=x2) for i in 1:length(changed_ids)]
-
+    # Create new elements based on the found indices
+    changed_elems1 = [KSEXT(len=0.21, k2=x1) for id in changed_id1]
+    changed_elems2 = [KSEXT(len=0.21, k2=x2) for id in changed_id2]
+    
+    changed_elems = vcat(changed_elems1, changed_elems2)
+    
+    # Find the index of the MARKER element in the RING
     index = findelem(RING, MARKER)
+    
+    # Compute the RDT
     dlist, s = ADcomputeRDT(RING, index, changed_ids, changed_elems)
+    
+    # Return the objective function value
     return obj(dlist)
 end
 
-
-# g1 = autodiff(Forward, f, Duplicated, Duplicated(-10.0, 1.0), Const(10.0))
+# g1 = autodiff(Enzyme.set_runtime_activity(Forward), f, Duplicated, Duplicated(-10.0, 1.0), Const(10.0))
 # g2 = autodiff(Forward, f, Duplicated, Const(-10.0), Duplicated(10.0, 1.0))
 # g = autodiff(Forward, f, BatchDuplicated, BatchDuplicated(-17.0, (1.0, 0.0)), BatchDuplicated(15.0, (0.0, 1.0))) # problematic
 
@@ -58,10 +70,10 @@ function gradient_descent(x1_init, x2_init; lr=0.001, tol=1e-6, max_iter=100)
     x1, x2 = x1_init, x2_init
     for iter in 1:max_iter
         # Calculate gradients
-        g1 = autodiff(Forward, f, Duplicated, Duplicated(x1, 1.0), Const(x2))
-        g2 = autodiff(Forward, f, Duplicated, Const(x1), Duplicated(x2, 1.0))
-        grad_x1 = g1[2]
-        grad_x2 = g2[2]
+        g1 = autodiff(ForwardWithPrimal, f, Duplicated(x1, 1.0), Const(x2))
+        g2 = autodiff(ForwardWithPrimal, f, Const(x1), Duplicated(x2, 1.0))
+        grad_x1 = g1[1]
+        grad_x2 = g2[1]
 
         # Update variables
         x1 -= lr * grad_x1
@@ -70,10 +82,10 @@ function gradient_descent(x1_init, x2_init; lr=0.001, tol=1e-6, max_iter=100)
         push!(x2_his, x2)
         push!(g1_his, grad_x1)
         push!(g2_his, grad_x2)
-        push!(f_his, g1[1])
+        push!(f_his, g1[2])
 
         @printf("Iteration %d: x1=%.5f, x2=%.5f, grad1=%.5f, grad2=%.5f, f=%.5f\n", 
-            iter, x1, x2, grad_x1, grad_x2, g1[1])
+            iter, x1, x2, grad_x1, grad_x2, g1[2])
         # Check for convergence
         if abs(grad_x1) < tol && abs(grad_x2) < tol
             println("Converged after $iter iterations.")
@@ -100,24 +112,38 @@ plot(p1, p2, p3, layout=(3,1), legend=:topleft)
 
 # using PyCall
 # @pyimport matplotlib.pyplot as plt
-# plt.plot(figsize=(15, 10))
+# using LaTeXStrings
+# default(;fontfamily="Times Roman")
+# plt.figure(figsize=(8, 6))
+
 # plt.subplot(3, 1, 1)
-# plt.plot(0:length(x1_his)-1, x1_his, label="x1")
-# plt.plot(0:length(x2_his)-1, x2_his, label="x2")
-# plt.xlabel("Iteration")
-# plt.ylabel("Value")
-# plt.legend()
+# plt.plot(x1_his[1:600], label="KSDM", linestyle="-", linewidth=1.5)
+# plt.plot(x2_his[1:600], label="KSFM", linestyle="-", linewidth=1.5)
+# plt.xlabel("Iteration", fontsize=15, fontfamily="Times New Roman")
+# plt.ylabel(L"Strength ($\mathrm{m}^{-3}$)", fontsize=15, fontfamily="Times New Roman")
+# plt.legend(prop=Dict("family"=>"Times New Roman"), loc="best", fontsize=18, frameon=false)
+# plt.xticks(fontsize=15, fontfamily="Times New Roman")
+# plt.yticks(fontsize=15, fontfamily="Times New Roman")
+# plt.text(-0.15, 1.05, "a", transform=plt.gca().transAxes, fontsize=18, fontweight="bold", fontfamily="Times New Roman")
+
 # plt.subplot(3, 1, 2)
-# plt.plot(g1_his, label="grad1")
-# plt.plot(g2_his, label="grad2")
-# plt.xlabel("Iteration")
-# plt.ylabel("Gradient")
-# plt.legend()
+# plt.plot(g1_his[1:600], label="grad w.r.t. KSDM",  linestyle="-", linewidth=1.5)
+# plt.plot(g2_his[1:600], label="grad w.r.t. KSFM",  linestyle="-", linewidth=1.5)
+# plt.xlabel("Iteration", fontsize=15, fontfamily="Times New Roman")
+# plt.ylabel("Gradient", fontsize=15, fontfamily="Times New Roman")
+# plt.xticks(fontsize=15, fontfamily="Times New Roman")
+# plt.yticks(fontsize=15, fontfamily="Times New Roman")
+# plt.legend(prop=Dict("family"=>"Times New Roman"), loc="best", fontsize=18, frameon=false)
+# plt.text(-0.15, 1.05, "b", transform=plt.gca().transAxes, fontsize=18, fontweight="bold", fontfamily="Times New Roman")
+
 # plt.subplot(3, 1, 3)
-# plt.plot(f_his, label="f")  
-# plt.xlabel("Iteration")
-# plt.ylabel("Objective")
-# plt.legend()
+# plt.plot(f_his[1:600], linestyle="-", linewidth=1.5)
+# plt.xlabel("Iteration", fontsize=15, fontfamily="Times New Roman")
+# plt.ylabel("Objective", fontsize=15, fontfamily="Times New Roman")
+# plt.xticks(fontsize=15, fontfamily="Times New Roman")
+# plt.yticks(fontsize=15, fontfamily="Times New Roman")
+# plt.text(-0.15, 1.05, "c", transform=plt.gca().transAxes, fontsize=18, fontweight="bold", fontfamily="Times New Roman")
+
 # plt.tight_layout()
 # plt.show()
 
