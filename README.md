@@ -21,13 +21,10 @@ cd("path-to-the-package")
 using Pkg
 Pkg.activate(".")
 Pkg.instantiate()
+Pkg.add(path="path-to-the-package")
 ```
 
 # Import the package in Julia
-```
-using Pkg 
-Pkg.add(path="path-to-the-package")
-```
 ```
 using JuTrack
 ```
@@ -69,16 +66,6 @@ twi = twissring(RING, 0.0, 1)
 ```
 
 # Automatic differentiation
-Obtain 4*4 Jacobian matrix of a lattice of specific initial condition [0.01 0.0 0.01 0.0]
-```
-function obtain_jacobian(x)
-    beam = Beam([x[1] x[2] x[3] x[4] 0.0 0.0], energy=3.5e9)
-    ringpass!(LINE, beam, 1)
-    return beam.r[1:4]
-end
-J = jacobian(Forward, obtain_jacobian, [0.01, 0.0, 0.01, 0.0], Val(4))
-```
-
 Obtain derivatives of tracking result w.r.t the quadrupole strength k1
 ```
 function tracking_wrt_k1(x)
@@ -97,7 +84,7 @@ function tracking_wrt_k1(x)
     return beam.r
 end
 k1 = -0.9
-results, derivatives = autodiff(Forward, tracking_wrt_k1, Duplicated, Duplicated(k1, 1.0))
+derivatives, results = autodiff(ForwardWithPrimal, tracking_wrt_k1, Duplicated(k1, 1.0))
 ```
 
 # Parallel computation setting
