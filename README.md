@@ -4,24 +4,12 @@ A Julia-based package that enables advanced auto differentiation (AD) for symple
 
 # Installation
 
-* Install Julia at [here](https://julialang.org/downloads/oldreleases/).
+* Install Julia at [here](https://julialang.org/downloads/oldreleases/) (1.10.4 is preferred).
 
-* Download the package
-```
-git clone https://github.com/MSU-Beam-Dynamics/JuTrack.jl.git
-```
-
-* Open Julia REPL. Move to the package folder.
-```
-cd("path-to-the-package")
-```
-
-* Install the required dependencies
+* Online installation of the package via
 ```
 using Pkg
-Pkg.activate(".")
-Pkg.instantiate()
-Pkg.add(path="path-to-the-package")
+Pkg.add(url="https://github.com/MSU-Beam-Dynamics/JuTrack.jl")
 ```
 
 # Import the package in Julia
