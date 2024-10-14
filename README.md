@@ -114,6 +114,3 @@ pringpass!(beamline, beam, nturns)
 
 # Known issues
 * This package currently supports forward AD. Backward AD is still under development.
-
-* This package is developed and tested on Julia 1.9.4. Please up/downgrade the Julia version if there is a issue.
-
