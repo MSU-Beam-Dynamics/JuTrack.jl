@@ -79,18 +79,18 @@ end
 # grad_D1L_fd = (f(0.2+1e-6) .- f(0.2-1e-6)) / 2e-6
 # grad_D2L = autodiff(Forward, f, Duplicated, Duplicated(0.4, 1.0))
 # grad_D2L_fd = (f(0.4+1e-6) .- f(0.4-1e-6)) / 2e-6
-grad_D3L = autodiff(ForwardWithPrimal, f, Duplicated(0.2, 1.0))
+grad_D3L = autodiff(Forward, f, Duplicated(0.2, 1.0))
 grad_D3L_fd = (f(0.2+1e-6) .- f(0.2-1e-6)) / 2e-6
 
 
 # final = zeros(7, 4)
-# final[1, 1:2] = grad_D1L[2][1:2]
-# final[2, 1:2] = grad_Q1L[2][1:2]
-# final[3, 1:2] = grad_Q1k[2][1:2]
-# final[4, 1:2] = grad_D2L[2][1:2]
-# final[5, 1:2] = grad_Q2L[2][1:2]
-# final[6, 1:2] = grad_Q2k[2][1:2]
-# final[7, 1:2] = grad_D3L[2][1:2]
+# final[1, 1:2] = grad_D1L[1][1:2]
+# final[2, 1:2] = grad_Q1L[1][1:2]
+# final[3, 1:2] = grad_Q1k[1][1:2]
+# final[4, 1:2] = grad_D2L[1][1:2]
+# final[5, 1:2] = grad_Q2L[1][1:2]
+# final[6, 1:2] = grad_Q2k[1][1:2]
+# final[7, 1:2] = grad_D3L[1][1:2]
 # final[1, 3:4] = grad_D1L_fd[1:2]
 # final[2, 3:4] = grad_Q1L_fd[1:2]
 # final[3, 3:4] = grad_Q1k_fd[1:2]

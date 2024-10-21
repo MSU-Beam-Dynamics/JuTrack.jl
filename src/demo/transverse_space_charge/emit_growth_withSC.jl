@@ -51,9 +51,9 @@ distparam = [
     0.0    # xmu6 (mean pz)
 ]
 Npt = 50000
-Pts1 = Gauss3_Dist(distparam, Npt)
+Pts1 = Gauss3_Dist(distparam, Npt, seed=1234)
 
-beam = Beam(Pts1, energy=1.0e9, current=100.0, mass=m_p, charge=1.0)
+beam = Beam(Pts1, energy=1.0e9, current=20.0, mass=m_p, charge=1.0)
 beam1 = Beam(beam)
 
 N = 100000
@@ -74,7 +74,7 @@ for i in 1:N
     get_emittance!(beam1)
     new_emit1[i+1, :] = beam1.emittance
     # save
-    if i % 1000 == 0
+    if i % 100 == 0
         writedlm("emit1.txt", new_emit1)
         writedlm("lost.txt", NLOST)
     end
