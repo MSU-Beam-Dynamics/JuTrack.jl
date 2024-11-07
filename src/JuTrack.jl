@@ -87,7 +87,7 @@ export ADfindm66_refpts
 function Duplicated(x::Float64, dx::Base.RefValue{Float64})
     return Duplicated(x, dx[])
 end
-export autodiff, Forward, ForwardWithPrimal, gradient, jacobian, Duplicated, DuplicatedNoNeed, Const, Val, Enzyme, BatchDuplicated
+export autodiff, Forward, ForwardWithPrimal, gradient, jacobian, Duplicated, set_runtime_activity, Const, Val, Enzyme, BatchDuplicated
 
 export dynamic_aperture, naff, FMA, computeRDT, ADcomputeRDT
 end

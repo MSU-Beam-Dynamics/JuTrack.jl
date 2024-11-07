@@ -158,19 +158,19 @@ function multi_val_op(x0, niter, step, RING)
         grad31 = autodiff(Forward, get_phase14_zero, Duplicated, Duplicated(x0, [0.0,0.0,0.0,0.0,0.0,1.0,0.0]))
         grad5537 = autodiff(Forward, get_phase14_zero, Duplicated, Duplicated(x0, [0.0,0.0,0.0,0.0,0.0,0.0,1.0]))
 
-        x0[1] -= step * grad9[2]
-        x0[2] -= step * grad13[2]
-        x0[3] -= step * grad17[2]
-        x0[4] -= step * grad23[2]
-        x0[5] -= step * grad27[2]
-        x0[6] -= step * grad31[2]
-        x0[7] -= step * grad5537[2]
+        x0[1] -= step * grad9[1]
+        x0[2] -= step * grad13[1]
+        x0[3] -= step * grad17[1]
+        x0[4] -= step * grad23[1]
+        x0[5] -= step * grad27[1]
+        x0[6] -= step * grad31[1]
+        x0[7] -= step * grad5537[1]
 
         new_phase = get_phase14_zero(x0)
         println("init: ", g0, " now: ", new_phase, "at step ", i)
         x0_vals[:, i] = x0
         push!(goal_vals, new_phase)
-        grad_vals[:, i] = [grad9[2], grad13[2], grad17[2], grad23[2], grad27[2], grad31[2], grad5537[2]]
+        grad_vals[:, i] = [grad9[1], grad13[1], grad17[1], grad23[1], grad27[1], grad31[1], grad5537[1]]
         if new_phase < target 
             println("tuning finished at step ", i)
             break
@@ -179,7 +179,7 @@ function multi_val_op(x0, niter, step, RING)
     return x0_vals, goal_vals, grad_vals
 end
 
-x0_vals, goal_vals, grad_vals = multi_val_op(xinit, 10, 1e-5, ESR_crab)
+x0_vals, goal_vals, grad_vals = multi_val_op(xinit, 10, 5e-6, ESR_crab)
 
 plot_steps = length(goal_vals)
 p1 = plot(1:plot_steps, x0_vals[1, 1:plot_steps], title = L"Evolution\ of\ k", xlabel = L"Iterations", ylabel = L"Strength (m^{-1})", label=L"k_1", line=:dash, marker=:circle,framestyle=:box)

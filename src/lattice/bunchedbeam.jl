@@ -183,7 +183,7 @@ function initilize_6DGaussiandist!(beam::Beam, optics::AbstractOptics4D, lmap::A
     emit_deltap_z=beam.emittance[3]*2.99792458e8/beam.beta/beam.energy
     invbeta_deltap_z=Qs*lmap.RF.k/lmap.RF.h/abs(eta_p)
     for c in 1:beam.nmacro
-        beam.r[c, 5] = beam.temp5[c] * sqrt(emit_deltap_z*invbeta_deltap_z)
+        beam.r[c, 5] = beam.temp5[c] * sqrt(emit_deltap_z/invbeta_deltap_z)
         beam.r[c, 6] = beam.r[c, 6] * sqrt(emit_deltap_z*invbeta_deltap_z)
     end
     
