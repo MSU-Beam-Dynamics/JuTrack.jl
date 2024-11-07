@@ -100,7 +100,7 @@ x1_init = -10.0
 x2_init = 10.0
 
 # Run gradient descent
-x1_his, x2_his, g1_his, g2_his, f_his = gradient_descent(x1_init, x2_init, lr=0.01, max_iter=1000)
+x1_his, x2_his, g1_his, g2_his, f_his = gradient_descent(x1_init, x2_init, lr=0.01, max_iter=200)
 
 # Plot the results
 p1 = plot(0:length(x1_his)-1, x1_his, label="x1", xlabel="Iteration", ylabel="Value", title="Gradient Descent")
