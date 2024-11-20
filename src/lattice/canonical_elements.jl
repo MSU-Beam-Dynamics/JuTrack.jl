@@ -920,6 +920,7 @@ A crab cavity element.
 Example:
 ```julia
 crab = CRABCAVITY(name="CRAB1", len=0.5, volt=1e6, freq=1e6)
+```
 """
 mutable struct CRABCAVITY <: AbstractElement
     name::String 
