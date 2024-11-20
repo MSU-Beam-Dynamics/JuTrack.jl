@@ -152,6 +152,36 @@ struct EdwardsTengTwiss <: AbstractTwiss
 	mode::Int
 end
 
+"""
+	EdwardsTengTwiss(betax::Float64,betay::Float64;
+			   alphax::Float64=0.0,alphay::Float64=0.0,
+			   dx::Float64=0.0,dy::Float64=0.0,
+			   dpx::Float64=0.0,dpy::Float64=0.0,
+			   mux::Float64=0.0,muy::Float64=0.0,
+			   R11::Float64=0.0,R12::Float64=0.0,
+			   R21::Float64=0.0,R22::Float64=0.0,
+			   mode::Int=1)=EdwardsTengTwiss(betax,betay,alphax,alphay,(1.0+alphax^2)/betax,(1.0+alphay^2)/betay,
+											dx,dpx,dy,dpy,mux,muy,sin(mux),cos(mux),sin(muy),cos(muy),[R11 R12;R21 R22],mode)
+
+Construct a `EdwardsTengTwiss` object with betax and betay. All other parameters are optional.
+
+# Arguments
+- `betax::Float64`: Horizontal beta function.
+- `betay::Float64`: Vertical beta function.
+- `alphax::Float64=0.0`: Horizontal alpha function.
+- `alphay::Float64=0.0`: Vertical alpha function.
+- `dx::Float64=0.0`: Horizontal dispersion.
+- `dy::Float64=0.0`: Vertical dispersion.
+- `dpx::Float64=0.0`: derivative of horizontal dispersion.
+- `dpy::Float64=0.0`: derivative of vertical dispersion.
+- `mux::Float64=0.0`: Horizontal phase advance.
+- `muy::Float64=0.0`: Vertical phase advance.
+- `R11::Float64=0.0`: Matrix Element R11.
+- `R12::Float64=0.0`: Matrix Element R12.
+- `R21::Float64=0.0`: Matrix Element R21.
+- `R22::Float64=0.0`: Matrix Element R22.
+- `mode::Int=1`: mode for calculation.
+"""											
 function EdwardsTengTwiss(betax::Float64, betay::Float64;
 	alphax::Float64 = 0.0, alphay::Float64 = 0.0,
 	dx::Float64 = 0.0, dy::Float64 = 0.0,
@@ -222,6 +252,18 @@ function matrixTransform_2by2(M)
 	return M_new
 end
 
+"""
+	twissPropagate(tin::EdwardsTengTwiss,M::Matrix{Float64})
+
+Propagate the Twiss parameters through a matrix M.
+
+# Arguments
+- `tin::EdwardsTengTwiss`: Input Twiss parameters.
+- `M::Matrix{Float64}`: Transfer matrix.
+
+# Returns
+- `EdwardsTengTwiss`: Output Twiss parameters.
+"""
 function twissPropagate(tin::EdwardsTengTwiss,M::Matrix{Float64})
 	A=@view M[1:2,1:2]
 	B=@view M[1:2,3:4]
@@ -302,6 +344,19 @@ function twissPropagate(tin::EdwardsTengTwiss,M::Matrix{Float64})
 	return EdwardsTengTwiss(v1[1],v2[1],v1[2],v2[2],v1[3],v2[3],eta[1],eta[2],eta[3],eta[4],new_mux,new_muy,smux,cmux,smuy,cmuy,R,mode)
 end
 
+"""
+	findm66(seq, dp::Float64, order::Int)
+
+Find the 6x6 transfer matrix of a sequence using TPSA.
+
+# Arguments
+- `seq`: Sequence of elements.
+- `dp::Float64`: Momentum deviation.
+- `order::Int`: Order of the map.
+
+# Returns
+- `Matrix{Float64}`: 6x6 transfer matrix.
+"""
 function findm66(seq, dp::Float64, order::Int)
 	x = CTPS(0.0, 1, 6, order)
 	px = CTPS(0.0, 2, 6, order)
@@ -460,6 +515,18 @@ function findorbit(ring, dp=0.0)
     return Ri
 end
 
+"""
+	fastfindm66(LATTICE, dp=0.0)
+
+Find the 6x6 transfer matrix of a lattice using numerical differentiation.
+
+# Arguments
+- `LATTICE`: Beam line sequence.
+- `dp::Float64=0.0`: Momentum deviation.
+
+# Returns
+- `Matrix{Float64}`: 6x6 transfer matrix.
+"""
 function fastfindm66(LATTICE, dp=0.0)
     # assume the closed orbit is zero
     NE = length(LATTICE)
@@ -614,13 +681,32 @@ function ADfastfindm66_refpts(LATTICE, dp::Float64, refpts::Vector{Int}, changed
     return M66_refpts
 end
 
+"""
+	twissline(tin::EdwardsTengTwiss,seq::Vector, dp::Float64, order::Int, endindex::Int)
+
+Propagate the Twiss parameters through a sequence of elements.
+
+# Arguments
+- `tin::EdwardsTengTwiss`: Input Twiss parameters.
+- `seq::Vector`: Sequence of elements.
+- `dp::Float64`: Momentum deviation.
+- `order::Int`: Order of the map. 0 for finite difference, others for TPSA.
+- `endindex::Int`: Index of the last element in the sequence.
+
+# Returns
+- `EdwardsTengTwiss`: Output Twiss parameters.
+"""
 function twissline(tin::EdwardsTengTwiss,seq::Vector, dp::Float64, order::Int, endindex::Int)
 	# obtain M through tracking
     ret = tin
     ss = 0.0
 	used_seq = seq[1:endindex]
 	# M = findm66(used_seq, dp, order)
-	M = fastfindm66(used_seq, dp)
+	if order ==0
+		M = fastfindm66(used_seq, dp)
+	else
+		M = findm66(used_seq, dp, order)
+	end
 	ret = twissPropagate(ret, M)
 	# ss = sum([mag.len for mag in used_seq])
 	# names = [mag.name for mag in used_seq]
@@ -810,6 +896,19 @@ function ADperiodicEdwardsTengTwiss(seq::Vector, dp::Float64, order::Int, change
 	return EdwardsTengTwiss(betax,betay,alfx,alfy,gamx,gamy,eta[1],eta[2],eta[3],eta[4],0.0,0.0,smux,cmux,smuy,cmuy,R,1)
 end
 
+"""
+	twissring(seq::Vector, dp::Float64, order::Int)
+
+Calculate the periodic Twiss parameters of a ring.
+
+# Arguments
+- `seq::Vector`: Sequence of elements.
+- `dp::Float64`: Momentum deviation.
+- `order::Int`: Order of the map. 0 for finite difference, others for TPSA.
+
+# Returns
+- `EdwardsTengTwiss`: periodic Twiss parameters.
+"""
 function twissring(seq::Vector, dp::Float64, order::Int)
 	twi0 = periodicEdwardsTengTwiss(seq, dp, order)
 	nele = length(seq)

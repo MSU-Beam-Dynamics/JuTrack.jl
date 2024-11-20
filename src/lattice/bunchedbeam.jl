@@ -71,6 +71,15 @@ function diagm1(v)
     return M
 end
 
+"""
+    get_centroid!(beam::Beam)
+
+Get 6-D centroid of the beam.
+Example:
+```julia
+get_centroid!(beam)
+println(beam.centroid)
+"""
 function get_centroid!(beam::Beam)
     idx_sur = findall(x -> x == 0, beam.lost_flag)
     beam.centroid[1] = sum(beam.r[idx_sur, 1]) / beam.nmacro
@@ -83,7 +92,15 @@ function get_centroid!(beam::Beam)
     return nothing
 end
 
+"""
+    get_2nd_moment!(beam::Beam)
 
+Get 2nd moment of the beam.
+Example:
+```julia
+get_2nd_moment!(beam)
+println(beam.moment2nd)
+"""
 function get_2nd_moment!(beam::Beam)
     idx_sur = findall(x -> x == 0, beam.lost_flag)
     sums = zeros(6,6)
@@ -105,7 +122,15 @@ function get_2nd_moment!(beam::Beam)
     return nothing
 end
 
+"""
+    get_emittance!(beam::Beam)
 
+Get emittance of the beam.
+Example:
+```julia
+get_emittance!(beam)
+println(beam.emittance)
+"""
 function get_emittance!(beam::Beam)
     get_centroid!(beam)
     get_2nd_moment!(beam)
@@ -190,6 +215,15 @@ function initilize_6DGaussiandist!(beam::Beam, optics::AbstractOptics4D, lmap::A
     return nothing
 end
 
+"""
+    histogram1DinZ!(beam::Beam, nbins::Int64, inzindex, zhist, zhist_edges)
+
+Histogram in z.
+
+Example:
+```julia
+histogram1DinZ!(beam, beam.znbin, beam.inzindex, beam.zhist, beam.zhist_edges)
+"""
 function histogram1DinZ!(beam::Beam, nbins::Int64, inzindex, zhist, zhist_edges) 
     # histogram in z
     num_macro=beam.nmacro
@@ -218,6 +252,15 @@ function histogram1DinZ!(beam::Beam, nbins::Int64, inzindex, zhist, zhist_edges)
     return nothing
 end
 
+"""
+    histogram1DinZ!(beam::Beam)
+
+Histogram in z.
+
+Example:
+```julia
+histogram1DinZ!(beam)
+"""
 function histogram1DinZ!(beam::Beam)
     # histogram in z
     histogram1DinZ!(beam, beam.znbin, beam.inzindex, beam.zhist, beam.zhist_edges)
@@ -258,6 +301,19 @@ function twiss_beam(beam::Beam)
     return beta_x, alpha_x, emit_x, beta_y, alpha_y, emit_y, beta_z, alpha_z, emit_z
 end
 
+"""
+    Gauss3_Dist(distparam::Vector{Float64}, Npt::Int; seed::Int=3)
+
+Generate 6D Gaussian distribution.
+
+# Arguments
+- `distparam::Vector{Float64}`: Distribution parameters of the form [sigx, sigpx, muxpx, xscale, pxscale, xmu1, xmu2, sigy, sigpy, muypy, yscale, pyscale, xmu3, xmu4, sigz, sigpz, muzpz, zscale, pzscale, xmu5, xmu6]
+- `Npt::Int`: Number of particles
+- `seed::Int=3`: Random seed
+
+# Return
+- `Pts1::Array{Float64,2}`: 6D Gaussian distribution
+"""
 function Gauss3_Dist(distparam::Vector{Float64}, Npt::Int; seed::Int=3)
     # Extract parameters from distparam
     sigx    = distparam[1]

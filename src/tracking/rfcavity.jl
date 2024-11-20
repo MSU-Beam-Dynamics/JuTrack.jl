@@ -1,6 +1,6 @@
 
 function RFCavityPass!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq::Float64, h::Float64, 
-    lag::Float64, philag::Float64, nturn::Int, T0::Float64, num_particles::Int, lost_flags::Array{Int64,1})
+    lag::Float64, philag::Float64, nturn::Int, T0::Float64, beta::Float64, num_particles::Int, lost_flags::Array{Int64,1})
     # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
     # le - physical length
     # nv - peak voltage (V) normalized to the design enegy (eV)
@@ -21,7 +21,7 @@ function RFCavityPass!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq::F
                     println(c)
                     println(r6)
                 end
-                r6[6] += -nv * sin(2 * pi * freq * ((r6[5] - lag) / C0 - (h / freq - T0) * nturn) - philag)
+                r6[6] += -nv * sin(2 * pi * freq * ((r6[5] - lag) / C0 - (h / freq - T0) * nturn) - philag) / beta^2
             end
         end
     else
@@ -34,7 +34,7 @@ function RFCavityPass!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq::F
             if !isnan(r6[1])
                 # drift-kick-drift
                 drift6!(r6, halflength)
-                r6[6] += -nv * sin(2 * pi * freq * ((r6[5] - lag) / C0 - (h / freq - T0) * nturn) - philag)
+                r6[6] += -nv * sin(2 * pi * freq * ((r6[5] - lag) / C0 - (h / freq - T0) * nturn) - philag) / beta^2
                 # r6[6] += -nv * sin(2 * pi * freq * ((-r6[5] - lag)  - (h / freq - T0) * nturn) - philag)
                 drift6!(r6, halflength)
             end
@@ -52,12 +52,13 @@ function pass!(ele::RFCA, r_in::Array{Float64,1}, num_particles::Int64, particle
     # num_particles: number of particles
     lost_flags = particles.lost_flag
     T0 = particles.T0
+    beta = particles.beta
     nturn = 0 #particles.nturn
     if ele.energy == 0
         error("Energy is not defined for RFCA ", ele.name)
     end
     nv = ele.volt / ele.energy
-    RFCavityPass!(r_in, ele.len, nv, ele.freq, ele.h, ele.lag, ele.philag, nturn, T0, num_particles, lost_flags)
+    RFCavityPass!(r_in, ele.len, nv, ele.freq, ele.h, ele.lag, ele.philag, nturn, T0, beta, num_particles, lost_flags)
     return nothing
 end
 
@@ -65,7 +66,7 @@ end
 ##########################################################################################
 # multi-threading
 function RFCavityPass_P!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq::Float64, h::Float64, 
-    lag::Float64, philag::Float64, nturn::Int, T0::Float64, num_particles::Int, lost_flags::Array{Int64,1})
+    lag::Float64, philag::Float64, nturn::Int, T0::Float64, beta::Float64, num_particles::Int, lost_flags::Array{Int64,1})
     # le - physical length
     # nv - peak voltage (V) normalized to the design enegy (eV)
     # freq - frequency (Hz)
@@ -82,7 +83,7 @@ function RFCavityPass_P!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq:
             end
             r6 = @view r_in[(c-1)*6+1:c*6]
             if !isnan(r6[1])
-                r6[6] += -nv * sin(2 * pi * freq * ((r6[5] - lag) / C0 - (h / freq - T0) * nturn) - philag)
+                r6[6] += -nv * sin(2 * pi * freq * ((r6[5] - lag) / C0 - (h / freq - T0) * nturn) - philag) / beta^2
             end
         end
     else
@@ -96,7 +97,7 @@ function RFCavityPass_P!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq:
             if !isnan(r6[1])
                 # drift-kick-drift
                 drift6!(r6, halflength)
-                r6[6] += -nv * sin(2 * pi * freq * ((r6[5] - lag) / C0 - (h / freq - T0) * nturn) - philag)
+                r6[6] += -nv * sin(2 * pi * freq * ((r6[5] - lag) / C0 - (h / freq - T0) * nturn) - philag) / beta^2
                 drift6!(r6, halflength)
             end
             if check_lost(r6)
@@ -116,7 +117,8 @@ function pass_P!(ele::RFCA, r_in::Array{Float64,1}, num_particles::Int64, partic
     end
     lost_flags = particles.lost_flag
     T0=1.0/ele.freq      # Does not matter since nturns == 0
+    beta = particles.beta
     nv = ele.volt / ele.energy
-    RFCavityPass_P!(r_in, ele.len, nv, ele.freq, ele.h, ele.lag, ele.philag, 0, T0, num_particles, lost_flags)
+    RFCavityPass_P!(r_in, ele.len, nv, ele.freq, ele.h, ele.lag, ele.philag, 0, T0, beta, num_particles, lost_flags)
     return nothing
 end

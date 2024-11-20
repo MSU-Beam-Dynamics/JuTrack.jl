@@ -7,7 +7,6 @@
 # Created Date: 11-01-2023
 # Modified Date: 07-02-2024
 include("polymap.jl")
-# using StaticArrays
 
 struct CTPS{T, TPS_Dim, Max_TPS_Degree}
     degree::Int
@@ -29,12 +28,22 @@ function getOrCreatePolyMap(TPS_Dim::Int, Max_TPS_Degree::Int)
     end
 end
 
+"""
+    CTPS(T::Type, TPS_Dim::Int, Max_TPS_Degree::Int)
+
+Create a truncated power series (TPS) object with type `T`, dimension `TPS_Dim`, and maximum degree `Max_TPS_Degree`.
+"""
 function CTPS(T::Type, TPS_Dim::Int, Max_TPS_Degree::Int) 
     polymap = getOrCreatePolyMap(TPS_Dim, Max_TPS_Degree)
     terms = binomial(TPS_Dim + Max_TPS_Degree, Max_TPS_Degree)
     return CTPS{T, TPS_Dim, Max_TPS_Degree}(0, terms, zeros(T, terms), Ref(polymap)) 
 end
 
+"""
+    CTPS(a::T, TPS_Dim::Int, Max_TPS_Degree::Int)
+
+Create a truncated power series (TPS) object with type `T`, dimension `TPS_Dim`, and maximum degree `Max_TPS_Degree`, and set the constant term to `a`.
+"""
 function CTPS(a::T, TPS_Dim::Int, Max_TPS_Degree::Int) where T
     polymap = getOrCreatePolyMap(TPS_Dim, Max_TPS_Degree)
     terms = binomial(TPS_Dim + Max_TPS_Degree, Max_TPS_Degree)
@@ -43,6 +52,11 @@ function CTPS(a::T, TPS_Dim::Int, Max_TPS_Degree::Int) where T
     return CTPS{T, TPS_Dim, Max_TPS_Degree}(0, terms, map, Ref(polymap)) 
 end
 
+"""
+    CTPS(a::T, n::Int, TPS_Dim::Int, Max_TPS_Degree::Int)
+
+Create a truncated power series (TPS) object with type `T`, dimension `TPS_Dim`, and maximum degree `Max_TPS_Degree`, and set the `n`-th variable to `a`.
+"""
 function CTPS(a::T, n::Int, TPS_Dim::Int, Max_TPS_Degree::Int) where T
     if n <= TPS_Dim && n > 0
         terms = binomial(TPS_Dim + Max_TPS_Degree, Max_TPS_Degree)
@@ -56,6 +70,11 @@ function CTPS(a::T, n::Int, TPS_Dim::Int, Max_TPS_Degree::Int) where T
     end
 end
 
+"""
+    CTPS(M::CTPS{T, TPS_Dim, Max_TPS_Degree})
+
+Copy a truncated power series (TPS) object `M`.
+"""
 function CTPS(M::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
     map = zeros(T, length(M.map))
     for i in eachindex(map)
@@ -64,11 +83,21 @@ function CTPS(M::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_De
     return CTPS{T, TPS_Dim, Max_TPS_Degree}(Max_TPS_Degree, length(map), map, M.polymap)
 end
 
+"""
+    cst(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree})
+
+Return the constant term of a truncated power series (TPS) object `ctps`.
+"""
 function cst(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
     a0 = ctps.map[1]
     return a0
 end
 
+"""
+    findindex(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, indexmap::Vector{Int})
+
+Find the index of the indexmap in the map vector.
+"""
 function findindex(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, indexmap::Vector{Int}) where {T, TPS_Dim, Max_TPS_Degree}
     # find the index of the indexmap in the map vector
     # indexmap is a vector of length TPS_Dim + 1, e.g. [0, 1, 1] for x1^1 * x2^1

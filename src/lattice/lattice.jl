@@ -1,3 +1,4 @@
+# temporary lattice definition. Not used in the current version
 mutable struct Lattice
     rfcas::Vector{RFCA}
     drifts::Vector{DRIFT}

@@ -89,10 +89,18 @@ function DriftPass!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64,1}, T
     return nothing
 end
 
+"""
+    pass!(ele::DRIFT, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+
+This is a function to track particles through a drift element.
+
+# Arguments
+- ele::DRIFT: a drift element
+- r_in::Array{Float64,1}: 6-by-num_particles array
+- num_particles::Int64: number of particles
+- particles::Beam: beam object
+"""
 function pass!(ele::DRIFT, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
-    # ele: EDRIFT
-    # r_in: 6-by-num_particles array
-    # num_particles: number of particles
     lost_flags = particles.lost_flag
     DriftPass!(r_in, ele.len, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags)
     return nothing

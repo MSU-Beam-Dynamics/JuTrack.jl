@@ -1,3 +1,12 @@
+"""
+    plinepass!(line::Vector, particles::Beam)
+
+Pass particles through the line element by element by implementing multi-threading. The number of threads is determined by the environment variable `JULIA_NUM_THREADS`.
+
+# Arguments
+- line::Vector: a vector of beam line elements
+- particles::Beam: a beam object
+"""
 function plinepass!(line::Vector, particles::Beam)
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
@@ -44,6 +53,16 @@ function ADpringpass!(line::Vector, particles::Beam, nturn::Int, changed_idx::Ve
     return nothing
 end
 
+"""
+    pringpass!(line::Vector, particles::Beam, nturn::Int)
+
+Pass particles through the ring by implementing multi-threading. The number of threads is determined by the environment variable `JULIA_NUM_THREADS`.
+
+# Arguments
+- line::Vector: a vector of beam line elements
+- particles::Beam: a beam object
+- nturn::Int: number of turns
+"""
 function pringpass!(line::Vector, particles::Beam, nturn::Int)
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag

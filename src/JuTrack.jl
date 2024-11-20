@@ -75,7 +75,7 @@ export initilize_zslice!, twiss_2d, twiss_beam, Gauss3_Dist
 export CTPS, cst, findindex, PolyMap, getindexmap, reassign!
 export AbstractElement, DRIFT, KQUAD, KSEXT, KOCT, SBEND, RBEND, RFCA, SOLENOID, MARKER, CORRECTOR, HKICKER, VKICKER, thinMULTIPOLE
 export QUAD, buildlatt
-export SPACECHARGE, QUAD_SC, DRIFT_SC, KQUAD_SC, KSEXT_SC, KOCT_SC, SBEND_SC, RBEND_SC
+export SPACECHARGE, QUAD_SC, DRIFT_SC, KQUAD_SC, KSEXT_SC, KOCT_SC, SBEND_SC, RBEND_SC, calculate_K
 export EdwardsTengTwiss, AbstractTwiss, twissPropagate, findm66, periodicEdwardsTengTwiss, twissline, ADtwissline, twissring, ADfindm66, ADtwissring, ADperiodicEdwardsTengTwiss
 export fastfindm66, fastfindm66_refpts, ADfastfindm66_refpts
 export linepass!, pass!, ringpass!, linepass_TPSA!, pass_TPSA!, ringpass_TPSA!, check_lost
@@ -90,4 +90,5 @@ end
 export autodiff, Forward, ForwardWithPrimal, gradient, jacobian, Duplicated, set_runtime_activity, Const, Val, Enzyme, BatchDuplicated
 
 export dynamic_aperture, naff, FMA, computeRDT, ADcomputeRDT
+export drift6!, multmv!, addvv!, linearQuadFringeElegantEntrance!, QuadFringePassP!, fastdrift!, strthinkick!
 end
