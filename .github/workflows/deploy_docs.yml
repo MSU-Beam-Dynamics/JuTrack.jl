@@ -22,8 +22,6 @@ jobs:
       run: julia --project=docs -e 'using Pkg; Pkg.instantiate();'
     - name: Install Documenter
       run: julia --project=docs -e 'using Pkg; Pkg.add("Documenter")'
-    - name: Install JuTrack
-      run: julia --project=docs -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/MSU-Beam-Dynamics/JuTrack.jl"))'
     - name: Build documentation
       run: julia --project=docs docs/make.jl
 
