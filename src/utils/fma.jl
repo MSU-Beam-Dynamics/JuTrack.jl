@@ -74,6 +74,23 @@ function naff(nturn::Int, x::Vector{Float64}, px::Vector{Float64})
     return nux1, nux2
 end
 
+"""
+    FMA(RING, beam, nturns)
+
+do frequency map analysis (FMA) with NAFF
+
+# Arguments
+- RING: lattice
+- beam: Beam object. Avoid zero initial coordinates.
+- nturns: number of turns
+
+# Return
+- diff_nux: difference between nux1 and nux2
+- nux1: horizontal tune 1
+- nux2: horizontal tune 2
+- nuy1: vertical tune 1
+- nuy2: vertical tune 2
+"""
 function FMA(RING, beam, nturns)
     # do fma and return the tune
     # RING: lattice

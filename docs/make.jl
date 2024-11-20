@@ -12,6 +12,6 @@ makedocs(
 )
 
 deploydocs(
-    repo = "github.com/MSU-Beam-Dynamics/JuTrack.jl.git",
+    repo = "https://github.com/MSU-Beam-Dynamics/JuTrack.jl.git",
     target = "gh-pages",
 )

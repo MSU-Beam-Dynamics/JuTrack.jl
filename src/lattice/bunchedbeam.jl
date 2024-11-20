@@ -79,6 +79,7 @@ Example:
 ```julia
 get_centroid!(beam)
 println(beam.centroid)
+```
 """
 function get_centroid!(beam::Beam)
     idx_sur = findall(x -> x == 0, beam.lost_flag)
@@ -100,6 +101,7 @@ Example:
 ```julia
 get_2nd_moment!(beam)
 println(beam.moment2nd)
+```
 """
 function get_2nd_moment!(beam::Beam)
     idx_sur = findall(x -> x == 0, beam.lost_flag)
@@ -130,6 +132,7 @@ Example:
 ```julia
 get_emittance!(beam)
 println(beam.emittance)
+```
 """
 function get_emittance!(beam::Beam)
     get_centroid!(beam)
@@ -223,6 +226,7 @@ Histogram in z.
 Example:
 ```julia
 histogram1DinZ!(beam, beam.znbin, beam.inzindex, beam.zhist, beam.zhist_edges)
+```
 """
 function histogram1DinZ!(beam::Beam, nbins::Int64, inzindex, zhist, zhist_edges) 
     # histogram in z
@@ -260,6 +264,7 @@ Histogram in z.
 Example:
 ```julia
 histogram1DinZ!(beam)
+```
 """
 function histogram1DinZ!(beam::Beam)
     # histogram in z

@@ -12,6 +12,7 @@ A marker element.
 Example:
 ```julia
 marker = MARKER(name="MARKER1")
+```
 """
 mutable struct MARKER <: AbstractElement
     name::String
@@ -40,6 +41,7 @@ A drift element.
 Example:
 ```julia
 drift = DRIFT(name="D1", len=1.0)
+```
 """
 mutable struct DRIFT <: AbstractElement
     name::String
@@ -64,9 +66,25 @@ end
         Nl::Int64 = 10, Nm::Int64 = 10, Nsteps::Int64=1)
 
 A drift element with space charge.
+
+# Arguments
+- name::String: element name
+- len::Float64: element length
+- T1::Array{Float64,1}: misalignment at entrance
+- T2::Array{Float64,1}: misalignment at exit
+- R1::Array{Float64,2}: rotation at entrance
+- R2::Array{Float64,2}: rotation at exit
+- RApertures::Array{Float64,1}: rectangular apertures. Not implemented yet.
+- EApertures::Array{Float64,1}: elliptical apertures. Not implemented yet.
+- a::Float64: horizontal size of the perfectly conducting pipe
+- b::Float64: vertical size of the perfectly conducting pipe
+- Nl::Int64: number of mode in the horizontal direction
+- Nm::Int64: number of mode in the vertical direction
+- Nsteps::Int64: number of steps for space charge calculation. One step represents a half-kick-half.
 Example:
 ```julia
 drift = DRIFT_SC(name="D1_SC", len=0.5, a=13e-3, b=13e-3, Nl=15, Nm=15)
+```
 """
 mutable struct DRIFT_SC <: AbstractElement
     name::String
@@ -101,9 +119,11 @@ end
         EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{Float64,1} = zeros(Float64, 2))
 
 A canonical quadrupole element.
+
 Example:
 ```julia
 quad = KQUAD(name="Q1", len=0.5, k1=0.5)
+```
 """
 mutable struct KQUAD <: AbstractElement
     name::String
@@ -159,6 +179,7 @@ A canonical quadrupole element with space charge.
 Example:
 ```julia
 quad = KQUAD_SC(name="Q1_SC", len=0.5, k1=0.5, a=13e-3, b=13e-3, Nl=15, Nm=15)
+```
 """
 mutable struct KQUAD_SC <: AbstractElement
     name::String
@@ -219,6 +240,7 @@ A canonical sextupole element.
 Example:
 ```julia
 sext = KSEXT(name="S1", len=0.5, k2=0.5)
+```
 """
 mutable struct KSEXT <: AbstractElement
     name::String
@@ -274,6 +296,7 @@ A canonical sextupole element with space charge.
 Example:
 ```julia
 sext = KSEXT_SC(name="S1_SC", len=0.5, k2=0.5, a=13e-3, b=13e-3, Nl=15, Nm=15)
+```
 """
 mutable struct KSEXT_SC <: AbstractElement
     name::String
@@ -334,6 +357,7 @@ A canonical octupole element.
 Example:
 ```julia
 oct = KOCT(name="O1", len=0.5, k3=0.5)
+```
 """
 mutable struct KOCT <: AbstractElement
     name::String
@@ -389,6 +413,7 @@ A canonical octupole element with space charge.
 Example:
 ```julia
 oct = KOCT_SC(name="O1_SC", len=0.5, k3=0.5, a=13e-3, b=13e-3, Nl=15, Nm=15)
+```
 """
 mutable struct KOCT_SC <: AbstractElement
     name::String
@@ -446,9 +471,11 @@ end
 
 A thin multipole element.
 PolynomA and PolynomB are the skew and normal components of the multipole.
+
 Example:
 ```julia
 multipole = thinMULTIPOLE(name="M1", len=0.5, PolynomA=[0.0, 0.0, 0.0, 0.0], PolynomB=[0.0, 0.0, 0.0, 0.0])
+```
 """
 mutable struct thinMULTIPOLE <: AbstractElement
     name::String
@@ -504,6 +531,7 @@ A sector bending magnet.
 Example:
 ```julia
 bend = SBEND(name="B1", len=0.5, angle=0.5)
+```
 """
 mutable struct SBEND <: AbstractElement
     name::String
@@ -574,6 +602,7 @@ A sector bending magnet with space charge.
 Example:
 ```julia
 bend = SBEND_SC(name="B1_SC", len=0.5, angle=0.5, a=13e-3, b=13e-3, Nl=15, Nm=15)
+```
 """
 mutable struct SBEND_SC <: AbstractElement
     name::String
@@ -649,6 +678,7 @@ A rectangular bending magnet.
 Example:
 ```julia
 bend = RBEND(name="B1", len=0.5, angle=0.5)
+```
 """
 function RBEND(;name::String = "RBend", len::Float64 = 0.0, angle::Float64 = 0.0, PolynomA::Array{Float64,1} = zeros(4), 
                 PolynomB::Array{Float64,1} = zeros(4), MaxOrder::Int64=0, NumIntSteps::Int64 = 10, rad::Int64=0, fint1::Float64 = 0.0, 
@@ -709,7 +739,7 @@ A RF cavity element.
 Example:
 ```julia
 rf = RFCA(name="RF1", len=0.5, volt=1e6, freq=1e6)
-``
+```
 """
 mutable struct RFCA <: AbstractElement
     name::String
@@ -736,7 +766,7 @@ A solenoid element.
 Example:
 ```julia
 solenoid = SOLENOID(name="S1", len=0.5, ks=1.0)
-````
+```
 """
 mutable struct SOLENOID <: AbstractElement
     name::String
@@ -819,6 +849,7 @@ A quadrupole element using matrix formalism.
 Example:
 ```julia
 quad = QUAD(name="Q1", len=0.5, k1=1.0)
+```
 """
 mutable struct QUAD <: AbstractElement
     name::String
@@ -851,6 +882,7 @@ A quadrupole element with space charge.
 Example:
 ```julia
 quad = QUAD_SC(name="Q1_SC", len=0.5, k1=1.0, a=13e-3, b=13e-3, Nl=15, Nm=15)
+```
 """
 mutable struct QUAD_SC <: AbstractElement
     name::String

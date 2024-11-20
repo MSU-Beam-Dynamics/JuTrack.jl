@@ -42,6 +42,24 @@ end
 #     end
 #     return ele_index
 # end
+""" 
+    findelem(ring::Vector, field::Symbol, value)
+
+Find the index of elements with the specified field value in the ring.
+
+# Arguments
+- ring::Vector: a vector of beam line elements
+- field::Symbol: the field name
+- value: the value of the field
+
+# Return
+- ele_index::Vector{Int}: a vector of indices of the elements with the specified field value
+
+# Example
+```julia
+ele_index = findelem(ring, :name, "QF")
+```
+"""
 function findelem(ring::Vector, field::Symbol, value)
     c = 0
     for i in eachindex(ring)
@@ -71,6 +89,23 @@ end
 #     end
 #     return ele_index
 # end
+"""
+    findelem(ring::Vector, type::Type)
+
+Find the index of elements with the specified type in the ring.
+
+# Arguments
+- ring::Vector: a vector of beam line elements
+- type::Type: the type of the element
+
+# Return
+- ele_index::Vector{Int}: a vector of indices of the elements with the specified type
+
+# Example
+```julia
+ele_index = findelem(ring, DRIFT)
+```
+"""
 function findelem(ring::Vector, type::Type)
     c = 0
     for i in eachindex(ring)
