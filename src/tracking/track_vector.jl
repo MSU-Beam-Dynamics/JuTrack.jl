@@ -19,6 +19,15 @@ function array_to_matrix(array::Vector{Float64}, n::Int)
     return particles
 end
 
+"""
+    linepass!(line::Vector, particles::Beam)
+
+Pass particles through the line element by element. The particles are stored in the `Beam` object.
+
+# Arguments
+- line::Vector: a vector of beam line elements
+- particles::Beam: a beam object
+"""
 function linepass!(line::Vector, particles::Beam)
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
@@ -35,6 +44,19 @@ function linepass!(line::Vector, particles::Beam)
     return nothing
 end
 
+"""
+    linepass!(line::Vector, particles::Beam, refpts::Vector)
+
+Pass particles through the line element by element. Save the particles at the reference points.
+
+# Arguments
+- line::Vector: a vector of beam line elements
+- particles::Beam: a beam object
+- refpts::Vector: a vector of reference points
+
+# Returns
+- saved_particles::Vector: a vector of saved particles
+"""
 function linepass!(line::Vector, particles::Beam, refpts::Vector)
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
@@ -56,7 +78,18 @@ function linepass!(line::Vector, particles::Beam, refpts::Vector)
     return saved_particles
 end
 
+"""
+    ADlinepass!(line::Vector, particles::Beam, changed_idx::Vector, changed_ele::Vector)
 
+Pass particles through the line element by element. The elements in the `changed_idx` will be replaced by the elements in `changed_ele`.
+This is a convinent function to implement the automatic differentiation.
+
+# Arguments
+- line::Vector: a vector of beam line elements
+- particles::Beam: a beam object
+- changed_idx::Vector: a vector of indices of the elements to be changed
+- changed_ele::Vector: a vector of elements to replace the elements in `changed_idx`
+"""
 function ADlinepass!(line::Vector, particles::Beam, changed_idx::Vector, changed_ele::Vector)
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
@@ -149,6 +182,16 @@ function ADringpass!(line::Vector, particles::Beam, nturn::Int, changed_idx::Vec
     return save_beam
 end
 
+"""
+    ringpass!(line::Vector, particles::Beam, nturn::Int)
+
+Pass particles through the ring for `nturn` turns.
+
+# Arguments
+- line::Vector: a vector of beam line elements
+- particles::Beam: a beam object
+- nturn::Int: number of turns
+"""
 function ringpass!(line::Vector, particles::Beam, nturn::Int)
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
@@ -158,6 +201,17 @@ function ringpass!(line::Vector, particles::Beam, nturn::Int)
     return nothing
 end
 
+"""
+    ringpass!(line::Vector, particles::Beam, nturn::Int, save::Bool)
+
+Pass particles through the ring for `nturn` turns. Save the particles at each turn.
+
+# Arguments
+- line::Vector: a vector of beam line elements
+- particles::Beam: a beam object
+- nturn::Int: number of turns
+- save::Bool: Flag
+"""
 function ringpass!(line::Vector, particles::Beam, nturn::Int, save::Bool)
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
@@ -171,6 +225,15 @@ function ringpass!(line::Vector, particles::Beam, nturn::Int, save::Bool)
     return save_beam
 end
 
+"""
+    linepass_TPSA!(line::Vector, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}})
+
+Pass 6-D TPSA coordinates through the line element by element.
+
+# Arguments
+- line::Vector: a vector of beam line elements
+- rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}: a vector of 6-D TPSA coordinates
+"""
 function linepass_TPSA!(line::Vector, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) where {T, TPS_Dim, Max_TPS_Degree}
     if length(rin) != 6
         error("The length of TPSA must be 6")
@@ -199,6 +262,16 @@ function ADlinepass_TPSA!(line::Vector, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Deg
     return nothing
 end
 
+"""
+    ringpass_TPSA!(line::Vector, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, nturn::Int)
+
+Pass 6-D TPSA coordinates through the ring for `nturn` turns.
+
+# Arguments
+- line::Vector: a vector of beam line elements
+- rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}: a vector of 6-D TPSA coordinates
+- nturn::Int: number of turns
+"""
 function ringpass_TPSA!(line::Vector, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, nturn::Int) where {T, TPS_Dim, Max_TPS_Degree}
     if length(rin) != 6
         error("The length of TPSA must be 6")
