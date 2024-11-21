@@ -561,6 +561,19 @@ function fastfindm66(LATTICE, dp=0.0)
     return M66
 end
 
+"""
+	fastfindm66_refpts(LATTICE, dp=0.0, refpts::Vector{Int})
+
+Find the 6x6 transfer matrix of a lattice at specified locations using numerical differentiation.
+
+# Arguments
+- `LATTICE`: Beam line sequence.
+- `dp::Float64=0.0`: Momentum deviation.
+- `refpts::Vector{Int}`: Indices of elements where the transfer matrix is calculated.
+
+# Returns
+- `M66_refpts`: 6x6 transfer matrix at specified locations.
+"""
 function fastfindm66_refpts(LATTICE, dp::Float64, refpts::Vector{Int})
     # assume the closed orbit is zero
     NE = length(LATTICE)
@@ -713,6 +726,21 @@ function twissline(tin::EdwardsTengTwiss,seq::Vector, dp::Float64, order::Int, e
 	return ret
 end
 
+"""
+	twissline(tin::EdwardsTengTwiss,seq::Vector, dp::Float64, order::Int, refpts::Vector{Int})
+
+Propagate the Twiss parameters through a sequence of elements. Save the results at specified locations.
+
+# Arguments
+- `tin::EdwardsTengTwiss`: Input Twiss parameters.
+- `seq::Vector`: Sequence of elements.
+- `dp::Float64`: Momentum deviation.
+- `order::Int`: Order of the map. 0 for finite difference, others for TPSA.
+- `refpts::Vector{Int}`: Indices of elements where the Twiss parameters are calculated.
+
+# Returns
+- `Vector{EdwardsTengTwiss}`: Output Twiss parameters at specified locations.
+"""
 function twissline(tin::EdwardsTengTwiss,seq::Vector, dp::Float64, order::Int, refpts::Vector{Int})
 	# if !is_increasing(refpts)
 	# 	error("The reference points must be in increasing order.")
@@ -744,21 +772,27 @@ function twissline(tin::EdwardsTengTwiss,seq::Vector, dp::Float64, order::Int, r
 	return ret_vector
 end
 
+"""
+	ADtwissline(tin::EdwardsTengTwiss,seq::Vector, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector, changed_ele::Vector)
+
+Propagate the Twiss parameters through a sequence of elements. Save the results at specified locations.
+This function is used for automatic differentiation. 
+
+# Arguments
+- `tin::EdwardsTengTwiss`: Input Twiss parameters.
+- `seq::Vector`: Sequence of elements.
+- `dp::Float64`: Momentum deviation.
+- `order::Int`: Order of the map. 0 for finite difference, others for TPSA.
+- `refpts::Vector{Int}`: Indices of elements where the Twiss parameters are calculated.
+- `changed_idx::Vector`: Indices of elements with changed parameters.
+- `changed_ele::Vector`: Indices of changed parameters.
+
+# Returns
+- `Vector{EdwardsTengTwiss}`: Output Twiss parameters at specified locations.
+"""
 function ADtwissline(tin::EdwardsTengTwiss,seq::Vector, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector, changed_ele::Vector)
-	# if !is_increasing(refpts)
-	# 	error("The reference points must be in increasing order.")
-	# end
-	# if refpts[end] > length(seq)
-	# 	error("Invalid reference point.")
-	# end
-	# obtain M through tracking
 	ret_vector = Vector{EdwardsTengTwiss}(undef, length(refpts))    
 	ret = tin
-	# M_list = ADfindm66_refpts(seq, dp, order, refpts, changed_idx, changed_ele)
-	# for i in 1:length(refpts)
-	# 	ret = twissPropagate(ret, M_list[i])
-	# 	ret_vector[i] = ret
-	# end
 
 	# use ADfastfindm66_refpts instead of ADfindm66_refpts if order == 0
 	if order == 0
@@ -796,7 +830,19 @@ function is_increasing(A::Array)
 end
 
 
+"""
+	periodicEdwardsTengTwiss(seq::Vector, dp, order::Int)
 
+Calculate the Twiss parameters for a periodic lattice.
+
+# Arguments
+- `seq::Vector`: Sequence of elements.
+- `dp::Float64`: Momentum deviation.
+- `order::Int`: Order of the map. 0 for finite difference, others for TPSA.
+
+# Returns
+- `EdwardsTengTwiss`: Output Twiss parameters.
+"""
 function periodicEdwardsTengTwiss(seq::Vector, dp, order::Int)
 	# M = findm66(seq, dp, order)
 	if order == 0
@@ -914,7 +960,7 @@ end
 """
 	twissring(seq::Vector, dp::Float64, order::Int)
 
-Calculate the periodic Twiss parameters of a ring.
+Calculate the periodic Twiss parameters along the ring.
 
 # Arguments
 - `seq::Vector`: Sequence of elements.
@@ -922,14 +968,14 @@ Calculate the periodic Twiss parameters of a ring.
 - `order::Int`: Order of the map. 0 for finite difference, others for TPSA.
 
 # Returns
-- `EdwardsTengTwiss`: periodic Twiss parameters.
+- `twis`: Twiss parameters along the ring.
 """
 function twissring(seq::Vector, dp::Float64, order::Int)
 	twi0 = periodicEdwardsTengTwiss(seq, dp, order)
 	nele = length(seq)
 	refpts = [i for i in 1:nele]
-	twi = twissline(twi0, seq, dp, order, refpts)
-	return twi
+	twis = twissline(twi0, seq, dp, order, refpts)
+	return twis
 end
 
 function ADtwissring(seq::Vector, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector, changed_ele::Vector)

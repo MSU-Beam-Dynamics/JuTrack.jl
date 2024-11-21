@@ -22,7 +22,7 @@ end
 """
     linepass!(line::Vector, particles::Beam)
 
-Pass particles through the line element by element. The particles are stored in the `Beam` object.
+Pass the beam through the line element by element.
 
 # Arguments
 - line::Vector: a vector of beam line elements
@@ -82,7 +82,7 @@ end
     ADlinepass!(line::Vector, particles::Beam, changed_idx::Vector, changed_ele::Vector)
 
 Pass particles through the line element by element. The elements in the `changed_idx` will be replaced by the elements in `changed_ele`.
-This is a convinent function to implement the automatic differentiation.
+This is a convinent function to implement automatic differentiation that avoid directly changing parameters in `line``.
 
 # Arguments
 - line::Vector: a vector of beam line elements
@@ -165,22 +165,6 @@ function ADlinepass!(line::Vector, particles::Beam, refpts::Vector, changed_idx:
     return saved_particles
 end
 
-function ADringpass!(line::Vector, particles::Beam, nturn::Int, changed_idx::Vector, changed_ele::Vector)
-    for i in 1:nturn
-        ADlinepass!(line, particles, changed_idx, changed_ele)    
-    end
-    return nothing
-end
-function ADringpass!(line::Vector, particles::Beam, nturn::Int, changed_idx::Vector, changed_ele::Vector, save::Bool)
-    save_beam = []
-    for i in 1:nturn
-        ADlinepass!(line, particles, changed_idx, changed_ele)    
-        if save
-            push!(save_beam, copy(particles.r))
-        end
-    end
-    return save_beam
-end
 
 """
     ringpass!(line::Vector, particles::Beam, nturn::Int)
@@ -226,6 +210,36 @@ function ringpass!(line::Vector, particles::Beam, nturn::Int, save::Bool)
 end
 
 """
+    ADringpass!(line::Vector, particles::Beam, nturn::Int, changed_idx::Vector, changed_ele::Vector)
+
+Pass particles through the ring for `nturn` turns. The elements in the `changed_idx` will be replaced by the elements in `changed_ele`.
+This is a convinent function to implement automatic differentiation that avoid directly changing parameters in `line``.
+
+# Arguments
+- line::Vector: a vector of a ring
+- particles::Beam: a beam object
+- nturn::Int: number of turns
+- changed_idx::Vector: a vector of indices of the elements to be changed
+- changed_ele::Vector: a vector of elements to replace the elements in `changed_idx`
+"""
+function ADringpass!(line::Vector, particles::Beam, nturn::Int, changed_idx::Vector, changed_ele::Vector)
+    for i in 1:nturn
+        ADlinepass!(line, particles, changed_idx, changed_ele)    
+    end
+    return nothing
+end
+function ADringpass!(line::Vector, particles::Beam, nturn::Int, changed_idx::Vector, changed_ele::Vector, save::Bool)
+    save_beam = []
+    for i in 1:nturn
+        ADlinepass!(line, particles, changed_idx, changed_ele)    
+        if save
+            push!(save_beam, copy(particles.r))
+        end
+    end
+    return save_beam
+end
+
+"""
     linepass_TPSA!(line::Vector, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}})
 
 Pass 6-D TPSA coordinates through the line element by element.
@@ -245,6 +259,19 @@ function linepass_TPSA!(line::Vector, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degre
     end
     return nothing
 end
+
+"""
+    ADlinepass_TPSA!(line::Vector, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, changed_idx::Vector, changed_ele::Vector)
+
+Pass 6-D TPSA coordinates through the line element by element. The elements in the `changed_idx` will be replaced by the elements in `changed_ele`.
+This is a convinent function to implement automatic differentiation that avoid directly changing parameters in `line``.
+
+# Arguments
+- line::Vector: a vector of beam line elements
+- rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}: a vector of 6-D TPSA coordinates
+- changed_idx::Vector: a vector of indices of the elements to be changed
+- changed_ele::Vector: a vector of elements to replace the elements in `changed_idx`
+"""
 function ADlinepass_TPSA!(line::Vector, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, changed_idx::Vector, changed_ele::Vector) where {T, TPS_Dim, Max_TPS_Degree}
     if length(rin) != 6
         error("The length of TPSA must be 6")

@@ -86,7 +86,11 @@ function cal_FromindexDQSO(indDQSO, indexii)
 end
 
 
+"""
+    DrivenTerms
 
+Structure to store the driving terms for the resonance driving terms calculation.
+"""
 struct DrivingTerms
     h21000::Vector{Float64}
     h30000::Vector{Float64}
@@ -342,6 +346,23 @@ function juliaRDT(s, betax, betay, phix, phiy, etax, Lista2L, Listb2L, Listb3L, 
     return d
 end
 
+"""
+    computeRDT(ring, index; chromatic=false, coupling=false, geometric1=false, geometric2=false, tuneshifts=false)
+
+Compute Hamiltonian resonance driving terms (RDTs).
+
+# Arguments
+- `ring::Array`: lattice sequence
+- `index::Int`: index of the element to compute the RDTs
+- `chromatic::Bool=false`: flag to compute chromatic RDTs
+- `coupling::Bool=false`: flag to compute coupling RDTs
+- `geometric1::Bool=false`: flag to compute geometric RDTs
+- `geometric2::Bool=false`: flag to compute geometric RDTs
+- `tuneshifts::Bool=false`: flag to compute tune shifts
+
+# Returns
+- `d::DrivingTerms`: structure of driving terms
+"""
 function computeRDT(ring, index; chromatic=false, coupling=false, geometric1=false, geometric2=false, tuneshifts=false)
     # Compute Hamiltonian resonance driving terms (RDTs)
     # ring: lattice sequence
@@ -556,6 +577,26 @@ function findBQSO(ring::Vector)
     return indDQSO
 end
 
+"""
+    ADcomputeRDT(ring, index, changed_ids, changed_elems; chromatic=true, coupling=true, geometric1=true, geometric2=true, tuneshifts=true)
+
+Compute Hamiltonian resonance driving terms (RDTs).
+This function is used for auto-differentiation.
+
+# Arguments
+- `ring::Array`: lattice sequence
+- `index::Int`: index of the element to compute the RDTs
+- `changed_ids::Vector{Int}`: IDs of the elements with changed parameters
+- `changed_elems::Vector{Element}`: elements with changed parameters
+- `chromatic::Bool=true`: flag to compute chromatic RDTs
+- `coupling::Bool=true`: flag to compute coupling RDTs
+- `geometric1::Bool=true`: flag to compute geometric RDTs
+- `geometric2::Bool=true`: flag to compute geometric RDTs
+- `tuneshifts::Bool=true`: flag to compute tune shifts
+
+# Returns
+- `d::DrivingTerms`: structure of driving terms
+"""
 function ADcomputeRDT(ring, index, changed_ids, changed_elems; chromatic=true, coupling=true, geometric1=true, geometric2=true, tuneshifts=true)
     # Compute Hamiltonian resonance driving terms (RDTs)
     # ring: lattice sequence
