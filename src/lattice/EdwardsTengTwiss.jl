@@ -730,8 +730,12 @@ function twissline(tin::EdwardsTengTwiss,seq::Vector, dp::Float64, order::Int, r
 	# 	ret_vector[i] = ret
 	# end
 
-	# use fastfindm66_refpts instead of findm66_refpts
-	M_list = fastfindm66_refpts(seq, dp, refpts)
+	# use fastfindm66_refpts instead of findm66_refpts if order == 0
+	if order == 0
+		M_list = fastfindm66_refpts(seq, dp, refpts)
+	else
+		M_list = findm66_refpts(seq, dp, order, refpts)
+	end
 	for i in 1:length(refpts)
 		ret = twissPropagate(ret, M_list[:, :, i])
 		ret_vector[i] = ret
@@ -756,8 +760,12 @@ function ADtwissline(tin::EdwardsTengTwiss,seq::Vector, dp::Float64, order::Int,
 	# 	ret_vector[i] = ret
 	# end
 
-	# use ADfastfindm66_refpts instead of ADfindm66_refpts
-	M_list = ADfastfindm66_refpts(seq, dp, refpts, changed_idx, changed_ele)
+	# use ADfastfindm66_refpts instead of ADfindm66_refpts if order == 0
+	if order == 0
+		M_list = ADfastfindm66_refpts(seq, dp, changed_idx, changed_ele, refpts)
+	else
+		M_list = ADfindm66_refpts(seq, dp, order, refpts, changed_idx, changed_ele)
+	end
 	for i in 1:length(refpts)
 		ret = twissPropagate(ret, M_list[:, :, i])
 		ret_vector[i] = ret
@@ -791,7 +799,11 @@ end
 
 function periodicEdwardsTengTwiss(seq::Vector, dp, order::Int)
 	# M = findm66(seq, dp, order)
-	M = fastfindm66(seq, dp)
+	if order == 0
+		M = fastfindm66(seq, dp)
+	else
+		M = findm66(seq, dp, order)
+	end
 	A=@view M[1:2,1:2]
 	B=@view M[1:2,3:4]
 	C=@view M[3:4,1:2]
@@ -837,8 +849,11 @@ function periodicEdwardsTengTwiss(seq::Vector, dp, order::Int)
 end
 
 function ADperiodicEdwardsTengTwiss(seq::Vector, dp::Float64, order::Int, changed_idx::Vector, changed_ele::Vector)
-	# M = ADfindm66(seq, dp, order, changed_idx, changed_ele)
-	M = ADfastfindm66(seq, dp, changed_idx, changed_ele)
+	if order == 0
+		M = ADfastfindm66(seq, dp, changed_idx, changed_ele)
+	else
+		M = ADfindm66(seq, dp, order, changed_idx, changed_ele)
+	end
 	A=@view M[1:2,1:2]
 	B=@view M[1:2,3:4]
 	C=@view M[3:4,1:2]

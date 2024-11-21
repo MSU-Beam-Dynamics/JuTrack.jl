@@ -19,13 +19,13 @@ b = 13e-3
 nl = 15
 nm = 15
 
-D1 = DRIFT_SC(len=D1L/4, a=a, b=b, Nl=nl, Nm=nm)
-D2 = DRIFT_SC(len=D2L/8, a=a, b=b, Nl=nl, Nm=nm)
-D3 = DRIFT_SC(len=D3L/4, a=a, b=b, Nl=nl, Nm=nm)
-Q1 = KQUAD_SC(len=Q1L/4, k1=Q1k, NumIntSteps=20, a=a, b=b, Nl=nl, Nm=nm)
-Q2 = KQUAD_SC(len=Q2L/4, k1=Q2k, NumIntSteps=20, a=a, b=b, Nl=nl, Nm=nm)
+D1 = DRIFT_SC(len=D1L, a=a, b=b, Nl=nl, Nm=nm, Nsteps=4)
+D2 = DRIFT_SC(len=D2L, a=a, b=b, Nl=nl, Nm=nm, Nsteps=8)
+D3 = DRIFT_SC(len=D3L, a=a, b=b, Nl=nl, Nm=nm, Nsteps=4)
+Q1 = KQUAD_SC(len=Q1L, k1=Q1k, NumIntSteps=20, a=a, b=b, Nl=nl, Nm=nm, Nsteps=4)
+Q2 = KQUAD_SC(len=Q2L, k1=Q2k, NumIntSteps=20, a=a, b=b, Nl=nl, Nm=nm, Nsteps=4)
 
-line_SC = [D1,D1,D1,D1, Q1,Q1,Q1,Q1, D2,D2,D2,D2,D2,D2,D2,D2, Q2,Q2,Q2,Q2, D3,D3,D3,D3]
+line_SC = [D1, Q1, D2, Q2, D3]
 
 distparam = [
     3.677529920673089E-004  ,   # sigx

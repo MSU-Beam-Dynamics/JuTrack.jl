@@ -12,8 +12,7 @@ function twiss_test(xx, ring=SSRF)
     # or used as a global variable 
     changed_idx = findelem(SSRF, :name, "QL1")
     changed_elems = [KQUAD(len=0.32, k1=xx) for i in 1:length(changed_idx)]
-    twi0 = ADperiodicEdwardsTengTwiss(SSRF, 0.0, 1, changed_idx, changed_elems)
-    # twi0 = periodicEdwardsTengTwiss(ring, 0.0, 1)
+    twi0 = ADperiodicEdwardsTengTwiss(SSRF, 0.0, 0, changed_idx, changed_elems)
     
     return twi0.betax
 end
