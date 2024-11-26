@@ -232,13 +232,39 @@ function track_sbb_P!(rin, num_macro, temp1, temp2, temp3, temp4, temp5, sgb::St
 end
 
 
-function pass!(sgb::StrongGaussianBeam, r_in::Array{Float64,1}, num_macro::Int, wb::Beam)
+"""
+    pass!(sgb::StrongGaussianBeam, r_in::Array{Float64,1}, num_particles::Int, wb::Beam)
+
+This is a function to track particles through beam-beam force induced by opposing beam at iteration point.  The opposing beam is considered rigid.
+
+# Arguments
+- sgb::StrongGaussianBeam: an element representing a rigid opposing beam at interation point
+- r_in::Array{Float64,1}: 6-by-num_particles array
+- num_particles::Int64: number of particles
+- wb::Beam: beam object
+"""
+function pass!(sgb::StrongGaussianBeam, r_in::Array{Float64,1}, num_particles::Int, wb::Beam)
     factor=wb.classrad0/wb.gamma*wb.charge*sgb.charge
-    lumi=track_sbb!(r_in, num_macro, wb.temp1, wb.temp2, wb.temp3, wb.temp4, wb.temp5, sgb, factor)
+    lumi=track_sbb!(r_in, num_particles, wb.temp1, wb.temp2, wb.temp3, wb.temp4, wb.temp5, sgb, factor)
     lumi *= wb.np / wb.nmacro
     return nothing
 end
 
+
+"""
+    pass_lumi!(sgb::StrongGaussianBeam, r_in::Array{Float64,1}, num_particles::Int, wb::Beam)
+
+This is a function to track particles through beam-beam force induced by opposing beam at iteration point.  The opposing beam is considered rigid. The function returns the bunch luminosity.
+
+# Arguments
+- sgb::StrongGaussianBeam: an element representing a rigid opposing beam at interation point
+- r_in::Array{Float64,1}: 6-by-num_particles array
+- num_particles::Int64: number of particles
+- wb::Beam: beam object
+
+# Return
+- lumi::Float64: bunch luminosity
+"""
 function pass_lumi!(sgb::StrongGaussianBeam, r_in::Array{Float64,1}, num_macro::Int, wb::Beam)
     factor=wb.classrad0/wb.gamma*wb.charge*sgb.charge
     lumi=track_sbb!(r_in, num_macro, wb.temp1, wb.temp2, wb.temp3, wb.temp4, wb.temp5, sgb, factor)

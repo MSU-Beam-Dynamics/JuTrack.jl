@@ -79,10 +79,22 @@ function LongiWakefieldPass_P!(r, num_macro, rlcwake, inzindex, eN_b2E, nbins, z
 end
 
 
-function pass!(rlcwake::LongitudinalRLCWake, r, np, beam)
+
+"""
+    pass!(rlcwake::LongitudinalRLCWake, r_in::Array{Float64,1}, num_particles::Int, wb::Beam)
+
+This is a function to track particles through a thin-length longitudinal wake field.
+
+# Arguments
+- rlcwake::LongitudinalRLCWake: an element representing a thin0-length longitudinal wake field
+- r_in::Array{Float64,1}: 6-by-num_particles array
+- num_particles::Int64: number of particles
+- beam::Beam: beam object
+"""
+function pass!(rlcwake::LongitudinalRLCWake, r_in, num_particles, beam)
     histogram1DinZ!(beam, beam.znbin, beam.inzindex, beam.zhist, beam.zhist_edges)
     eN_b2E=beam.np*1.6021766208e-19*beam.charge^2/beam.energy/beam.beta/beam.beta/beam.atomnum
-    LongiWakefieldPass!(r, np, rlcwake, beam.inzindex, eN_b2E, beam.znbin, beam.zhist, beam.zhist_edges)
+    LongiWakefieldPass!(r_in, num_particles, rlcwake, beam.inzindex, eN_b2E, beam.znbin, beam.zhist, beam.zhist_edges)
 
 end
 function pass_P!(rlcwake::LongitudinalRLCWake, r, np, beam)
@@ -92,14 +104,25 @@ function pass_P!(rlcwake::LongitudinalRLCWake, r, np, beam)
 
 end
 
-function pass!(lm::LongitudinalRFMap, r, np, beam) 
+"""
+    pass!(lm::LongitudinalRFMap, r_in::Array{Float64,1}, num_particles::Int, wb::Beam)
+
+This is a function to track particles through a longtiudinal map described by its momentum compaction factor αc.
+
+# Arguments
+- lm::LongitudinalRFMap: an element representing a longtiudinal map.
+- r_in::Array{Float64,1}: 6-by-num_particles array
+- num_particles::Int64: number of particles
+- beam::Beam: beam object
+"""
+function pass!(lm::LongitudinalRFMap, r_in, num_particles, beam) 
     gamma = beam.gamma
     eta = lm.alphac - 1.0 / gamma / gamma
-    for c in 1:np
+    for c in 1:num_particles
         if beam.lost_flag[c] == 1
             continue
         end
-        r6 = @view r[(c-1)*6+1:c*6]
+        r6 = @view r_in[(c-1)*6+1:c*6]
         if !isnan(r6[1])
             r6[5] -= (2π * lm.RF.h * eta / lm.RF.k) * r6[6]
         end
