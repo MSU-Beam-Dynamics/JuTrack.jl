@@ -3,6 +3,21 @@
 A Julia-based package that enables advanced auto differentiation (AD) for symplectic 6-D particle tracking in particle accelerators.
 A mannual can be found at [here](https://msu-beam-dynamics.github.io/JuTrack.jl/).
 
+# Citation
+```
+@article{WAN2025109497,
+title = {JuTrack: A Julia package for auto-differentiable accelerator modeling and particle tracking},
+journal = {Computer Physics Communications},
+volume = {309},
+pages = {109497},
+year = {2025},
+issn = {0010-4655},
+doi = {https://doi.org/10.1016/j.cpc.2024.109497},
+url = {https://www.sciencedirect.com/science/article/pii/S001046552400420X},
+author = {Jinyu Wan and Helena Alamprese and Christian Ratcliff and Ji Qiang and Yue Hao}
+}
+```
+
 # Installation
 
 * Install Julia at [here](https://julialang.org/downloads/oldreleases/) (1.10.4 is preferred).
