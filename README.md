@@ -130,3 +130,4 @@ pringpass!(beamline, beam, nturns)
 
 # Known issues
 * This package currently supports forward AD. Backward AD is still under development.
+* Downgrade/upgrade the Julia environment to 1.10.4 for any conflicts.

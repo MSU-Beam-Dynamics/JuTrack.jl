@@ -23,4 +23,3 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
 Enzyme = "0.13.3"
-julia = "1.9.4 - 1.10.4"

@@ -2,7 +2,8 @@ using StatsBase
 using StatsBase: Weights
 using PyCall
 np = pyimport("numpy")
-RegularGridInterpolator = pyimport("scipy.interpolate").RegularGridInterpolator
+# RegularGridInterpolator = pyimport("scipy.interpolate").RegularGridInterpolator
+RectBivariateSpline = pyimport("scipy.interpolate").RectBivariateSpline
 function space_charge_ML!(r_in, K, num_particles, le, lost_flags, model, x_mean, x_std, y_mean, y_std, xedges, yedges, xaxis, delta)
     x = r_in[1:6:end]
     y = r_in[3:6:end]
@@ -22,10 +23,19 @@ function space_charge_ML!(r_in, K, num_particles, le, lost_flags, model, x_mean,
     dy = zeros(1, 128, 128)
     smoothed_H = GAN_model.smooth_prediction(u_output)
 
-    dx[1,:,:] .= np.gradient(smoothed_H[1,1,:,:], delta, axis=0)
-    dy[1,:,:] .= np.gradient(smoothed_H[1,1,:,:], delta, axis=1)
+    interp_spline = RectBivariateSpline(xaxis, xaxis, smoothed_H[1,1,:,:])
 
-    dh_dx, dh_dy = derivative_histogram(smoothed_H[1,1,:,:], delta, delta, xaxis, xaxis, x, y)
+    df_dx_spline = interp_spline.partial_derivative(1, 0)  # dx=1, dy=0
+    df_dy_spline = interp_spline.partial_derivative(0, 1)  # dx=0, dy=1
+
+    dh_dx = df_dx_spline(x, y, grid=false)
+    dh_dy = df_dy_spline(x, y, grid=false)
+
+    # this part uses RegularGridInterpolator. It first calculate the gradient of the smoothed histogram, then interpolate the gradient to the particle positions.
+    # this will violate the symplectic condition.
+    # dx[1,:,:] .= np.gradient(smoothed_H[1,1,:,:], delta, axis=0)
+    # dy[1,:,:] .= np.gradient(smoothed_H[1,1,:,:], delta, axis=1)
+    # dh_dx, dh_dy = derivative_histogram(smoothed_H[1,1,:,:], delta, delta, xaxis, xaxis, x, y)
 
     r_in[2:6:end] .-= (le * K).* dh_dx
     r_in[4:6:end] .-= (le * K).* dh_dy
@@ -176,19 +186,19 @@ function DriftPass_SC_ML!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64
     return nothing
 end
 
-function derivative_histogram(H, dx, dy, xaxis, yaxis, xvec, yvec)
-    df_dx = np.gradient(H, dx, axis=0)
-    df_dy = np.gradient(H, dy, axis=1)
+# function derivative_histogram(H, dx, dy, xaxis, yaxis, xvec, yvec)
+#     df_dx = np.gradient(H, dx, axis=0)
+#     df_dy = np.gradient(H, dy, axis=1)
     
-    xy = np.transpose(np.array([xvec, yvec]))
+#     xy = np.transpose(np.array([xvec, yvec]))
 
-    interpolator_dx = RegularGridInterpolator((xaxis, yaxis), df_dx)
-    interpolator_dy = RegularGridInterpolator((xaxis, yaxis), df_dy)
+#     interpolator_dx = RegularGridInterpolator((xaxis, yaxis), df_dx)
+#     interpolator_dy = RegularGridInterpolator((xaxis, yaxis), df_dy)
 
-    df_dx_v = interpolator_dx(xy)
-    df_dy_v = interpolator_dy(xy)
-    return df_dx_v, df_dy_v
-end
+#     df_dx_v = interpolator_dx(xy)
+#     df_dy_v = interpolator_dy(xy)
+#     return df_dx_v, df_dy_v
+# end
 
 function StrMPoleSymplectic4Pass_SC!(r::Array{Float64,1}, le::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_step::Int, 
