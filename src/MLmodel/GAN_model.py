@@ -125,28 +125,28 @@ def smooth_prediction(prediction, kernel_size=5, sigma=2):
     smoothed_prediction = F.conv2d(prediction, kernel_2d, padding=kernel_size // 2)
     return smoothed_prediction.numpy()
 
-def run_model(input_tensor):
-    N = input_tensor.shape[0]
-    x_mean = 6.102476433105514e-05
-    x_std = 0.0004464707186886363
-    y_mean = 0.027209823576209675   
-    y_std = 0.47506135581501213
+# def run_model(input_tensor):
+#     N = input_tensor.shape[0]
+#     x_mean = 6.102476433105514e-05
+#     x_std = 0.0004464707186886363
+#     y_mean = 0.027209823576209675   
+#     y_std = 0.47506135581501213
 
-    # Initialize generator and discriminator
-    generator = GeneratorUNet(in_channels=1, out_channels=1)
-    # discriminator = Discriminator(in_channels=1)
+#     # Initialize generator and discriminator
+#     generator = GeneratorUNet(in_channels=1, out_channels=1)
+#     # discriminator = Discriminator(in_channels=1)
 
-    # load the model
-    generator.load_state_dict(torch.load('generator_TVregularization_epoch_3000.pth', map_location="cuda:0"))
-    # discriminator.load_state_dict(torch.load('discriminator_TVregularization_epoch_3000.pth'))
+#     # load the model
+#     generator.load_state_dict(torch.load('generator_TVregularization_epoch_3000.pth', map_location="cuda:0"))
+#     # discriminator.load_state_dict(torch.load('discriminator_TVregularization_epoch_3000.pth'))
 
-    input_tensor = (input_tensor - x_mean) / x_std
-    input_tensor = torch.FloatTensor(input_tensor)
-    # predict the output
-    generator.eval()
-    with torch.no_grad():
-        output_tensor = generator(input_tensor)
+#     input_tensor = (input_tensor - x_mean) / x_std
+#     input_tensor = torch.FloatTensor(input_tensor)
+#     # predict the output
+#     generator.eval()
+#     with torch.no_grad():
+#         output_tensor = generator(input_tensor)
     
-    output_tensor = output_tensor * y_std + y_mean
-    # smoothed_output = smooth_prediction(output_tensor, kernel_size=5, sigma=2)
-    return output_tensor.numpy()
+#     output_tensor = output_tensor * y_std + y_mean
+#     # smoothed_output = smooth_prediction(output_tensor, kernel_size=5, sigma=2)
+#     return output_tensor.numpy()
