@@ -141,7 +141,7 @@ def smooth_prediction(prediction, kernel_size=5, sigma=2):
 #     # discriminator.load_state_dict(torch.load('discriminator_TVregularization_epoch_3000.pth'))
 
 #     input_tensor = (input_tensor - x_mean) / x_std
-#     input_tensor = torch.FloatTensor(input_tensor)
+#     input_tensor = torch.FloatTensor(input_tensor.reshape(N, 1, 128, 128))
 #     # predict the output
 #     generator.eval()
 #     with torch.no_grad():
