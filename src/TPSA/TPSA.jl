@@ -265,14 +265,23 @@ function +(ctps1::CTPS{T, TPS_Dim, Max_TPS_Degree}, ctps2::CTPS{T, TPS_Dim, Max_
     return ctps_new
 end
 
-
-
 function +(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::T) where {T, TPS_Dim, Max_TPS_Degree}
     ctps_new = CTPS(ctps)
     ctps_new.map[1] += a
     return ctps_new
 end
 function +(a::T, ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
+    return ctps + a
+end
+
+# Addition with complex and float64
+function +(ctps::CTPS{ComplexF64, TPS_Dim, Max_TPS_Degree}, a::Float64) where {TPS_Dim, Max_TPS_Degree}
+    ctps_new = CTPS(ctps)
+    ctps_new.map[1] += a
+    return ctps_new
+end
+
+function +(a::Float64, ctps::CTPS{ComplexF64, TPS_Dim, Max_TPS_Degree}) where {TPS_Dim, Max_TPS_Degree}
     return ctps + a
 end
 # -
@@ -299,6 +308,20 @@ end
 function -(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
     ctps_new = CTPS(ctps)
     for i in eachindex(ctps_new.map)
+        ctps_new.map[i] = -ctps_new.map[i]
+    end
+    return ctps_new
+end
+# operate with complex number
+function -(ctps::CTPS{ComplexF64, TPS_Dim, Max_TPS_Degree}, a::Float64) where {TPS_Dim, Max_TPS_Degree}
+    ctps_new = CTPS(ctps)
+    ctps_new.map[1] -= a
+    return ctps_new
+end
+function -(a::Float64, ctps::CTPS{ComplexF64, TPS_Dim, Max_TPS_Degree}) where {TPS_Dim, Max_TPS_Degree}
+    ctps_new = CTPS(ctps)
+    ctps_new.map[1] = a - ctps_new.map[1]
+    for i in eachindex(ctps_new.map)[2:end]
         ctps_new.map[i] = -ctps_new.map[i]
     end
     return ctps_new
@@ -345,6 +368,18 @@ function *(a::T, ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_
     return ctps * a
 end
 
+# operate with complex number
+function *(ctps::CTPS{ComplexF64, TPS_Dim, Max_TPS_Degree}, a::Float64) where {TPS_Dim, Max_TPS_Degree}
+    ctps_new = CTPS(ctps)
+    for i in eachindex(ctps_new.map)
+        ctps_new.map[i] *= a
+    end
+    return ctps_new
+end
+function *(a::Float64, ctps::CTPS{ComplexF64, TPS_Dim, Max_TPS_Degree}) where {TPS_Dim, Max_TPS_Degree}
+    return ctps * a
+end
+
 # /
 function inv(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
     if cst(ctps) == zero(T)
@@ -380,6 +415,24 @@ function /(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::T) where {T, TPS_Dim, Max_
 end
 function /(a::T, ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
     if cst(ctps) == zero(T)
+        error("Divide by zero in CTPS")
+    end
+    return a * inv(ctps)
+end
+
+# operate with complex number
+function /(ctps::CTPS{ComplexF64, TPS_Dim, Max_TPS_Degree}, a::Float64) where {TPS_Dim, Max_TPS_Degree}
+    if a == zero(Float64)
+        error("Divide by zero in CTPS")
+    end
+    ctps_new = CTPS(ctps)
+    for i in eachindex(ctps_new.map)
+        ctps_new.map[i] /= a
+    end
+    return ctps_new
+end
+function /(a::Float64, ctps::CTPS{ComplexF64, TPS_Dim, Max_TPS_Degree}) where {TPS_Dim, Max_TPS_Degree}
+    if cst(ctps) == zero(ComplexF64)
         error("Divide by zero in CTPS")
     end
     return a * inv(ctps)
@@ -423,7 +476,7 @@ end
 
 # square root
 function sqrt(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
-    if cst(ctps) < zero(T)
+    if real(cst(ctps)) < 0.0
         error("Square root of negative number in CTPS")
     end
     a0 = sqrt(cst(ctps))
