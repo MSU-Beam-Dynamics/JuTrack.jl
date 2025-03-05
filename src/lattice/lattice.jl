@@ -152,3 +152,34 @@ function add!(lattice::Lattice, elem::LongitudinalRLCWake)
     lattice.nelems += 1
     lattice.LongitudinalRLCWake_index += 1
 end
+
+
+# added
+function add!(lattice::Lattice, elem::TransferMap4DChrom)
+    index = lattice.TransferMap4DChrom_index
+    lattice.TransferMap4DChrom[index] = elem
+    lattice.element_order[lattice.nelems + 1] = (15, index)
+    lattice.nelems += 1
+    lattice.TransferMap4DChrom_index += 1
+end
+function add!(lattice::Lattice, elem::TransferMap4D)
+    index = lattice.TransferMap4D_index
+    lattice.TransferMap4D[index] = elem
+    lattice.element_order[lattice.nelems + 1] = (16, index)
+    lattice.nelems += 1
+    lattice.TransferMap4D_index += 1
+end
+function add!(lattice::Lattice, elem::SC_lens)
+    index = lattice.SC_lens_index
+    lattice.SC_lens[index] = elem
+    lattice.element_order[lattice.nelems + 1] = (17, index)
+    lattice.nelems += 1
+    lattice.SC_lens_index += 1
+end
+function add!(lattice::Lattice, elem::Inverse_TransferMap4D)
+    index = lattice.Inverse_TransferMap4D_index
+    lattice.Inverse_TransferMap4D[index] = elem
+    lattice.element_order[lattice.nelems + 1] = (18, index)
+    lattice.nelems += 1
+    lattice.Inverse_TransferMap4D_index += 1
+end
