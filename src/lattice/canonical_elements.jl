@@ -1148,3 +1148,15 @@ function LongitudinalWake(times::AbstractVector, wakefields::AbstractVector, fli
     end
     return LongitudinalWake(times, wakefields, wakefield)
 end
+
+
+mutable struct SC_lens <: AbstractElement
+    name::String
+    optics::AbstractOptics4D
+    ds::Float64
+    nSC::Int64
+
+    function SC_lens(optics::AbstractOptics4D, ds::Float64, nSC::Int64)
+        new("SC", optics, ds, nSC)
+    end
+end
