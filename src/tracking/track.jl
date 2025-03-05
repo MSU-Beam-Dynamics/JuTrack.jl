@@ -32,6 +32,17 @@ function linepass!(lattice::Lattice, particles::Beam)
             pass!(lattice.LongitudinalRLCWakes[lattice.element_order[i][2]], particles6, np, particles)
         elseif lattice.element_order[i][1] == 15
             pass!(lattice.LongitudinalWakes[lattice.element_order[i][2]], particles6, np, particles)
+
+            # added
+        elseif lattice.element_order[i][1] == 16
+            pass!(lattice.TransferMap4DChrom[lattice.element_order[i][2]], particles6, np, particles)
+        elseif lattice.element_order[i][1] == 17
+            pass!(lattice.TransferMap4D[lattice.element_order[i][2]], particles6, np, particles)
+        elseif lattice.element_order[i][1] == 18
+            pass!(lattice.SC_lens[lattice.element_order[i][2]], particles6, np, particles)
+        elseif lattice.element_order[i][1] == 19
+            pass!(lattice.Inverse_TransferMap4D[lattice.element_order[i][2]], particles6, np, particles)
+        
         # else
         #     println("Unknown element type: $lattice.element_order[i][1]")
         end
@@ -82,6 +93,17 @@ function ADlinepass!(lattice::Lattice, particles::Beam, id::Vector{Int}, elems::
                 pass!(lattice.LongitudinalRLCWakes[lattice.element_order[i][2]], particles6, np, particles)
             elseif lattice.element_order[i][1] == 15
                 pass!(lattice.LongitudinalWakes[lattice.element_order[i][2]], particles6, np, particles)
+
+                # added
+            elseif lattice.element_order[i][1] == 16
+                pass!(lattice.TransferMap4DChrom[lattice.element_order[i][2]], particles6, np, particles)
+            elseif lattice.element_order[i][1] == 17
+                pass!(lattice.TransferMap4D[lattice.element_order[i][2]], particles6, np, particles)
+            elseif lattice.element_order[i][1] == 18
+                pass!(lattice.SC_lens[lattice.element_order[i][2]], particles6, np, particles)
+            elseif lattice.element_order[i][1] == 19
+                pass!(lattice.Inverse_TransferMap4D[lattice.element_order[i][2]], particles6, np, particles)
+          
             # else
             #     println("Unknown element type: $(lattice.element_order[i][1])")
             end
