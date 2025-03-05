@@ -47,6 +47,9 @@ include("lattice/ResonanceDrivingTerms.jl")
 include("tracking/fringe.jl")
 include("tracking/fringe_TPSA.jl")
 
+include("tracking/space_charge_BE.jl") #added
+include("tracking/TransferMaps.jl")    #added
+
 # multi-threading
 include("tracking/track_mthread.jl")
 
