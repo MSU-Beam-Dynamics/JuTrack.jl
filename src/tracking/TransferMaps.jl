@@ -1,4 +1,5 @@
 #TransferMapd4D
+using StaticArrays
 struct TransferMap4D <: AbstractTransverseMap
     dim::Int64
     tune::SVector{2,Float64}

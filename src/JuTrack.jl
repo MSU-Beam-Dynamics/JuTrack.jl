@@ -47,6 +47,9 @@ include("lattice/ResonanceDrivingTerms.jl")
 include("tracking/fringe.jl")
 include("tracking/fringe_TPSA.jl")
 
+include("tracking/space_charge_BE.jl") #added
+include("tracking/TransferMaps.jl")    #added
+
 # multi-threading
 include("tracking/track_mthread.jl")
 
@@ -83,7 +86,11 @@ export plinepass!, pringpass!, pass_P!, ADlinepass!, ADlinepass_TPSA!, ADringpas
 export matrix_to_array, array_to_matrix
 export total_length, spos, findelem, insert_space_charge, array_optics, get_len
 export ADfindm66_refpts
-
+#added
+export SC_lens
+export SC_kick, track_SC!
+export track!
+export TransferMap4D, Inverse_TransferMap4D, TransferMap4DChrom
 function Duplicated(x::Float64, dx::Base.RefValue{Float64})
     return Duplicated(x, dx[])
 end
