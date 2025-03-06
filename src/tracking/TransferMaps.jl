@@ -70,35 +70,36 @@ function track!(rin, b::Beam, tm::TransferMap4D, tempx, temppx, tempy, num_macro
 
     for j in 1:num_macro
         r6 = @view rin[(j-1)*6+1:j*6]
-        tempx  = tm.linearmap[1,1] * r6[1] + tm.linearmap[1,2] * r6[2]  + tm.linearmap[1,3] * r6[3] + tm.linearmap[1,4] * r6[4] 
-        temppx = tm.linearmap[2,1] * r6[1] + tm.linearmap[2,2] * r6[2] + tm.linearmap[2,3] * r6[3] + tm.linearmap[2,4] * r6[4]
-        tempy  = tm.linearmap[3,1] * r6[1] + tm.linearmap[3,2] * r6[2] + tm.linearmap[3,3] * r6[3] + tm.linearmap[3,4] * r6[4]
+        tempx[j]  = tm.linearmap[1,1] * r6[1] + tm.linearmap[1,2] * r6[2]  + tm.linearmap[1,3] * r6[3] + tm.linearmap[1,4] * r6[4] 
+        temppx[j] = tm.linearmap[2,1] * r6[1] + tm.linearmap[2,2] * r6[2] + tm.linearmap[2,3] * r6[3] + tm.linearmap[2,4] * r6[4]
+        tempy[j]  = tm.linearmap[3,1] * r6[1] + tm.linearmap[3,2] * r6[2] + tm.linearmap[3,3] * r6[3] + tm.linearmap[3,4] * r6[4]
         r6[4] = tm.linearmap[4,1] * r6[1] + tm.linearmap[4,2] * r6[2] + tm.linearmap[4,3] * r6[3] + tm.linearmap[4,4] * r6[4]
-        r6[1] = tempx
-        r6[2] = temppx
-        r6[3] = tempy
+        r6[1] = tempx[j]
+        r6[2] = temppx[j]
+        r6[3] = tempy[j]
     end
     return nothing
 end
 
-#function used in the TEST_CODE
+
 function pass!(tm::TransferMap4D, r_in::Array{Float64,1}, num_macro::Int, beam::Beam)
 #function track!(beam::Beam, tm::TransferMap4D)
     track!(r_in, beam, tm, beam.temp1, beam.temp2, beam.temp3, num_macro)
 end
 
 
+#se commento tempy e r6[3] è tutto okay
 function track!(rin, b::Beam, tm::Inverse_TransferMap4D, tempx, temppx, tempy, num_macro)
     
     for j in num_macro
         r6 = @view rin[(j-1)*6+1:j*6]
-        tempx  = tm.linearmap[1,1] * r6[1] + tm.linearmap[1,2] * r6[2] + tm.linearmap[1,3] * r6[3] + tm.linearmap[1,4] * r6[4] 
-        temppx = tm.linearmap[2,1] * r6[1] + tm.linearmap[2,2] * r6[2] + tm.linearmap[2,3] * r6[3] + tm.linearmap[2,4] * r6[4]
-        tempy  = tm.linearmap[3,1] * r6[1] + tm.linearmap[3,2] * r6[2] + tm.linearmap[3,3] * r6[3] + tm.linearmap[3,4] * r6[4]
+        tempx[j]  = tm.linearmap[1,1] * r6[1] + tm.linearmap[1,2] * r6[2] + tm.linearmap[1,3] * r6[3] + tm.linearmap[1,4] * r6[4] 
+        temppx[j] = tm.linearmap[2,1] * r6[1] + tm.linearmap[2,2] * r6[2] + tm.linearmap[2,3] * r6[3] + tm.linearmap[2,4] * r6[4]
+        tempy[j] = tm.linearmap[3,1] * r6[1] + tm.linearmap[3,2] * r6[2] + tm.linearmap[3,3] * r6[3] + tm.linearmap[3,4] * r6[4]
         r6[4] = tm.linearmap[4,1] * r6[1] + tm.linearmap[4,2] * r6[2] + tm.linearmap[4,3] * r6[3] + tm.linearmap[4,4] * r6[4]
-        r6[1] = tempx
-        r6[2] = temppx
-        r6[3] = tempy
+        r6[1] = tempx[j]
+        r6[2] = temppx[j]
+        r6[3] = tempy[j]
     end
     return nothing
 end
@@ -114,37 +115,36 @@ function track!(rin, b::Beam, tm::TransferMap4DChrom, temp1, temp2, temp3, sinph
     
     for j in num_macro
         r6 = @view rin[(j-1)*6+1:j*6]
-        
-        temp1  = tm.umat[1,1] * r6[1] + tm.umat[1,2] * r6[2] + tm.umat[1,3] * r6[3] + tm.umat[1,4] * r6[4] 
-        temp2 = tm.umat[2,1] * r6[1] + tm.umat[2,2] * r6[2] + tm.umat[2,3] * r6[3] + tm.umat[2,4] * r6[4]
-        temp3  = tm.umat[3,1] * r6[1] + tm.umat[3,2] * r6[2] + tm.umat[3,3] * r6[3] + tm.umat[3,4] * r6[4]
+        temp1[j]  = tm.umat[1,1] * r6[1] + tm.umat[1,2] * r6[2] + tm.umat[1,3] * r6[3] + tm.umat[1,4] * r6[4] 
+        temp2[j] = tm.umat[2,1] * r6[1] + tm.umat[2,2] * r6[2] + tm.umat[2,3] * r6[3] + tm.umat[2,4] * r6[4]
+        temp3[j]  = tm.umat[3,1] * r6[1] + tm.umat[3,2] * r6[2] + tm.umat[3,3] * r6[3] + tm.umat[3,4] * r6[4]
         r6[4] = tm.umat[4,1] * r6[1] + tm.umat[4,2] * r6[2] + tm.umat[4,3] * r6[3] + tm.umat[4,4] * r6[4]
-        r6[1] = temp1
-        r6[2] = temp2
-        r6[3] = temp3
+        r6[1] = temp1[j]
+        r6[2] = temp2[j]
+        r6[3] = temp3[j]
 
-        temp1 = 2π*tm.tune[1] + (2π*tm.chrom[1]) * r6[6]
-        sinphi = sin.(temp1)
-        cosphi = cos.(temp1)
-        temp3  = cosphi * r6[1] + sinphi * r6[2]
+        temp1[j] = 2π*tm.tune[1] + (2π*tm.chrom[1]) * r6[6]
+        sinphi = sin.(temp1[j])
+        cosphi = cos.(temp1[j])
+        temp3[j]  = cosphi * r6[1] + sinphi * r6[2]
         r6[2] =  cosphi * r6[2] - sinphi * r6[1]
-        r6[1] = temp3
+        r6[1] = temp3[j]
 
-        temp2 = 2π*tm.tune[2] + (2π*tm.chrom[2]) * r6[5]
-        sinphi = sin.(temp2)
-        cosphi = cos.(temp2)
-        temp3  = cosphi * r6[3] + sinphi * r6[4]
+        temp2[j] = 2π*tm.tune[2] + (2π*tm.chrom[2]) * r6[5]
+        sinphi = sin.(temp2[j])
+        cosphi = cos.(temp2[j])
+        temp3[j]  = cosphi * r6[3] + sinphi * r6[4]
         r6[4] = cosphi * r6[4] - sinphi * r6[3]
-        r6[3] = temp3
+        r6[3] = temp3[j]
 
 
-        temp1  = tm.invumat[1,1] * r6[1] + tm.invumat[1,2] * r6[2] + tm.invumat[1,3] * r6[3] + tm.invumat[1,4] * r6[4]
-        temp2 = tm.invumat[2,1] * r6[1] + tm.invumat[2,2] * r6[2] + tm.invumat[2,3] * r6[3] + tm.invumat[2,4] * r6[4]
-        temp3  = tm.invumat[3,1] * r6[1] + tm.invumat[3,2] * r6[2] + tm.invumat[3,3] * r6[3] + tm.invumat[3,4] * r6[4]
+        temp1[j]  = tm.invumat[1,1] * r6[1] + tm.invumat[1,2] * r6[2] + tm.invumat[1,3] * r6[3] + tm.invumat[1,4] * r6[4]
+        temp2[j] = tm.invumat[2,1] * r6[1] + tm.invumat[2,2] * r6[2] + tm.invumat[2,3] * r6[3] + tm.invumat[2,4] * r6[4]
+        temp3[j]  = tm.invumat[3,1] * r6[1] + tm.invumat[3,2] * r6[2] + tm.invumat[3,3] * r6[3] + tm.invumat[3,4] * r6[4]
         r6[4] = tm.invumat[4,1] * r6[1] + tm.invumat[4,2] * r6[2] + tm.invumat[4,3] * r6[3] + tm.invumat[4,4] * r6[4]
-        r6[1] = temp1
-        r6[2] = temp2
-        r6[3] = temp3
+        r6[1] = temp1[j]
+        r6[2] = temp2[j]
+        r6[3] = temp3[j]
     end
     return nothing
 
