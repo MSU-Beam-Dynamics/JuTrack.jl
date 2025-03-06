@@ -79,8 +79,8 @@ begin
     turns_rec = 0
     w = 0.0
 
-    #phi_advx = LinRange(0, 29.228, nSC+1)
-    #phi_advy = LinRange(0, 30.210, nSC+1)
+    phi_advx = LinRange(0, 29.228, nSC+1)
+    phi_advy = LinRange(0, 30.210, nSC+1)
     TM1 = Array{TransferMap4D, 1}(undef, nSC)
     TM1_inv = Array{Inverse_TransferMap4D, 1}(undef, nSC)
     
@@ -93,13 +93,12 @@ begin
     bb = true
     lumi=0.0
 
-    """
     TM1 = TransferMap4D(opIPp, opSC, phi_advx[2], phi_advy[2])
     TM1_inv = Inverse_TransferMap4D(opIPp, opSC, phi_advx[2], phi_advy[2])
-    """
 
-    ring = [oneturn, sc_BE]
-    #ring = [oneturn, TM1, sc_BE, TM1_inv, TM1, sc_BE, TM1_inv, TM1, sc_BE, TM1_inv, TM1, sc_BE, TM1_inv, TM1, sc_BE, TM1_inv]
+
+    #ring = [oneturn, sc_BE]
+    ring = [oneturn, TM1, sc_BE, TM1_inv]   #, TM1, sc_BE, TM1_inv, TM1, sc_BE, TM1_inv, TM1, sc_BE, TM1_inv, TM1, sc_BE, TM1_inv]
     #ring = [oneturn, pcrabu, pcrabu2nd, lb, estrong, invlb, pcrabd, pcrabd2nd] #se TransferMap4D dentro SC function
 
 end
