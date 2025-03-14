@@ -28,6 +28,11 @@ using Pkg
 Pkg.add(url="https://github.com/MSU-Beam-Dynamics/JuTrack.jl")
 ```
 
+* Installation of Enzyme
+```
+Pkg.add(name="Enzyme", version="0.13.3")
+```
+
 # Import the package in Julia
 ```
 using JuTrack
