@@ -35,8 +35,8 @@ function decomposite(n::Int, dim::Int)
         itemp -= binomial(k - 1, i)
         result[dim - i + 1] = k - i  
     end
-    for i in dim:-1:2  
-        result[i] = result[i - 1] - result[i]
+    for i in dim:-1:1  
+        result[i + 1] = result[i] - result[i + 1]
     end
     return result
 end
