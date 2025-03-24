@@ -1,11 +1,10 @@
 # ==============================================================================
 # This file is part of the TPSA (Truncated Power Series Algebra) Julia package.
-#
+# Translated from Yue Hao's C++ code
 # Author: Jinyu Wan
 # Email: wan@frib.msu.edu
-# Version: 1.0
 # Created Date: 11-01-2023
-# Modified Date: 07-02-2024
+# Modified Date: 03-21-2025
 include("polymap.jl")
 
 struct CTPS{T, TPS_Dim, Max_TPS_Degree}
@@ -80,7 +79,7 @@ function CTPS(M::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_De
     for i in eachindex(map)
         map[i] = M.map[i]
     end
-    return CTPS{T, TPS_Dim, Max_TPS_Degree}(Max_TPS_Degree, length(map), map, M.polymap)
+    return CTPS{T, TPS_Dim, Max_TPS_Degree}(M.degree, length(map), map, M.polymap)
 end
 
 """
@@ -110,24 +109,24 @@ function findindex(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, indexmap::Vector{Int}
     if length(indexmap) != (dim + 1)
         error("Index map does not have correct length")
     end
-    sum = zeros(Int, length(indexmap))
+    SUM = zeros(Int, length(indexmap))
     for i in 1:length(indexmap)
-        sum[i] = indexmap[i]
+        SUM[i] = indexmap[i]
     end
 
     for i in 2:dim+1
         if indexmap[i] < 0
             error("The index map has invalid component")
         end
-        sum[i] = sum[i-1] - indexmap[i]
+        SUM[i] = SUM[i-1] - indexmap[i]
     end
     # sum = copy(sum_buffer)
     result = Int(1)
     for i in dim:-1:1
-        if sum[dim - i + 1] == 0
+        if SUM[dim - i + 1] == 0
             break
         end
-        result += binomial(sum[dim - i + 1] - 1 + i, i)
+        result += binomial(SUM[dim - i + 1] - 1 + i, i)
     end
     return result
 end
@@ -388,12 +387,12 @@ function inv(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_
     temp = CTPS(ctps) - cst(ctps)
     term_by_oder = CTPS(1.0 / ctps.map[1], TPS_Dim, Max_TPS_Degree)
 
-    sum = CTPS(term_by_oder)
+    SUM = CTPS(term_by_oder)
     for i in 1:Max_TPS_Degree
         term_by_oder *= -temp/cst(ctps)
-        sum += term_by_oder
+        SUM += term_by_oder
     end
-    return sum
+    return SUM
 end
 
 function /(ctps1::CTPS{T, TPS_Dim, Max_TPS_Degree}, ctps2::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
@@ -446,14 +445,14 @@ function exp(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_
     temp = CTPS(ctps)
     temp -= cst(temp)
     term_by_oder = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
-    sum = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
+    SUM = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
     for i in 1:Max_TPS_Degree
         index = 1.0 / factorial_double(i)
         term_by_oder = term_by_oder * temp
-        sum = sum + (term_by_oder * T(index))
+        SUM = SUM + (term_by_oder * T(index))
     end
-    sum = sum * T(Base.exp(cst(ctps)))
-    return sum
+    SUM = SUM * T(Base.exp(cst(ctps)))
+    return SUM
 end
 
 # logarithm
@@ -464,14 +463,14 @@ function log(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_
     temp = CTPS(ctps)
     temp -= cst(temp)
     term_by_oder = temp / cst(ctps)
-    sum = CTPS(zero(T), TPS_Dim, Max_TPS_Degree) + term_by_oder
+    SUM = CTPS(zero(T), TPS_Dim, Max_TPS_Degree) + term_by_oder
 
     for i in 2:Max_TPS_Degree
         term_by_oder = term_by_oder * (-temp / cst(ctps))
-        sum = sum + (term_by_oder / T(i))
+        SUM = SUM + (term_by_oder / T(i))
     end
-    sum = sum + Base.log(cst(ctps))
-    return sum
+    SUM = SUM + Base.log(cst(ctps))
+    return SUM
 end
 
 # square root
@@ -483,15 +482,15 @@ function sqrt(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS
     temp = CTPS(ctps) - cst(ctps)
     # temp = temp 
     term_by_oder = temp / a0
-    sum = term_by_oder/2.0
+    SUM = term_by_oder/2.0
 
     for i in 2:Max_TPS_Degree
         index = 1.0 * doublefactorial_double(2 * i - 3) / doublefactorial_double(2 * i)
         term_by_oder = (-temp) * term_by_oder / cst(ctps)
-        sum += term_by_oder * index
+        SUM += term_by_oder * index
     end
-    sum = sum + a0
-    return sum
+    SUM = SUM + a0
+    return SUM
 end
 
 # power
@@ -507,11 +506,11 @@ function pow(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, b::Int) where {T, TPS_Dim, 
     if cst(ctps) == zero(T)
         # if mod(b, 1.0) == 0 && b > 1
         if b > 1
-            sum = CTPS(ctps)
+            SUM = CTPS(ctps)
             for i in 2:b
-                sum = sum * ctps
+                SUM = SUM * ctps
             end
-            return sum
+            return SUM
         else
             error("Divide by zero, in CTPS::pow")
         end
@@ -519,18 +518,18 @@ function pow(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, b::Int) where {T, TPS_Dim, 
     temp = temp - cst(temp)
     term_by_oder = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
     factor = cst(ctps) ^ b
-    sum = CTPS(factor, TPS_Dim, Max_TPS_Degree)
+    SUM = CTPS(factor, TPS_Dim, Max_TPS_Degree)
 
     for i in 1:Max_TPS_Degree
         factor = factor / cst(ctps) * index / i
         index -= 1.0
         term_by_oder = term_by_oder * temp
-        sum = sum + (term_by_oder * factor)
+        SUM = SUM + (term_by_oder * factor)
         if index == 0.0
             break
         end
     end
-    return sum
+    return SUM
 end
 function ^(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, b::Int) where {T, TPS_Dim, Max_TPS_Degree}
     return pow(ctps, b)
@@ -544,7 +543,7 @@ function sin(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_
     cos_a0 = cos(a0)
     temp = temp - a0
     term_by_oder = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
-    sum = CTPS(zero(T), TPS_Dim, Max_TPS_Degree)
+    SUM = CTPS(zero(T), TPS_Dim, Max_TPS_Degree)
 
     is_odd_iteration = 1  
     for i in 1:Max_TPS_Degree
@@ -554,12 +553,12 @@ function sin(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_
             index = sin_a0 * (-1) ^ (i / 2) / factorial_double(i)
         end
         term_by_oder = term_by_oder * temp
-        sum = sum + (term_by_oder * index)
+        SUM = SUM + (term_by_oder * index)
 
         is_odd_iteration = -is_odd_iteration 
     end
-    sum = sum + sin_a0
-    return sum
+    SUM = SUM + sin_a0
+    return SUM
 end
 
 # cos
@@ -570,7 +569,7 @@ function cos(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_
     cos_a0 = cos(a0)
     temp = temp - a0
     term_by_oder = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
-    sum = CTPS(zero(T), TPS_Dim, Max_TPS_Degree)
+    SUM = CTPS(zero(T), TPS_Dim, Max_TPS_Degree)
 
     is_odd_iteration = 1  
     for i in 1:Max_TPS_Degree
@@ -580,12 +579,12 @@ function cos(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_
             index = cos_a0 * (-1) ^ (i / 2) / factorial_double(i)
         end
         term_by_oder = term_by_oder * temp
-        sum = sum + (term_by_oder * index)
+        SUM = SUM + (term_by_oder * index)
     
         is_odd_iteration = -is_odd_iteration  
     end
-    sum = sum + cos_a0
-    return sum
+    SUM = SUM + cos_a0
+    return SUM
 end
 
 # arcsin
@@ -620,7 +619,7 @@ function sinh(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS
     cosh_a0 = cosh(a0)
     temp = temp - a0
     term_by_oder = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
-    sum = CTPS(zero(T), TPS_Dim, Max_TPS_Degree)
+    SUM = CTPS(zero(T), TPS_Dim, Max_TPS_Degree)
 
     is_odd_iteration = 1  
     for i in 1:Max_TPS_Degree
@@ -630,11 +629,11 @@ function sinh(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS
             index = sinh_a0 / factorial_double(i)
         end
         term_by_oder = term_by_oder * temp
-        sum = sum + (term_by_oder * index)
+        SUM = SUM + (term_by_oder * index)
         is_odd_iteration = -is_odd_iteration
     end
-    sum = sum + sinh_a0
-    return sum
+    SUM = SUM + sinh_a0
+    return SUM
 end
 
 # hyperbolic cos
@@ -645,7 +644,7 @@ function cosh(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS
     cosh_a0 = cosh(a0)
     temp = temp - a0
     term_by_oder = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
-    sum = CTPS(zero(T), TPS_Dim, Max_TPS_Degree)
+    SUM = CTPS(zero(T), TPS_Dim, Max_TPS_Degree)
 
     is_odd_iteration = 1
     for i in 1:Max_TPS_Degree
@@ -655,9 +654,9 @@ function cosh(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS
             index = cosh_a0 / factorial_double(i)
         end
         term_by_oder = term_by_oder * temp
-        sum = sum + (term_by_oder * index)
+        SUM = SUM + (term_by_oder * index)
         is_odd_iteration = -is_odd_iteration
     end
-    sum = sum + cosh_a0
-    return sum
+    SUM = SUM + cosh_a0
+    return SUM
 end

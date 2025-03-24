@@ -72,7 +72,7 @@ export AbstractOptics, AbstractOptics2D, AbstractOptics4D, optics2D, optics4DUC
 export initilize_6DGaussiandist!, get_emittance!, get_2nd_moment!, get_centroid!, histogram1DinZ!
 export initilize_zslice!, twiss_2d, twiss_beam, Gauss3_Dist
 
-export CTPS, cst, findindex, PolyMap, getindexmap, reassign!
+export CTPS, cst, findindex, PolyMap, getindexmap, reassign!, assign!
 export AbstractElement, DRIFT, KQUAD, KSEXT, KOCT, SBEND, RBEND, RFCA, SOLENOID, MARKER, CORRECTOR, HKICKER, VKICKER, thinMULTIPOLE
 export QUAD, buildlatt
 export SPACECHARGE, QUAD_SC, DRIFT_SC, KQUAD_SC, KSEXT_SC, KOCT_SC, SBEND_SC, RBEND_SC, calculate_K
