@@ -1,11 +1,12 @@
 # A code for extending the convergence map method based on square matrix method proposed by Li Hua Yu to 6-D space.
-# This is just a test version and the code is not optimized (very slow). 
-# The results are double-checked. However, it is not guaranteed that the code is free of bugs.
+# This is a test version. The results are double-checked. However, it is not guaranteed that the code is free of bugs.
 # Code created by Jinyu Wan, 03/24/2025.
 using LinearAlgebra
 using JuTrack
 using FFTW
 using StaticArrays
+# using TimerOutputs
+# const to = TimerOutput()
 # using Infiltrator
 function uni_transform(ind_i::Int, ind_j::Int, ratio_left::ComplexF64, ratio_right::ComplexF64,
                        mat::Matrix{ComplexF64}, leftm::Matrix{ComplexF64}, rightm::Matrix{ComplexF64})
@@ -344,6 +345,38 @@ function evaluate(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max
     end
 end
 
+struct PolyEvaluator{T,D}
+    coeffs::Vector{T}
+    exps::Vector{NTuple{D,Int}}
+end
+
+function PolyEvaluator(ctps::CTPS{T,D,M}) where {T,D,M}
+    nterms = ctps.terms
+    coeffs = Vector{T}(undef, nterms)
+    exps   = Vector{NTuple{D,Int}}(undef, nterms)
+
+    for i in 1:nterms
+        coeffs[i] = ctps.map[i]
+        idx = getindexmap(ctps.polymap[], i)
+        exps[i] = tuple(idx[2:end]...)  # drop total‑degree slot
+    end
+
+    return PolyEvaluator{T,D}(coeffs, exps)
+end
+
+@inline function evaluate(pe::PolyEvaluator{T,D}, x) where {T,D}
+    s = pe.coeffs[1]
+    @inbounds for i in 2:length(pe.coeffs)
+        prod = one(T)
+        e = pe.exps[i]
+        @inbounds for j in 1:D
+            prod *= x[j]^e[j]
+        end
+        s += prod * pe.coeffs[i]
+    end
+    return s
+end
+
 function compute_action_angle_polynomials(tpsvar::TPSVar, dim::Int, order::Int)
     # Perform the Jordan decomposition and compute the polynomial forms
     # for the approximate action-angle variables.
@@ -420,32 +453,9 @@ function inverse_map(fs::Vector{CTPS{T,D,M}}, order,
     for _ in 1:max_iter
         temp = [ Iv[i] - compose(nl[i], res) for i in 1:n ]
         res  = [ sum(Ainv[i,j]*temp[j] for j in 1:n) for i in 1:n ]
-        # for i in 1:n
-        #     acc = CTPS(zero(T), D, M)
-        #     for j in 1:n
-        #         acc += Ainv[i,j] * temp[j]
-        #     end
-        #     res[i] = acc
-        # end
     end
     return res
 end
-
-# test the inverse_map function. seems to work
-# TPS_D, MAX_O = 4, 3
-# f1 = CTPS(0.0, 1, TPS_D, MAX_O)
-# f2 = CTPS(0.0, 2, TPS_D, MAX_O)
-# f3 = CTPS(0.0, 3, TPS_D, MAX_O)
-# f4 = CTPS(0.0, 4, TPS_D, MAX_O)
-# f1.map[findindex(f1, [2,0,0,0])] = 0.1    # x₁²
-# f2.map[findindex(f2, [0,2,0,0])] = 0.2    # x₂²
-# f3.map[findindex(f3, [0,0,2,0])] = 0.3    # x₃²
-# f4.map[findindex(f4, [0,0,0,2])] = 0.4    # x₄²
-# fs = [f1, f2, f3, f4]
-# inv_fs = inverse_map(fs, MAX_O)
-# for i in 1:4
-#     println("g[$i](y) = ", inv_fs[i].map)
-# end
 
 
 function conjugate(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, mode::Int=1) where {T, TPS_Dim, Max_TPS_Degree}
@@ -483,16 +493,18 @@ function compute_inverse_maps(vectors::Vector, dim::Int, order::Int)
         w0z[2*i] = conjugate(w0z[2*i-1])
     end 
 
-    w0zfunc = [evaluate(w0z[i]) for i in 1:dim*2]
-
+    # w0zfunc = [evaluate(w0z[i]) for i in 1:dim*2]
+    w0zfunc = [PolyEvaluator(w0z[i]) for i in 1:dim*2]
     function ztow(zs)
-        return [w0zfunc[i](zs) for i in 1:dim*2]
+        return [evaluate(w0zfunc[i], zs) for i in 1:dim*2]
     end
 
     invw0z = inverse_map(w0z, order)
-    invw0zfunc = [evaluate(invw0z[i]) for i in 1:dim*2]
+    # invw0zfunc = [evaluate(invw0z[i]) for i in 1:dim*2]
+    invw0zfunc = [PolyEvaluator(invw0z[i]) for i in 1:dim*2]
     function wtoz(ws)
-        return [invw0zfunc[i](ws) for i in 1:dim*2]
+        # return [invw0zfunc[i](ws) for i in 1:dim*2]
+        return [evaluate(invw0zfunc[i], ws) for i in 1:dim*2]
     end
     return ztow, wtoz, w0z
 end
@@ -537,51 +549,43 @@ function derivative(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, ndim::Int, order::In
     return temp
 end
 
-function numerical_inverse_6D(funcs, tpsinvfunc, jacinvfunc, wvalues;
-                            max_iterations=3, accuracy=1e-11)
-    if length(wvalues) == 6
-        zapprox = tpsinvfunc.(SVector.(wvalues[1], wvalues[2], wvalues[3],
-                    wvalues[4], wvalues[5], wvalues[6]))
-    elseif length(wvalues) == 4
-        zapprox = tpsinvfunc.(SVector.(wvalues[1], wvalues[2], wvalues[3],
-                    wvalues[4]))
-    else
-        error("Invalid dimension")
-    end
-    transposed_wvalues = [Vector{ComplexF64}(undef, length(wvalues)) for _ in 1:length(wvalues[1])]
-    for i in 1:length(wvalues[1])
-        for j in 1:length(wvalues)
-            transposed_wvalues[i][j] = wvalues[j][i]
+function numerical_inverse_6D_fast(funcs, tpsinv, jacinv, wvals; max_iter=3, tol=1e-11)
+    n = length(wvals[1])
+    zapprox = tpsinv.(SVector.(wvals...))
+    # Pre‑allocate
+    zdiff = Matrix{ComplexF64}(undef, n, 6)
+    wdiff = Matrix{ComplexF64}(undef, n, 6)
+    for it in 1:max_iter
+        # compute wdiff in-place
+        Threads.@threads for i in 1:n
+            vals = funcs(zapprox[i])   # returns a 6‑element tuple/array
+            @inbounds for j in 1:6
+                wdiff[i, j] = vals[j] - wvals[j][i]
+            end
         end
-    end
-    for i in 1:max_iterations
-        jac_array = jacinvfunc.(zapprox)
-        n = length(jac_array) 
-        # jac = reshape(jac_array, 6, 6, n)
-        # jac = permutedims(jac, (3, 1, 2))
-
-        wdiff = funcs.(zapprox) .- transposed_wvalues
-        zdiff = zeros(Complex, n, length(zapprox[1]))
-        for idx in 1:n
-            jac_i   = transpose(reshape(jac_array[idx], length(zapprox[1]), length(zapprox[1]))) 
-            wdiff_i = wdiff[idx]     
-            zdiff[idx, :] = - (jac_i \ wdiff_i)
+        # fill & solve jacobian in-place
+        Threads.@threads for i in 1:n
+            J = MMatrix{6,6,ComplexF64}(undef)
+            # jacinv returns 36-element vector row-major
+            vals = [evaluate(jacinv[j], (zapprox[i])) for j in 1:36]
+            J .= transpose(reshape(vals,6,6))
+            invJ = inv(J)
+            zdiff[i, :] = -invJ * @view wdiff[i, :]
         end
-        zmat = transpose(reduce(hcat, zapprox))
-        newz = zdiff .+ zmat
-        zapprox = [newz[i, :] for i in 1:n]
 
-        # Check for convergence.
-        if sum(abs, zdiff) < abs(accuracy)
-            println("Exiting numerical inverse at iteration ", i)
+        # update zapprox
+        Threads.@threads for i in 1:n
+            zapprox[i] += SVector(zdiff[i, :]...)
+        end
+
+        if sum(abs, zdiff) < tol
             break
         end
     end
     return transpose(reduce(hcat, zapprox))
 end
 
-function itearation_freq(dtheta, theta0, freq, nmap, z_to_w, w_to_z; 
-                        jacobian=nothing, dist_avoid_res=0.01)
+function itearation_freq(dtheta, theta0, freq, nmap, z_to_w, w_to_z; jacobian=nothing, dist_avoid_res=0.01)
     n1, n2, n3 = size(dtheta[1,:,:,:])
     t = theta0 .+ dtheta
 
@@ -596,7 +600,7 @@ function itearation_freq(dtheta, theta0, freq, nmap, z_to_w, w_to_z;
         xcur, pxcur, ycur, pycur, zcur, pzcur = w_to_z([w_x, w_xc, w_y, w_yc, w_z, w_zc])
     else
         flat_wvals = [vec(permutedims(arr, (3, 2, 1))) for arr in (w_x, w_xc, w_y, w_yc, w_z, w_zc)]
-        zapprox = numerical_inverse_6D(z_to_w, w_to_z, jacobian, flat_wvals)
+        zapprox = numerical_inverse_6D_fast(z_to_w, w_to_z, jacobian, flat_wvals)
         xcur = zapprox[:, 1]
         pxcur = zapprox[:, 2]
         ycur = zapprox[:, 3]
@@ -624,11 +628,11 @@ function itearation_freq(dtheta, theta0, freq, nmap, z_to_w, w_to_z;
     # n_wx, n_wxc, n_wy, n_wyc, n_wz, n_wzc = z_to_w([nx, npx, ny, npy, nz, npz]) # not work in Julia
     Ws = broadcast((a,b,c,d,e,f) -> z_to_w([a,b,c,d,e,f]), nx, npx, ny, npy, nz, npz)
     n_wx = getindex.(Ws, 1)
-    n_wxc = getindex.(Ws, 2)
+    # n_wxc = getindex.(Ws, 2)
     n_wy = getindex.(Ws, 3)
-    n_wyc = getindex.(Ws, 4)
+    # n_wyc = getindex.(Ws, 4)
     n_wz = getindex.(Ws, 5)
-    n_wzc = getindex.(Ws, 6)
+    # n_wzc = getindex.(Ws, 6)
 
     phix = (-1.0im).*log.(n_wx./w_x) .- freq[1]
     phiy = (-1.0im).*log.(n_wy./w_y) .- freq[2]
@@ -715,7 +719,6 @@ function itearation_freq(dtheta, theta0, freq, nmap, z_to_w, w_to_z;
     dt[1, :, :, :] = ifft(theta_mx)
     dt[2, :, :, :] = ifft(theta_my)
     dt[3, :, :, :] = ifft(theta_mz)
-    
     return dt, newfreq, theta_mx, theta_my, theta_mz
 end
 
@@ -735,24 +738,20 @@ function scan(transfer_map, dim, order, tunes,
     leftvects = compute_action_angle_polynomials(hp, dim, order)
     ztow, wtoz, w0z = compute_inverse_maps(leftvects, dim, order)
 
-    # build Jacobian # test stops here
-    wlist = []
+    N = 4 * dim * dim
+    wlist = Vector{PolyEvaluator{ComplexF64,2*dim}}(undef, N)
+    idx = 1
+    
     for i in 1:dim
-        tps_var1 = CTPS(0.0im, 2*dim, order)
-        tps_var1.map .= leftvects[i]
-        for i in 1:dim*2
-            d = derivative(tps_var1, i, 1)
-            push!(wlist, evaluate(d))
+        tps = CTPS(0.0im, 2*dim, order)
+        tps.map .= leftvects[i]
+    
+        for ct in (tps, conjugate(tps))
+            for j in 1:(2*dim)
+                wlist[idx] = PolyEvaluator(derivative(ct, j, 1))
+                idx += 1
+            end
         end
-        tps_var2 = conjugate(tps_var1)
-        for i in 1:dim*2
-            d = derivative(tps_var2, i, 1)
-            push!(wlist, evaluate(d))
-        end
-    end
-
-    function wzjacobian(zs)
-        return [f(zs) for f in wlist]
     end
 
     nalpha, nbeta, ngamma = 16, 16, 16
@@ -766,6 +765,16 @@ function scan(transfer_map, dim, order, tunes,
     aa = [a for a in alphas, b in betas, g in gammas]
     bb = [b for a in alphas, b in betas, g in gammas]
     gg = [g for a in alphas, b in betas, g in gammas]
+
+    wx0z = CTPS(0.0im, 2*dim, order)
+    wy0z = CTPS(0.0im, 2*dim, order)
+    wz0z = CTPS(0.0im, 2*dim, order)
+    wx0z.map .= leftvects[1]
+    wy0z.map .= leftvects[2]
+    wz0z.map .= leftvects[3]
+    wx0z = PolyEvaluator(wx0z)
+    wy0z = PolyEvaluator(wy0z)
+    wz0z = PolyEvaluator(wz0z)
 
     itertimes = 10
     for ix in 1:n_x
@@ -782,16 +791,9 @@ function scan(transfer_map, dim, order, tunes,
                 zzini = zini - 1.0im * pzini
                 zzcini = zini + 1.0im * pzini
 
-                wx0z = CTPS(0.0im, 2*dim, order)
-                wy0z = CTPS(0.0im, 2*dim, order)
-                wz0z = CTPS(0.0im, 2*dim, order)
-                wx0z.map .= leftvects[1]
-                wy0z.map .= leftvects[2]
-                wz0z.map .= leftvects[3]
-
-                wxini = evaluate(wx0z)([zxini, zxcini, zyini, zycini, zzini, zzcini])
-                wyini = evaluate(wy0z)([zxini, zxcini, zyini, zycini, zzini, zzcini])
-                wzini = evaluate(wz0z)([zxini, zxcini, zyini, zycini, zzini, zzcini])
+                wxini = evaluate(wx0z, [zxini, zxcini, zyini, zycini, zzini, zzcini])
+                wyini = evaluate(wy0z, [zxini, zxcini, zyini, zycini, zzini, zzcini])
+                wzini = evaluate(wz0z, [zxini, zxcini, zyini, zycini, zzini, zzcini])
 
                 theta1ini = -1.0im * log(wxini)
                 theta2ini = -1.0im * log(wyini)
@@ -809,12 +811,10 @@ function scan(transfer_map, dim, order, tunes,
                 for _ in 1:itertimes
                     dtold = copy(dt)
                     dt, freqs, _, _, _ = itearation_freq(dt, thetas, freqs, 
-                                                        tpsMap, ztow, wtoz, jacobian=wzjacobian)
-                    
-                    thetas[1, :, :, :] = aa .+ theta1ini .- dt[1, :, :, :]
-                    thetas[2, :, :, :] = bb .+ theta2ini .- dt[2, :, :, :]
-                    thetas[3, :, :, :] = gg .+ theta3ini .- dt[3, :, :, :]
-
+                                                        tpsMap, ztow, wtoz, jacobian=wlist)
+                    thetas[1, :, :, :] = aa .+ theta1ini .- dt[1, 1, 1, 1]
+                    thetas[2, :, :, :] = bb .+ theta2ini .- dt[2, 1, 1, 1]
+                    thetas[3, :, :, :] = gg .+ theta3ini .- dt[3, 1, 1, 1]
                     dtdiff = sqrt(sum(abs.(dt .- dtold).^2) / (nalpha * nbeta * ngamma))
                     dtdiff_final = dtdiff
                 end
@@ -843,52 +843,6 @@ function scan(transfer_map, dim, order, tunes,
     end
     return conv_metrix
 end
-
-# function Heono_test(dim, order, tunes)
-#     hp = TPSVar4D(order)
-#     x, px, y, py = get_variables(hp)
-#     tunex = tunes[1]
-#     tuney = 1.01 - 2.0*tunex
-#     xmu = 2.0*pi*tunex
-#     ymu = 2.0*pi*tuney
-#     cmx = cos(xmu)
-#     smx = sin(xmu)
-#     cmy = cos(ymu)
-#     smy = sin(ymu)
-
-#     pxm = px - x*x + y*y
-#     pym = py + 2.0*x*y
-
-#     xmap = x * cmx + pxm * smx
-#     pxmap = -x * smx + pxm * cmx
-#     ymap = y * cmy + pym * smy
-#     pymap = -y * smy + pym * cmy
-
-#     z1map = xmap - 1.0im * pxmap
-#     z1cmap = xmap + 1.0im * pxmap
-#     z2map = ymap - 1.0im * pymap
-#     z2cmap = ymap + 1.0im * pymap
-
-#     # z1func = numpify(z1map, dim * 2)
-#     # z1cfunc = numpify(z1cmap, dim * 2)
-#     # z2func = numpify(z2map, dim * 2)
-#     # z2cfunc = numpify(z2cmap, dim * 2)
-
-#     z1func = evaluate(z1map)
-#     z1cfunc = evaluate(z1cmap)
-#     z2func = evaluate(z2map)
-#     z2cfunc = evaluate(z2cmap)
-
-#     construct_sqr_matrix(hp, [z1map, z1cmap, z2map, z2cmap])
-#     return hp, function(zs)
-#         return [
-#             z1func(zs),
-#             z1cfunc(zs),
-#             z2func(zs),
-#             z2cfunc(zs)
-#         ]
-#     end
-# end
 
 function crab_cavity_map(dim, order, tunes)
     theta_c = 25e-3 
@@ -983,3 +937,48 @@ scan(crab_cavity_map, 3, 3, [0.26, 0.23, 0.005],
     -0.002, 0.002, 0.0005, 0.0005, -0.005, 0.005,
     100, 1, 100,
     0.0, 0.0, 0.0)
+# function Heono_test(dim, order, tunes)
+#     hp = TPSVar4D(order)
+#     x, px, y, py = get_variables(hp)
+#     tunex = tunes[1]
+#     tuney = 1.01 - 2.0*tunex
+#     xmu = 2.0*pi*tunex
+#     ymu = 2.0*pi*tuney
+#     cmx = cos(xmu)
+#     smx = sin(xmu)
+#     cmy = cos(ymu)
+#     smy = sin(ymu)
+
+#     pxm = px - x*x + y*y
+#     pym = py + 2.0*x*y
+
+#     xmap = x * cmx + pxm * smx
+#     pxmap = -x * smx + pxm * cmx
+#     ymap = y * cmy + pym * smy
+#     pymap = -y * smy + pym * cmy
+
+#     z1map = xmap - 1.0im * pxmap
+#     z1cmap = xmap + 1.0im * pxmap
+#     z2map = ymap - 1.0im * pymap
+#     z2cmap = ymap + 1.0im * pymap
+
+#     # z1func = numpify(z1map, dim * 2)
+#     # z1cfunc = numpify(z1cmap, dim * 2)
+#     # z2func = numpify(z2map, dim * 2)
+#     # z2cfunc = numpify(z2cmap, dim * 2)
+
+#     z1func = evaluate(z1map)
+#     z1cfunc = evaluate(z1cmap)
+#     z2func = evaluate(z2map)
+#     z2cfunc = evaluate(z2cmap)
+
+#     construct_sqr_matrix(hp, [z1map, z1cmap, z2map, z2cmap])
+#     return hp, function(zs)
+#         return [
+#             z1func(zs),
+#             z1cfunc(zs),
+#             z2func(zs),
+#             z2cfunc(zs)
+#         ]
+#     end
+# end
