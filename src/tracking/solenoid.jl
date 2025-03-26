@@ -12,11 +12,7 @@ function pass!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, part
             end
             r6 = @view r_in[(c-1)*6+1:c*6]
             if !isnan(r6[1]) 
-                if use_exact_Hamiltonian == 1
-                    p_norm = 1.0 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2) # use exact p_norm
-                else
-                    p_norm = 1.0 / (1.0 + r6[6]) # use linearized p_norm
-                end
+                p_norm = 1.0 / (1.0 + r6[6]) # use linearized p_norm
     
                 # Misalignment at entrance
                 if !iszero(T1)
@@ -83,11 +79,7 @@ function pass_P!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, pa
             end
             r6 = @view r_in[(c-1)*6+1:c*6]
             if !isnan(r6[1]) 
-                if use_exact_Hamiltonian == 1
-                    p_norm = 1.0 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
-                else
-                    p_norm = 1.0 / (1.0 + r6[6])
-                end
+                p_norm = 1.0 / (1.0 + r6[6])
     
                 # Misalignment at entrance
                 if !iszero(T1)

@@ -35,11 +35,7 @@ function bndthinkickrad!(r::AbstractVector{Float64}, A, B, L, irho, E0, max_orde
     end
 
     # angles from momentums
-    if isone(use_exact_Hamiltonian)
-        p_norm = 1.0 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
-    else
-        p_norm = 1.0 / (1.0 + r[6])
-    end
+    p_norm = 1.0 / (1.0 + r[6])
     x = r[1]
     xpr = r[2] * p_norm
     y = r[3]
@@ -50,11 +46,7 @@ function bndthinkickrad!(r::AbstractVector{Float64}, A, B, L, irho, E0, max_orde
     r[6] = r[6] - CRAD * (1.0+r[6])^2 * B2P * (1.0 + x*irho + (xpr^2 + ypr^2) / 2.0) * L
     
     # momentums after losing energy
-    if isone(use_exact_Hamiltonian)
-        p_norm = 1.0 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
-    else
-        p_norm = 1.0 / (1.0 + r[6])
-    end
+    p_norm = 1.0 / (1.0 + r[6])
     r[2] = xpr / p_norm
     r[4] = ypr / p_norm
 
@@ -62,7 +54,7 @@ function bndthinkickrad!(r::AbstractVector{Float64}, A, B, L, irho, E0, max_orde
     r[4] += L * ImSum
     r[5] += L * irho * r[1]
     return nothing
-    end
+end
 
 function BendSymplecticPassRad!(r::Array{Float64,1}, le::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_steps::Int, entrance_angle::Float64, exit_angle::Float64, FringeBendEntrance::Int, FringeBendExit::Int,
@@ -203,13 +195,8 @@ function BendSymplecticPass!(r::Array{Float64,1}, le::Float64, irho::Float64, A:
         end
         r6 = @view r[(c-1)*6+1:c*6]
         if !isnan(r6[1])
-            if isone(use_exact_Hamiltonian)
-                NormL1 = L1 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
-                NormL2 = L2 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
-            else
-                NormL1 = L1 / (1.0 + r6[6])
-                NormL2 = L2 / (1.0 + r6[6])
-            end
+            NormL1 = L1 / (1.0 + r6[6])
+            NormL2 = L2 / (1.0 + r6[6])
 
             # Misalignment at entrance
             if !iszero(T1)
@@ -475,13 +462,8 @@ function BendSymplecticPass_P!(r::Array{Float64,1}, le::Float64, irho::Float64, 
         end
         r6 = @view r[(c-1)*6+1:c*6]
         if !isnan(r6[1])
-            if isone(use_exact_Hamiltonian)
-                NormL1 = L1 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
-                NormL2 = L2 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
-            else
-                NormL1 = L1 / (1.0 + r6[6])
-                NormL2 = L2 / (1.0 + r6[6])
-            end
+            NormL1 = L1 / (1.0 + r6[6])
+            NormL2 = L2 / (1.0 + r6[6])
 
             # Misalignment at entrance
             if !iszero(T1)

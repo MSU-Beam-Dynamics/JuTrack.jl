@@ -40,7 +40,7 @@ function RFCavityPass!(r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le, nv, f
     return nothing
 end
 
-function pass_TPSA!(ele::RFCA, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) where {T, TPS_Dim, Max_TPS_Degree}
+function pass_TPSA!(ele::RFCA, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; E0::Float64=0.0) where {T, TPS_Dim, Max_TPS_Degree}
     # ele: RFCA
     # r_in: 6-by-num_particles array
     # num_particles: number of particles

@@ -21,11 +21,7 @@ function strthinkickrad!(r::AbstractVector{Float64}, A, B, L, E0, max_order)
     end
 
     # angles for momentum
-    if use_exact_Hamiltonian == 1
-        p_norm = 1.0 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
-    else
-        p_norm = 1.0 / (1.0 + r[6])
-    end
+    p_norm = 1.0 / (1.0 + r[6])
     x = r[1]
     xpr = r[2] * p_norm
     y = r[3]
@@ -36,11 +32,7 @@ function strthinkickrad!(r::AbstractVector{Float64}, A, B, L, E0, max_order)
     r[6] = r[6] - CRAD * (1.0+r[6])^2 * B2P * (1.0 + x*irho + (xpr^2 + ypr^2) / 2.0) * L
 
     # momentums after losing energy
-    if use_exact_Hamiltonian == 1
-        p_norm = 1.0 / sqrt((1.0 + r[6])^2 - r[2]^2 - r[4]^2)
-    else
-        p_norm = 1.0 / (1.0 + r[6])
-    end
+    p_norm = 1.0 / (1.0 + r[6])
 
     r[2] = xpr / p_norm
     r[4] = ypr / p_norm
@@ -112,13 +104,8 @@ function StrMPoleSymplectic4Pass!(r::Array{Float64,1}, le::Float64, A::Array{Flo
         end
         r6 = @view r[(c-1)*6+1:c*6]
         if !isnan(r6[1])
-            if use_exact_Hamiltonian == 1
-                NormL1 = L1 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
-                NormL2 = L2 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
-            else
-                NormL1 = L1 / (1.0 + r6[6])
-                NormL2 = L2 / (1.0 + r6[6])
-            end
+            NormL1 = L1 / (1.0 + r6[6])
+            NormL2 = L2 / (1.0 + r6[6])
             # Misalignment at entrance
             if !iszero(T1)
                 addvv!(r6, T1)
@@ -422,13 +409,8 @@ function StrMPoleSymplectic4Pass_P!(r::Array{Float64,1}, le::Float64, A::Array{F
         end
         r6 = @view r[(c-1)*6+1:c*6]
         if !isnan(r6[1])
-            if use_exact_Hamiltonian == 1
-                NormL1 = L1 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
-                NormL2 = L2 / sqrt((1.0 + r6[6])^2 - r6[2]^2 - r6[4]^2)
-            else
-                NormL1 = L1 / (1.0 + r6[6])
-                NormL2 = L2 / (1.0 + r6[6])
-            end
+            NormL1 = L1 / (1.0 + r6[6])
+            NormL2 = L2 / (1.0 + r6[6])
             # Misalignment at entrance
             if !iszero(T1)
                 addvv!(r6, T1)

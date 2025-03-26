@@ -7,7 +7,7 @@ using FFTW
 using StaticArrays
 # using TimerOutputs
 # const to = TimerOutput()
-# using Infiltrator
+using Infiltrator
 function uni_transform(ind_i::Int, ind_j::Int, ratio_left::ComplexF64, ratio_right::ComplexF64,
                        mat::Matrix{ComplexF64}, leftm::Matrix{ComplexF64}, rightm::Matrix{ComplexF64})
     rightm[:, ind_j] .+= rightm[:, ind_i] * ratio_right
@@ -203,11 +203,21 @@ function get_degenerate_list!(tpsvar::TPSVar, target::Int; resonance::Union{Noth
     tpsvar.degenerate_list = mask_id
 end
 
-function get_variables(tpsvar::TPSVar)
+function get_variables(tpsvar::TPSVar; betax=1.0, betay=1.0, alphax=0.0, alphay=0.0)
     vars_real = []
     for i in 1:tpsvar.dim
-        push!(vars_real, (tpsvar.vars[2*i-1] + tpsvar.vars[2*i]) / 2.0)
-        push!(vars_real, (tpsvar.vars[2*i-1] - tpsvar.vars[2*i]) / (-2.0im))
+        if i == 1
+            push!(vars_real, (tpsvar.vars[2*i-1] + tpsvar.vars[2*i]) / 2.0 * sqrt(betax))
+            push!(vars_real, (tpsvar.vars[2*i-1] - tpsvar.vars[2*i]) / (-2.0im) /sqrt(betax) +
+            (tpsvar.vars[2*i-1] + tpsvar.vars[2*i]) / 2.0 * alphax / sqrt(betax))
+        elseif i == 2
+            push!(vars_real, (tpsvar.vars[2*i-1] + tpsvar.vars[2*i]) / 2.0 * sqrt(betay))
+            push!(vars_real, (tpsvar.vars[2*i-1] - tpsvar.vars[2*i]) / (-2.0im) /sqrt(betay) +
+            (tpsvar.vars[2*i-1] + tpsvar.vars[2*i]) / 2.0 * alphay / sqrt(betay))
+        elseif i == 3
+            push!(vars_real, (tpsvar.vars[2*i-1] + tpsvar.vars[2*i]) / 2.0)
+            push!(vars_real, (tpsvar.vars[2*i-1] - tpsvar.vars[2*i]) / (-2.0im))
+        end
     end
     return vars_real
 end
@@ -775,7 +785,7 @@ function scan(transfer_map, dim, order, tunes,
     wx0z = PolyEvaluator(wx0z)
     wy0z = PolyEvaluator(wy0z)
     wz0z = PolyEvaluator(wz0z)
-
+    @infiltrate
     itertimes = 10
     for ix in 1:n_x
         xini = x_vals[ix]
@@ -844,73 +854,28 @@ function scan(transfer_map, dim, order, tunes,
     return conv_metrix
 end
 
-function crab_cavity_map(dim, order, tunes)
-    theta_c = 25e-3 
-    f_cc = 197e6
-    beta_cc = 1300.0
-    beta_IP = 0.9
-    b2 = 0.0
-    b3 = 50000.0
-    tune_x = tunes[1]
-    tune_y = tunes[2]
-    tune_z = tunes[3]
-    alpha_c = 1.5e-2
-    V_rf = 15.8e6
-    f_rf = 591e6
-    E = 275e9
-    h = 7560.0
-    phi_s = 0.0
-
-    c = 299792458.0
-    k_c = 2 * pi * f_cc / c
-    k_rf = 2 * pi * f_rf / c
-    e = 1.602176634e-19
-    gamma = E / (938.272046e6)
-    beta = sqrt(1.0 - 1.0 / gamma^2)
-    eta = alpha_c - 1.0 / gamma^2
-
+using Serialization
+function ESR_map(dim, order, tunes)
     map = TPSVar6D(order)
-    x, px, y, py, z, pz = get_variables(map)
+    line = deserialize("ring.jls")
+    twi =  periodicEdwardsTengTwiss(line, 0.0, 0)
+    betax, betay, alphax, alphay = twi.betax, twi.betay, twi.alphax, twi.alphay
+    x, px, y, py, z, pz = get_variables(map, betax=betax, betay=betay, alphax=alphax, alphay=alphay)
+    rin = [x, px, y, py, z, pz]
+    
+    linepass_TPSA!(line, rin, E0=17.846262619763e9)
 
-    # crabbing kicks
-    delta_px = -tan(theta_c) * sin(k_c * z) / (k_c * sqrt(beta_cc*beta_IP))
-    # delta_px += -b2 * x * sin(k_c * z) # b2 = 0
-    delta_px += b3 * (x^2 - y^2) * sin(k_c * z)
-    p_x_cc = px + delta_px
+    x_map = rin[1]
+    px_map = rin[2]
+    y_map = rin[3]
+    py_map = rin[4]
+    z_map = rin[5]
+    pz_map = rin[6]
 
-    delta_py = -2.0 * b3 * x * y * sin(k_c * z)
-    p_y_cc = py + delta_py
-
-    delta_pz = -x * tan(theta_c) * cos(k_c * z) / (sqrt(beta_cc*beta_IP))
-    # delta_pz += (b2*k_c/2.0) * (x^2 + y^2) * sin(k_c * z) # b2 = 0
-    delta_pz += (b3*k_c/3.0) * (x^3 - 3.0*x*y^2) * cos(k_c * z)
-    p_z_cc = pz + delta_pz
-
-    # transverse map
-    mu_x = 2.0 * pi * tune_x
-    x_rot = x*cos(mu_x) + p_x_cc*sin(mu_x)
-    p_x_rot = -x*sin(mu_x) + p_x_cc*cos(mu_x)
-
-    mu_y = 2.0 * pi * tune_y
-    y_rot = y*cos(mu_y) + p_y_cc*sin(mu_y)
-    p_y_rot = -y*sin(mu_y) + p_y_cc*cos(mu_y)
-
-    # longitudinal map
-    mu_z = 2.0 * pi * tune_z
-    z_drift = z*cos(mu_z) + p_z_cc*sin(mu_z)
-    p_z_drift = -z*sin(mu_z) + p_z_cc*cos(mu_z)
-
-    x_map = x_rot
-    px_map = p_x_rot
-    y_map = y_rot
-    py_map = p_y_rot
-    z_map = z_drift
-    pz_map = p_z_drift
-
-    z1 = x_map - 1.0im * px_map
-    z1c = x_map + 1.0im * px_map
-    z2 = y_map - 1.0im * py_map
-    z2c = y_map + 1.0im * py_map
+    z1 = x_map/sqrt(betax) - 1.0im * (px_map*sqrt(betax) - alphax/sqrt(betax)*x_map)
+    z1c = x_map/sqrt(betax) + 1.0im * (px_map*sqrt(betax) - alphax/sqrt(betax)*x_map)
+    z2 = y_map/sqrt(betay) - 1.0im * (py_map*sqrt(betay) - alphay/sqrt(betay)*y_map)
+    z2c = y_map/sqrt(betay) + 1.0im * (py_map*sqrt(betay) - alphay/sqrt(betay)*y_map)
     z3 = z_map - 1.0im * pz_map
     z3c = z_map + 1.0im * pz_map
 
@@ -933,10 +898,12 @@ function crab_cavity_map(dim, order, tunes)
     end
 end
 
-scan(crab_cavity_map, 3, 3, [0.26, 0.23, 0.005], 
-    -0.002, 0.002, 0.0005, 0.0005, -0.005, 0.005,
-    100, 1, 100,
+tune_guesses = [0.0909, 0.1871, 0.0428]
+scan(ESR_map, 3, 3, tune_guesses, 
+    0.00, 0.00, 0.0, 0.0, 0.0, -0.0,
+    1, 1, 1,
     0.0, 0.0, 0.0)
+
 # function Heono_test(dim, order, tunes)
 #     hp = TPSVar4D(order)
 #     x, px, y, py = get_variables(hp)
@@ -982,3 +949,96 @@ scan(crab_cavity_map, 3, 3, [0.26, 0.23, 0.005],
 #         ]
 #     end
 # end
+
+# function crab_cavity_map(dim, order, tunes)
+#     theta_c = 25e-3 
+#     f_cc = 197e6
+#     beta_cc = 1300.0
+#     beta_IP = 0.9
+#     b2 = 0.0
+#     b3 = 50000.0
+#     tune_x = tunes[1]
+#     tune_y = tunes[2]
+#     tune_z = tunes[3]
+#     alpha_c = 1.5e-2
+#     V_rf = 15.8e6
+#     f_rf = 591e6
+#     E = 275e9
+#     h = 7560.0
+#     phi_s = 0.0
+
+#     c = 299792458.0
+#     k_c = 2 * pi * f_cc / c
+#     k_rf = 2 * pi * f_rf / c
+#     e = 1.602176634e-19
+#     gamma = E / (938.272046e6)
+#     beta = sqrt(1.0 - 1.0 / gamma^2)
+#     eta = alpha_c - 1.0 / gamma^2
+
+#     map = TPSVar6D(order)
+#     x, px, y, py, z, pz = get_variables(map)
+
+#     # crabbing kicks
+#     delta_px = -tan(theta_c) * sin(k_c * z) / (k_c * sqrt(beta_cc*beta_IP))
+#     # delta_px += -b2 * x * sin(k_c * z) # b2 = 0
+#     delta_px += b3 * (x^2 - y^2) * sin(k_c * z)
+#     p_x_cc = px + delta_px
+
+#     delta_py = -2.0 * b3 * x * y * sin(k_c * z)
+#     p_y_cc = py + delta_py
+
+#     delta_pz = -x * tan(theta_c) * cos(k_c * z) / (sqrt(beta_cc*beta_IP))
+#     # delta_pz += (b2*k_c/2.0) * (x^2 + y^2) * sin(k_c * z) # b2 = 0
+#     delta_pz += (b3*k_c/3.0) * (x^3 - 3.0*x*y^2) * cos(k_c * z)
+#     p_z_cc = pz + delta_pz
+
+#     # transverse map
+#     mu_x = 2.0 * pi * tune_x
+#     x_rot = x*cos(mu_x) + p_x_cc*sin(mu_x)
+#     p_x_rot = -x*sin(mu_x) + p_x_cc*cos(mu_x)
+
+#     mu_y = 2.0 * pi * tune_y
+#     y_rot = y*cos(mu_y) + p_y_cc*sin(mu_y)
+#     p_y_rot = -y*sin(mu_y) + p_y_cc*cos(mu_y)
+
+#     # longitudinal map
+#     mu_z = 2.0 * pi * tune_z
+#     z_drift = z*cos(mu_z) + p_z_cc*sin(mu_z)
+#     p_z_drift = -z*sin(mu_z) + p_z_cc*cos(mu_z)
+
+#     x_map = x_rot
+#     px_map = p_x_rot
+#     y_map = y_rot
+#     py_map = p_y_rot
+#     z_map = z_drift
+#     pz_map = p_z_drift
+
+#     z1 = x_map - 1.0im * px_map
+#     z1c = x_map + 1.0im * px_map
+#     z2 = y_map - 1.0im * py_map
+#     z2c = y_map + 1.0im * py_map
+#     z3 = z_map - 1.0im * pz_map
+#     z3c = z_map + 1.0im * pz_map
+
+#     z1mapfunc = evaluate(z1)
+#     z1cmapfunc = evaluate(z1c)
+#     z2mapfunc = evaluate(z2)
+#     z2cmapfunc = evaluate(z2c)
+#     z3mapfunc = evaluate(z3)
+#     z3cmapfunc = evaluate(z3c)
+#     construct_sqr_matrix(map, [z1, z1c, z2, z2c, z3, z3c])
+#     return map, function(zs)
+#         return [
+#             z1mapfunc(zs),
+#             z1cmapfunc(zs),
+#             z2mapfunc(zs),
+#             z2cmapfunc(zs),
+#             z3mapfunc(zs),
+#             z3cmapfunc(zs)
+#         ]
+#     end
+# end
+# scan(crab_cavity_map, 3, 3, [0.26, 0.23, 0.005], 
+#     -0.0002, -0.0002, 0.0001, 0.0001, -0.0001, -0.0001,
+#     1, 1, 1,
+#     0.0, 0.0, 0.0)

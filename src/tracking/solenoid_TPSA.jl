@@ -1,15 +1,11 @@
-function pass_TPSA!(ele::SOLENOID, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}) where {T, TPS_Dim, Max_TPS_Degree}
+function pass_TPSA!(ele::SOLENOID, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; E0::Float64=0.0) where {T, TPS_Dim, Max_TPS_Degree}
     T1 = ele.T1
     R1 = ele.R1
     T2 = ele.T2
     R2 = ele.R2
     # Threads.@threads for c in 1:num_particles
     if ele.ks != 0.0
-        if use_exact_Hamiltonian == 1
-            p_norm = 1.0 / sqrt((1.0 + r_in[6])^2 - r_in[2]^2 - r_in[4]^2) # use exact p_norm
-        else
-            p_norm = 1.0 / sqrt(1.0 + r_in[6]) # use linearized p_norm
-        end
+        p_norm = 1.0 / sqrt(1.0 + r_in[6]) # use linearized p_norm
         # Misalignment at entrance
         if !iszero(T1)
             addvv!(r_in, T1)

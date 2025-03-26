@@ -412,7 +412,7 @@ function ADfindm66_refpts(seq, dp::Float64, order::Int, refpts::Vector{Int}, cha
 	delta = CTPS(0.0, 6, 6, order)
 	rin = [x, px, y, py, z, delta]
 	# no radiation, cavity off
-	map_list = Vector{Matrix{Float64}}(undef, length(refpts))
+	map_list = zeros(6, 6, length(refpts))
 	for i in eachindex(refpts)
 		if i == 1
 			ADlinepass_TPSA!(seq[1:refpts[i]], rin, changed_idx, changed_ele)
@@ -425,7 +425,7 @@ function ADfindm66_refpts(seq, dp::Float64, order::Int, refpts::Vector{Int}, cha
 				map[j, k] = rin[j].map[k + 1]
 			end
 		end
-		map_list[i] = map
+		map_list[:,:,i] = map
 		reassign!(rin[1], 0.0, 1)
 		reassign!(rin[2], 0.0, 2)
 		reassign!(rin[3], 0.0, 3)
@@ -446,7 +446,7 @@ function findm66_refpts(seq, dp::Float64, order::Int, refpts::Vector{Int})
 	delta = CTPS(0.0, 6, 6, order)
 	rin = [x, px, y, py, z, delta]
 	# no radiation, cavity off
-	map_list = Vector{Matrix{Float64}}(undef, length(refpts))
+	map_list = zeros(6, 6, length(refpts))
 	num = 1
 	for i in eachindex(refpts)
 		if i == 1
@@ -460,7 +460,7 @@ function findm66_refpts(seq, dp::Float64, order::Int, refpts::Vector{Int})
 				map[j, k] = rin[j].map[k + 1]
 			end
 		end
-		map_list[num] = map
+		map_list[:,:,i] = map
 		num += 1
 		reassign!(rin[1], 0.0, 1)
 		reassign!(rin[2], 0.0, 2)

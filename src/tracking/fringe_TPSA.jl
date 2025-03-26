@@ -86,57 +86,57 @@ end
 #     return nothing
 # end
 
-# function linearQuadFringeElegantEntrance!(r6, b2, fringeIntM0, fringeIntP0)
-#     R = zeros(6, 6)
-#     inFringe = -1.0
-#     fringeIntM = fringeIntP0
-#     fringeIntP = fringeIntM0
-#     delta = r6[5]
+function linearQuadFringeElegantEntrance!(r6::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, b2, fringeIntM0, fringeIntP0) where {T, TPS_Dim, Max_TPS_Degree}
+    R = zeros(6, 6)
+    inFringe = -1.0
+    fringeIntM = fringeIntP0
+    fringeIntP = fringeIntM0
+    delta = r6[5]
 
-#     # determine first linear matrix for this delta
-#     quadPartialFringeMatrix!(R, b2 / (1 + delta), inFringe, fringeIntM, 1)
-#     r6[1] = R[1, 1] * r6[1] + R[1, 2] * r6[2]
-#     r6[2] = R[2, 1] * r6[1] + R[2, 2] * r6[2]
-#     r6[3] = R[3, 3] * r6[3] + R[3, 4] * r6[4]
-#     r6[4] = R[4, 3] * r6[3] + R[4, 4] * r6[4]
+    # determine first linear matrix for this delta
+    quadPartialFringeMatrix!(R, b2 / (1 + delta), inFringe, fringeIntM, 1)
+    r6[1] = R[1, 1] * r6[1] + R[1, 2] * r6[2]
+    r6[2] = R[2, 1] * r6[1] + R[2, 2] * r6[2]
+    r6[3] = R[3, 3] * r6[3] + R[3, 4] * r6[4]
+    r6[4] = R[4, 3] * r6[3] + R[4, 4] * r6[4]
 
-#     # nonlinear fringe field
-#     QuadFringePassP!(r6, b2)  
+    # nonlinear fringe field
+    QuadFringePassP!(r6, b2)  
 
-#     # determine and apply second linear matrix, from elegant code
-#     quadPartialFringeMatrix!(R, b2 / (1 + delta), inFringe, fringeIntP, 2)
-#     r6[1] = R[1, 1] * r6[1] + R[1, 2] * r6[2]
-#     r6[2] = R[2, 1] * r6[1] + R[2, 2] * r6[2]
-#     r6[3] = R[3, 3] * r6[3] + R[3, 4] * r6[4]
-#     r6[4] = R[4, 3] * r6[3] + R[4, 4] * r6[4]
-#     return nothing
-# end
+    # determine and apply second linear matrix, from elegant code
+    quadPartialFringeMatrix!(R, b2 / (1 + delta), inFringe, fringeIntP, 2)
+    r6[1] = R[1, 1] * r6[1] + R[1, 2] * r6[2]
+    r6[2] = R[2, 1] * r6[1] + R[2, 2] * r6[2]
+    r6[3] = R[3, 3] * r6[3] + R[3, 4] * r6[4]
+    r6[4] = R[4, 3] * r6[3] + R[4, 4] * r6[4]
+    return nothing
+end
 
-# function linearQuadFringeElegantExit!(r6, b2, fringeIntM0, fringeIntP0)
-#     R = zeros(6, 6)
-#     inFringe = 1.0
-#     fringeIntM = fringeIntM0
-#     fringeIntP = fringeIntP0
-#     delta = r6[5]
+function linearQuadFringeElegantExit!(r6::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, b2, fringeIntM0, fringeIntP0) where {T, TPS_Dim, Max_TPS_Degree}
+    R = zeros(6, 6)
+    inFringe = 1.0
+    fringeIntM = fringeIntM0
+    fringeIntP = fringeIntP0
+    delta = r6[5]
 
-#     # Determine first linear matrix for this delta
-#     quadPartialFringeMatrix!(R, b2 / (1 + delta), inFringe, fringeIntM, 1)
-#     r6[1] = R[1, 1] * r6[1] + R[1, 2] * r6[2]
-#     r6[2] = R[2, 1] * r6[1] + R[2, 2] * r6[2]
-#     r6[3] = R[3, 3] * r6[3] + R[3, 4] * r6[4]
-#     r6[4] = R[4, 3] * r6[3] + R[4, 4] * r6[4]
+    # Determine first linear matrix for this delta
+    quadPartialFringeMatrix!(R, b2 / (1 + delta), inFringe, fringeIntM, 1)
+    r6[1] = R[1, 1] * r6[1] + R[1, 2] * r6[2]
+    r6[2] = R[2, 1] * r6[1] + R[2, 2] * r6[2]
+    r6[3] = R[3, 3] * r6[3] + R[3, 4] * r6[4]
+    r6[4] = R[4, 3] * r6[3] + R[4, 4] * r6[4]
 
-#     # Nonlinear fringe field 
-#     QuadFringePassN!(r6, b2)
+    # Nonlinear fringe field 
+    QuadFringePassN!(r6, b2)
 
-#     # Determine and apply second linear matrix
-#     quadPartialFringeMatrix!(R, b2 / (1 + delta), inFringe, fringeIntP, 2)
-#     r6[1] = R[1, 1] * r6[1] + R[1, 2] * r6[2]
-#     r6[2] = R[2, 1] * r6[1] + R[2, 2] * r6[2]
-#     r6[3] = R[3, 3] * r6[3] + R[3, 4] * r6[4]
-#     r6[4] = R[4, 3] * r6[3] + R[4, 4] * r6[4]
-#     return nothing
-# end
+    # Determine and apply second linear matrix
+    quadPartialFringeMatrix!(R, b2 / (1 + delta), inFringe, fringeIntP, 2)
+    r6[1] = R[1, 1] * r6[1] + R[1, 2] * r6[2]
+    r6[2] = R[2, 1] * r6[1] + R[2, 2] * r6[2]
+    r6[3] = R[3, 3] * r6[3] + R[3, 4] * r6[4]
+    r6[4] = R[4, 3] * r6[3] + R[4, 4] * r6[4]
+    return nothing
+end
 
 function edge_fringe_entrance!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, inv_rho, edge_angle, fint, gap, method) where {T, TPS_Dim, Max_TPS_Degree}
     # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
