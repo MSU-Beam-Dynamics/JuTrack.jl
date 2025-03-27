@@ -59,6 +59,7 @@ include("utils/lattice_utils.jl")
 include("utils/matrix.jl")
 include("utils/dynamic_aperture.jl")
 include("utils/fma.jl")
+include("utils/square_matrix.jl")
 
 export Beam
 export m_e, m_p, m_goldion, charge_e, speed_of_light, epsilon_0, CGAMMA, CoordLimit, AngleLimit, use_exact_Hamiltonian, use_exact_drift
@@ -82,6 +83,7 @@ export linepass!, pass!, ringpass!, linepass_TPSA!, pass_TPSA!, ringpass_TPSA!, 
 export plinepass!, pringpass!, pass_P!, ADlinepass!, ADlinepass_TPSA!, ADringpass!, ADpringpass!, ADplinepass!
 export matrix_to_array, array_to_matrix
 export total_length, spos, findelem, insert_space_charge, array_optics, get_len
+export CMscan, TPSVar6D, TPSVar4D, twiss_from_6x6, get_variables, evaluate, construct_sqr_matrix
 export ADfindm66_refpts
 
 

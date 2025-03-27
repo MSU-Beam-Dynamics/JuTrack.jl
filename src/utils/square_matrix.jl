@@ -1,13 +1,11 @@
 # A code for extending the convergence map method based on square matrix method proposed by Li Hua Yu to 6-D space.
-# This is a test version. The results are double-checked. However, it is not guaranteed that the code is free of bugs.
 # Code created by Jinyu Wan, 03/24/2025.
 using LinearAlgebra
-using JuTrack
 using FFTW
 using StaticArrays
 # using TimerOutputs
 # const to = TimerOutput()
-using Infiltrator
+# using Infiltrator
 function uni_transform(ind_i::Int, ind_j::Int, ratio_left::ComplexF64, ratio_right::ComplexF64,
                        mat::Matrix{ComplexF64}, leftm::Matrix{ComplexF64}, rightm::Matrix{ComplexF64})
     rightm[:, ind_j] .+= rightm[:, ind_i] * ratio_right
@@ -90,7 +88,6 @@ function jordan_norm_form(sqrmat_ori::Matrix{ComplexF64}, ε::Float64=0.0)
     return leftm, mat, rightm
 end
 
-
 function jordan_chain_structure(jnf::Matrix{ComplexF64}, ε::Float64)
     dim = size(jnf,1)
     chains = Vector{Vector{Int}}()
@@ -106,7 +103,6 @@ function jordan_chain_structure(jnf::Matrix{ComplexF64}, ε::Float64)
     push!(chains, chain)
     return chains
 end
-
 
 mutable struct TPSVar
     dim::Int
@@ -203,20 +199,23 @@ function get_degenerate_list!(tpsvar::TPSVar, target::Int; resonance::Union{Noth
     tpsvar.degenerate_list = mask_id
 end
 
-function get_variables(tpsvar::TPSVar; betax=1.0, betay=1.0, alphax=0.0, alphay=0.0)
+function get_variables(tpsvar::TPSVar; betax=1.0, betay=1.0, alphax=0.0, alphay=0.0, betaz=1.0, alphaz=0.0)
     vars_real = []
     for i in 1:tpsvar.dim
         if i == 1
             push!(vars_real, (tpsvar.vars[2*i-1] + tpsvar.vars[2*i]) / 2.0 * sqrt(betax))
-            push!(vars_real, (tpsvar.vars[2*i-1] - tpsvar.vars[2*i]) / (-2.0im) /sqrt(betax) +
+            push!(vars_real, (tpsvar.vars[2*i-1] - tpsvar.vars[2*i]) / (-2.0im) /sqrt(betax) -
             (tpsvar.vars[2*i-1] + tpsvar.vars[2*i]) / 2.0 * alphax / sqrt(betax))
         elseif i == 2
             push!(vars_real, (tpsvar.vars[2*i-1] + tpsvar.vars[2*i]) / 2.0 * sqrt(betay))
-            push!(vars_real, (tpsvar.vars[2*i-1] - tpsvar.vars[2*i]) / (-2.0im) /sqrt(betay) +
+            push!(vars_real, (tpsvar.vars[2*i-1] - tpsvar.vars[2*i]) / (-2.0im) /sqrt(betay) -
             (tpsvar.vars[2*i-1] + tpsvar.vars[2*i]) / 2.0 * alphay / sqrt(betay))
         elseif i == 3
-            push!(vars_real, (tpsvar.vars[2*i-1] + tpsvar.vars[2*i]) / 2.0)
-            push!(vars_real, (tpsvar.vars[2*i-1] - tpsvar.vars[2*i]) / (-2.0im))
+            push!(vars_real, (tpsvar.vars[2*i-1] + tpsvar.vars[2*i]) / 2.0 * sqrt(betaz))
+            push!(vars_real, (tpsvar.vars[2*i-1] - tpsvar.vars[2*i]) / (-2.0im) /sqrt(betaz) -
+            (tpsvar.vars[2*i-1] + tpsvar.vars[2*i]) / 2.0 * alphaz / sqrt(betaz)) 
+        else
+            error("The dimension is either 2 or 3")  
         end
     end
     return vars_real
@@ -245,9 +244,8 @@ end
 
 function jordan_form!(tpsvar::TPSVar)
     if length(tpsvar.degenerate_list) == 1
-        # no need to find Jordan form
-        tpsvar.right_vector = copy(tpsvar.right_mat[:, tpsvar.degenerate_list[1]])
-        tpsvar.left_vector  = copy(tpsvar.left_mat[tpsvar.degenerate_list[1], :])
+        tpsvar.right_vector = reshape(tpsvar.right_mat[:, tpsvar.degenerate_list[1]],1, :)
+        tpsvar.left_vector  = reshape(tpsvar.left_mat[tpsvar.degenerate_list[1], :],1, :)
         return nothing
     end
 
@@ -272,7 +270,6 @@ function jordan_form!(tpsvar::TPSVar)
     tpsvar.left_vector = temp_mat * tpsvar.left_mat
     return nothing
 end
-
 
 function sqrmat_reduction!(tpsvar)
     dim = tpsvar.sqrmat_dim
@@ -404,8 +401,6 @@ function compute_action_angle_polynomials(tpsvar::TPSVar, dim::Int, order::Int)
     return vectors
 end
 
-
-
 function linear(f::CTPS{T,D,M}) where {T,D,M}
     lin = CTPS(f)                        # copy
     for i in eachindex(lin.map)
@@ -467,7 +462,6 @@ function inverse_map(fs::Vector{CTPS{T,D,M}}, order,
     return res
 end
 
-
 function conjugate(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, mode::Int=1) where {T, TPS_Dim, Max_TPS_Degree}
     # Must be even dimension
     if TPS_Dim % 2 != 0
@@ -493,7 +487,6 @@ function conjugate(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, mode::Int=1) where {T
     # recompute_degree!(out)
     return out
 end
-
 
 function compute_inverse_maps(vectors::Vector, dim::Int, order::Int)
     w0z = [CTPS(0.0im, dim*2, order) for i in 1:dim*2]
@@ -526,7 +519,7 @@ function derivative(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, ndim::Int, order::In
 
     degree = 0
     for i in 1:length(ctps.map)
-        poly = getindexmap(ctps.polymap[], 84)
+        poly = getindexmap(ctps.polymap[], i)
         current_degree = sum(poly[2:end])
         if ctps.map[i] != zero(T) && current_degree > degree
             degree = current_degree
@@ -732,7 +725,7 @@ function itearation_freq(dtheta, theta0, freq, nmap, z_to_w, w_to_z; jacobian=no
     return dt, newfreq, theta_mx, theta_my, theta_mz
 end
 
-function scan(transfer_map, dim, order, tunes, 
+function CMscan(transfer_map, dim, order, tunes, 
             x_min, x_max, y_min, y_max, z_min, z_max, 
             n_x, n_y, n_z, pxini, pyini, pzini)
     x_vals = range(x_min, x_max, length=n_x)
@@ -785,7 +778,6 @@ function scan(transfer_map, dim, order, tunes,
     wx0z = PolyEvaluator(wx0z)
     wy0z = PolyEvaluator(wy0z)
     wz0z = PolyEvaluator(wz0z)
-    @infiltrate
     itertimes = 10
     for ix in 1:n_x
         xini = x_vals[ix]
@@ -854,55 +846,35 @@ function scan(transfer_map, dim, order, tunes,
     return conv_metrix
 end
 
-using Serialization
-function ESR_map(dim, order, tunes)
-    map = TPSVar6D(order)
-    line = deserialize("ring.jls")
-    twi =  periodicEdwardsTengTwiss(line, 0.0, 0)
-    betax, betay, alphax, alphay = twi.betax, twi.betay, twi.alphax, twi.alphay
-    x, px, y, py, z, pz = get_variables(map, betax=betax, betay=betay, alphax=alphax, alphay=alphay)
-    rin = [x, px, y, py, z, pz]
-    
-    linepass_TPSA!(line, rin, E0=17.846262619763e9)
-
-    x_map = rin[1]
-    px_map = rin[2]
-    y_map = rin[3]
-    py_map = rin[4]
-    z_map = rin[5]
-    pz_map = rin[6]
-
-    z1 = x_map/sqrt(betax) - 1.0im * (px_map*sqrt(betax) - alphax/sqrt(betax)*x_map)
-    z1c = x_map/sqrt(betax) + 1.0im * (px_map*sqrt(betax) - alphax/sqrt(betax)*x_map)
-    z2 = y_map/sqrt(betay) - 1.0im * (py_map*sqrt(betay) - alphay/sqrt(betay)*y_map)
-    z2c = y_map/sqrt(betay) + 1.0im * (py_map*sqrt(betay) - alphay/sqrt(betay)*y_map)
-    z3 = z_map - 1.0im * pz_map
-    z3c = z_map + 1.0im * pz_map
-
-    z1mapfunc = evaluate(z1)
-    z1cmapfunc = evaluate(z1c)
-    z2mapfunc = evaluate(z2)
-    z2cmapfunc = evaluate(z2c)
-    z3mapfunc = evaluate(z3)
-    z3cmapfunc = evaluate(z3c)
-    construct_sqr_matrix(map, [z1, z1c, z2, z2c, z3, z3c])
-    return map, function(zs)
-        return [
-            z1mapfunc(zs),
-            z1cmapfunc(zs),
-            z2mapfunc(zs),
-            z2cmapfunc(zs),
-            z3mapfunc(zs),
-            z3cmapfunc(zs)
-        ]
-    end
+function schur_transform!(tpsvar::TPSVar)
+    S = schur(tpsvar.sqr_mat)
+    Q = S.Z
+    T = S.T   # T is upper triangular
+    tpsvar.sqr_mat .= Q' * tpsvar.sqr_mat * Q
+    return Q
 end
 
-tune_guesses = [0.0909, 0.1871, 0.0428]
-scan(ESR_map, 3, 3, tune_guesses, 
-    0.00, 0.00, 0.0, 0.0, 0.0, -0.0,
-    1, 1, 1,
-    0.0, 0.0, 0.0)
+function twiss_from_6x6(M::AbstractMatrix{<:Real})
+    function twiss2(M2)
+        cosμ = (M2[1,1] + M2[2,2]) / 2
+        sinμ = sign(M2[1,2]) * sqrt(max(0, 1 - cosμ^2))
+        μ    = atan(sinμ, cosμ)      
+        β    = M2[1,2] / sinμ
+        α    = (M2[1,1] - M2[2,2]) / (2*sinμ)
+        γ    = (1 + α^2) / β
+        return (α, β, γ, μ)
+    end
+
+    Mx = M[1:2, 1:2]
+    My = M[3:4, 3:4]
+    Mz = M[5:6, 5:6]
+
+    return (
+        horizontal = twiss2(Mx),
+        vertical   = twiss2(My),
+        longitudinal = twiss2(Mz)
+    )
+end
 
 # function Heono_test(dim, order, tunes)
 #     hp = TPSVar4D(order)
@@ -1038,7 +1010,7 @@ scan(ESR_map, 3, 3, tune_guesses,
 #         ]
 #     end
 # end
-# scan(crab_cavity_map, 3, 3, [0.26, 0.23, 0.005], 
+# CMscan(crab_cavity_map, 3, 3, [0.26, 0.23, 0.005], 
 #     -0.0002, -0.0002, 0.0001, 0.0001, -0.0001, -0.0001,
 #     1, 1, 1,
 #     0.0, 0.0, 0.0)
