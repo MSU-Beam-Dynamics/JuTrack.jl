@@ -22,13 +22,14 @@ author = {Jinyu Wan and Helena Alamprese and Christian Ratcliff and Ji Qiang and
 
 * Install Julia at [here](https://julialang.org/downloads/oldreleases/) (1.10.4 is preferred).
 
-* Online installation of the package via
+* Download the package for offline isntallation.
+* Or using online installation via
 ```
 using Pkg
 Pkg.add(url="https://github.com/MSU-Beam-Dynamics/JuTrack.jl")
 ```
 
-* Installation of Enzyme
+* Installation of Enzyme. v0.13.3 is perferred. 
 ```
 Pkg.add(name="Enzyme", version="0.13.3")
 ```
@@ -44,15 +45,13 @@ D1 = DRIFT(name="D1", len=1.0)
 D2 = DRIFT(name="D2", len=1.0)
 D3 = DRIFT(name="D3", len=1.0)
 D4 = DRIFT(name="D4", len=1.0)
-D5 = DRIFT(name="D5", len=1.0)
 Q1 = KQUAD(name="Q1", len=1.0, k1=-0.9) 
 Q2 = KQUAD(name="Q2", len=1.0, k1=0.3)
-B1 = SBEND(name="B1", len= 0.6, angle=pi/15.0)
-B2 = SBEND(name="B2", len= 0.6, angle=-pi/15.0)
+B1 = SBEND(name="B1", len=0.6, angle=pi/15.0)
 ```
 Create the lattice as a Julia vector
 ```
-LINE = [D1, Q1, D2, B1, D3, Q2, D4, B2, D5, B2, D4, Q2, D3, B1, D2, Q1, D1]
+LINE = [D1, Q1, D2, B1, D3, Q2, D4]
 ```
 
 # Particle tracking
@@ -71,7 +70,7 @@ println(beam.r)
 # Optics calculation
 Obtain periodic Twiss parameters of a ring accelerator
 ```
-twi = twissring(RING, 0.0, 1)
+twi = periodicEdwardsTengTwiss(RING, 0.0, 0)
 ```
 
 # Automatic differentiation
@@ -85,9 +84,8 @@ function tracking_wrt_k1(x)
 
     beam = Beam([0.1 0.0 0.0 0.0 0.0 0.0], energy=3.5e9)
 
-    # !!! Creating a large lattice in the function you try to differentiate 
-    # !!! will slow the computation and may result in an error.
-    # !!! Create/load the lattice outside of the function if it is large.
+    # !!! avoid creating large lattice in the differentiable function.
+    # !!! load or create your lattice outside the function if it is large.
     LINE = [D1, Q1, D2, Q2] 
     linepass!(LINE, beam)
     return beam.r
@@ -97,29 +95,8 @@ derivatives, results = autodiff(ForwardWithPrimal, tracking_wrt_k1, Duplicated(k
 ```
 
 # Parallel computation setting
-Multi-threading is available for multi-particle tracking. Before using it, one has to set up the number of threads.
-
-On Linux or macOS:
-```
-export JULIA_NUM_THREADS=N
-``` 
-or add the above line to your .bashrc file. Change N to the desired number of threads.
-
-On Windows:
-Maually add JULIA_NUM_THREADS as the variable name and N (the number of threads) as the variable value in system variable.
-
-It is recommended to use Visual Studio Code to permanently set up the Julia environment. 
-Open the command palette (Ctrl+Shift+P or Cmd+Shift+P on macOS). 
-Type "Preferences: Open Settings (JSON)" and select it to open the settings file. 
-Add or modify the Julia settings to include the environment variable like this:
-```
-"julia.executablePath": "path/to/julia", // change it to your Julia path
-"julia.environmentVariables": {
-    "JULIA_NUM_THREADS": "48" // Adjust the number to the desired number of threads
-}
-```
-
-To check if the multi-threading is set up correctly, open the Julia REPL, and type:
+Multi-threading is available for multi-particle tracking. 
+Before using it, please ensure the Julia multi-threading is set up correctly by typing:
 ```
 println("Number of threads in use: ", Threads.nthreads())
 ```
