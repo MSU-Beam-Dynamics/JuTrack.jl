@@ -1,10 +1,7 @@
-# include("../src/JuTrack.jl")
 using JuTrack
 using Serialization
-using LaTeXStrings
-using Plots
-
-
+# using LaTeXStrings
+# using Plots
 
 E0 = 17.846262619763e9
 
@@ -150,13 +147,13 @@ function multi_val_op(x0, niter, step, RING)
         # grad27 = grads[5]
         # grad31 = grads[6]
         # grad5537 = grads[7]
-        grad9 = autodiff(Forward, get_phase14_zero, Duplicated, Duplicated(x0, [1.0,0.0,0.0,0.0,0.0,0.0,0.0]))
-        grad13 = autodiff(Forward, get_phase14_zero, Duplicated, Duplicated(x0, [0.0,1.0,0.0,0.0,0.0,0.0,0.0]))
-        grad17 = autodiff(Forward, get_phase14_zero, Duplicated, Duplicated(x0, [0.0,0.0,1.0,0.0,0.0,0.0,0.0]))
-        grad23 = autodiff(Forward, get_phase14_zero, Duplicated, Duplicated(x0, [0.0,0.0,0.0,1.0,0.0,0.0,0.0]))
-        grad27 = autodiff(Forward, get_phase14_zero, Duplicated, Duplicated(x0, [0.0,0.0,0.0,0.0,1.0,0.0,0.0]))
-        grad31 = autodiff(Forward, get_phase14_zero, Duplicated, Duplicated(x0, [0.0,0.0,0.0,0.0,0.0,1.0,0.0]))
-        grad5537 = autodiff(Forward, get_phase14_zero, Duplicated, Duplicated(x0, [0.0,0.0,0.0,0.0,0.0,0.0,1.0]))
+        grad9 = autodiff(Forward, get_phase14_zero, Duplicated(x0, [1.0,0.0,0.0,0.0,0.0,0.0,0.0]))
+        grad13 = autodiff(Forward, get_phase14_zero, Duplicated(x0, [0.0,1.0,0.0,0.0,0.0,0.0,0.0]))
+        grad17 = autodiff(Forward, get_phase14_zero, Duplicated(x0, [0.0,0.0,1.0,0.0,0.0,0.0,0.0]))
+        grad23 = autodiff(Forward, get_phase14_zero, Duplicated(x0, [0.0,0.0,0.0,1.0,0.0,0.0,0.0]))
+        grad27 = autodiff(Forward, get_phase14_zero, Duplicated(x0, [0.0,0.0,0.0,0.0,1.0,0.0,0.0]))
+        grad31 = autodiff(Forward, get_phase14_zero, Duplicated(x0, [0.0,0.0,0.0,0.0,0.0,1.0,0.0]))
+        grad5537 = autodiff(Forward, get_phase14_zero, Duplicated(x0, [0.0,0.0,0.0,0.0,0.0,0.0,1.0]))
 
         x0[1] -= step * grad9[1]
         x0[2] -= step * grad13[1]
@@ -181,21 +178,21 @@ end
 
 x0_vals, goal_vals, grad_vals = multi_val_op(xinit, 10, 5e-6, ESR_crab)
 
-plot_steps = length(goal_vals)
-p1 = plot(1:plot_steps, x0_vals[1, 1:plot_steps], title = L"Evolution\ of\ k", xlabel = L"Iterations", ylabel = L"Strength (m^{-1})", label=L"k_1", line=:dash, marker=:circle,framestyle=:box)
-for i in 2:7
-    label_str = "k_{$i}"  
-    full_label = latexstring(label_str)
-    plot!(1:plot_steps, x0_vals[i, 1:plot_steps], label=full_label, line=:dash, marker=:circle)
-end
-p2 = plot(1:plot_steps, goal_vals[1:plot_steps], title = L"Evolution\ of\ \Delta \phi", xlabel = L"Iterations", 
-    ylabel = L"phase\ advance(rad)", legend = false, line=:dash, marker=:circle,framestyle=:box)
-p3 = plot(1:plot_steps, grad_vals[1, 1:plot_steps], title = L"Evolution\ of\ gradient", xlabel = L"Iterations", 
-    ylabel = L"\partial \frac{\Delta \phi}{\partial k}", label=L"k_1", line=:dash, marker=:circle,framestyle=:box)
-for i in 2:7
-    label_str = "k_{$i}"  
-    full_label = latexstring(label_str)
-    plot!(1:plot_steps, grad_vals[i, 1:plot_steps], label=full_label, line=:dash, marker=:circle)
-end
-plot(p1, p2, p3, layout = (3, 1), size=(800, 650))
-# savefig("plot1.png")
+# plot_steps = length(goal_vals)
+# p1 = plot(1:plot_steps, x0_vals[1, 1:plot_steps], title = L"Evolution\ of\ k", xlabel = L"Iterations", ylabel = L"Strength (m^{-1})", label=L"k_1", line=:dash, marker=:circle,framestyle=:box)
+# for i in 2:7
+#     label_str = "k_{$i}"  
+#     full_label = latexstring(label_str)
+#     plot!(1:plot_steps, x0_vals[i, 1:plot_steps], label=full_label, line=:dash, marker=:circle)
+# end
+# p2 = plot(1:plot_steps, goal_vals[1:plot_steps], title = L"Evolution\ of\ \Delta \phi", xlabel = L"Iterations", 
+#     ylabel = L"phase\ advance(rad)", legend = false, line=:dash, marker=:circle,framestyle=:box)
+# p3 = plot(1:plot_steps, grad_vals[1, 1:plot_steps], title = L"Evolution\ of\ gradient", xlabel = L"Iterations", 
+#     ylabel = L"\partial \frac{\Delta \phi}{\partial k}", label=L"k_1", line=:dash, marker=:circle,framestyle=:box)
+# for i in 2:7
+#     label_str = "k_{$i}"  
+#     full_label = latexstring(label_str)
+#     plot!(1:plot_steps, grad_vals[i, 1:plot_steps], label=full_label, line=:dash, marker=:circle)
+# end
+# plot(p1, p2, p3, layout = (3, 1), size=(800, 650))
+# # savefig("plot1.png")

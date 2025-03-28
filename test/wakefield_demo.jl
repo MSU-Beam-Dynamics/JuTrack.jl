@@ -15,7 +15,7 @@ function f(x1)
 end
 
 println(f(180e9))
-grad = autodiff(Forward, f, Duplicated,  Duplicated(180e9, 1.0)) 
+grad = autodiff(Forward, f,  Duplicated(180e9, 1.0)) 
 println(grad)
 
 

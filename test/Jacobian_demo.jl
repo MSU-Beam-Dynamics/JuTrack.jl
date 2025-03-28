@@ -32,6 +32,6 @@ function AD_jacobian(x)
     return beam.r
 end
 @btime begin
-    g = jacobian(Forward, AD_jacobian, [0.01, 0.0, 0.01, 0.0], Val(4))
+    g = jacobian(Forward, AD_jacobian, [0.01, 0.0, 0.01, 0.0])
 end
 # 2.813 ms (11285 allocations: 555.62 KiB)

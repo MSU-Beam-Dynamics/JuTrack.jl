@@ -1,6 +1,4 @@
-# include("../src/JuTrack.jl")
 using JuTrack
-# Enzyme.API.runtimeActivity!(true)
 
 # an simple example that optimize the transfer matrix of a ring
 Dr = DRIFT(name="Dr", len=0.5)
@@ -29,7 +27,7 @@ function f1(k)
     return trace
 end
 
-grad1 = autodiff(Forward, f1, DuplicatedNoNeed, Duplicated(-1.0, 1.0))
+grad1 = autodiff(Forward, f1, Duplicated(-1.0, 1.0))
 println(grad1)
 
 k1 = 1.7
@@ -44,7 +42,7 @@ trace_vals = Float64[]
 grad_vals = Float64[]
 for i in 1:niter
     trace0 = f1(x0[1])
-    grad = autodiff(Forward, f1, DuplicatedNoNeed, Duplicated(x0[1], 1.0))
+    grad = autodiff(Forward, f1, Duplicated(x0[1], 1.0))
     if trace0 > 2
         x0[1] -= step * grad[1]
     else

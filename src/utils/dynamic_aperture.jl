@@ -1,4 +1,4 @@
-function dynamic_aperture(RING, nturns, amp_max, amp_step, angle_steps, E=3.0e9)
+function dynamic_aperture(RING, nturns, amp_max, amp_step, angle_steps, E, dp)
     # DA calculation
     # RING: lattice
     # nturns: number of turns
@@ -19,6 +19,7 @@ function dynamic_aperture(RING, nturns, amp_max, amp_step, angle_steps, E=3.0e9)
             particles[(i-1)*length(amp_list) + j, 3] = amp_list[j] * sin(angle_list[i])
         end
     end
+    particles[:, 6] .= dp
 
     beam = Beam(copy(particles), energy=E)
     pringpass!(RING, beam, nturns)
