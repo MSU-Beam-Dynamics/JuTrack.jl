@@ -939,6 +939,24 @@ mutable struct CRABCAVITY <: AbstractElement
     end
 end
 
+mutable struct CRABCAVITY_K2 <: AbstractElement
+    name::String 
+    len::Float64 
+    volt::Float64  # voltage
+    freq::Float64  # frequency
+    k::Float64  # wave number
+    phi::Float64  # phase
+    k2::Float64  # k2
+    errors::Array{Float64,1} # 1: Voltage error, 2: Phase error
+    energy::Float64
+    eletype::String 
+    function CRABCAVITY_K2(;name::String = "CRABCAVITY_K2", len::Float64 = 0.0, volt::Float64 = 0.0, 
+        freq::Float64 = 0.0, phi::Float64 = 0.0, k2::Float64 =0.0, errors::Array{Float64,1} = zeros(2), energy::Float64 = 1e9)
+        k = 2*π*freq/2.99792458e8
+        return new(name, len, volt, freq, k, phi, k2, errors, energy, "CRABCAVITY_K2")
+    end
+end
+
 
 mutable struct easyCRABCAVITY <: AbstractElement
     name::String 

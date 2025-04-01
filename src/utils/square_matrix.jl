@@ -819,6 +819,10 @@ function CMscan(transfer_map, dim, order, tunes,
                     thetas[3, :, :, :] = gg .+ theta3ini .- dt[3, 1, 1, 1]
                     dtdiff = sqrt(sum(abs.(dt .- dtold).^2) / (nalpha * nbeta * ngamma))
                     dtdiff_final = dtdiff
+                    if isnan(dtdiff_final) || dtdiff_final > 1e4
+                        println("NaN or large value encountered, breaking out of loop.")
+                        break
+                    end
                 end
                 if dtdiff_final <= 0.0
                     conv_metrix[ix, iy, iz] = -30
