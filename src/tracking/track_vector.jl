@@ -248,14 +248,17 @@ Pass 6-D TPSA coordinates through the line element by element.
 - line::Vector: a vector of beam line elements
 - rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}: a vector of 6-D TPSA coordinates
 """
-function linepass_TPSA!(line::Vector, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; E0::Float64=0.0) where {T, TPS_Dim, Max_TPS_Degree}
+function linepass_TPSA!(line::Vector, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; E0::Float64=3e9, m0::Float64=m_e) where {T, TPS_Dim, Max_TPS_Degree}
     if length(rin) != 6
         error("The length of TPSA must be 6")
     end
 
     for i in eachindex(line)
         # ele = line[i]
-        pass_TPSA!(line[i], rin, E0=E0)        
+        pass_TPSA!(line[i], rin, E0=E0, m0=m0)       
+        if isnan(rin[1].map[2])
+            println("The particle is lost at element $(i)")
+        end 
     end
     return nothing
 end
@@ -272,7 +275,7 @@ This is a convinent function to implement automatic differentiation that avoid d
 - changed_idx::Vector: a vector of indices of the elements to be changed
 - changed_ele::Vector: a vector of elements to replace the elements in `changed_idx`
 """
-function ADlinepass_TPSA!(line::Vector, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, changed_idx::Vector, changed_ele::Vector; E0::Float64=0.0) where {T, TPS_Dim, Max_TPS_Degree}
+function ADlinepass_TPSA!(line::Vector, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, changed_idx::Vector, changed_ele::Vector; E0::Float64=3e9, m0::Float64=m_e) where {T, TPS_Dim, Max_TPS_Degree}
     if length(rin) != 6
         error("The length of TPSA must be 6")
     end
@@ -280,10 +283,10 @@ function ADlinepass_TPSA!(line::Vector, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Deg
     for i in eachindex(line)
         # ele = line[i]
         if i in changed_idx
-            pass_TPSA!(changed_ele[count], rin, E0=E0)
+            pass_TPSA!(changed_ele[count], rin, E0=E0, m0=m0)
             count += 1
         else
-            pass_TPSA!(line[i], rin, E0=E0)        
+            pass_TPSA!(line[i], rin, E0=E0, m0=m0)        
         end
     end
     return nothing
@@ -299,12 +302,12 @@ Pass 6-D TPSA coordinates through the ring for `nturn` turns.
 - rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}: a vector of 6-D TPSA coordinates
 - nturn::Int: number of turns
 """
-function ringpass_TPSA!(line::Vector, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, nturn::Int; E0::Float64=0.0) where {T, TPS_Dim, Max_TPS_Degree}
+function ringpass_TPSA!(line::Vector, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, nturn::Int; E0::Float64=3e9, m0::Float64=m_e) where {T, TPS_Dim, Max_TPS_Degree}
     if length(rin) != 6
         error("The length of TPSA must be 6")
     end
     for i in 1:nturn
-        linepass_TPSA!(line, rin, E0=E0)    
+        linepass_TPSA!(line, rin, E0=E0, m0=m0)    
     end
     return nothing
 end
@@ -314,6 +317,10 @@ function check_lost(r6)
         return true
     end
     if maximum(abs.(r6[1:4])) > CoordLimit || abs(r6[6]) > CoordLimit
+        return true
+    end
+    # sqrt(1.0 + 2.0*r[6]*beti + r[6]^2 - r[2]^2 - r[4]^2) must be real
+    if r6[2]^2 + r6[4]^2 > 1.0  + r6[6]^2
         return true
     end
     return false

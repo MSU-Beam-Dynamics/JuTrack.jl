@@ -24,36 +24,6 @@ function linepass1!(line, particles::Beam)
     return save_particles
 end
 ESR_crab = deserialize("src/demo/ESR/esr_main_linearquad.jls")
-# ESR_nocrab = deserialize("test/esr_main_rad_craboff.jls")
-
-# function get_phase14(x3, RING)
-#     # change the 3rd quad, optimize phase advance between CC1-35 and CC4-5533
-#     changed_idx = [3]
-#     new_Q1 = KQUAD(len=RING[3].len, k1=x3)
-#     changed_ele = [new_Q1]
-#     refpts = [i for i in 1:length(RING)]
-#     twi = ADtwissring(RING, 0.0, 1, refpts, changed_idx, changed_ele)
-
-#     phase41 = twi[35].dmux + twi[end].dmux - twi[5533].dmux
-
-#     return phase41 - 2*pi
-# end
-
-# function get_phase23(x, RING)
-#     # change the 3rd quad, optimize phase advance between CC1-35 and CC4-5533
-#     changed_idx = [3]
-#     new_Q1 = KQUAD(len=RING[3].len, k1=x)
-#     changed_ele = [new_Q1]
-#     refpts = [i for i in 1:length(RING)]
-#     twi = ADtwissring(RING, 0.0, 1, refpts, changed_idx, changed_ele)
-
-#     phase23 = twi[952].dmux - twi[916].dmux
-
-#     return phase23 - 2*pi
-# end
-
-# phi14 = get_phase14(ESR_crab[3].k1, ESR_crab)
-# phi23 = get_phase23(ESR_crab[3].k1, ESR_crab)
 
 function Q_perturb(ESR_crab)
     for i in eachindex(ESR_crab)
@@ -66,26 +36,7 @@ function Q_perturb(ESR_crab)
     end
     return ESR_crab
 end
-function optics(Twi)
-    beta = zeros(length(Twi), 2)
-    beta[:, 1] = [Twi[i].betax for i in eachindex(Twi)]
-    beta[:, 2] = [Twi[i].betay for i in eachindex(Twi)]
-    alpha = zeros(length(Twi), 2)
-    alpha[:, 1] = [Twi[i].alphax for i in eachindex(Twi)]
-        alpha[:, 2] = [Twi[i].alphay for i in eachindex(Twi)]
-    gamma = zeros(length(Twi), 2)
-    gamma[:, 1] = [Twi[i].gammax for i in eachindex(Twi)]
-    gamma[:, 2] = [Twi[i].gammay for i in eachindex(Twi)]
-    mu = zeros(length(Twi), 2)
-    mu[:, 1] = [Twi[i].dmux for i in eachindex(Twi)]
-    mu[:, 2] = [Twi[i].dmuy for i in eachindex(Twi)]
-    dp = zeros(length(Twi), 4)
-    dp[:, 1] = [Twi[i].dx for i in eachindex(Twi)]
-    dp[:, 2] = [Twi[i].dy for i in eachindex(Twi)]
-    dp[:, 3] = [Twi[i].dpx for i in eachindex(Twi)]
-    dp[:, 4] = [Twi[i].dpy for i in eachindex(Twi)]
-    return beta, alpha, gamma, mu, dp
-end
+
 ESR_perturb = Q_perturb(ESR_crab)
 
 idx = findelem(ESR_crab,CRABCAVITY)
@@ -96,6 +47,7 @@ zero_idx = [9,13,17,23,27,31,5537]
 function get_phase14_zero(x)
     changed_idx = [9,13,17,23,27,31,5537]
     L = 0.25
+    E0 = 17.846262619763e9
     new_Q1 = KQUAD(len=L, k1=x[1])
     new_Q2 = KQUAD(len=L, k1=x[2])
     new_Q3 = KQUAD(len=L, k1=x[3])
@@ -104,32 +56,14 @@ function get_phase14_zero(x)
     new_Q6 = KQUAD(len=L, k1=x[6])
     new_Q7 = KQUAD(len=L, k1=x[7])
     changed_ele = [new_Q1, new_Q2, new_Q3, new_Q4, new_Q5, new_Q6, new_Q7]
-    refpts = [i for i in 1:length(ESR_crab)]
+    refpts = [i for i in 1:5550]
     # refpts = [35, 5533, length(ESR_crab)]
-    twi = ADtwissring(ESR_crab, 0.0, 1, refpts, changed_idx, changed_ele)
+    twi = ADtwissring(ESR_crab, 0.0, 0, refpts, changed_idx, changed_ele, E0=E0, m0=m_e)
 
     # phase41 = twi[1].dmux + twi[3].dmux - twi[2].dmux
     phase41 = twi[35].dmux + twi[end].dmux - twi[5533].dmux
     return phase41 - 2*pi
 end
-
-# function get_phase23_zero(x, RING)
-#     changed_idx = [9,13,17,23,27,31,5537]
-#     new_Q1 = KQUAD(len=RING[9].len, k1=x[1])
-#     new_Q2 = KQUAD(len=RING[13].len, k1=x[2])
-#     new_Q3 = KQUAD(len=RING[17].len, k1=x[3])
-#     new_Q4 = KQUAD(len=RING[23].len, k1=x[4])
-#     new_Q5 = KQUAD(len=RING[27].len, k1=x[5])
-#     new_Q6 = KQUAD(len=RING[31].len, k1=x[6])
-#     new_Q7 = KQUAD(len=RING[5537].len, k1=x[7])
-#     changed_ele = [new_Q1, new_Q2, new_Q3, new_Q4, new_Q5, new_Q6, new_Q7]
-#     refpts = [i for i in 1:length(RING)]
-#     twi = ADtwissring(RING, 0.0, 1, refpts, changed_idx, changed_ele)
-
-#     phase23 = twi[952].dmux - twi[916].dmux
-
-#     return phase23 - 2*pi
-# end
 
 function multi_val_op(x0, niter, step, RING)
     target = 0.01

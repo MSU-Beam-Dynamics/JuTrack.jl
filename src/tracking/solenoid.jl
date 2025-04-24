@@ -4,6 +4,11 @@ function pass!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, part
     R1 = ele.R1
     T2 = ele.T2
     R2 = ele.R2
+    if use_exact_beti == 1
+        beti = 1.0 / particles.beta
+    else
+        beti = 1.0 
+    end
     # Threads.@threads for c in 1:num_particles
     if ele.ks != 0.0
         for c in 1:num_particles
@@ -53,7 +58,7 @@ function pass!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, part
                 continue
             end
             r6 = @view r_in[(c-1)*6+1:c*6]
-            drift6!(r6, ele.len)
+            drift6!(r6, ele.len, beti)
             if check_lost(r6)
                 lost_flags[c] = 1
             end
@@ -72,6 +77,7 @@ function pass_P!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, pa
     R1 = ele.R1
     T2 = ele.T2
     R2 = ele.R2
+    beti = 1.0 / particles.beta
     if ele.ks != 0.0
         Threads.@threads for c in 1:num_particles
             if lost_flags[c] == 1
@@ -126,7 +132,7 @@ function pass_P!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, pa
             if !iszero(R1)
                 multmv!(r_in, R1)
             end
-            drift6!(r6, ele.len)
+            drift6!(r6, ele.len, beti)
             if !iszero(R2)
                 multmv!(r6, R2)
             end

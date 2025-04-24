@@ -1,4 +1,4 @@
-function QuadLinearPass_SC!(r::Array{Float64,1}, le::Float64, k1::Float64, 
+function QuadLinearPass_SC!(r::Array{Float64,1}, le::Float64, k1::Float64, beti::Float64, 
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
     RApertures::Array{Float64,1}, EApertures::Array{Float64,1},
     num_particles::Int, lost_flags::Array{Int64,1}, a::Float64, b::Float64, Nl::Int, Nm::Int, K::Float64, Nsteps::Int)
@@ -25,7 +25,7 @@ function QuadLinearPass_SC!(r::Array{Float64,1}, le::Float64, k1::Float64,
             end
 
             if iszero(k1)
-                drift6!(r6, lstep/2.0)
+                drift6!(r6, lstep/2.0, beti)
             else
                 x   = r6[1]
                 xpr = r6[2]*p_norm
@@ -77,7 +77,7 @@ function QuadLinearPass_SC!(r::Array{Float64,1}, le::Float64, k1::Float64,
             p_norm = 1.0 / (1.0 + r6[6])
     
             if iszero(k1)
-                drift6!(r6, lstep/2.0)
+                drift6!(r6, lstep/2.0, beti)
             else
                 x   = r6[1]
                 xpr = r6[2]*p_norm
@@ -137,12 +137,17 @@ function pass!(ele::QUAD_SC, r_in::Array{Float64,1}, num_particles::Int64, parti
     # num_particles: number of particles
     lost_flags = particles.lost_flag
     K = calculate_K(particles, particles.current)
-    QuadLinearPass_SC!(r_in, ele.len, ele.k1, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags,
+    if use_exact_beti == 1
+        beti = 1.0 / particles.beta
+    else
+        beti = 1.0 
+    end
+    QuadLinearPass_SC!(r_in, ele.len, ele.k1, beti, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags,
             particles.a, particles.b, particles.Nl, particles.Nm, K, ele.Nsteps)
     return nothing
 end
 
-function QuadLinearPass_SC_P!(r::Array{Float64,1}, le::Float64, k1::Float64, 
+function QuadLinearPass_SC_P!(r::Array{Float64,1}, le::Float64, k1::Float64, beti::Float64,
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
     RApertures::Array{Float64,1}, EApertures::Array{Float64,1},
     num_particles::Int, lost_flags::Array{Int64,1}, a::Float64, b::Float64, Nl::Int, Nm::Int, K::Float64, Nsteps::Int)
@@ -169,7 +174,7 @@ function QuadLinearPass_SC_P!(r::Array{Float64,1}, le::Float64, k1::Float64,
             end
 
             if iszero(k1)
-                drift6!(r6, lstep/2.0)
+                drift6!(r6, lstep/2.0, beti)
             else
                 x   = r6[1]
                 xpr = r6[2]*p_norm
@@ -221,7 +226,7 @@ function QuadLinearPass_SC_P!(r::Array{Float64,1}, le::Float64, k1::Float64,
             p_norm = 1.0 / (1.0 + r6[6])
     
             if iszero(k1)
-                drift6!(r6, lstep/2.0)
+                drift6!(r6, lstep/2.0, beti)
             else
                 x   = r6[1]
                 xpr = r6[2]*p_norm
@@ -281,7 +286,12 @@ function pass_P!(ele::QUAD_SC, r_in::Array{Float64,1}, num_particles::Int64, par
     # num_particles: number of particles
     lost_flags = particles.lost_flag
     K = calculate_K(particles, particles.current)
-    QuadLinearPass_SC!(r_in, ele.len, ele.k1, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags,
+    if use_exact_beti == 1
+        beti = 1.0 / particles.beta
+    else
+        beti = 1.0 
+    end
+    QuadLinearPass_SC!(r_in, ele.len, ele.k1, beti, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags,
             particles.a, particles.b, particles.Nl, particles.Nm, K, ele.Nsteps)
     return nothing
 end

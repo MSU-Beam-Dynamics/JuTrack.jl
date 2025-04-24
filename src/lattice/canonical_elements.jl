@@ -136,8 +136,8 @@ mutable struct KQUAD <: AbstractElement
     rad::Int64
     FringeQuadEntrance::Int64
     FringeQuadExit::Int64
-    FringeIntM0::Array{Float64,1}
-    FringeIntP0::Array{Float64,1}
+    FringeIntM0::Array{Float64,1} # ununsed
+    FringeIntP0::Array{Float64,1} # ununsed
     T1::Array{Float64,1}
     T2::Array{Float64,1}
     R1::Array{Float64,2}
@@ -732,6 +732,122 @@ function RBEND_SC(;name::String = "RBend", len::Float64 = 0.0, angle::Float64 = 
 end
 
 """
+    LBEND(;name::String = "Bend", len::Float64 = 0.0, angle::Float64 = 0.0, e1::Float64 = 0.0, e2::Float64 = 0.0, K::Float64 = 0.0,
+        fint1::Float64 = 0.0, fint2::Float64 = 0.0, FullGap::Float64 = 0.0,
+        T1::Array{Float64,1} = zeros(Float64, 6), T2::Array{Float64,1} = zeros(Float64, 6), R1::Array{Float64,2} = zeros(Float64, 6, 6), 
+        R2::Array{Float64,2} = zeros(Float64, 6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6), EApertures::Array{Float64,1} = zeros(Float64, 6))
+
+A sector bending magnet with linear map.
+Example:
+```julia
+bend = LBEND(name="B1", len=0.5, angle=0.5)
+```
+"""
+mutable struct LBEND <: AbstractElement
+    name::String
+    len::Float64
+    angle::Float64
+    e1::Float64
+    e2::Float64
+    K::Float64
+    ByError::Float64
+    fint1::Float64
+    fint2::Float64
+    FullGap::Float64
+    T1::Array{Float64,1}
+    T2::Array{Float64,1}
+    R1::Array{Float64,2}
+    R2::Array{Float64,2}
+    RApertures::Array{Float64,1}
+    EApertures::Array{Float64,1}
+    eletype::String
+
+    function LBEND(;name::String = "LBEND", len::Float64 = 0.0, angle::Float64 = 0.0, e1::Float64 = 0.0, e2::Float64 = 0.0, 
+        K::Float64 = 0.0, ByError::Float64 = 0.0, fint1::Float64 = 0.0, fint2::Float64 = 0.0, FullGap::Float64 = 0.0, 
+        T1::Array{Float64,1} = zeros(Float64, 6), T2::Array{Float64,1} = zeros(Float64, 6), 
+        R1::Array{Float64,2} = zeros(Float64, 6, 6), R2::Array{Float64,2} = zeros(Float64, 6, 6), 
+        RApertures::Array{Float64,1} = zeros(Float64, 6), EApertures::Array{Float64,1} = zeros(Float64, 6))
+        new(name, len, angle, e1, e2, K, ByError, fint1, fint2, FullGap, 
+            T1, T2, R1, R2, RApertures, EApertures, "LBEND")
+    end
+end
+
+
+mutable struct ESBEND <: AbstractElement
+    name::String
+    len::Float64
+    angle::Float64
+    e1::Float64
+    e2::Float64
+    PolynomA::Array{Float64,1}
+    PolynomB::Array{Float64,1}
+    MaxOrder::Int64
+    NumIntSteps::Int64
+    rad::Int64
+    gK::Float64
+    FringeBendEntrance::Int64
+    FringeBendExit::Int64
+    FringeQuadEntrance::Int64
+    FringeQuadExit::Int64
+    T1::Array{Float64,1}
+    T2::Array{Float64,1}
+    R1::Array{Float64,2}
+    R2::Array{Float64,2}
+    RApertures::Array{Float64,1}
+    EApertures::Array{Float64,1}
+    KickAngle::Array{Float64,1}
+    eletype::String
+
+    function ESBEND(;name::String = "ESBend", len::Float64 = 0.0, angle::Float64 = 0.0, e1::Float64 = 0.0, e2::Float64 = 0.0, 
+                    PolynomA::Array{Float64,1} = zeros(Float64, 4), PolynomB::Array{Float64,1} = zeros(Float64, 4), 
+                    MaxOrder::Int64=0, NumIntSteps::Int64 = 10, rad::Int64=0,
+                    gK::Float64 = 0.0, FringeBendEntrance::Int64 = 1, FringeBendExit::Int64 = 1, 
+                    FringeQuadEntrance::Int64 = 0, FringeQuadExit::Int64 = 0, T1::Array{Float64,1} = zeros(Float64, 6), 
+                    T2::Array{Float64,1} = zeros(Float64, 6), R1::Array{Float64,2} = zeros(Float64, 6, 6), 
+                    R2::Array{Float64,2} = zeros(Float64, 6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6), 
+                    EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{Float64,1} = zeros(Float64, 2))
+        if PolynomB[2] != 0.0
+            MaxOrder = 1
+        end
+        if PolynomB[3] != 0.0
+            MaxOrder = 2
+        end
+        if PolynomB[4] != 0.0
+            MaxOrder = 3
+        end
+        new(name, len, angle, e1, e2, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, gK, 
+            FringeBendEntrance, FringeBendExit, FringeQuadEntrance, FringeQuadExit, 
+            T1, T2, R1, R2, RApertures, EApertures, KickAngle, "ESBEND")
+    end
+end
+
+function ERBEND(;name::String = "ESBend", len::Float64 = 0.0, angle::Float64 = 0.0, 
+    PolynomA::Array{Float64,1} = zeros(Float64, 4), PolynomB::Array{Float64,1} = zeros(Float64, 4), 
+    MaxOrder::Int64=0, NumIntSteps::Int64 = 10, rad::Int64=0,
+    gK::Float64 = 0.0, FringeBendEntrance::Int64 = 1, FringeBendExit::Int64 = 1, 
+    FringeQuadEntrance::Int64 = 0, FringeQuadExit::Int64 = 0, T1::Array{Float64,1} = zeros(Float64, 6), 
+    T2::Array{Float64,1} = zeros(Float64, 6), R1::Array{Float64,2} = zeros(Float64, 6, 6), 
+    R2::Array{Float64,2} = zeros(Float64, 6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6), 
+    EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{Float64,1} = zeros(Float64, 2))
+
+    e1 = angle/2.0
+    e2 = angle/2.0
+    if PolynomB[2] != 0.0
+        MaxOrder = 1
+    end
+    if PolynomB[3] != 0.0
+        MaxOrder = 2
+    end
+    if PolynomB[4] != 0.0
+        MaxOrder = 3
+    end
+    return ESBEND(name=name, len=len, angle=angle, e1=e1, e2=e2, PolynomA=PolynomA, PolynomB=PolynomB, MaxOrder=MaxOrder, 
+                NumIntSteps=NumIntSteps, rad=rad, gK=gK, FringeBendEntrance=FringeBendEntrance, 
+                FringeBendExit=FringeBendExit, FringeQuadEntrance=FringeQuadEntrance, FringeQuadExit=FringeQuadExit, 
+                T1=T1, T2=T2, R1=R1, R2=R2, RApertures=RApertures, EApertures=EApertures, KickAngle=KickAngle)
+end
+
+"""
     RFCA(;name::String = "RFCA", len::Float64 = 0.0, volt::Float64 = 0.0, freq::Float64 = 0.0, h::Float64 = 1.0, 
         lag::Float64 = 0.0, philag::Float64 = 0.0, energy::Float64 = 0.0)
 
@@ -838,7 +954,27 @@ mutable struct SPACECHARGE <: AbstractElement
     end
 end
 
+# TRANSLATION and YROTATION are used to convert the MAD-X lattice files
+mutable struct TRANSLATION <: AbstractElement
+    name::String
+    len::Float64
+    dx::Float64
+    dy::Float64
+    ds::Float64
 
+    function TRANSLATION(;name::String = "TRANSLATION", len::Float64 = 0.0, dx::Float64 = 0.0, dy::Float64 = 0.0, ds::Float64 = 0.0)
+        new(name, len, dx, dy, ds)
+    end
+end
+
+mutable struct YROTATION <: AbstractElement
+    name::String
+    len::Float64
+    angle::Float64
+    function YROTATION(;name::String = "YROTATION", len::Float64 = 0.0, angle::Float64 = 0.0)
+        new(name, len, angle)
+    end
+end
 # non-canonical elements
 """
     QUAD(;name::String = "Quad", len::Float64 = 0.0, k1::Float64 = 0.0, rad::Int64 = 0, 

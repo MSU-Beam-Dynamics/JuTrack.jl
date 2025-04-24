@@ -1,8 +1,15 @@
-function pass_TPSA!(ele::SOLENOID, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; E0::Float64=0.0) where {T, TPS_Dim, Max_TPS_Degree}
+function pass_TPSA!(ele::SOLENOID, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; E0::Float64=0.0, m0::Float64=m_e) where {T, TPS_Dim, Max_TPS_Degree}
     T1 = ele.T1
     R1 = ele.R1
     T2 = ele.T2
     R2 = ele.R2
+    gamma = E0/m0
+    beta = sqrt(1.0 - 1.0/(gamma*gamma))
+    if use_exact_beti == 1
+        beti = 1.0 / beta
+    else
+        beti = 1.0 
+    end
     # Threads.@threads for c in 1:num_particles
     if ele.ks != 0.0
         p_norm = 1.0 / sqrt(1.0 + r_in[6]) # use linearized p_norm
@@ -40,7 +47,7 @@ function pass_TPSA!(ele::SOLENOID, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}
         if !iszero(R1)
             multmv!(r_in, R1)
         end
-        drift6!(r_in, ele.len)
+        drift6!(r_in, ele.len, beti)
         if !iszero(R2)
             multmv!(r6, R2)
         end

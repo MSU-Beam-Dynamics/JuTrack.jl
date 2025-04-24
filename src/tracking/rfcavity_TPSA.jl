@@ -12,6 +12,7 @@ function RFCavityPass!(r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le, nv, f
     # end
     C0 = 2.99792458e8  # Speed of light in vacuum
     halflength = le / 2.0
+    beti = 1.0 / beta
 
     if le == 0
         # for c in 1:num_particles
@@ -27,12 +28,12 @@ function RFCavityPass!(r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le, nv, f
             # r6 = @view r_in[(c-1)*6+1:c*6]
             # if !isnan(r6[1])
                 # drift-kick-drift
-                drift6!(r_in, halflength)
+                drift6!(r_in, halflength, beti)
 
                 # nturn = 0
                 # r_in[5] = tminus(r_in[5], tmult(nv, tsin(tminus(tmult(2*pi*freq, tdiv(tminus(r_in[6], lag), C0)), philag))))
                 r_in[6] += -nv * sin(2 * pi * freq * ((r_in[5] - lag) / C0 - (h / freq - T0) * nturn) - philag) / beta^2
-                drift6!(r_in, halflength)
+                drift6!(r_in, halflength, beti)
                 # println("rfcavity is not implemented in TPSA")
             # end
         # end
@@ -40,16 +41,21 @@ function RFCavityPass!(r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le, nv, f
     return nothing
 end
 
-function pass_TPSA!(ele::RFCA, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; E0::Float64=0.0) where {T, TPS_Dim, Max_TPS_Degree}
+function pass_TPSA!(ele::RFCA, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; E0::Float64=0.0, m0::Float64=m_e) where {T, TPS_Dim, Max_TPS_Degree}
     # ele: RFCA
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
     if ele.energy == 0
-        error("Energy is not defined for RFCA ", ele.name)
+        println("Energy is not defined for RFCA ", ele.name)
     end
+    if E0 == 0.0
+        println("Warning: beam energy is not defined")
+    end
+    println("Beam energy is assumed ", E0, " eV in the RF cavity", ", mass is ", m0, " eV")
     T0=1.0/ele.freq      # Does not matter since nturns == 0
     nv = ele.volt / ele.energy
-    beta = 1.0 # assume beta = 1
+    gamma = (E0 + m0) / m0
+    beta = sqrt(1.0 - 1.0 / gamma^2)
     RFCavityPass!(r_in, ele.len, nv, ele.freq, ele.h, ele.lag, ele.philag, 0, T0, beta)
     return nothing
 end

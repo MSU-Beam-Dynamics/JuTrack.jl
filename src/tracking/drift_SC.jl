@@ -1,4 +1,4 @@
-function DriftPass_SC!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64,1}, T2::Array{Float64,1}, 
+function DriftPass_SC!(r_in::Array{Float64,1}, le::Float64, beti::Float64, T1::Array{Float64,1}, T2::Array{Float64,1}, 
     R1::Array{Float64,2}, R2::Array{Float64, 2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, 
     num_particles::Int, lost_flags::Array{Int64,1}, a, b, Nl, Nm, K)
     # Ref [Qiang, Ji. "Differentiable self-consistent space-charge simulation for accelerator design." Physical Review Accelerators and Beams 26.2 (2023): 024601.]
@@ -17,7 +17,7 @@ function DriftPass_SC!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64,1}
             if !iszero(R1)
                 multmv!(r6, R1)
             end
-            drift6!(r6, le/2.0)
+            drift6!(r6, le/2.0, beti)
             # Misalignment at exit
             if !iszero(R2)
                 multmv!(r6, R2)
@@ -46,7 +46,7 @@ function DriftPass_SC!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64,1}
             if !iszero(R1)
                 multmv!(r6, R1)
             end
-            drift6!(r6, le/2.0)
+            drift6!(r6, le/2.0, beti)
             # Misalignment at exit
             if !iszero(R2)
                 multmv!(r6, R2)
@@ -70,8 +70,13 @@ function pass!(ele::DRIFT_SC, r_in::Array{Float64,1}, num_particles::Int64, part
     lost_flags = particles.lost_flag
     K = calculate_K(particles, particles.current)
     lstep = ele.len / ele.Nsteps
+    if use_exact_beti == 1
+        beti = 1.0 / particles.beta
+    else
+        beti = 1.0 
+    end
     for i in 1:ele.Nsteps
-        DriftPass_SC!(r_in, lstep, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags,
+        DriftPass_SC!(r_in, lstep, beti, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags,
             ele.a, ele.b, ele.Nl, ele.Nm, K)
     end
     return nothing
@@ -81,7 +86,7 @@ end
 
 ################################################################################
 # multi-threading
-function DriftPass_SC_P!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64,1}, T2::Array{Float64,1}, 
+function DriftPass_SC_P!(r_in::Array{Float64,1}, le::Float64, beti::Float64, T1::Array{Float64,1}, T2::Array{Float64,1}, 
     R1::Array{Float64,2}, R2::Array{Float64, 2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, 
     num_particles::Int, lost_flags::Array{Int64,1}, a, b, Nl, Nm, K)
 
@@ -99,7 +104,7 @@ function DriftPass_SC_P!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64,
             if !iszero(R1)
                 multmv!(r6, R1)
             end
-            drift6!(r6, le/2.0)
+            drift6!(r6, le/2.0, beti)
             # Misalignment at exit
             if !iszero(R2)
                 multmv!(r6, R2)
@@ -128,7 +133,7 @@ function DriftPass_SC_P!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64,
             if !iszero(R1)
                 multmv!(r6, R1)
             end
-            drift6!(r6, le/2.0)
+            drift6!(r6, le/2.0, beti)
             # Misalignment at exit
             if !iszero(R2)
                 multmv!(r6, R2)
@@ -152,8 +157,13 @@ function pass_P!(ele::DRIFT_SC, r_in::Array{Float64,1}, num_particles::Int64, pa
     lost_flags = particles.lost_flag
     K = calculate_K(particles, particles.current)
     lstep = ele.len / ele.Nsteps
+    if use_exact_beti == 1
+        beti = 1.0 / particles.beta
+    else
+        beti = 1.0 
+    end
     for i in 1:ele.Nsteps
-        DriftPass_SC_P!(r_in, lstep, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags,
+        DriftPass_SC_P!(r_in, lstep, beti, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags,
             ele.a, ele.b, ele.Nl, ele.Nm, K)
     end
     return nothing

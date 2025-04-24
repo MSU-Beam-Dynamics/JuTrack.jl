@@ -21,15 +21,15 @@ function addvv!(r::AbstractVector{Float64}, dr::Array{Float64,1})
     return nothing
 end
 
-function fastdrift!(r::AbstractVector{Float64}, NormL::Float64, le::Float64)
-    # similar to AT fastdrift. Provide an option to use exact Hamiltonian or linearized approximation
-    # in the loop if momentum deviation (delta) does not change
-    # such as in 4-th order symplectic integrator w/o radiation
+function fastdrift!(r::AbstractVector{Float64}, NormL::Float64, le::Float64, beti::Float64)
+    # Provide an option to use exact Hamiltonian or linearized approximation
+    # AT uses small angle approximation pz = 1 + delta. 
+    # MADX use pz = sqrt((1 + 2*delta/beta + delta^2 - px^2 - py^2).
 
     if isone(use_exact_Hamiltonian)
         r[1] += NormL * r[2]
         r[3] += NormL * r[4]
-        r[5] += NormL * (1.0 + r[6]) - le
+        r[5] += NormL * (1.0*beti + r[6]) - le*beti
     else
         r[1] += NormL * r[2]
         r[3] += NormL * r[4]
@@ -38,13 +38,13 @@ function fastdrift!(r::AbstractVector{Float64}, NormL::Float64, le::Float64)
     return nothing
 end
 
-function drift6!(r::AbstractVector{Float64}, le::Float64)
-    # similar to AT drift6. Provide an option to use exact Hamiltonian or linearized approximation
+function drift6!(r::AbstractVector{Float64}, le::Float64, beti::Float64)
+    # Provide an option to use exact Hamiltonian or linearized approximation
     # AT uses small angle approximation pz = 1 + delta. 
-    # pz = sqrt((1 + delta)^2 - px^2 - py^2) is also an option.
+    # MADX use pz = sqrt((1 + 2*delta/beta + delta^2 - px^2 - py^2).
     if isone(use_exact_Hamiltonian)
-        NormL = le / sqrt(((1.0 + r[6])^2 - r[2]^2 - r[4]^2))
-        r[5] += NormL * (1.0 + r[6]) - le
+        NormL = le / sqrt(1.0 + 2.0*r[6]*beti + r[6]^2 - r[2]^2 - r[4]^2)
+        r[5] += NormL * (1.0*beti + r[6]) - le*beti
     else
         NormL = le / (1.0 + r[6])
         r[5] += NormL * (r[2]^2 + r[4]^2) / (2.0*(1.0+r[6])) # for linearized approximation
@@ -54,7 +54,7 @@ function drift6!(r::AbstractVector{Float64}, le::Float64)
     return nothing
 end 
 
-function DriftPass!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64,1}, T2::Array{Float64,1}, 
+function DriftPass!(r_in::Array{Float64,1}, le::Float64, beti::Float64, T1::Array{Float64,1}, T2::Array{Float64,1}, 
     R1::Array{Float64,2}, R2::Array{Float64, 2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, 
     num_particles::Int, lost_flags::Array{Int64,1})
     # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
@@ -72,7 +72,7 @@ function DriftPass!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64,1}, T
                 multmv!(r6, R1)
             end
 
-            drift6!(r6, le)
+            drift6!(r6, le, beti)
 
             # Misalignment at exit
             if !iszero(R2)
@@ -102,7 +102,12 @@ This is a function to track particles through a drift element.
 """
 function pass!(ele::DRIFT, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
     lost_flags = particles.lost_flag
-    DriftPass!(r_in, ele.len, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags)
+    if use_exact_beti == 1
+        beti = 1.0 / particles.beta
+    else
+        beti = 1.0 
+    end
+    DriftPass!(r_in, ele.len, beti, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags)
     return nothing
 end
 
@@ -112,7 +117,7 @@ end
 
 ################################################################################
 # multi-threading
-function DriftPass_P!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64,1}, T2::Array{Float64,1}, 
+function DriftPass_P!(r_in::Array{Float64,1}, le::Float64, beti::Float64, T1::Array{Float64,1}, T2::Array{Float64,1}, 
     R1::Array{Float64,2}, R2::Array{Float64, 2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, 
     num_particles::Int, lost_flags::Array{Int64,1})
     Threads.@threads for c in 1:num_particles
@@ -129,7 +134,7 @@ function DriftPass_P!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64,1},
                 multmv!(r6, R1)
             end
    
-            drift6!(r6, le)
+            drift6!(r6, le, beti)
 
             # Misalignment at exit
             if !iszero(R2)
@@ -151,7 +156,12 @@ function pass_P!(ele::DRIFT, r_in::Array{Float64,1}, num_particles::Int64, parti
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
     lost_flags = particles.lost_flag
-    DriftPass_P!(r_in, ele.len, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags)
+    if use_exact_beti == 1
+        beti = 1.0 / particles.beta
+    else
+        beti = 1.0 
+    end
+    DriftPass_P!(r_in, ele.len, beti, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags)
     return nothing
 end
 

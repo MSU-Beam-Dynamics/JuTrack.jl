@@ -1,11 +1,14 @@
-# A code for extending the convergence map method based on square matrix method proposed by Li Hua Yu to 6-D space.
+# A code for extending the convergence map method based on square matrix proposed by Li Hua Yu, et al. to 6-D space.
+# This extension is based on the 4-D code of Yue Hao.
 # Code created by Jinyu Wan, 03/24/2025.
 using LinearAlgebra
 using FFTW
 using StaticArrays
+using PyCall
+np = pyimport("numpy")
 # using TimerOutputs
 # const to = TimerOutput()
-# using Infiltrator
+using Infiltrator
 function uni_transform(ind_i::Int, ind_j::Int, ratio_left::ComplexF64, ratio_right::ComplexF64,
                        mat::Matrix{ComplexF64}, leftm::Matrix{ComplexF64}, rightm::Matrix{ComplexF64})
     rightm[:, ind_j] .+= rightm[:, ind_i] * ratio_right
@@ -284,9 +287,10 @@ function sqrmat_reduction!(tpsvar)
         for ind_j in (ind_i+1):dim
             val = tpsvar.sqr_mat_omegaI[ind_i, ind_j]
             if abs(val) ≤ tpsvar.epsilon
-                tpsvar.sqr_mat_omegaI[ind_i, ind_j] = 0
+                tpsvar.sqr_mat_omegaI[ind_i, ind_j] = 0.0im
                 continue
-            elseif ind_j in deg_idxs
+            end
+            if ind_j in deg_idxs
                 continue
             end
 
@@ -306,7 +310,8 @@ function sqrmat_reduction!(tpsvar)
             if abs(val) ≤ tpsvar.epsilon
                 tpsvar.sqr_mat_omegaI[ind_i, ind_j] = 0
                 continue
-            elseif ind_i in deg_idxs
+            end
+            if ind_i in deg_idxs
                 continue
             end
 
@@ -591,7 +596,6 @@ end
 function itearation_freq(dtheta, theta0, freq, nmap, z_to_w, w_to_z; jacobian=nothing, dist_avoid_res=0.01)
     n1, n2, n3 = size(dtheta[1,:,:,:])
     t = theta0 .+ dtheta
-
     w_x = exp.(1.0im .* t[1,:,:,:])
     w_xc = conj.(w_x)
     w_y = exp.(1.0im .* t[2,:,:,:])
@@ -641,30 +645,30 @@ function itearation_freq(dtheta, theta0, freq, nmap, z_to_w, w_to_z; jacobian=no
     phiy = (-1.0im).*log.(n_wy./w_y) .- freq[2]
     phiz = (-1.0im).*log.(n_wz./w_z) .- freq[3]
 
-    phix_fft = fft(phix)
-    phiy_fft = fft(phiy)
-    phiz_fft = fft(phiz)
+    phix_fft = np.fft.fftn(phix)
+    phiy_fft = np.fft.fftn(phiy)
+    phiz_fft = np.fft.fftn(phiz)
 
     # Define a helper function similar to numpy.fft.fftfreq.
-    function fftfreq_np(n::Integer, d::Real=1.0)
-        if iseven(n)
-            freqs = vcat(
-                0:(n÷2-1),
-                -n÷2,
-                -(n÷2-1):-1
-            )
-        else
-            freqs = vcat(
-                0:((n-1)÷2),
-                -((n-1)÷2):-1
-            )
-        end
-        return freqs ./ (n*d)
-    end
+    # function fftfreq_np(n::Integer, d::Real=1.0)
+    #     if iseven(n)
+    #         freqs = vcat(
+    #             0:(n÷2-1),
+    #             -n÷2,
+    #             -(n÷2-1):-1
+    #         )
+    #     else
+    #         freqs = vcat(
+    #             0:((n-1)÷2),
+    #             -((n-1)÷2):-1
+    #         )
+    #     end
+    #     return freqs ./ (n*d)
+    # end
 
-    fl1 = fftfreq_np(n1, 1.0/n1)
-    fl2 = fftfreq_np(n2, 1.0/n2)
-    fl3 = fftfreq_np(n3, 1.0/n3)
+    fl1 = np.fft.fftfreq(n1, 1.0/n1)
+    fl2 = np.fft.fftfreq(n2, 1.0/n2)
+    fl3 = np.fft.fftfreq(n3, 1.0/n3)
 
     freq1list = [a for a in fl1, b in fl2, c in fl3]
     freq2list = [b for a in fl1, b in fl2, c in fl3]
@@ -719,15 +723,15 @@ function itearation_freq(dtheta, theta0, freq, nmap, z_to_w, w_to_z; jacobian=no
     theta_mz[1,1,1] = 0.0+0.0im
 
     dt = zeros(ComplexF64, 3, n1, n2, n3)
-    dt[1, :, :, :] = ifft(theta_mx)
-    dt[2, :, :, :] = ifft(theta_my)
-    dt[3, :, :, :] = ifft(theta_mz)
+    dt[1, :, :, :] = np.fft.ifftn(theta_mx)
+    dt[2, :, :, :] = np.fft.ifftn(theta_my)
+    dt[3, :, :, :] = np.fft.ifftn(theta_mz)
     return dt, newfreq, theta_mx, theta_my, theta_mz
 end
 
 function CMscan(transfer_map, dim, order, tunes, 
             x_min, x_max, y_min, y_max, z_min, z_max, 
-            n_x, n_y, n_z, pxini, pyini, pzini)
+            n_x, n_y, n_z, pxini, pyini, pzini, filename="CMscan.txt")
     x_vals = range(x_min, x_max, length=n_x)
     y_vals = range(y_min, y_max, length=n_y)
     z_vals = range(z_min, z_max, length=n_z)
@@ -736,7 +740,7 @@ function CMscan(transfer_map, dim, order, tunes,
 
     tunex, tuney, tunez = tunes
     freq_init = [2*pi*tunex, 2*pi*tuney, 2*pi*tunez]
-    hp, tpsMap = transfer_map(dim, order, tunes)
+    hp, tpsMap, Uinv = transfer_map(dim, order, tunes)
 
     leftvects = compute_action_angle_polynomials(hp, dim, order)
     ztow, wtoz, w0z = compute_inverse_maps(leftvects, dim, order)
@@ -786,12 +790,16 @@ function CMscan(transfer_map, dim, order, tunes,
             for iz in 1:n_z
                 start_time = time()
                 zini = z_vals[iz]
-                zxini = xini - 1.0im * pxini
-                zxcini = xini + 1.0im * pxini
-                zyini = yini - 1.0im * pyini
-                zycini = yini + 1.0im * pyini
-                zzini = zini - 1.0im * pzini
-                zzcini = zini + 1.0im * pzini
+                xmaps = [xini, pxini, yini, pyini, zini, pzini]
+                zvars = Vector{ComplexF64}(undef, 6)
+                for i in 1:6
+                    poly = 0.0im
+                    for j in 1:6
+                        poly += Uinv[i, j] * xmaps[j]
+                    end
+                    zvars[i] = poly
+                end
+                zxini, zxcini, zyini, zycini, zzini, zzcini = zvars
 
                 wxini = evaluate(wx0z, [zxini, zxcini, zyini, zycini, zzini, zzcini])
                 wyini = evaluate(wy0z, [zxini, zxcini, zyini, zycini, zzini, zzcini])
@@ -809,7 +817,7 @@ function CMscan(transfer_map, dim, order, tunes,
                 dt = zeros(ComplexF64, 3, nalpha, nbeta, ngamma)
                 freqs = copy(freq_init)
 
-                dtdiff_final = nothing
+                dtdiff_final = 1e4
                 for _ in 1:itertimes
                     dtold = copy(dt)
                     dt, freqs, _, _, _ = itearation_freq(dt, thetas, freqs, 
@@ -818,10 +826,12 @@ function CMscan(transfer_map, dim, order, tunes,
                     thetas[2, :, :, :] = bb .+ theta2ini .- dt[2, 1, 1, 1]
                     thetas[3, :, :, :] = gg .+ theta3ini .- dt[3, 1, 1, 1]
                     dtdiff = sqrt(sum(abs.(dt .- dtold).^2) / (nalpha * nbeta * ngamma))
-                    dtdiff_final = dtdiff
-                    if isnan(dtdiff_final) || dtdiff_final > 1e4
+                    if isnan(dtdiff )
                         println("NaN or large value encountered, breaking out of loop.")
                         break
+                    end
+                    if dtdiff < dtdiff_final
+                        dtdiff_final = dtdiff
                     end
                 end
                 if dtdiff_final <= 0.0
@@ -836,7 +846,7 @@ function CMscan(transfer_map, dim, order, tunes,
     end
 
     # save the convergence matrix to a file
-    open("conv_metrix.txt", "w") do f
+    open(filename, "w") do f
         for ix in 1:n_x
             for iy in 1:n_y
                 for iz in 1:n_z
@@ -846,6 +856,136 @@ function CMscan(transfer_map, dim, order, tunes,
             end
             write(f, "\n")
         end
+    end
+    return conv_metrix
+end
+
+function CMscan1(transfer_map, dim, order, tunes, 
+    x_min, x_max, y_min, y_max, z_min, z_max, 
+    n_x, n_y, n_z, pxini, pyini, pzini, filename="conv_metric.txt")
+    x_vals = range(x_min, x_max, length=n_x)
+    y_vals = range(y_min, y_max, length=n_y)
+    z_vals = range(z_min, z_max, length=n_z)
+
+    conv_metrix = zeros(n_x, n_y, n_z)
+
+    tunex, tuney, tunez = tunes
+    freq_init = [2*pi*tunex, 2*pi*tuney, 2*pi*tunez]
+    hp, tpsMap, twiss = transfer_map(dim, order, tunes)
+    alphax, betax, gammax, phix = twiss.horizontal
+    alphay, betay, gammay, phiy = twiss.vertical
+    alphaz, betaz, gammaz, phiz = twiss.longitudinal
+
+    leftvects = compute_action_angle_polynomials(hp, dim, order)
+    ztow, wtoz, w0z = compute_inverse_maps(leftvects, dim, order)
+
+    N = 4 * dim * dim
+    wlist = Vector{PolyEvaluator{ComplexF64,2*dim}}(undef, N)
+    idx = 1
+
+    for i in 1:dim
+    tps = CTPS(0.0im, 2*dim, order)
+    tps.map .= leftvects[i]
+
+    for ct in (tps, conjugate(tps))
+        for j in 1:(2*dim)
+            wlist[idx] = PolyEvaluator(derivative(ct, j, 1))
+            idx += 1
+        end
+    end
+    end
+
+    nalpha, nbeta, ngamma = 16, 16, 16
+
+    # Create ranges that mimic np.linspace(0, 2π, num, endpoint=false)
+    alphas = range(0, step=2π/nalpha, length=nalpha)
+    betas  = range(0, step=2π/nbeta, length=nbeta)
+    gammas = range(0, step=2π/ngamma, length=ngamma)
+
+    # Build 3D arrays using comprehensions
+    aa = [a for a in alphas, b in betas, g in gammas]
+    bb = [b for a in alphas, b in betas, g in gammas]
+    gg = [g for a in alphas, b in betas, g in gammas]
+
+    wx0z = CTPS(0.0im, 2*dim, order)
+    wy0z = CTPS(0.0im, 2*dim, order)
+    wz0z = CTPS(0.0im, 2*dim, order)
+    wx0z.map .= leftvects[1]
+    wy0z.map .= leftvects[2]
+    wz0z.map .= leftvects[3]
+    wx0z = PolyEvaluator(wx0z)
+    wy0z = PolyEvaluator(wy0z)
+    wz0z = PolyEvaluator(wz0z)
+    itertimes = 10
+    for ix in 1:n_x
+    xini = x_vals[ix]
+    for iy in 1:n_y
+        yini = y_vals[iy]
+        for iz in 1:n_z
+            start_time = time()
+            zini = z_vals[iz]
+            zxini = xini/sqrt(betax) - 1.0im * alphax * xini / sqrt(betax) - 1.0im * pxini * sqrt(betax)
+            zxcini = xini/sqrt(betax) + 1.0im * alphax * xini / sqrt(betax) + 1.0im * pxini * sqrt(betax)
+            zyini = yini/sqrt(betay) - 1.0im * alphay * yini / sqrt(betay) - 1.0im * pyini * sqrt(betay)
+            zycini = yini/sqrt(betay) + 1.0im * alphay * yini / sqrt(betay) + 1.0im * pyini * sqrt(betay)
+            zzini = zini/sqrt(betaz) - 1.0im * alphaz * zini / sqrt(betaz) - 1.0im * pzini * sqrt(betaz)
+            zzcini = zini/sqrt(betaz) + 1.0im * alphaz * zini / sqrt(betaz) + 1.0im * pzini * sqrt(betaz)
+
+            wxini = evaluate(wx0z, [zxini, zxcini, zyini, zycini, zzini, zzcini])
+            wyini = evaluate(wy0z, [zxini, zxcini, zyini, zycini, zzini, zzcini])
+            wzini = evaluate(wz0z, [zxini, zxcini, zyini, zycini, zzini, zzcini])
+
+            theta1ini = -1.0im * log(wxini)
+            theta2ini = -1.0im * log(wyini)
+            theta3ini = -1.0im * log(wzini)
+
+            thetas = zeros(ComplexF64, 3, nalpha, nbeta, ngamma)
+            thetas[1, :, :, :] .= theta1ini .+ aa
+            thetas[2, :, :, :] .= theta2ini .+ bb
+            thetas[3, :, :, :] .= theta3ini .+ gg
+
+            dt = zeros(ComplexF64, 3, nalpha, nbeta, ngamma)
+            freqs = copy(freq_init)
+
+            dtdiff_final = 1e4
+            for _ in 1:itertimes
+                dtold = copy(dt)
+                dt, freqs, _, _, _ = itearation_freq(dt, thetas, freqs, 
+                                                    tpsMap, ztow, wtoz, jacobian=wlist)
+                thetas[1, :, :, :] = aa .+ theta1ini .- dt[1, 1, 1, 1]
+                thetas[2, :, :, :] = bb .+ theta2ini .- dt[2, 1, 1, 1]
+                thetas[3, :, :, :] = gg .+ theta3ini .- dt[3, 1, 1, 1]
+                dtdiff = sqrt(sum(abs.(dt .- dtold).^2) / (nalpha * nbeta * ngamma))
+                if isnan(dtdiff )
+                    println("NaN or large value encountered, breaking out of loop.")
+                    break
+                end
+                if dtdiff < dtdiff_final
+                    dtdiff_final = dtdiff
+                end
+            end
+            if dtdiff_final <= 0.0
+                conv_metrix[ix, iy, iz] = -30
+            else
+                conv_metrix[ix, iy, iz] = log10(dtdiff_final)
+            end
+            end_time = time()
+            println("Time taken for (x, y, z) = ($xini, $yini, $zini): $(end_time - start_time) seconds")
+        end
+    end
+    end
+
+    # save the convergence matrix to a file
+    open(filename, "w") do f
+    for ix in 1:n_x
+        for iy in 1:n_y
+            for iz in 1:n_z
+                write(f, "$(conv_metrix[ix, iy, iz]) ")
+            end
+            write(f, "\n")
+        end
+        write(f, "\n")
+    end
     end
     return conv_metrix
 end

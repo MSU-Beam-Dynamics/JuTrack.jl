@@ -1,4 +1,4 @@
-function BendSymplecticPassRad!(r::Array{Float64,1}, le::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function BendSymplecticPassRad_SC!(r::Array{Float64,1}, le::Float64, beti::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_steps::Int, entrance_angle::Float64, exit_angle::Float64, FringeBendEntrance::Int, FringeBendExit::Int,
     fint1::Float64, fint2::Float64, gap::Float64, FringeQuadEntrance::Int, FringeQuadExit::Int,
     fringeIntM0::Array{Float64,1}, fringeIntP0::Array{Float64,1}, T1::Array{Float64,1}, T2::Array{Float64,1}, 
@@ -63,13 +63,13 @@ function BendSymplecticPassRad!(r::Array{Float64,1}, le::Float64, irho::Float64,
 
                 # Integrator
                 for m in 1:num_int_steps
-                    drift6!(r6, L1)
-                    bndthinkickrad!(r6, A, B, K1, irho, E0, max_order)
-                    drift6!(r6, L2)
-                    bndthinkickrad!(r6, A, B, K2, irho, E0, max_order)
-                    drift6!(r6, L2)
-                    bndthinkickrad!(r6, A, B, K1, irho, E0, max_order)
-                    drift6!(r6, L1)
+                    drift6!(r6, L1, beti)
+                    bndthinkickrad!(r6, A, B, K1, irho, E0, max_order, beti)
+                    drift6!(r6, L2, beti)
+                    bndthinkickrad!(r6, A, B, K2, irho, E0, max_order, beti)
+                    drift6!(r6, L2, beti)
+                    bndthinkickrad!(r6, A, B, K1, irho, E0, max_order, beti)
+                    drift6!(r6, L1, beti)
                 end
 
                 if check_lost(r6)
@@ -109,13 +109,13 @@ function BendSymplecticPassRad!(r::Array{Float64,1}, le::Float64, irho::Float64,
 
                 # Integrator
                 for m in 1:num_int_steps
-                    drift6!(r6, L1)
-                    bndthinkickrad!(r6, A, B, K1, irho, E0, max_order)
-                    drift6!(r6, L2)
-                    bndthinkickrad!(r6, A, B, K2, irho, E0, max_order)
-                    drift6!(r6, L2)
-                    bndthinkickrad!(r6, A, B, K1, irho, E0, max_order)
-                    drift6!(r6, L1)
+                    drift6!(r6, L1, beti)
+                    bndthinkickrad!(r6, A, B, K1, irho, E0, max_order, beti)
+                    drift6!(r6, L2, beti)
+                    bndthinkickrad!(r6, A, B, K2, irho, E0, max_order, beti)
+                    drift6!(r6, L2, beti)
+                    bndthinkickrad!(r6, A, B, K1, irho, E0, max_order, beti)
+                    drift6!(r6, L1, beti)
                 end
                 
                 if step == Nsteps
@@ -153,7 +153,7 @@ function BendSymplecticPassRad!(r::Array{Float64,1}, le::Float64, irho::Float64,
     return nothing
 end
 
-function BendSymplecticPass_SC!(r::Array{Float64,1}, le::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function BendSymplecticPass_SC!(r::Array{Float64,1}, le::Float64, beti::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_steps::Int, entrance_angle::Float64, exit_angle::Float64, FringeBendEntrance::Int, FringeBendExit::Int,
     fint1::Float64, fint2::Float64, gap::Float64, FringeQuadEntrance::Int, FringeQuadExit::Int,
     fringeIntM0::Array{Float64,1}, fringeIntP0::Array{Float64,1}, T1::Array{Float64,1}, T2::Array{Float64,1}, 
@@ -197,8 +197,6 @@ function BendSymplecticPass_SC!(r::Array{Float64,1}, le::Float64, irho::Float64,
             end
             r6 = @view r[(c-1)*6+1:c*6]
             if !isnan(r6[1])
-                NormL1 = L1 / (1.0 + r6[6])
-                NormL2 = L2 / (1.0 + r6[6])
                 
                 if step == 1
                     # Misalignment at entrance
@@ -224,13 +222,13 @@ function BendSymplecticPass_SC!(r::Array{Float64,1}, le::Float64, irho::Float64,
     
                 # Integrator
                 for m in 1:num_int_steps
-                    fastdrift!(r6, NormL1, L1)
-                    bndthinkick!(r6, A, B, K1, irho, max_order)
-                    fastdrift!(r6, NormL2, L2)
-                    bndthinkick!(r6, A, B, K2, irho, max_order)
-                    fastdrift!(r6, NormL2, L2)
-                    bndthinkick!(r6, A, B, K1, irho, max_order)
-                    fastdrift!(r6, NormL1, L1)
+                    drift6!(r6, L1, beti)
+                    bndthinkick!(r6, A, B, K1, irho, max_order, beti)
+                    drift6!(r6, L2, beti)
+                    bndthinkick!(r6, A, B, K2, irho, max_order, beti)
+                    drift6!(r6, L2, beti)
+                    bndthinkick!(r6, A, B, K1, irho, max_order, beti)
+                    drift6!(r6, L1, beti)
                 end
 
                 if check_lost(r6)
@@ -246,18 +244,16 @@ function BendSymplecticPass_SC!(r::Array{Float64,1}, le::Float64, irho::Float64,
                 continue
             end
             r6 = @view r[(c-1)*6+1:c*6]
-            NormL1 = L1 / (1.0 + r6[6])
-            NormL2 = L2 / (1.0 + r6[6])
-            
+
             # Integrator
             for m in 1:num_int_steps
-                fastdrift!(r6, NormL1, L1)
-                bndthinkick!(r6, A, B, K1, irho, max_order)
-                fastdrift!(r6, NormL2, L2)
-                bndthinkick!(r6, A, B, K2, irho, max_order)
-                fastdrift!(r6, NormL2, L2)
-                bndthinkick!(r6, A, B, K1, irho, max_order)
-                fastdrift!(r6, NormL1, L1)
+                drift6!(r6, L1, beti)
+                bndthinkick!(r6, A, B, K1, irho, max_order, beti)
+                drift6!(r6, L2, beti)
+                bndthinkick!(r6, A, B, K2, irho, max_order, beti)
+                drift6!(r6, L2, beti)
+                bndthinkick!(r6, A, B, K1, irho, max_order, beti)
+                drift6!(r6, L1, beti)
             end
 
             if step == Nsteps
@@ -302,8 +298,13 @@ function pass!(ele::SBEND_SC, r_in::Array{Float64,1}, num_particles::Int64, part
     irho = ele.angle / ele.len
     K = calculate_K(particles, particles.current)
     E0 = particles.energy
+    if use_exact_beti == 1
+        beti = 1.0 / particles.beta
+    else
+        beti = 1.0 
+    end
     if ele.rad == 0
-        BendSymplecticPass_SC!(r_in, ele.len, irho, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
+        BendSymplecticPass_SC!(r_in, ele.len, beti, irho, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
             ele.e1, ele.e2,
             ele.FringeBendEntrance, ele.FringeBendExit,
             ele.fint1, ele.fint2, ele.gap,
@@ -312,7 +313,7 @@ function pass!(ele::SBEND_SC, r_in::Array{Float64,1}, num_particles::Int64, part
             ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures,
             ele.KickAngle, num_particles, lost_flags, ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
     else
-        BendSymplecticPassRad_SC!(r_in, ele.len, irho, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
+        BendSymplecticPassRad_SC!(r_in, ele.len, beti, irho, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
             ele.e1, ele.e2,
             ele.FringeBendEntrance, ele.FringeBendExit,
             ele.fint1, ele.fint2, ele.gap,
@@ -326,7 +327,7 @@ end
 
 ######################
 # multi-threading
-function BendSymplecticPassRad_P_SC!(r::Array{Float64,1}, le::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function BendSymplecticPassRad_P_SC!(r::Array{Float64,1}, le::Float64, beti::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_steps::Int, entrance_angle::Float64, exit_angle::Float64, FringeBendEntrance::Int, FringeBendExit::Int,
     fint1::Float64, fint2::Float64, gap::Float64, FringeQuadEntrance::Int, FringeQuadExit::Int,
     fringeIntM0::Array{Float64,1}, fringeIntP0::Array{Float64,1}, T1::Array{Float64,1}, T2::Array{Float64,1}, 
@@ -391,13 +392,13 @@ function BendSymplecticPassRad_P_SC!(r::Array{Float64,1}, le::Float64, irho::Flo
 
                 # Integrator
                 for m in 1:num_int_steps
-                    drift6!(r6, L1)
-                    bndthinkickrad!(r6, A, B, K1, irho, E0, max_order)
-                    drift6!(r6, L2)
-                    bndthinkickrad!(r6, A, B, K2, irho, E0, max_order)
-                    drift6!(r6, L2)
-                    bndthinkickrad!(r6, A, B, K1, irho, E0, max_order)
-                    drift6!(r6, L1)
+                    drift6!(r6, L1,beti)
+                    bndthinkickrad!(r6, A, B, K1, irho, E0, max_order, beti)
+                    drift6!(r6, L2, beti)
+                    bndthinkickrad!(r6, A, B, K2, irho, E0, max_order, beti)
+                    drift6!(r6, L2, beti)
+                    bndthinkickrad!(r6, A, B, K1, irho, E0, max_order, beti)
+                    drift6!(r6, L1, beti)
                 end
 
                 if check_lost(r6)
@@ -437,13 +438,13 @@ function BendSymplecticPassRad_P_SC!(r::Array{Float64,1}, le::Float64, irho::Flo
 
                 # Integrator
                 for m in 1:num_int_steps
-                    drift6!(r6, L1)
-                    bndthinkickrad!(r6, A, B, K1, irho, E0, max_order)
-                    drift6!(r6, L2)
-                    bndthinkickrad!(r6, A, B, K2, irho, E0, max_order)
-                    drift6!(r6, L2)
-                    bndthinkickrad!(r6, A, B, K1, irho, E0, max_order)
-                    drift6!(r6, L1)
+                    drift6!(r6, L1, beti)
+                    bndthinkickrad!(r6, A, B, K1, irho, E0, max_order, beti)
+                    drift6!(r6, L2, beti)
+                    bndthinkickrad!(r6, A, B, K2, irho, E0, max_order, beti)
+                    drift6!(r6, L2, beti)
+                    bndthinkickrad!(r6, A, B, K1, irho, E0, max_order, beti)
+                    drift6!(r6, L1, beti)
                 end
                 
                 if step == Nsteps
@@ -481,7 +482,7 @@ function BendSymplecticPassRad_P_SC!(r::Array{Float64,1}, le::Float64, irho::Flo
     return nothing
 end
 
-function BendSymplecticPass_P_SC!(r::Array{Float64,1}, le::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function BendSymplecticPass_P_SC!(r::Array{Float64,1}, le::Float64, beti::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_steps::Int, entrance_angle::Float64, exit_angle::Float64, FringeBendEntrance::Int, FringeBendExit::Int,
     fint1::Float64, fint2::Float64, gap::Float64, FringeQuadEntrance::Int, FringeQuadExit::Int,
     fringeIntM0::Array{Float64,1}, fringeIntP0::Array{Float64,1}, T1::Array{Float64,1}, T2::Array{Float64,1}, 
@@ -525,8 +526,6 @@ function BendSymplecticPass_P_SC!(r::Array{Float64,1}, le::Float64, irho::Float6
             end
             r6 = @view r[(c-1)*6+1:c*6]
             if !isnan(r6[1])
-                NormL1 = L1 / (1.0 + r6[6])
-                NormL2 = L2 / (1.0 + r6[6])
                 
                 if step == 1
                     # Misalignment at entrance
@@ -552,13 +551,13 @@ function BendSymplecticPass_P_SC!(r::Array{Float64,1}, le::Float64, irho::Float6
     
                 # Integrator
                 for m in 1:num_int_steps
-                    fastdrift!(r6, NormL1, L1)
-                    bndthinkick!(r6, A, B, K1, irho, max_order)
-                    fastdrift!(r6, NormL2, L2)
-                    bndthinkick!(r6, A, B, K2, irho, max_order)
-                    fastdrift!(r6, NormL2, L2)
-                    bndthinkick!(r6, A, B, K1, irho, max_order)
-                    fastdrift!(r6, NormL1, L1)
+                    drift6!(r6, L1, beti)
+                    bndthinkick!(r6, A, B, K1, irho, max_order, beti)
+                    drift6!(r6,L2, beti)
+                    bndthinkick!(r6, A, B, K2, irho, max_order,beti)
+                    drift6!(r6, L2, beti)
+                    bndthinkick!(r6, A, B, K1, irho, max_order,beti)
+                    drift6!(r6, L1, beti)
                 end
 
                 if check_lost(r6)
@@ -574,18 +573,16 @@ function BendSymplecticPass_P_SC!(r::Array{Float64,1}, le::Float64, irho::Float6
                 continue
             end
             r6 = @view r[(c-1)*6+1:c*6]
-            NormL1 = L1 / (1.0 + r6[6])
-            NormL2 = L2 / (1.0 + r6[6])
-            
+
             # Integrator
             for m in 1:num_int_steps
-                fastdrift!(r6, NormL1, L1)
-                bndthinkick!(r6, A, B, K1, irho, max_order)
-                fastdrift!(r6, NormL2, L2)
-                bndthinkick!(r6, A, B, K2, irho, max_order)
-                fastdrift!(r6, NormL2, L2)
-                bndthinkick!(r6, A, B, K1, irho, max_order)
-                fastdrift!(r6, NormL1, L1)
+                drift6!(r6, L1, beti)
+                bndthinkick!(r6, A, B, K1, irho, max_order,beti)
+                drift6!(r6, L2, beti)
+                bndthinkick!(r6, A, B, K2, irho, max_order,beti)
+                drift6!(r6, L2, beti)
+                bndthinkick!(r6, A, B, K1, irho, max_order,beti)
+                drift6!(r6, L1, beti)
             end
 
             if step == Nsteps
@@ -629,8 +626,13 @@ function pass_P!(ele::SBEND_SC, r_in::Array{Float64,1}, num_particles::Int64, pa
     irho = ele.angle / ele.len
     E0 = particles.energy
     K = calculate_K(particles, particles.current)
+    if use_exact_beti == 1
+        beti = 1.0 / particles.beta
+    else
+        beti = 1.0 
+    end
     if ele.rad == 0
-        BendSymplecticPass_P_SC!(r_in, ele.len, irho, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
+        BendSymplecticPass_P_SC!(r_in, ele.len, beti, irho, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
             ele.e1, ele.e2,
             ele.FringeBendEntrance, ele.FringeBendExit,
             ele.fint1, ele.fint2, ele.gap,
@@ -639,7 +641,7 @@ function pass_P!(ele::SBEND_SC, r_in::Array{Float64,1}, num_particles::Int64, pa
             ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures,
             ele.KickAngle, num_particles, lost_flags, ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
     else
-        BendSymplecticPassRad_P_SC!(r_in, ele.len, irho, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
+        BendSymplecticPassRad_P_SC!(r_in, ele.len, beti, irho, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
             ele.e1, ele.e2,
             ele.FringeBendEntrance, ele.FringeBendExit,
             ele.fint1, ele.fint2, ele.gap,

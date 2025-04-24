@@ -1,4 +1,4 @@
-function QuadLinearPass!(r::Array{Float64,1}, le::Float64, k1::Float64, 
+function QuadLinearPass!(r::Array{Float64,1}, le::Float64, k1::Float64, beti::Float64,
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
     RApertures::Array{Float64,1}, EApertures::Array{Float64,1},
     num_particles::Int, lost_flags::Array{Int64,1})
@@ -14,7 +14,7 @@ function QuadLinearPass!(r::Array{Float64,1}, le::Float64, k1::Float64,
             p_norm = 1.0 / (1.0 + r6[6])
 
             if iszero(k1)
-                drift6!(r6, le)
+                drift6!(r6, le, beti)
             else
                 # Misalignment at entrance
                 if !iszero(T1)
@@ -79,12 +79,17 @@ function pass!(ele::QUAD, r_in::Array{Float64,1}, num_particles::Int64, particle
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
     lost_flags = particles.lost_flag
-    QuadLinearPass!(r_in, ele.len, ele.k1, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags)
+    if use_exact_beti == 1
+        beti = 1.0 / particles.beta
+    else
+        beti = 1.0 
+    end
+    QuadLinearPass!(r_in, ele.len, ele.k1, beti, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags)
     
     return nothing
 end
 
-function QuadLinearPass_P!(r::Array{Float64,1}, le::Float64, k1::Float64, 
+function QuadLinearPass_P!(r::Array{Float64,1}, le::Float64, k1::Float64, beti::Float64,
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
     RApertures::Array{Float64,1}, EApertures::Array{Float64,1},
     num_particles::Int, lost_flags::Array{Int64,1})
@@ -100,7 +105,7 @@ function QuadLinearPass_P!(r::Array{Float64,1}, le::Float64, k1::Float64,
             p_norm = 1.0 / (1.0 + r6[6])
 
             if iszero(k1)
-                drift6!(r6, le)
+                drift6!(r6, le, beti)
             else
                 # Misalignment at entrance
                 if !iszero(T1)
@@ -165,7 +170,12 @@ function pass_P!(ele::QUAD, r_in::Array{Float64,1}, num_particles::Int64, partic
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
     lost_flags = particles.lost_flag
-    QuadLinearPass_P!(r_in, ele.len, ele.k1, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags)
+    if use_exact_beti == 1
+        beti = 1.0 / particles.beta
+    else
+        beti = 1.0 
+    end
+    QuadLinearPass_P!(r_in, ele.len, ele.k1, beti, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags)
     
     return nothing
 end
@@ -174,13 +184,13 @@ end
 # TPSA
 ###############################
 
-function QuadLinearPass!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le::Float64, k1::Float64, 
+function QuadLinearPass!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le::Float64, k1::Float64, beti::Float64,
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}) where {T, TPS_Dim, Max_TPS_Degree}
 
     p_norm = 1.0 / (1.0 + r[6])
 
     if iszero(k1)
-        drift6!(r, le)
+        drift6!(r, le, beti)
     else
         # Misalignment at entrance
         if !iszero(T1)
@@ -236,11 +246,18 @@ function QuadLinearPass!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le::Float6
     return nothing
 end
 
-function pass_TPSA!(ele::QUAD, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; E0::Float64=0.0) where {T, TPS_Dim, Max_TPS_Degree}
+function pass_TPSA!(ele::QUAD, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; E0::Float64=0.0, m0::Float64=m_e) where {T, TPS_Dim, Max_TPS_Degree}
     # ele: KQUAD
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
-    QuadLinearPass!(r_in, ele.len, ele.k1, ele.T1, ele.T2, ele.R1, ele.R2)
+    gamma = E0 / m0
+    beta = sqrt(1 - 1/gamma^2)
+    if use_exact_beti == 1
+        beti = 1.0 / beta
+    else
+        beti = 1.0 
+    end
+    QuadLinearPass!(r_in, ele.len, ele.k1, beti, ele.T1, ele.T2, ele.R1, ele.R2)
     
     return nothing
 end

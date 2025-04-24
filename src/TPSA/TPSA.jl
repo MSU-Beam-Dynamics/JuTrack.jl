@@ -253,7 +253,7 @@ end
 # end
 
 # Overloaded operations
-import Base: +, -, *, /, sin, cos, tan, sinh, cosh, asin, acos, sqrt, ^, inv, exp, log
+import Base: +, -, *, /, sin, cos, tan, sinh, cosh, asin, acos, atan, sqrt, ^, inv, exp, log
 
 # +
 function +(ctps1::CTPS{T, TPS_Dim, Max_TPS_Degree}, ctps2::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
@@ -609,6 +609,12 @@ end
 # tangent
 function tan(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
     return sin(ctps) / cos(ctps)
+end
+
+# acrtan
+function atan(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
+    #      atan(x) = asin( x / sqrt(1 + x^2) )
+    return asin( ctps / sqrt(one(T) + ctps*ctps) )
 end
 
 # hyperbolic sin

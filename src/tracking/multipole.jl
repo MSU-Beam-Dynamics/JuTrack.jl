@@ -50,9 +50,9 @@ function strthinkick!(r::AbstractVector{Float64}, A, B, L, max_order)
     ImSum = A[max_order + 1]
     ReSumTemp = 0.0
 
-    for i in reverse(1:max_order)
-        ReSumTemp = ReSum * r[1] - ImSum * r[3] + B[i]
-        ImSum = ImSum * r[1] + ReSum * r[3] + A[i]
+    for i in max_order-1: -1: 0
+        ReSumTemp = ReSum * r[1] - ImSum * r[3] + B[i+1]
+        ImSum = ImSum * r[1] + ReSum * r[3] + A[i+1]
         ReSum = ReSumTemp
     end
 
@@ -62,7 +62,7 @@ function strthinkick!(r::AbstractVector{Float64}, A, B, L, max_order)
 end
 
 
-function StrMPoleSymplectic4Pass!(r::Array{Float64,1}, le::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function StrMPoleSymplectic4Pass!(r::Array{Float64,1}, le::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_step::Int, 
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
     fringeIntM0::Array{Float64,1},  # I0m/K1, I1m/K1, I2m/K1, I3m/K1, Lambda2m/K1 
@@ -83,16 +83,16 @@ function StrMPoleSymplectic4Pass!(r::Array{Float64,1}, le::Float64, A::Array{Flo
     K1 = SL*KICK1
     K2 = SL*KICK2
 
-    if FringeQuadEntrance==2 #&& !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
-        useLinFrEleEntrance = 1
-    else
-        useLinFrEleEntrance = 0
-    end
-    if FringeQuadExit==2 #&& !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
-        useLinFrEleExit = 1
-    else
-        useLinFrEleExit = 0
-    end
+    # if FringeQuadEntrance==2 #&& !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
+    #     useLinFrEleEntrance = 1
+    # else
+    #     useLinFrEleEntrance = 0
+    # end
+    # if FringeQuadExit==2 #&& !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
+    #     useLinFrEleExit = 1
+    # else
+    #     useLinFrEleExit = 0
+    # end
 
     if le > 0
         B[1] -= sin(KickAngle[1])/le
@@ -104,8 +104,6 @@ function StrMPoleSymplectic4Pass!(r::Array{Float64,1}, le::Float64, A::Array{Flo
         end
         r6 = @view r[(c-1)*6+1:c*6]
         if !isnan(r6[1])
-            NormL1 = L1 / (1.0 + r6[6])
-            NormL2 = L2 / (1.0 + r6[6])
             # Misalignment at entrance
             if !iszero(T1)
                 addvv!(r6, T1)
@@ -114,31 +112,38 @@ function StrMPoleSymplectic4Pass!(r::Array{Float64,1}, le::Float64, A::Array{Flo
                 multmv!(r6, R1)
             end
 
-            if FringeQuadEntrance != 0 && B[2] != 0
-                if useLinFrEleEntrance == 1
-                    linearQuadFringeElegantEntrance!(r6, B[2], fringeIntM0, fringeIntP0)
-                else
-                    QuadFringePassP!(r6, B[2])
-                end
+            # if FringeQuadEntrance != 0 && B[2] != 0
+            #     if useLinFrEleEntrance == 1
+            #         linearQuadFringeElegantEntrance!(r6, B[2], fringeIntM0, fringeIntP0)
+            #     else
+            #         QuadFringePassP!(r6, B[2])
+            #     end
+            # end
+
+            if FringeQuadEntrance != 0 
+                multipole_fringe!(r6, le, A, B, max_order, 1.0, 1, beti)
             end
 
             # Integrator
             for m in 1:num_int_step
-                fastdrift!(r6, NormL1, L1)
+                drift6!(r6, L1, beti)
                 strthinkick!(r6, A, B, K1, max_order)
-                fastdrift!(r6, NormL2, L2)
+                drift6!(r6, L2, beti)
                 strthinkick!(r6, A, B, K2, max_order)
-                fastdrift!(r6, NormL2, L2)
+                drift6!(r6, L2, beti)
                 strthinkick!(r6, A, B, K1, max_order)
-                fastdrift!(r6, NormL1, L1)
+                drift6!(r6, L1, beti)
             end
 
-            if FringeQuadExit != 0 && B[2] != 0
-                if useLinFrEleExit == 1
-                    linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
-                else
-                    QuadFringePassN!(r6, B[2])
-                end
+            # if FringeQuadExit != 0 && B[2] != 0
+            #     if useLinFrEleExit == 1
+            #         linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
+            #     else
+            #         QuadFringePassN!(r6, B[2])
+            #     end
+            # end
+            if FringeQuadExit != 0
+                multipole_fringe!(r6, le, A, B, max_order, -1.0, 1, beti)
             end
 
             # Misalignment at exit
@@ -161,7 +166,7 @@ function StrMPoleSymplectic4Pass!(r::Array{Float64,1}, le::Float64, A::Array{Flo
     return nothing
 end
 
-function StrMPoleSymplectic4RadPass!(r::Array{Float64,1}, le::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function StrMPoleSymplectic4RadPass!(r::Array{Float64,1}, le::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_step::Int, 
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
     fringeIntM0::Array{Float64,1},  # I0m/K1, I1m/K1, I2m/K1, I3m/K1, Lambda2m/K1 
@@ -182,16 +187,16 @@ function StrMPoleSymplectic4RadPass!(r::Array{Float64,1}, le::Float64, A::Array{
     K1 = SL*KICK1
     K2 = SL*KICK2
 
-    if FringeQuadEntrance==2# && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
-        useLinFrEleEntrance = 1
-    else
-        useLinFrEleEntrance = 0
-    end
-    if FringeQuadExit==2#&& !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
-        useLinFrEleExit = 1
-    else
-        useLinFrEleExit = 0
-    end
+    # if FringeQuadEntrance==2# && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
+    #     useLinFrEleEntrance = 1
+    # else
+    #     useLinFrEleEntrance = 0
+    # end
+    # if FringeQuadExit==2#&& !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
+    #     useLinFrEleExit = 1
+    # else
+    #     useLinFrEleExit = 0
+    # end
 
     if le > 0
         B[1] -= sin(KickAngle[1])/le
@@ -211,31 +216,37 @@ function StrMPoleSymplectic4RadPass!(r::Array{Float64,1}, le::Float64, A::Array{
                 multmv!(r6, R1)
             end
 
-            if FringeQuadEntrance != 0 && B[2] != 0
-                if useLinFrEleEntrance == 1
-                    linearQuadFringeElegantEntrance!(r6, B[2], fringeIntM0, fringeIntP0)
-                else
-                    QuadFringePassP!(r6, B[2])
-                end
+            # if FringeQuadEntrance != 0 && B[2] != 0
+            #     if useLinFrEleEntrance == 1
+            #         linearQuadFringeElegantEntrance!(r6, B[2], fringeIntM0, fringeIntP0)
+            #     else
+            #         QuadFringePassP!(r6, B[2])
+            #     end
+            # end
+            if FringeQuadEntrance != 0 
+                multipole_fringe!(r6, le, A, B, max_order, 1.0, 1, beti)
             end
 
             # Integrator
             for m in 1:num_int_step
-                drift6!(r6, L1)
+                drift6!(r6, L1, beti)
                 strthinkickrad!(r6, A, B, K1, E0, max_order)
-                drift6!(r6, L2)
+                drift6!(r6, L2, beti)
                 strthinkickrad!(r6, A, B, K2, E0, max_order)
-                drift6!(r6, L2)
+                drift6!(r6, L2, beti)
                 strthinkickrad!(r6, A, B, K1, E0, max_order)
-                drift6!(r6, L1)
+                drift6!(r6, L1, beti)
             end
 
-            if FringeQuadExit != 0 && B[2] != 0
-                if useLinFrEleExit == 1
-                    linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
-                else
-                    QuadFringePassN!(r6, B[2])
-                end
+            # if FringeQuadExit != 0 && B[2] != 0
+            #     if useLinFrEleExit == 1
+            #         linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
+            #     else
+            #         QuadFringePassN!(r6, B[2])
+            #     end
+            # end
+            if FringeQuadExit != 0
+                multipole_fringe!(r6, le, A, B, max_order, -1.0, 1, beti)
             end
 
             # Misalignment at exit
@@ -265,14 +276,19 @@ function pass!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, particl
     lost_flags = particles.lost_flag
     PolynomB = zeros(4)
     E0 = particles.energy
+    if use_exact_beti == 1
+        beti = 1.0 / particles.beta
+    else
+        beti = 1.0 
+    end
     if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
         PolynomB[2] = ele.k1
         if ele.rad == 0
-            StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
-            StrMPoleSymplectic4RadPass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            StrMPoleSymplectic4RadPass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
@@ -282,11 +298,11 @@ function pass!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, particl
         PolynomB[3] = ele.PolynomB[3] / 2.0
         PolynomB[4] = ele.PolynomB[4] / 6.0
         if ele.rad == 0
-            StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
-            StrMPoleSymplectic4RadPass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            StrMPoleSymplectic4RadPass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
@@ -301,14 +317,19 @@ function pass!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, particl
     lost_flags = particles.lost_flag
     PolynomB = zeros(4)
     E0 = particles.energy
+    if use_exact_beti == 1
+        beti = 1.0 / particles.beta
+    else
+        beti = 1.0 
+    end
     if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
         PolynomB[3] = ele.k2 / 2.0
         if ele.rad == 0
-            StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
-            StrMPoleSymplectic4RadPass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            StrMPoleSymplectic4RadPass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
@@ -318,11 +339,11 @@ function pass!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, particl
         PolynomB[3] = ele.PolynomB[3] / 2.0
         PolynomB[4] = ele.PolynomB[4] / 6.0
         if ele.rad == 0
-            StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
-            StrMPoleSymplectic4RadPass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            StrMPoleSymplectic4RadPass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
@@ -337,14 +358,19 @@ function pass!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, particle
     lost_flags = particles.lost_flag
     PolynomB = zeros(4)
     E0 = particles.energy
+    if use_exact_beti == 1
+        beti = 1.0 / particles.beta
+    else
+        beti = 1.0 
+    end
     if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
         PolynomB[4] = ele.k3 / 6.0
         if ele.rad == 0
-            StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
-            StrMPoleSymplectic4RadPass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            StrMPoleSymplectic4RadPass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
@@ -354,11 +380,11 @@ function pass!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, particle
         PolynomB[3] = ele.PolynomB[3] / 2.0
         PolynomB[4] = ele.PolynomB[4] / 6.0
         if ele.rad == 0
-            StrMPoleSymplectic4Pass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
-            StrMPoleSymplectic4RadPass!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            StrMPoleSymplectic4RadPass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
@@ -369,7 +395,7 @@ end
 
 ###################
 # multi-threading
-function StrMPoleSymplectic4Pass_P!(r::Array{Float64,1}, le::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function StrMPoleSymplectic4Pass_P!(r::Array{Float64,1}, le::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_step::Int, 
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
     fringeIntM0::Array{Float64,1},  # I0m/K1, I1m/K1, I2m/K1, I3m/K1, Lambda2m/K1 
@@ -389,16 +415,16 @@ function StrMPoleSymplectic4Pass_P!(r::Array{Float64,1}, le::Float64, A::Array{F
     K1 = SL*KICK1
     K2 = SL*KICK2
 
-    if FringeQuadEntrance==2 #&& !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
-        useLinFrEleEntrance = 1
-    else
-        useLinFrEleEntrance = 0
-    end
-    if FringeQuadExit==2 #&& !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
-        useLinFrEleExit = 1
-    else
-        useLinFrEleExit = 0
-    end
+    # if FringeQuadEntrance==2 #&& !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
+    #     useLinFrEleEntrance = 1
+    # else
+    #     useLinFrEleEntrance = 0
+    # end
+    # if FringeQuadExit==2 #&& !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
+    #     useLinFrEleExit = 1
+    # else
+    #     useLinFrEleExit = 0
+    # end
 
     B[1] -= sin(KickAngle[1])/le
     A[1] += sin(KickAngle[2])/le
@@ -409,8 +435,6 @@ function StrMPoleSymplectic4Pass_P!(r::Array{Float64,1}, le::Float64, A::Array{F
         end
         r6 = @view r[(c-1)*6+1:c*6]
         if !isnan(r6[1])
-            NormL1 = L1 / (1.0 + r6[6])
-            NormL2 = L2 / (1.0 + r6[6])
             # Misalignment at entrance
             if !iszero(T1)
                 addvv!(r6, T1)
@@ -420,31 +444,38 @@ function StrMPoleSymplectic4Pass_P!(r::Array{Float64,1}, le::Float64, A::Array{F
             end
 
 
-            if FringeQuadEntrance != 0 && B[2] != 0
-                if useLinFrEleEntrance == 1
-                    linearQuadFringeElegantEntrance!(r6, B[2], fringeIntM0, fringeIntP0)
-                else
-                    QuadFringePassP!(r6, B[2])
-                end
+            # if FringeQuadEntrance != 0 && B[2] != 0
+            #     if useLinFrEleEntrance == 1
+            #         linearQuadFringeElegantEntrance!(r6, B[2], fringeIntM0, fringeIntP0)
+            #     else
+            #         QuadFringePassP!(r6, B[2])
+            #     end
+            # end
+            if FringeQuadEntrance != 0 
+                multipole_fringe!(r6, le, A, B, max_order, 1.0, 1, beti)
             end
+
 
             # Integrator
             for m in 1:num_int_step
-                fastdrift!(r6, NormL1, L1)
+                drift6!(r6, L1, beti)
                 strthinkick!(r6, A, B, K1, max_order)
-                fastdrift!(r6, NormL2, L2)
+                drift6!(r6, L2, beti)
                 strthinkick!(r6, A, B, K2, max_order)
-                fastdrift!(r6, NormL2, L2)
+                drift6!(r6, L2, beti)
                 strthinkick!(r6, A, B, K1, max_order)
-                fastdrift!(r6, NormL1, L1)
+                drift6!(r6, L1, beti)
             end
 
-            if FringeQuadExit != 0 && B[2] != 0
-                if useLinFrEleExit == 1
-                    linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
-                else
-                    QuadFringePassN!(r6, B[2])
-                end
+            # if FringeQuadExit != 0 && B[2] != 0
+            #     if useLinFrEleExit == 1
+            #         linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
+            #     else
+            #         QuadFringePassN!(r6, B[2])
+            #     end
+            # end
+            if FringeQuadExit != 0
+                multipole_fringe!(r6, le, A, B, max_order, -1.0, 1, beti)
             end
 
             # Misalignment at exit
@@ -465,7 +496,7 @@ function StrMPoleSymplectic4Pass_P!(r::Array{Float64,1}, le::Float64, A::Array{F
     return nothing
 end
 
-function StrMPoleSymplectic4RadPass_P!(r::Array{Float64,1}, le::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function StrMPoleSymplectic4RadPass_P!(r::Array{Float64,1}, le::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_step::Int, 
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
     fringeIntM0::Array{Float64,1},  # I0m/K1, I1m/K1, I2m/K1, I3m/K1, Lambda2m/K1 
@@ -485,16 +516,16 @@ function StrMPoleSymplectic4RadPass_P!(r::Array{Float64,1}, le::Float64, A::Arra
     K1 = SL*KICK1
     K2 = SL*KICK2
 
-    if FringeQuadEntrance==2 && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
-        useLinFrEleEntrance = 1
-    else
-        useLinFrEleEntrance = 0
-    end
-    if FringeQuadExit==2 && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
-        useLinFrEleExit = 1
-    else
-        useLinFrEleExit = 0
-    end
+    # if FringeQuadEntrance==2 && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
+    #     useLinFrEleEntrance = 1
+    # else
+    #     useLinFrEleEntrance = 0
+    # end
+    # if FringeQuadExit==2 && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
+    #     useLinFrEleExit = 1
+    # else
+    #     useLinFrEleExit = 0
+    # end
 
     if le > 0
         B[1] -= sin(KickAngle[1])/le
@@ -524,31 +555,38 @@ function StrMPoleSymplectic4RadPass_P!(r::Array{Float64,1}, le::Float64, A::Arra
             #     checkiflostEllipticalAp(r6, EApertures)
             # end
 
-            if FringeQuadEntrance != 0 && B[2] != 0
-                if useLinFrEleEntrance == 1
-                    linearQuadFringeElegantEntrance!(r6, B[2], fringeIntM0, fringeIntP0)
-                else
-                    QuadFringePassP!(r6, B[2])
-                end
+            # if FringeQuadEntrance != 0 && B[2] != 0
+            #     if useLinFrEleEntrance == 1
+            #         linearQuadFringeElegantEntrance!(r6, B[2], fringeIntM0, fringeIntP0)
+            #     else
+            #         QuadFringePassP!(r6, B[2])
+            #     end
+            # end
+
+            if FringeQuadEntrance != 0 
+                multipole_fringe!(r6, le, A, B, max_order, 1.0, 1, beti)
             end
 
             # Integrator
             for m in 1:num_int_step
-                drift6!(r6, L1)
+                drift6!(r6, L1, beti)
                 strthinkickrad!(r6, A, B, K1, E0, max_order)
-                drift6!(r6, L2)
+                drift6!(r6, L2, beti)
                 strthinkickrad!(r6, A, B, K2, E0, max_order)
-                drift6!(r6, L2)
+                drift6!(r6, L2, beti)
                 strthinkickrad!(r6, A, B, K1, E0, max_order)
-                drift6!(r6, L1)
+                drift6!(r6, L1, beti)
             end
 
-            if FringeQuadExit != 0 && B[2] != 0
-                if useLinFrEleExit == 1
-                    linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
-                else
-                    QuadFringePassN!(r6, B[2])
-                end
+            # if FringeQuadExit != 0 && B[2] != 0
+            #     if useLinFrEleExit == 1
+            #         linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
+            #     else
+            #         QuadFringePassN!(r6, B[2])
+            #     end
+            # end
+            if FringeQuadExit != 0
+                multipole_fringe!(r6, le, A, B, max_order, -1.0, 1, beti)
             end
 
             # Check physical apertures at the exit of the magnet
@@ -586,14 +624,19 @@ function pass_P!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, parti
     lost_flags = particles.lost_flag
     PolynomB = zeros(4)
     E0 = particles.energy
+    if use_exact_beti == 1
+        beti = 1.0 / particles.beta
+    else
+        beti = 1.0 
+    end
     if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
         PolynomB[2] = ele.k1
         if ele.rad == 0
-            StrMPoleSymplectic4Pass_P!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            StrMPoleSymplectic4Pass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
-            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
@@ -603,11 +646,11 @@ function pass_P!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, parti
         PolynomB[3] = ele.PolynomB[3] / 2.0
         PolynomB[4] = ele.PolynomB[4] / 6.0
         if ele.rad == 0
-            StrMPoleSymplectic4Pass_P!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            StrMPoleSymplectic4Pass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
-            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
@@ -622,14 +665,19 @@ function pass_P!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, parti
     lost_flags = particles.lost_flag
     PolynomB = zeros(4)
     E0 = particles.energy
+    if use_exact_beti == 1
+        beti = 1.0 / particles.beta
+    else
+        beti = 1.0 
+    end
     if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
         PolynomB[3] = ele.k2 / 2.0
         if ele.rad == 0
-            StrMPoleSymplectic4Pass_P!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            StrMPoleSymplectic4Pass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
-            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
@@ -639,11 +687,11 @@ function pass_P!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, parti
         PolynomB[3] = ele.PolynomB[3] / 2.0
         PolynomB[4] = ele.PolynomB[4] / 6.0
         if ele.rad == 0
-            StrMPoleSymplectic4Pass_P!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            StrMPoleSymplectic4Pass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
-            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
@@ -658,14 +706,19 @@ function pass_P!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, partic
     lost_flags = particles.lost_flag
     PolynomB = zeros(4)
     E0 = particles.energy
+    if use_exact_beti == 1
+        beti = 1.0 / particles.beta
+    else
+        beti = 1.0 
+    end
     if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
         PolynomB[4] = ele.k3 / 6.0
         if ele.rad == 0
-            StrMPoleSymplectic4Pass_P!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            StrMPoleSymplectic4Pass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
-            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
@@ -675,11 +728,11 @@ function pass_P!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, partic
         PolynomB[3] = ele.PolynomB[3] / 2.0
         PolynomB[4] = ele.PolynomB[4] / 6.0
         if ele.rad == 0
-            StrMPoleSymplectic4Pass_P!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            StrMPoleSymplectic4Pass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
-            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end

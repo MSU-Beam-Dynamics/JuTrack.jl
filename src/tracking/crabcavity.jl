@@ -1,4 +1,9 @@
-function CRABCAVITYPass!(r::Array{Float64,1}, cavity::CRABCAVITY, beta2E::Float64, num_particles::Int64, lost_flags::Array{Int,1})
+function CRABCAVITYPass!(r::Array{Float64,1}, cavity::CRABCAVITY, beta::Float64, E::Float64, num_particles::Int64, lost_flags::Array{Int,1})
+    if use_exact_beti == 1
+        beti = 1.0 / beta
+    else
+        beti = 1.0 
+    end
     for c in 1:num_particles
         if isone(lost_flags[c])
             continue
@@ -6,19 +11,30 @@ function CRABCAVITYPass!(r::Array{Float64,1}, cavity::CRABCAVITY, beta2E::Float6
         r6 = @view r[(c-1)*6+1:c*6] 
         ang = cavity.k * r6[5] + cavity.phi
         if cavity.len == 0.0
-            r6[2] += (cavity.volt/beta2E) * sin(ang)
-            r6[6] += (-cavity.k * cavity.volt/beta2E) * r6[1] * cos(ang)
+            # r6[2] += (cavity.volt/beta2E) * sin(ang)
+            # r6[6] += (-cavity.k * cavity.volt/beta2E) * r6[1] * cos(ang)
+            # this is symplectic form
+            r6[2] += (cavity.volt/E) * sin(ang/beta)
+            r6[6] += (-cavity.k * cavity.volt/E/beta) * r6[1] * cos(ang/beta)
         else
-            drift6!(r6, cavity.len / 2.0)
-            r6[2] += (cavity.volt/beta2E) * sin(ang)
-            r6[6] += (-cavity.k * cavity.volt/beta2E) * r6[1] * cos(ang)
-            drift6!(r6, cavity.len / 2.0)
+            drift6!(r6, cavity.len / 2.0, beti)
+            # r6[2] += (cavity.volt/beta2E) * sin(ang)
+            # r6[6] += (-cavity.k * cavity.volt/beta2E) * r6[1] * cos(ang)
+            # this is symplectic form
+            r6[2] += (cavity.volt/E) * sin(ang/beta)
+            r6[6] += (-cavity.k * cavity.volt/E/beta) * r6[1] * cos(ang/beta)
+            drift6!(r6, cavity.len / 2.0, beti)
         end
     end
     return nothing
 end
 
-function CRABCAVITYK2Pass!(r::Array{Float64,1}, cavity::CRABCAVITY_K2, beta2E::Float64, num_particles::Int64, lost_flags::Array{Int,1})
+function CRABCAVITYK2Pass!(r::Array{Float64,1}, cavity::CRABCAVITY_K2, beta::Float64, E::Float64, num_particles::Int64, lost_flags::Array{Int,1})
+    if use_exact_beti == 1
+        beti = 1.0 / beta
+    else
+        beti = 1.0 
+    end
     for c in 1:num_particles
         if isone(lost_flags[c])
             continue
@@ -26,21 +42,27 @@ function CRABCAVITYK2Pass!(r::Array{Float64,1}, cavity::CRABCAVITY_K2, beta2E::F
         r6 = @view r[(c-1)*6+1:c*6] 
         ang = cavity.k * r6[5] + cavity.phi
         if cavity.len == 0.0
-            r6[2] += (cavity.volt/beta2E) * sin(ang)
-            r6[6] += (-cavity.k * cavity.volt/beta2E) * r6[1] * cos(ang)
+            # r6[2] += (cavity.volt/beta2E) * sin(ang)
+            # r6[6] += (-cavity.k * cavity.volt/beta2E) * r6[1] * cos(ang)
+            # this is symplectic form
+            r6[2] += (cavity.volt/E) * sin(ang/beta)
+            r6[6] += (-cavity.k * cavity.volt/E/beta) * r6[1] * cos(ang/beta)
             # sextupole kick
-            r6[2] += cavity.k2 * (r6[1]^2 - r6[3]^2) * sin(ang)
-            r6[4] -= 2.0 * cavity.k2 * r6[1] * r6[3] * sin(ang)
-            r6[6] += (cavity.k2 * cavity.k / 3.0) * (r6[1]^3 - 3.0 * r6[1] * r6[3]^2) * cos(ang)
+            r6[2] -= cavity.k2 * (r6[1]^2 - r6[3]^2) * sin(ang)
+            r6[4] += 2.0 * cavity.k2 * r6[1] * r6[3] * sin(ang)
+            r6[6] -= (cavity.k2 * cavity.k / 3.0) * (r6[1]^3 - 3.0 * r6[1] * r6[3]^2) * cos(ang)
         else
-            drift6!(r6, cavity.len / 2.0)
-            r6[2] += (cavity.volt/beta2E) * sin(ang)
-            r6[6] += (-cavity.k * cavity.volt/beta2E) * r6[1] * cos(ang)
+            drift6!(r6, cavity.len / 2.0, beti)
+            # r6[2] += (cavity.volt/beta2E) * sin(ang)
+            # r6[6] += (-cavity.k * cavity.volt/beta2E) * r6[1] * cos(ang)            
+            # this is symplectic form
+            r6[2] += (cavity.volt/E) * sin(ang/beta)
+            r6[6] += (-cavity.k * cavity.volt/E/beta) * r6[1] * cos(ang/beta)
             # sextupole kick
-            r6[2] += cavity.k2 * (r6[1]^2 - r6[3]^2) * sin(ang)
-            r6[4] -= 2.0 * cavity.k2 * r6[1] * r6[3] * sin(ang)
-            r6[6] += (cavity.k2 * cavity.k / 3.0) * (r6[1]^3 - 3.0 * r6[1] * r6[3]^2) * cos(ang)
-            drift6!(r6, cavity.len / 2.0)
+            r6[2] -= cavity.k2 * (r6[1]^2 - r6[3]^2) * sin(ang)
+            r6[4] += 2.0 * cavity.k2 * r6[1] * r6[3] * sin(ang)
+            r6[6] -= (cavity.k2 * cavity.k / 3.0) * (r6[1]^3 - 3.0 * r6[1] * r6[3]^2) * cos(ang)
+            drift6!(r6, cavity.len / 2.0, beti)
         end
     end
     return nothing
@@ -75,16 +97,14 @@ function AccelCavityPass!(r::Array{Float64,1}, cavity::AccelCavity, beta2E::Floa
 end
 
 function pass!(ele::CRABCAVITY, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
-    beta2E = particles.beta^2 * particles.energy
     lost_flags = particles.lost_flag
-    CRABCAVITYPass!(r_in, ele, beta2E, num_particles,lost_flags)
+    CRABCAVITYPass!(r_in, ele, particles.beta, particles.energy, num_particles,lost_flags)
     return nothing
 end
 
 function pass!(ele::CRABCAVITY_K2, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
-    beta2E = particles.beta^2 * particles.energy
     lost_flags = particles.lost_flag
-    CRABCAVITYK2Pass!(r_in, ele, beta2E, num_particles,lost_flags)
+    CRABCAVITYK2Pass!(r_in, ele, particles.beta, particles.energy, num_particles,lost_flags)
     return nothing
 end
 
@@ -103,7 +123,12 @@ end
 
 ##########################################################################################
 # multi-threading
-function CRABCAVITYPass_P!(r::Array{Float64,1}, cavity::CRABCAVITY, beta2E::Float64, num_particles::Int64, lost_flags::Array{Int,1})
+function CRABCAVITYPass_P!(r::Array{Float64,1}, cavity::CRABCAVITY, beta::Float64, E::Float64, num_particles::Int64, lost_flags::Array{Int,1})
+    if use_exact_beti == 1
+        beti = 1.0 / beta
+    else
+        beti = 1.0 
+    end
     Threads.@threads for c in 1:num_particles
     # for c in 1:num_particles
         if isone(lost_flags[c])
@@ -112,19 +137,30 @@ function CRABCAVITYPass_P!(r::Array{Float64,1}, cavity::CRABCAVITY, beta2E::Floa
         r6 = @view r[(c-1)*6+1:c*6] 
         ang = cavity.k * r6[5] + cavity.phi
         if cavity.len == 0.0
-            r6[2] += (cavity.volt/beta2E) * sin(ang)
-            r6[6] += (-cavity.k * cavity.volt/beta2E) * r6[1] * cos(ang)
+            # r6[2] += (cavity.volt/beta2E) * sin(ang)
+            # r6[6] += (-cavity.k * cavity.volt/beta2E) * r6[1] * cos(ang)
+            # this is symplectic form
+            r6[2] += (cavity.volt/E) * sin(ang/beta)
+            r6[6] += (-cavity.k * cavity.volt/E/beta) * r6[1] * cos(ang/beta)
         else
-            drift6!(r6, cavity.len / 2.0)
-            r6[2] += (cavity.volt/beta2E) * sin(ang)
-            r6[6] += (-cavity.k * cavity.volt/beta2E) * r6[1] * cos(ang)
-            drift6!(r6, cavity.len / 2.0)
+            drift6!(r6, cavity.len / 2.0, beti)
+            # r6[2] += (cavity.volt/beta2E) * sin(ang)
+            # r6[6] += (-cavity.k * cavity.volt/beta2E) * r6[1] * cos(ang)
+            # this is symplectic form
+            r6[2] += (cavity.volt/E) * sin(ang/beta)
+            r6[6] += (-cavity.k * cavity.volt/E/beta) * r6[1] * cos(ang/beta)
+            drift6!(r6, cavity.len / 2.0, beti)
         end
     end
     return nothing
 end
 
-function CRABCAVITYK2Pass_P!(r::Array{Float64,1}, cavity::CRABCAVITY_K2, beta2E::Float64, num_particles::Int64, lost_flags::Array{Int,1})
+function CRABCAVITYK2Pass_P!(r::Array{Float64,1}, cavity::CRABCAVITY_K2, beta::Float64, E::Float64, num_particles::Int64, lost_flags::Array{Int,1})
+    if use_exact_beti == 1
+        beti = 1.0 / beta
+    else
+        beti = 1.0 
+    end
     Threads.@threads for c in 1:num_particles
         if isone(lost_flags[c])
             continue
@@ -132,21 +168,27 @@ function CRABCAVITYK2Pass_P!(r::Array{Float64,1}, cavity::CRABCAVITY_K2, beta2E:
         r6 = @view r[(c-1)*6+1:c*6] 
         ang = cavity.k * r6[5] + cavity.phi
         if cavity.len == 0.0
-            r6[2] += (cavity.volt/beta2E) * sin(ang)
-            r6[6] += (-cavity.k * cavity.volt/beta2E) * r6[1] * cos(ang)
+            # r6[2] += (cavity.volt/beta2E) * sin(ang)
+            # r6[6] += (-cavity.k * cavity.volt/beta2E) * r6[1] * cos(ang)
+            # this is symplectic form
+            r6[2] += (cavity.volt/E) * sin(ang/beta)
+            r6[6] += (-cavity.k * cavity.volt/E/beta) * r6[1] * cos(ang/beta)
             # sextupole kick
-            r6[2] += cavity.k2 * (r6[1]^2 - r6[3]^2) * sin(ang)
-            r6[4] -= 2.0 * cavity.k2 * r6[1] * r6[3] * sin(ang)
-            r6[6] += (cavity.k2 * cavity.k / 3.0) * (r6[1]^3 - 3.0 * r6[1] * r6[3]^2) * cos(ang)
+            r6[2] -= cavity.k2 * (r6[1]^2 - r6[3]^2) * sin(ang)
+            r6[4] += 2.0 * cavity.k2 * r6[1] * r6[3] * sin(ang)
+            r6[6] -= (cavity.k2 * cavity.k / 3.0) * (r6[1]^3 - 3.0 * r6[1] * r6[3]^2) * cos(ang)
         else
-            drift6!(r6, cavity.len / 2.0)
-            r6[2] += (cavity.volt/beta2E) * sin(ang)
-            r6[6] += (-cavity.k * cavity.volt/beta2E) * r6[1] * cos(ang)
+            drift6!(r6, cavity.len / 2.0, beti)
+            # r6[2] += (cavity.volt/beta2E) * sin(ang)
+            # r6[6] += (-cavity.k * cavity.volt/beta2E) * r6[1] * cos(ang)
+            # this is symplectic form
+            r6[2] += (cavity.volt/E) * sin(ang/beta)
+            r6[6] += (-cavity.k * cavity.volt/E/beta) * r6[1] * cos(ang/beta)
             # sextupole kick
-            r6[2] += cavity.k2 * (r6[1]^2 - r6[3]^2) * sin(ang)
-            r6[4] -= 2.0 * cavity.k2 * r6[1] * r6[3] * sin(ang)
-            r6[6] += (cavity.k2 * cavity.k / 3.0) * (r6[1]^3 - 3.0 * r6[1] * r6[3]^2) * cos(ang)
-            drift6!(r6, cavity.len / 2.0)
+            r6[2] -= cavity.k2 * (r6[1]^2 - r6[3]^2) * sin(ang)
+            r6[4] += 2.0 * cavity.k2 * r6[1] * r6[3] * sin(ang)
+            r6[6] -= (cavity.k2 * cavity.k / 3.0) * (r6[1]^3 - 3.0 * r6[1] * r6[3]^2) * cos(ang)
+            drift6!(r6, cavity.len / 2.0, beti)
         end
     end
     return nothing
@@ -181,16 +223,14 @@ function AccelCavityPass_P!(r::Array{Float64,1}, cavity::AccelCavity, beta2E::Fl
 end
 
 function pass_P!(ele::CRABCAVITY, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
-    beta2E = particles.beta^2 * particles.energy
     lost_flags = particles.lost_flag
-    CRABCAVITYPass_P!(r_in, ele, beta2E, num_particles,lost_flags)
+    CRABCAVITYPass_P!(r_in, ele, particles.beta, particles.energy, num_particles,lost_flags)
     return nothing
 end
 
 function pass_P!(ele::CRABCAVITY_K2, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
-    beta2E = particles.beta^2 * particles.energy
     lost_flags = particles.lost_flag
-    CRABCAVITYK2Pass_P!(r_in, ele, beta2E, num_particles,lost_flags)
+    CRABCAVITYK2Pass_P!(r_in, ele, particles.beta, particles.energy, num_particles,lost_flags)
     return nothing
 end
 

@@ -176,40 +176,14 @@ function array_optics(Twi)
     return beta, alpha, gamma, mu, dp
 end
 
-# function insert_space_charge(lattice, dphi, a, b, Nl, Nm)
-#     # Insert space charge elements into the lattice every dphi phase advance
-#     twi = twissring(lattice, 0.0, 1)
-#     phi0 = 0.0
-#     s0 = 0.0
-#     s = spos(lattice)
-#     insert_idx = [] 
-#     insert_len = []
 
-#     if twi[end].dmux < dphi
-#         println("The phase advance of the whole ring is less than ", dphi, ", only one space charge element is inserted.")
-#         sc = SPACECHARGE(effective_len=s[end], a=a, b=b, Nl=Nl, Nm=Nm)
-#         new_lattice = [lattice..., sc]
-#         return new_lattice
-#     end
-#     for i in 1:length(lattice)
-#         if twi[i].dmux - phi0 > dphi
-#             len = s[i] - s0
-#             push!(insert_idx, i)
-#             push!(insert_len, len)
-#             s0 = s[i]
-#             phi0 = twi[i].dmux
-#         end
-#     end
-
-#     new_lattice = []
-#     for i in 1:length(lattice)
-#         push!(new_lattice, lattice[i])
-#         if i in insert_idx
-#             num = findfirst(x -> x == i, insert_idx)
-#             sc = SPACECHARGE(effective_len=insert_len[num], a=a, b=b, Nl=Nl, Nm=Nm)
-#             push!(new_lattice, sc)
-#         end
-#     end
-#     println("Space charge elements are inserted at: ", insert_idx)
-#     return new_lattice
-# end
+function symplectic(M66::Array{Float64,2})
+    # check if a transfer map is symplectic
+    # the canonical coordinates are (x, px/p0, y, py/p0, tau, -dE/beta0/c/p0)
+    # z = tau, dp/p0 ~ dE/beta0/c/p0. Therefore, the last block of J is -J2
+    J2 = [0.0 1.0; -1.0 0.0]
+    J = [J2 zeros((2,2)) zeros((2,2)); zeros((2,2)) J2 zeros((2,2)); zeros((2,2)) zeros((2,2)) -J2]
+    delta = transpose(M66) * J * M66 .- J
+    println("max deviation: ", maximum(abs.(delta)))
+    return maximum(abs.(delta))
+end

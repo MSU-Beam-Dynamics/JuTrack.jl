@@ -1,6 +1,6 @@
 
-function avedata(ring, dpp)
-    twi = twissring(ring, dpp, 1)
+function avedata(ring, dpp; E0::Float64=3e9, m0::Float64=m_e)
+    twi = twissring(ring, dpp, 1, E0=E0, m0=m0)
     long = findall(x -> x.len > 0, ring)
     beta, alpha, gamma, mu, dp = array_optics(twi)
 
@@ -363,7 +363,7 @@ Compute Hamiltonian resonance driving terms (RDTs).
 # Returns
 - `d::DrivingTerms`: structure of driving terms
 """
-function computeRDT(ring, index; chromatic=false, coupling=false, geometric1=false, geometric2=false, tuneshifts=false)
+function computeRDT(ring, index; chromatic=false, coupling=false, geometric1=false, geometric2=false, tuneshifts=false, E0=3e9, m0=m_e)
     # Compute Hamiltonian resonance driving terms (RDTs)
     # ring: lattice sequence
     # index: index of the element to compute the RDTs
@@ -383,7 +383,7 @@ function computeRDT(ring, index; chromatic=false, coupling=false, geometric1=fal
     indO = findelem(ring, KOCT)
     indDQSO = sort(union(indB, indQ, indS, indO))
 
-    AVEBETA, AVEMU, AVEDISP, beta, alpha, mu, dp = avedata(ring, 0.0)  
+    AVEBETA, AVEMU, AVEDISP, beta, alpha, mu, dp = avedata(ring, 0.0, E0=E0, m0=m0)  
     sIndex = spos(ring, indDQSO.-1)
     s = spos(ring)
     # make the style consistent with AT
@@ -450,9 +450,9 @@ function get_polynom_value(poly, n)
     return poly[n]
 end
 
-function ADavedata(ring, dpp, changed_ids, changed_elems)
+function ADavedata(ring, dpp, changed_ids, changed_elems; E0=3e9, m0=m_e)
     refpts = [i for i in 1:length(ring)]
-    twi = ADtwissring(ring, dpp, 1, refpts, changed_ids, changed_elems)
+    twi = ADtwissring(ring, dpp, 1, refpts, changed_ids, changed_elems, E0=E0, m0=m0)
     nlong = 0
     for i in eachindex(ring)
         if get_len(ring[i]) > 0
@@ -597,7 +597,8 @@ This function is used for auto-differentiation.
 # Returns
 - `d::DrivingTerms`: structure of driving terms
 """
-function ADcomputeRDT(ring, index, changed_ids, changed_elems; chromatic=true, coupling=true, geometric1=true, geometric2=true, tuneshifts=true)
+function ADcomputeRDT(ring, index, changed_ids, changed_elems; chromatic=true, coupling=true, geometric1=true, geometric2=true, tuneshifts=true,
+    E0=3e9, m0=m_e)
     # Compute Hamiltonian resonance driving terms (RDTs)
     # ring: lattice sequence
     # index: index of the element to compute the RDTs
@@ -610,7 +611,7 @@ function ADcomputeRDT(ring, index, changed_ids, changed_elems; chromatic=true, c
     # end
 
     indDQSO = findBQSO(ring)
-    AVEBETA, AVEMU, AVEDISP, beta, alpha, mu, dp = ADavedata(ring, 0.0, changed_ids, changed_elems)  
+    AVEBETA, AVEMU, AVEDISP, beta, alpha, mu, dp = ADavedata(ring, 0.0, changed_ids, changed_elems, E0=E0, m0=m0)  
     sIndex = spos(ring, indDQSO.-1)
     s = spos(ring)
     # make the style consistent with AT

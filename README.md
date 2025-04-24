@@ -111,6 +111,7 @@ pringpass!(beamline, beam, nturns)
 ```
 
 # Known issues
+* JuTrack is actively under development. If you encounter any issues, please open an issue on GitHub or email wan@frib.msu.edu.
 * This package currently supports forward AD. Backward AD is still under development.
 * Downgrade/upgrade the Julia environment to 1.10.4 for any conflicts.
 * Downgrade/upgrade Enzyme version to 0.13.3 with ```Pkg.add(name="Enzyme", version="0.13.3")``` for any conflicts. 

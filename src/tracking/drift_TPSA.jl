@@ -20,38 +20,40 @@ function addvv!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, dr::Array{Float64, 
 end
 
 function fastdrift!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, NormL::CTPS{T, TPS_Dim, Max_TPS_Degree}, 
-    le::Float64) where {T, TPS_Dim, Max_TPS_Degree}
-    # similar to AT fastdrift. Provide an option to use exact Hamiltonian or linearized approximation
-    # in the loop if momentum deviation (delta) does not change
-    # such as in 4-th order symplectic integrator w/o radiation
-
+    le::Float64, beti::Float64) where {T, TPS_Dim, Max_TPS_Degree}
+    # Provide an option to use exact Hamiltonian or linearized approximation
+    # AT uses small angle approximation pz = 1 + delta. 
+    # MADX use pz = sqrt((1 + 2*delta/beta + delta^2 - px^2 - py^2).
     if isone(use_exact_Hamiltonian)
         r[1] += NormL * r[2]
         r[3] += NormL * r[4]
-        r[5] += NormL * (1.0 + r[6]) - le
+        r[5] += NormL * (1.0*beti + r[6]) - le*beti
     else
         r[1] += NormL * r[2]
         r[3] += NormL * r[4]
-        r[5] += NormL * (r[2]^2 + r[4]^2) / (2.0*(1.0+r[5]))
+        r[5] += NormL * (r[2]^2 + r[4]^2) / (2.0*(1.0+r[6]))
     end
     return nothing 
 end
 
-function drift6!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le::Float64) where {T, TPS_Dim, Max_TPS_Degree}
-    # similar to AT drift6. Provide an option to use exact Hamiltonian or linearized approximation
+function drift6!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le::Float64, beti::Float64) where {T, TPS_Dim, Max_TPS_Degree}
+    # Provide an option to use exact Hamiltonian or linearized approximation
+    # AT uses small angle approximation pz = 1 + delta. 
+    # MADX use pz = sqrt((1 + 2*delta/beta + delta^2 - px^2 - py^2).
     if isone(use_exact_Hamiltonian)
-        NormL = le / sqrt(((1.0 + r[6])^2 - r[2]^2 - r[4]^2))
-        r[5] += NormL * (1.0 + r[6]) - le
+        NormL = le / sqrt(1.0 + 2.0*r[6]*beti + r[6]^2 - r[2]^2 - r[4]^2)
+        r[5] += NormL * (1.0*beti + r[6]) - le*beti
     else
         NormL = le / (1.0 + r[6])
-        r[5] += NormL * (r[2]^2 + r[4]^2) / (2.0*(1.0+r[5])) # for linearized approximation
+        r[5] += NormL * (r[2]^2 + r[4]^2) / (2.0*(1.0+r[6])) # for linearized approximation
     end
     r[1] += NormL * r[2]
     r[3] += NormL * r[4]
     return nothing
 end 
-function DriftPass_TPSA!(r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le, T1, T2, R1, R2, 
-    RApertures, EApertures) where {T, TPS_Dim, Max_TPS_Degree}
+function DriftPass_TPSA!(r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le::Float64, beti::Float64, 
+    T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
+    RApertures::Array{Float64,1}, EApertures::Array{Float64,1}) where {T, TPS_Dim, Max_TPS_Degree}
 
     if !iszero(T1)
         addvv!(r_in, T1)
@@ -60,7 +62,7 @@ function DriftPass_TPSA!(r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le, T1,
         multmv!(r_in, R1)
     end
 
-    drift6!(r_in, le)
+    drift6!(r_in, le, beti)
 
     # Misalignment at exit
     if !iszero(R2)
@@ -73,15 +75,21 @@ function DriftPass_TPSA!(r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le, T1,
     return nothing
 end
 
-function pass_TPSA!(ele::DRIFT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; E0::Float64=0.0) where {T, TPS_Dim, Max_TPS_Degree}
+function pass_TPSA!(ele::DRIFT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; E0::Float64=0.0, m0::Float64=m_e) where {T, TPS_Dim, Max_TPS_Degree}
     # ele: EDRIFT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
-
-    DriftPass_TPSA!(r_in, ele.len, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures)
+    gamma = E0 / m0
+    beta = sqrt(1.0 - 1.0 / gamma^2)
+    if use_exact_beti == 1
+        beti = 1.0 / beta
+    else
+        beti = 1.0 
+    end
+    DriftPass_TPSA!(r_in, ele.len, beti, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures)
     return nothing
 end
 
-function pass_TPSA!(ele::MARKER, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; E0::Float64=0.0) where {T, TPS_Dim, Max_TPS_Degree}
+function pass_TPSA!(ele::MARKER, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; E0::Float64=0.0, m0::Float64=m_e) where {T, TPS_Dim, Max_TPS_Degree}
     return nothing
 end

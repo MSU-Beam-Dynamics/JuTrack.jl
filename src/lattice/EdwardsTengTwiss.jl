@@ -312,9 +312,9 @@ function twissPropagate(tin::EdwardsTengTwiss,M::Matrix{Float64})
 				Y/=sqrt(t)
 				mode=2
 			end
-	# else
+	else
 		#throw(AssertionError("Mode should be integer 1 or 2."))
-		# println(stderr,"Invalid mode.")
+		println(stderr,"Invalid mode for EdwardsTengTwiss.")
 		# return EdwardsTengTwiss(;betax=1.0,betay=1.0,mode=0)
 		# error("Invalid mode.")
 	end
@@ -357,7 +357,12 @@ Find the 6x6 transfer matrix of a sequence using TPSA.
 # Returns
 - `Matrix{Float64}`: 6x6 transfer matrix.
 """
-function findm66(seq, dp::Float64, order::Int)
+function findm66(seq, dp::Float64, order::Int; E0::Float64=3e9, m0::Float64=m_e)
+	map = zeros(Float64, 6, 6)
+	if order == 0
+		map .= fastfindm66(seq, dp, E0=E0, m0=m0)
+		return map
+	end
 	x = CTPS(0.0, 1, 6, order)
 	px = CTPS(0.0, 2, 6, order)
 	y = CTPS(0.0, 3, 6, order)
@@ -366,24 +371,21 @@ function findm66(seq, dp::Float64, order::Int)
 	delta = CTPS(0.0, 6, 6, order)
 	rin = [x, px, y, py, z, delta]
 	# no radiation, cavity off
-	linepass_TPSA!(seq, rin)
+	linepass_TPSA!(seq, rin, E0=E0, m0=m0)
 
-	map = zeros(Float64, 6, 6)
 	for i in 1:6
 		for j in 1:6
 			map[i, j] = rin[i].map[j + 1]
 		end
 	end
-
-	# Map66 = [x.map[2] x.map[3] x.map[4] x.map[5] x.map[6] x.map[7];
-	# 		px.map[2] px.map[3] px.map[4] px.map[5] px.map[6] px.map[7];
-	# 		y.map[2] y.map[3] y.map[4] y.map[5] y.map[6] y.map[7];
-	# 		py.map[2] py.map[3] py.map[4] py.map[5] py.map[6] py.map[7];
-	# 		delta.map[2] delta.map[3] delta.map[4] delta.map[5] delta.map[6] delta.map[7];
-	# 		z.map[2] z.map[3] z.map[4] z.map[5] z.map[6] z.map[7]]
 	return map
 end
-function ADfindm66(seq, dp::Float64, order::Int, changed_idx::Vector, changed_ele::Vector)
+function ADfindm66(seq, dp::Float64, order::Int, changed_idx::Vector, changed_ele::Vector; E0::Float64=3e9, m0::Float64=m_e)
+	map = zeros(Float64, 6, 6)
+	if order == 0
+		map .= ADfastfindm66(seq, dp, changed_idx, changed_ele, E0=E0, m0=m0)
+		return map
+	end
 	x = CTPS(0.0, 1, 6, order)
 	px = CTPS(0.0, 2, 6, order)
 	y = CTPS(0.0, 3, 6, order)
@@ -392,9 +394,8 @@ function ADfindm66(seq, dp::Float64, order::Int, changed_idx::Vector, changed_el
 	delta = CTPS(0.0, 6, 6, order)
 	rin = [x, px, y, py, z, delta]
 	# no radiation, cavity off
-	ADlinepass_TPSA!(seq, rin, changed_idx, changed_ele)
+	ADlinepass_TPSA!(seq, rin, changed_idx, changed_ele, E0=E0, m0=m0)
 
-	map = zeros(Float64, 6, 6)
 	for i in 1:6
 		for j in 1:6
 			map[i, j] = rin[i].map[j + 1]
@@ -403,7 +404,7 @@ function ADfindm66(seq, dp::Float64, order::Int, changed_idx::Vector, changed_el
 	return map
 end
 
-function ADfindm66_refpts(seq, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector, changed_ele::Vector)
+function ADfindm66_refpts(seq, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector, changed_ele::Vector; E0::Float64=3e9, m0::Float64=m_e)
 	x = CTPS(0.0, 1, 6, order)
 	px = CTPS(0.0, 2, 6, order)
 	y = CTPS(0.0, 3, 6, order)
@@ -415,9 +416,9 @@ function ADfindm66_refpts(seq, dp::Float64, order::Int, refpts::Vector{Int}, cha
 	map_list = zeros(6, 6, length(refpts))
 	for i in eachindex(refpts)
 		if i == 1
-			ADlinepass_TPSA!(seq[1:refpts[i]], rin, changed_idx, changed_ele)
+			ADlinepass_TPSA!(seq[1:refpts[i]], rin, changed_idx, changed_ele, E0=E0, m0=m0)
 		else
-			ADlinepass_TPSA!(seq[refpts[i-1]+1:refpts[i]], rin, changed_idx, changed_ele)
+			ADlinepass_TPSA!(seq[refpts[i-1]+1:refpts[i]], rin, changed_idx, changed_ele, E0=E0, m0=m0)
 		end
 		map = zeros(Float64, 6, 6)
 		for j in 1:6
@@ -437,7 +438,7 @@ function ADfindm66_refpts(seq, dp::Float64, order::Int, refpts::Vector{Int}, cha
 	return map_list
 end
 
-function findm66_refpts(seq, dp::Float64, order::Int, refpts::Vector{Int})
+function findm66_refpts(seq, dp::Float64, order::Int, refpts::Vector{Int}; E0::Float64=3e9, m0::Float64=m_e)
 	x = CTPS(0.0, 1, 6, order)
 	px = CTPS(0.0, 2, 6, order)
 	y = CTPS(0.0, 3, 6, order)
@@ -450,9 +451,9 @@ function findm66_refpts(seq, dp::Float64, order::Int, refpts::Vector{Int})
 	num = 1
 	for i in eachindex(refpts)
 		if i == 1
-			linepass_TPSA!(seq[1:refpts[i]], rin)
+			linepass_TPSA!(seq[1:refpts[i]], rin, E0=E0, m0=m0)
 		else
-			linepass_TPSA!(seq[refpts[i-1]+1:refpts[i]], rin)
+			linepass_TPSA!(seq[refpts[i-1]+1:refpts[i]], rin, E0=E0, m0=m0)
 		end
 		map = zeros(Float64, 6, 6)
 		for j in 1:6
@@ -527,7 +528,7 @@ Find the 6x6 transfer matrix of a lattice using numerical differentiation.
 # Returns
 - `Matrix{Float64}`: 6x6 transfer matrix.
 """
-function fastfindm66(LATTICE, dp=0.0)
+function fastfindm66(LATTICE, dp=0.0; E0::Float64=3e9, m0::Float64=m_e)
     # assume the closed orbit is zero
     NE = length(LATTICE)
 	DPstep = 3e-8
@@ -553,7 +554,7 @@ function fastfindm66(LATTICE, dp=0.0)
     end
     RIN[13, :] = orbitin
 
-    beam = Beam(RIN)
+    beam = Beam(RIN, energy=E0, mass=m0)
     linepass!(LATTICE, beam)
     TMAT3 = transpose(beam.r)
     M66 = (TMAT3[:,1:6] - TMAT3[:,7:12]) ./ scaling
@@ -574,7 +575,7 @@ Find the 6x6 transfer matrix of a lattice at specified locations using numerical
 # Returns
 - `M66_refpts`: 6x6 transfer matrix at specified locations.
 """
-function fastfindm66_refpts(LATTICE, dp::Float64, refpts::Vector{Int})
+function fastfindm66_refpts(LATTICE, dp::Float64, refpts::Vector{Int}; E0::Float64=3e9, m0::Float64=m_e)
     # assume the closed orbit is zero
     NE = length(LATTICE)
 	DPstep = 3e-8
@@ -604,7 +605,7 @@ function fastfindm66_refpts(LATTICE, dp::Float64, refpts::Vector{Int})
     # rout = linepass!(LATTICE, beam, refpts)
     M66_refpts = zeros(6, 6, length(refpts))
     for i in 1:length(refpts)
-		beam = Beam(copy(RIN))
+		beam = Beam(copy(RIN), energy=E0, mass=m0)
 		if i == 1
 			linepass!(LATTICE[1:refpts[1]], beam)
 		else
@@ -617,7 +618,7 @@ function fastfindm66_refpts(LATTICE, dp::Float64, refpts::Vector{Int})
     return M66_refpts
 end
 
-function ADfastfindm66(LATTICE, dp, changed_idx, changed_ele)
+function ADfastfindm66(LATTICE, dp, changed_idx, changed_ele; E0::Float64=3e9, m0::Float64=m_e)
     # assume the closed orbit is zero
     NE = length(LATTICE)
 	DPstep = 3e-8
@@ -643,7 +644,7 @@ function ADfastfindm66(LATTICE, dp, changed_idx, changed_ele)
     end
     RIN[13, :] = orbitin
 
-    beam = Beam(RIN)
+    beam = Beam(RIN, energy=E0, mass=m0)
     
     ADlinepass!(LATTICE, beam, changed_idx, changed_ele)
     TMAT3 = transpose(beam.r)
@@ -652,7 +653,7 @@ function ADfastfindm66(LATTICE, dp, changed_idx, changed_ele)
     return M66
 end
 
-function ADfastfindm66_refpts(LATTICE, dp::Float64, refpts::Vector{Int}, changed_idx, changed_ele)
+function ADfastfindm66_refpts(LATTICE, dp::Float64, refpts::Vector{Int}, changed_idx, changed_ele; E0::Float64=3e9, m0::Float64=m_e)
     # assume the closed orbit is zero
     NE = length(LATTICE)
 	DPstep = 3e-8
@@ -679,7 +680,7 @@ function ADfastfindm66_refpts(LATTICE, dp::Float64, refpts::Vector{Int}, changed
     RIN[13, :] = orbitin
     M66_refpts = zeros(6, 6, length(refpts))
     for i in 1:length(refpts)
-		beam = Beam(RIN)
+		beam = Beam(RIN, energy=E0, mass=m0)
 		if i == 1
             id_list = [j for j in 1:refpts[1]]
 			ADlinepass!(LATTICE, id_list, beam, changed_idx, changed_ele)
@@ -709,16 +710,16 @@ Propagate the Twiss parameters through a sequence of elements.
 # Returns
 - `EdwardsTengTwiss`: Output Twiss parameters.
 """
-function twissline(tin::EdwardsTengTwiss,seq::Vector, dp::Float64, order::Int, endindex::Int)
+function twissline(tin::EdwardsTengTwiss,seq::Vector, dp::Float64, order::Int, endindex::Int; E0::Float64=3e9, m0::Float64=m_e)
 	# obtain M through tracking
     ret = tin
     ss = 0.0
 	used_seq = seq[1:endindex]
 	# M = findm66(used_seq, dp, order)
 	if order ==0
-		M = fastfindm66(used_seq, dp)
+		M = fastfindm66(used_seq, dp, E0=E0, m0=m0)
 	else
-		M = findm66(used_seq, dp, order)
+		M = findm66(used_seq, dp, order, E0=E0, m0=m0)
 	end
 	ret = twissPropagate(ret, M)
 	# ss = sum([mag.len for mag in used_seq])
@@ -741,7 +742,7 @@ Propagate the Twiss parameters through a sequence of elements. Save the results 
 # Returns
 - `Vector{EdwardsTengTwiss}`: Output Twiss parameters at specified locations.
 """
-function twissline(tin::EdwardsTengTwiss,seq::Vector, dp::Float64, order::Int, refpts::Vector{Int})
+function twissline(tin::EdwardsTengTwiss,seq::Vector, dp::Float64, order::Int, refpts::Vector{Int}; E0::Float64=3e9, m0::Float64=m_e)
 	# if !is_increasing(refpts)
 	# 	error("The reference points must be in increasing order.")
 	# end
@@ -760,9 +761,9 @@ function twissline(tin::EdwardsTengTwiss,seq::Vector, dp::Float64, order::Int, r
 
 	# use fastfindm66_refpts instead of findm66_refpts if order == 0
 	if order == 0
-		M_list = fastfindm66_refpts(seq, dp, refpts)
+		M_list = fastfindm66_refpts(seq, dp, refpts, E0=E0, m0=m0)
 	else
-		M_list = findm66_refpts(seq, dp, order, refpts)
+		M_list = findm66_refpts(seq, dp, order, refpts, E0=E0, m0=m0)
 	end
 	for i in 1:length(refpts)
 		ret = twissPropagate(ret, M_list[:, :, i])
@@ -790,15 +791,15 @@ This function is used for automatic differentiation.
 # Returns
 - `Vector{EdwardsTengTwiss}`: Output Twiss parameters at specified locations.
 """
-function ADtwissline(tin::EdwardsTengTwiss,seq::Vector, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector, changed_ele::Vector)
+function ADtwissline(tin::EdwardsTengTwiss,seq::Vector, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector, changed_ele::Vector; E0::Float64=3e9, m0::Float64=m_e)
 	ret_vector = Vector{EdwardsTengTwiss}(undef, length(refpts))    
 	ret = tin
 
 	# use ADfastfindm66_refpts instead of ADfindm66_refpts if order == 0
 	if order == 0
-		M_list = ADfastfindm66_refpts(seq, dp, changed_idx, changed_ele, refpts)
+		M_list = ADfastfindm66_refpts(seq, dp, refpts, changed_idx, changed_ele, E0=E0, m0=m0)
 	else
-		M_list = ADfindm66_refpts(seq, dp, order, refpts, changed_idx, changed_ele)
+		M_list = ADfindm66_refpts(seq, dp, order, refpts, changed_idx, changed_ele, E0=E0, m0=m0)
 	end
 	for i in 1:length(refpts)
 		ret = twissPropagate(ret, M_list[:, :, i])
@@ -843,12 +844,12 @@ Calculate the Twiss parameters for a periodic lattice.
 # Returns
 - `EdwardsTengTwiss`: Output Twiss parameters.
 """
-function periodicEdwardsTengTwiss(seq::Vector, dp, order::Int)
+function periodicEdwardsTengTwiss(seq::Vector, dp, order::Int; E0::Float64=3e9, m0::Float64=m_e)
 	# M = findm66(seq, dp, order)
 	if order == 0
-		M = fastfindm66(seq, dp)
+		M = fastfindm66(seq, dp, E0=E0, m0=m0)
 	else
-		M = findm66(seq, dp, order)
+		M = findm66(seq, dp, order, E0=E0, m0=m0)
 	end
 	A=@view M[1:2,1:2]
 	B=@view M[1:2,3:4]
@@ -894,11 +895,11 @@ function periodicEdwardsTengTwiss(seq::Vector, dp, order::Int)
 	return EdwardsTengTwiss(betax,betay,alfx,alfy,gamx,gamy,eta[1],eta[2],eta[3],eta[4],0.0,0.0,smux,cmux,smuy,cmuy,R,1)
 end
 
-function ADperiodicEdwardsTengTwiss(seq::Vector, dp::Float64, order::Int, changed_idx::Vector, changed_ele::Vector)
+function ADperiodicEdwardsTengTwiss(seq::Vector, dp::Float64, order::Int, changed_idx::Vector, changed_ele::Vector; E0::Float64=3e9, m0::Float64=m_e)
 	if order == 0
-		M = ADfastfindm66(seq, dp, changed_idx, changed_ele)
+		M = ADfastfindm66(seq, dp, changed_idx, changed_ele, E0=E0, m0=m0)
 	else
-		M = ADfindm66(seq, dp, order, changed_idx, changed_ele)
+		M = ADfindm66(seq, dp, order, changed_idx, changed_ele, E0=E0, m0=m0)
 	end
 	A=@view M[1:2,1:2]
 	B=@view M[1:2,3:4]
@@ -970,19 +971,19 @@ Calculate the periodic Twiss parameters along the ring.
 # Returns
 - `twis`: Twiss parameters along the ring.
 """
-function twissring(seq::Vector, dp::Float64, order::Int)
-	twi0 = periodicEdwardsTengTwiss(seq, dp, order)
+function twissring(seq::Vector, dp::Float64, order::Int; E0::Float64=3e9, m0::Float64=m_e)
+	twi0 = periodicEdwardsTengTwiss(seq, dp, order, E0=E0, m0=m0)
 	nele = length(seq)
 	refpts = [i for i in 1:nele]
-	twis = twissline(twi0, seq, dp, order, refpts)
+	twis = twissline(twi0, seq, dp, order, refpts, E0=E0, m0=m0)
 	return twis
 end
 
-function ADtwissring(seq::Vector, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector, changed_ele::Vector)
-	twi0 = ADperiodicEdwardsTengTwiss(seq, dp, order, changed_idx, changed_ele)
+function ADtwissring(seq::Vector, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector, changed_ele::Vector; E0::Float64=3e9, m0::Float64=m_e)
+	twi0 = ADperiodicEdwardsTengTwiss(seq, dp, order, changed_idx, changed_ele, E0=E0, m0=m0)
 	nele = length(seq)
 	# refpts = [i for i in 1:nele]
-	twi = ADtwissline(twi0, seq, dp, order, refpts, changed_idx, changed_ele)
+	twi = ADtwissline(twi0, seq, dp, order, refpts, changed_idx, changed_ele, E0=E0, m0=m0)
 	return twi
 end
 

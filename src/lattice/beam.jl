@@ -72,7 +72,7 @@ function Beam(r::Matrix{Float64}, energy::Float64; np::Int=size(r, 1), charge::F
         emittance::Vector{Float64}=zeros(Float64, 3), centroid::Vector{Float64}=zeros(Float64, 6), T0::Float64=0.0, znbin::Int=99, current::Float64=0.0)  
     nmacro = size(r, 1)
     lost_flag = zeros(Int, nmacro)
-    gamma = (energy + mass) / mass
+    gamma = energy / mass
     beta = sqrt(1.0 - 1.0 / gamma^2)
     classrad0=charge*charge/(atn*mass)/4/pi/55.26349406*1e-6
     radconst=4*pi/3*classrad0/mass/mass/mass
@@ -91,7 +91,7 @@ function Beam(r::Matrix{Float64}; energy::Float64=1e9,np::Int=size(r, 1), charge
         emittance::Vector{Float64}=zeros(Float64, 3), centroid::Vector{Float64}=zeros(Float64, 6), T0::Float64=0.0, znbin::Int=99, current::Float64=0.0)
     nmacro = size(r, 1)
     lost_flag = zeros(Int, nmacro)
-    gamma = (energy + mass) / mass
+    gamma = energy  / mass
     beta = sqrt(1.0 - 1.0 / gamma^2)
     classrad0=charge*charge/(atn*mass)/4/pi/55.26349406*1e-6
     radconst=4*pi/3*classrad0/mass/mass/mass
@@ -110,7 +110,7 @@ function Beam(;r::Matrix{Float64}=zeros(Float64, 1,6), energy::Float64=1e9, np::
         emittance::Vector{Float64}=zeros(Float64, 3), centroid::Vector{Float64}=zeros(Float64, 6), T0::Float64=0.0, znbin::Int=99, current::Float64=0.0)
     nmacro = size(r, 1)
     lost_flag = zeros(Int, nmacro)
-    gamma = (energy + mass) / mass
+    gamma = energy  / mass
     beta = sqrt(1.0 - 1.0 / gamma^2)
     classrad0=charge*charge/(atn*mass)/4/pi/55.26349406*1e-6
     radconst=4*pi/3*classrad0/mass/mass/mass
@@ -124,7 +124,7 @@ function Beam(energy::Float64, np::Int, nmacro::Int; charge::Float64=-1.0, mass:
     emittance::Vector{Float64}=zeros(Float64, 3), centroid::Vector{Float64}=zeros(Float64, 6), T0::Float64=0.0, znbin::Int=99, current::Float64=0.0)
     r = zeros(Float64, nmacro, 6)
     lost_flag = zeros(Int, nmacro)
-    gamma = (energy + mass) / mass
+    gamma = energy  / mass
     beta = sqrt(1.0 - 1.0 / gamma^2)
     classrad0=charge*charge/(atn*mass)/4/pi/55.26349406*1e-6
     radconst=4*pi/3*classrad0/mass/mass/mass
