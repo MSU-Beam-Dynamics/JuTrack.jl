@@ -2,17 +2,17 @@
 
 function StrB2perp(bx::Float64, by::Float64, x::Float64, xpr::Float64, y::Float64, ypr::Float64)
     # Calculates sqr(|B x e|) , where e is a unit vector in the direction of velocity
-    v_norm2 = 1.0 / (1.0 + xpr^2 + ypr^2)
-    return (by^2 + bx^2 + (bx*ypr - by*xpr)^2) * v_norm2
+    # v_norm2 = 1.0 / (1.0 + xpr^2 + ypr^2)
+    # return (by^2 + bx^2 + (bx*ypr - by*xpr)^2) * v_norm2
+    return bx*bx + by*by + (bx*xpr - by*ypr)^2
 end
 
-function strthinkickrad!(r::AbstractVector{Float64}, A, B, L, E0, max_order)
+function strthinkickrad!(r::AbstractVector{Float64}, A::AbstractVector{Float64}, B::AbstractVector{Float64}, 
+    L::Float64, E0::Float64, max_order::Int, rad_const::Float64)
     # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
     ReSum = B[max_order + 1]
     ImSum = A[max_order + 1]
     ReSumTemp = 0.0
-    irho = 0.0 # straight elements
-    CRAD = CGAMMA * E0^3 / (2.0*pi*1e27) # [m]/[GeV^3] M.Sands (4.1)
 
     for i in reverse(1:max_order)
         ReSumTemp = ReSum * r[1] - ImSum * r[3] + B[i]
@@ -27,9 +27,10 @@ function strthinkickrad!(r::AbstractVector{Float64}, A, B, L, E0, max_order)
     y = r[3]
     ypr = r[4] * p_norm
     B2P = StrB2perp(ImSum, ReSum , x , xpr, y ,ypr)
+    factor = L / (p_norm)^2 / sqrt(1.0 - xpr^2 - ypr^2)
 
     dp_0 = r[6]
-    r[6] = r[6] - CRAD * (1.0+r[6])^2 * B2P * (1.0 + x*irho + (xpr^2 + ypr^2) / 2.0) * L
+    r[6] -= rad_const * B2P * factor
 
     # momentums after losing energy
     p_norm = 1.0 / (1.0 + r[6])
@@ -37,13 +38,12 @@ function strthinkickrad!(r::AbstractVector{Float64}, A, B, L, E0, max_order)
     r[2] = xpr / p_norm
     r[4] = ypr / p_norm
 
-    r[2] -= L * (ReSum - (dp_0 - r[1]*irho)*irho)
+    r[2] -= L * ReSum
     r[4] += L * ImSum
-    r[5] += L * irho * r[1]
     return nothing
 end
 
-function strthinkick!(r::AbstractVector{Float64}, A, B, L, max_order)
+function strthinkick!(r::AbstractVector{Float64}, A::AbstractVector{Float64}, B::AbstractVector{Float64}, L::Float64, max_order::Int)
     # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
 
     ReSum = B[max_order + 1]
@@ -166,7 +166,7 @@ function StrMPoleSymplectic4Pass!(r::Array{Float64,1}, le::Float64, beti::Float6
     return nothing
 end
 
-function StrMPoleSymplectic4RadPass!(r::Array{Float64,1}, le::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function StrMPoleSymplectic4RadPass!(r::Array{Float64,1}, le::Float64, rad_const::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_step::Int, 
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
     fringeIntM0::Array{Float64,1},  # I0m/K1, I1m/K1, I2m/K1, I3m/K1, Lambda2m/K1 
@@ -230,11 +230,11 @@ function StrMPoleSymplectic4RadPass!(r::Array{Float64,1}, le::Float64, beti::Flo
             # Integrator
             for m in 1:num_int_step
                 drift6!(r6, L1, beti)
-                strthinkickrad!(r6, A, B, K1, E0, max_order)
+                strthinkickrad!(r6, A, B, K1, E0, max_order, rad_const)
                 drift6!(r6, L2, beti)
-                strthinkickrad!(r6, A, B, K2, E0, max_order)
+                strthinkickrad!(r6, A, B, K2, E0, max_order, rad_const)
                 drift6!(r6, L2, beti)
-                strthinkickrad!(r6, A, B, K1, E0, max_order)
+                strthinkickrad!(r6, A, B, K1, E0, max_order, rad_const)
                 drift6!(r6, L1, beti)
             end
 
@@ -276,6 +276,8 @@ function pass!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, particl
     lost_flags = particles.lost_flag
     PolynomB = zeros(4)
     E0 = particles.energy
+    rad_const = 0.0
+
     if use_exact_beti == 1
         beti = 1.0 / particles.beta
     else
@@ -288,7 +290,15 @@ function pass!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, particl
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
-            StrMPoleSymplectic4RadPass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            if particles.mass == m_e
+                rad_const = RAD_CONST_E * particles.gamma^3
+            elseif particles.mass == m_p
+                rad_const = RAD_CONST_P * particles.gamma^3
+            else
+                rad_const = 0.0
+                println("SR is not implemented for this particle mass.")
+            end
+            StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
@@ -302,7 +312,15 @@ function pass!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, particl
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
-            StrMPoleSymplectic4RadPass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            if particles.mass == m_e
+                rad_const = RAD_CONST_E * particles.gamma^3
+            elseif particles.mass == m_p
+                rad_const = RAD_CONST_P * particles.gamma^3
+            else
+                rad_const = 0.0
+                println("SR is not implemented for this particle mass.")
+            end
+            StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
@@ -314,6 +332,8 @@ function pass!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, particl
     # ele: KSEXT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
+    rad_const = 0.0
+
     lost_flags = particles.lost_flag
     PolynomB = zeros(4)
     E0 = particles.energy
@@ -325,11 +345,19 @@ function pass!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, particl
     if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
         PolynomB[3] = ele.k2 / 2.0
         if ele.rad == 0
-            StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            StrMPoleSymplectic4Pass!(r_in, ele.len, beti,ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
-            StrMPoleSymplectic4RadPass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            if particles.mass == m_e
+                rad_const = RAD_CONST_E * particles.gamma^3
+            elseif particles.mass == m_p
+                rad_const = RAD_CONST_P * particles.gamma^3
+            else
+                rad_const = 0.0
+                println("SR is not implemented for this particle mass.")
+            end
+            StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
@@ -343,7 +371,15 @@ function pass!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, particl
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
-            StrMPoleSymplectic4RadPass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            if particles.mass == m_e
+                rad_const = RAD_CONST_E * particles.gamma^3
+            elseif particles.mass == m_p
+                rad_const = RAD_CONST_P * particles.gamma^3
+            else
+                rad_const = 0.0
+                println("SR is not implemented for this particle mass.")
+            end
+            StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
@@ -355,6 +391,8 @@ function pass!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, particle
     # ele: KOCT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
+    rad_const = 0.0
+
     lost_flags = particles.lost_flag
     PolynomB = zeros(4)
     E0 = particles.energy
@@ -370,7 +408,15 @@ function pass!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, particle
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
-            StrMPoleSymplectic4RadPass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            if particles.mass == m_e
+                rad_const = RAD_CONST_E * particles.gamma^3
+            elseif particles.mass == m_p
+                rad_const = RAD_CONST_P * particles.gamma^3
+            else
+                rad_const = 0.0
+                println("SR is not implemented for this particle mass.")
+            end
+            StrMPoleSymplectic4RadPass!(r_in, ele.len, beti, particles.mass, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
@@ -384,7 +430,15 @@ function pass!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, particle
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
-            StrMPoleSymplectic4RadPass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            if particles.mass == m_e
+                rad_const = RAD_CONST_E * particles.gamma^3
+            elseif particles.mass == m_p
+                rad_const = RAD_CONST_P * particles.gamma^3
+            else
+                rad_const = 0.0
+                println("SR is not implemented for this particle mass.")
+            end
+            StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
@@ -496,7 +550,7 @@ function StrMPoleSymplectic4Pass_P!(r::Array{Float64,1}, le::Float64, beti::Floa
     return nothing
 end
 
-function StrMPoleSymplectic4RadPass_P!(r::Array{Float64,1}, le::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function StrMPoleSymplectic4RadPass_P!(r::Array{Float64,1}, le::Float64, rad_const::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_step::Int, 
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
     fringeIntM0::Array{Float64,1},  # I0m/K1, I1m/K1, I2m/K1, I3m/K1, Lambda2m/K1 
@@ -570,11 +624,11 @@ function StrMPoleSymplectic4RadPass_P!(r::Array{Float64,1}, le::Float64, beti::F
             # Integrator
             for m in 1:num_int_step
                 drift6!(r6, L1, beti)
-                strthinkickrad!(r6, A, B, K1, E0, max_order)
+                strthinkickrad!(r6, A, B, K1, E0, max_order, rad_const)
                 drift6!(r6, L2, beti)
-                strthinkickrad!(r6, A, B, K2, E0, max_order)
+                strthinkickrad!(r6, A, B, K2, E0, max_order, rad_const)
                 drift6!(r6, L2, beti)
-                strthinkickrad!(r6, A, B, K1, E0, max_order)
+                strthinkickrad!(r6, A, B, K1, E0, max_order, rad_const)
                 drift6!(r6, L1, beti)
             end
 
@@ -621,6 +675,8 @@ function pass_P!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, parti
     # ele: KQUAD
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
+    rad_const = 0.0
+
     lost_flags = particles.lost_flag
     PolynomB = zeros(4)
     E0 = particles.energy
@@ -636,7 +692,15 @@ function pass_P!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, parti
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
-            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            if particles.mass == m_e
+                rad_const = RAD_CONST_E * particles.gamma^3
+            elseif particles.mass == m_p
+                rad_const = RAD_CONST_P * particles.gamma^3
+            else
+                rad_const = 0.0
+                println("SR is not implemented for this particle mass.")
+            end
+            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
@@ -650,7 +714,15 @@ function pass_P!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, parti
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
-            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            if particles.mass == m_e
+                rad_const = RAD_CONST_E * particles.gamma^3
+            elseif particles.mass == m_p
+                rad_const = RAD_CONST_P * particles.gamma^3
+            else
+                rad_const = 0.0
+                println("SR is not implemented for this particle mass.")
+            end
+            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
@@ -662,6 +734,8 @@ function pass_P!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, parti
     # ele: KSEXT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
+    rad_const = 0.0
+
     lost_flags = particles.lost_flag
     PolynomB = zeros(4)
     E0 = particles.energy
@@ -677,7 +751,15 @@ function pass_P!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, parti
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
-            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            if particles.mass == m_e
+                rad_const = RAD_CONST_E * particles.gamma^3
+            elseif particles.mass == m_p
+                rad_const = RAD_CONST_P * particles.gamma^3
+            else
+                rad_const = 0.0
+                println("SR is not implemented for this particle mass.")
+            end
+            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
@@ -691,7 +773,15 @@ function pass_P!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, parti
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
-            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            if particles.mass == m_e
+                rad_const = RAD_CONST_E * particles.gamma^3
+            elseif particles.mass == m_p
+                rad_const = RAD_CONST_P * particles.gamma^3
+            else
+                rad_const = 0.0
+                println("SR is not implemented for this particle mass.")
+            end
+            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
@@ -703,6 +793,8 @@ function pass_P!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, partic
     # ele: KOCT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
+    rad_const = 0.0
+
     lost_flags = particles.lost_flag
     PolynomB = zeros(4)
     E0 = particles.energy
@@ -718,7 +810,15 @@ function pass_P!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, partic
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
-            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            if particles.mass == m_e
+                rad_const = RAD_CONST_E * particles.gamma^3
+            elseif particles.mass == m_p
+                rad_const = RAD_CONST_P * particles.gamma^3
+            else
+                rad_const = 0.0
+                println("SR is not implemented for this particle mass.")
+            end
+            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
@@ -732,7 +832,15 @@ function pass_P!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, partic
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
-            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            if particles.mass == m_e
+                rad_const = RAD_CONST_E * particles.gamma^3
+            elseif particles.mass == m_p
+                rad_const = RAD_CONST_P * particles.gamma^3
+            else
+                rad_const = 0.0
+                println("SR is not implemented for this particle mass.")
+            end
+            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, rad_const, beti,ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end

@@ -5,24 +5,6 @@ using Serialization
 
 E0 = 17.846262619763e9
 
-function linepass1!(line, particles::Beam)
-    # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
-    # Check if the particle is lost by checking the lost_flag
-    np = particles.nmacro
-    particles6 = matrix_to_array(particles.r)
-    if length(particles6) != np*6
-        error("The number of particles does not match the length of the particle array")
-    end
-    save_particles = zeros(length(line), 6)
-    for i in eachindex(line)
-        # ele = line[i]
-        pass!(line[i], particles6, np, particles)        
-        save_particles[i, :] = particles6
-    end
-    rout = array_to_matrix(particles6, np)
-    particles.r = rout
-    return save_particles
-end
 ESR_crab = deserialize("src/demo/ESR/esr_main_linearquad.jls")
 
 function Q_perturb(ESR_crab)
@@ -58,10 +40,9 @@ function get_phase14_zero(x)
     changed_ele = [new_Q1, new_Q2, new_Q3, new_Q4, new_Q5, new_Q6, new_Q7]
     refpts = [i for i in 1:5550]
     # refpts = [35, 5533, length(ESR_crab)]
-    twi = ADtwissring(ESR_crab, 0.0, 0, refpts, changed_idx, changed_ele, E0=E0, m0=m_e)
+    twi = ADtwissring(ESR_perturb, 0.0, 0, refpts, changed_idx, changed_ele, E0=E0, m0=m_e)
 
-    # phase41 = twi[1].dmux + twi[3].dmux - twi[2].dmux
-    phase41 = twi[35].dmux + twi[end].dmux - twi[5533].dmux
+    phase41 = twi[35].mux + twi[end].mux - twi[5533].mux
     return phase41 - 2*pi
 end
 

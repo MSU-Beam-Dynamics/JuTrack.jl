@@ -8,7 +8,7 @@ using PyCall
 np = pyimport("numpy")
 # using TimerOutputs
 # const to = TimerOutput()
-using Infiltrator
+# using Infiltrator
 function uni_transform(ind_i::Int, ind_j::Int, ratio_left::ComplexF64, ratio_right::ComplexF64,
                        mat::Matrix{ComplexF64}, leftm::Matrix{ComplexF64}, rightm::Matrix{ComplexF64})
     rightm[:, ind_j] .+= rightm[:, ind_i] * ratio_right
@@ -127,15 +127,15 @@ mutable struct TPSVar
     epsilon::Float64
 end
 
-function TPSVar6D(order::Int)
+function TPSVar6D(order::Int; inits::Vector{ComplexF64}=zeros(ComplexF64, 6))
     dim = 3
-    init = 0.0 + 0.0im
-    zx = CTPS(init, 1, 6, order)
-    zxs  = CTPS(init, 2, 6, order)
-    zy = CTPS(init, 3, 6, order)
-    zys  = CTPS(init, 4, 6, order)
-    zz = CTPS(init, 5, 6, order)
-    zzs  = CTPS(init, 6, 6, order)
+    # init = 0.0 + 0.0im
+    zx = CTPS(inits[1], 1, 6, order)
+    zxs  = CTPS(inits[2], 2, 6, order)
+    zy = CTPS(inits[3], 3, 6, order)
+    zys  = CTPS(inits[4], 4, 6, order)
+    zz = CTPS(inits[5], 5, 6, order)
+    zzs  = CTPS(inits[6], 6, 6, order)
 
     vars = [zx, zxs, zy, zys, zz, zzs]
     d = length(zx.map)

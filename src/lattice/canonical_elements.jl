@@ -961,9 +961,9 @@ mutable struct TRANSLATION <: AbstractElement
     dx::Float64
     dy::Float64
     ds::Float64
-
+    eletype::String
     function TRANSLATION(;name::String = "TRANSLATION", len::Float64 = 0.0, dx::Float64 = 0.0, dy::Float64 = 0.0, ds::Float64 = 0.0)
-        new(name, len, dx, dy, ds)
+        new(name, len, dx, dy, ds, "TRANSLATION")
     end
 end
 
@@ -971,8 +971,9 @@ mutable struct YROTATION <: AbstractElement
     name::String
     len::Float64
     angle::Float64
+    eletype::String
     function YROTATION(;name::String = "YROTATION", len::Float64 = 0.0, angle::Float64 = 0.0)
-        new(name, len, angle)
+        new(name, len, angle, "YROTATION")
     end
 end
 # non-canonical elements

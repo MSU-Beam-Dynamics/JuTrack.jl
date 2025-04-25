@@ -1,3 +1,4 @@
+using LinearAlgebra
 function get_len(ele::AbstractElement)
     return get_len_value(ele.len)
 end
@@ -166,8 +167,8 @@ function array_optics(Twi)
     gamma[:, 1] = [Twi[i].gammax for i in eachindex(Twi)]
     gamma[:, 2] = [Twi[i].gammay for i in eachindex(Twi)]
     mu = zeros(length(Twi), 2)
-    mu[:, 1] = [Twi[i].dmux for i in eachindex(Twi)]
-    mu[:, 2] = [Twi[i].dmuy for i in eachindex(Twi)]
+    mu[:, 1] = [Twi[i].mux for i in eachindex(Twi)]
+    mu[:, 2] = [Twi[i].muy for i in eachindex(Twi)]
     dp = zeros(length(Twi), 4)
     dp[:, 1] = [Twi[i].dx for i in eachindex(Twi)]
     dp[:, 2] = [Twi[i].dpx for i in eachindex(Twi)]
@@ -186,4 +187,211 @@ function symplectic(M66::Array{Float64,2})
     delta = transpose(M66) * J * M66 .- J
     println("max deviation: ", maximum(abs.(delta)))
     return maximum(abs.(delta))
+end
+
+function rad_on!(ring)
+    for ele in ring
+        if ele isa SBEND || ele isa KQUAD || ele isa KSEXT || ele isa ESBEND
+            ele.rad = 1
+        end
+    end
+end
+function rad_off!(ring)
+    for ele in ring
+        if ele isa SBEND || ele isa KQUAD || ele isa KSEXT || ele isa ESBEND
+            ele.rad = 0
+        end
+    end
+end
+
+function tracking_U0(ring, energy, mass)
+    beam = Beam(energy=energy, mass=mass)
+    linepass!(ring, beam)   
+    U0 = -beam.r[6] * energy
+    return U0
+end
+
+function integral_U0(ring, energy, mass)
+    cspeed   = speed_of_light
+    e_radius = 2.8179403205e-15
+    Cgamma   = 4π * e_radius / (3 * m_e^3)      # [m / eV^3]
+    Cgamma = Cgamma * (m_e / mass)^4
+    Brho     = sqrt(energy^2 - mass^2) / cspeed
+    coef     = Cgamma / (2π) * energy^4            
+
+    # 1) Dipole contribution
+    dip_idx = findelem(ring, ESBEND)
+    θ       = [ring[i].angle for i in dip_idx]
+    Ld      = [ring[i].len for i in dip_idx]
+    I2d     = sum(abs.(θ .^ 2 ./ Ld))
+
+    # The following code is commented out because no wigglers or energy loss elements are available in JuTrack.
+    # 2) Wiggler contribution
+    # wig_idx = findall(e -> e.eletype == "Wiggler", ring)
+    # I2w     = sum(wiggler_i2(e, Brho) for e in ring[wig_idx])
+
+    # # 3) EnergyLoss‐element contribution
+    # el_idx = findall(e -> e.Class == "EnergyLoss" && e.PassMethod != "IdentityPass", ring)
+    # I2e    = sum(eloss_i2(e, coef) for e in ring[el_idx])
+
+    # 4) Any user-supplied I2 fields
+    # i2_idx = findelem(ring, "I2")
+    # I2x    = sum(getfield.(ring[i2_idx], :I2))
+
+    I2_total = I2d #+ I2w + I2e + I2x
+    return coef * I2_total
+end
+
+wiggler_i2(elem, Brho) = begin
+    rhoinv = elem.Bmax / Brho
+    hc     = elem.By[2,:] * rhoinv      # horizontal Fourier-B term
+    vc     = elem.Bx[2,:] * rhoinv      # vertical Fourier-B term
+    return elem.len * (dot(hc,hc) + dot(vc,vc)) / 2
+end
+
+"""
+    find_closed_orbit_4d(ring::Vector; dp::Float64=0.0, x0=zeros(4), energy::Float64=3.5e9, mass::Float64=m_e,
+    tol::Float64=1e-8, maxiter::Int=20)
+
+Find the 4-D closed orbit of a ring using autodiff.
+!!! Don't use this function for automatic differentiation because it already uses AD. 
+!!! Use this function for AD will result in second order differentiation (slow or crash).
+"""
+function find_closed_orbit_4d(ring::Vector; dp::Float64=0.0, x0=zeros(4), energy::Float64=3.5e9, mass::Float64=m_e,
+    tol::Float64=1e-8, maxiter::Int=20)
+    x = copy(x0)
+
+    function fmap(θ::Vector{Float64})
+        rin = zeros(Float64, 6)
+        rin[1] = θ[1]
+        rin[2] = θ[2]
+        rin[3] = θ[3]
+        rin[4] = θ[4]
+        rin[5] = 0.0
+        rin[6] = dp
+        b = Beam(reshape(rin, 1, 6), energy=energy, mass=mass)          
+        ringpass!(ring, b, 1)                               
+        return b.r[1, 1:4]                              
+    end
+
+    for iter in 1:maxiter
+        J, x_out = jacobian(ForwardWithPrimal, Const(fmap), x)     # value and Jacobian
+        Δ = x_out .- x                                      # fixed-point error
+
+        if norm(Δ) < tol
+            return x                                       # found closed orbit
+        end
+
+        # Newton update: solve (I - J) Δx = Δ
+        Δx = (I - J[1] + 1e-6 * I) \ Δ                                  # requires invertibility
+        x  += Δx
+    end
+    println("Closed orbit did not converge after $maxiter iterations")
+    return x
+end
+
+"""
+    find_closed_orbit_6d(ring::Vector; x0=zeros(6), energy::Float64=3.5e9, mass::Float64=m_e,
+    tol::Float64=1e-8, maxiter::Int=20)
+
+Find the 6-D closed orbit of a ring using autodiff.
+To find a 6-D closed orbit, the ring must have active RF cavities.
+!!! Don't use this function for automatic differentiation because it already uses AD. 
+!!! Use this function for AD will result in second order differentiation (slow or crash).
+"""
+function find_closed_orbit_6d(ring::Vector; x0=zeros(6), energy::Float64=3.5e9, mass::Float64=m_e,
+    tol::Float64=1e-8, maxiter::Int=20)
+    x = copy(x0)
+
+    function fmap(θ::Vector{Float64})
+        b = Beam(reshape(θ, 1, 6), energy=energy, mass=mass)          
+        ringpass!(ring, b, 1)                               
+        return b.r[1, :]                              
+    end
+
+    for iter in 1:maxiter
+        J, x_out = jacobian(ForwardWithPrimal, Const(fmap), x)     # value and Jacobian
+        Δ = x_out .- x                                      # fixed-point error
+
+        if norm(Δ) < tol
+            return x                                       # found closed orbit
+        end
+
+        # Newton update: solve (I - J) Δx = Δ
+        Δx = (I - J[1] + 1e-6 * I) \ Δ                                  # requires invertibility
+        x  += Δx
+    end
+    println("Closed orbit did not converge after $maxiter iterations")
+    return x
+end
+
+function numerical_jacobian(f::Function, x::Vector{Float64}; h::Float64=1e-6)
+    n = length(x)
+    y0 = f(x)
+    m = length(y0)
+    J = zeros(m, n)
+    for j in 1:n
+        dx = zeros(n)
+        dx[j] = h
+        y_plus  = f(x .+ dx)
+        y_minus = f(x .- dx)
+        @inbounds J[:, j] = (y_plus .- y_minus) ./ (2h)
+    end
+    return J, y0
+end
+
+# find_closed_orbit using finite differences
+function fast_closed_orbit_6d(ring::Vector; x0=zeros(6), energy::Float64=3.5e9,
+                                 mass::Float64=m_e, tol::Float64=1e-8, maxiter::Int=20)
+    x = copy(x0)
+
+    function fmap(θ::Vector{Float64})
+        b = Beam(reshape(θ, 1, 6), energy=energy, mass=mass)
+        ringpass!(ring, b, 1)
+        return b.r[1, :]
+    end
+
+    for iter in 1:maxiter
+        J, x_out = numerical_jacobian(fmap, x)    # replace AD with FD
+        Δ = x_out .- x
+
+        if norm(Δ) < tol
+            return x
+        end
+
+        # Newton update: solve (I - J) Δx = Δ
+        Δx = (I - J + 1e-6*I) \ Δ
+        x  += Δx
+    end
+
+    println("Closed orbit did not converge after $maxiter iterations")
+    return x
+end
+
+function fast_closed_orbit_4d(ring::Vector; x0=zeros(4), energy::Float64=3.5e9,
+    mass::Float64=m_e, tol::Float64=1e-8, maxiter::Int=20)
+    x = copy(x0)
+
+    function fmap(θ::Vector{Float64})
+        rin = [θ[1] θ[2] θ[3] θ[4] 0.0 0.0]
+        b = Beam(rin, energy=energy, mass=mass)
+        ringpass!(ring, b, 1)
+        return b.r[1, 1:4]
+    end
+
+    for iter in 1:maxiter
+        J, x_out = numerical_jacobian(fmap, x)    # replace AD with FD
+        Δ = x_out .- x
+
+        if norm(Δ) < tol
+        return x
+    end
+
+    # Newton update: solve (I - J) Δx = Δ
+    Δx = (I - J + 1e-6*I) \ Δ
+    x  += Δx
+    end
+
+    println("Closed orbit did not converge after $maxiter iterations")
+    return x
 end

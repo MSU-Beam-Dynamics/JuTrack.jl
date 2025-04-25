@@ -10,9 +10,9 @@ function bndthinkick!(r::AbstractVector{Float64}, A::Array{Float64,1}, B::Array{
     ImSum = A[max_order + 1]
     ReSumTemp = 0.0
 
-    for i in reverse(1:max_order)
-        ReSumTemp = ReSum * r[1] - ImSum * r[3] + B[i]
-        ImSum = ImSum * r[1] + ReSum * r[3] + A[i]
+    for i in max_order-1:-1:0
+        ReSumTemp = ReSum * r[1] - ImSum * r[3] + B[i+1]
+        ImSum = ImSum * r[1] + ReSum * r[3] + A[i+1]
         ReSum = ReSumTemp
     end
 
@@ -30,9 +30,9 @@ function bndthinkickrad!(r::AbstractVector{Float64}, A::Array{Float64,1}, B::Arr
     ReSumTemp = 0.0
     CRAD = CGAMMA * E0^3 / (2.0*pi*1e27) # [m]/[GeV^3] M.Sands (4.1)
 
-    for i in reverse(1:max_order)
-        ReSumTemp = ReSum * r[1] - ImSum * r[3] + B[i]
-        ImSum = ImSum * r[1] + ReSum * r[3] + A[i]
+    for i in max_order-1:-1:0
+        ReSumTemp = ReSum * r[1] - ImSum * r[3] + B[i+1]
+        ImSum = ImSum * r[1] + ReSum * r[3] + A[i+1]
         ReSum = ReSumTemp
     end
 
@@ -709,6 +709,43 @@ function exact_bend!(r6::AbstractVector{Float64}, irho::Float64, L::Float64, bet
     return nothing
 end
 
+function B2perp_exact_bnd(bx, by, irho, x, xpr, y, ypr)
+    nrm = (1.0 + x *irho)^2
+    v_norm2 = nrm + xpr^2*(1.0-nrm) + ypr^2*(1.0-nrm)
+    return bx*bx + by*by - (bx*xpr + by*ypr)^2/v_norm2
+end
+function exactbndthinkick_rad!(r::AbstractVector{Float64}, A::Array{Float64,1}, B::Array{Float64,1}, 
+    L::Float64, irho::Float64, max_order::Int, beti::Float64, rad_const::Float64)
+    # AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
+    ReSum = B[max_order + 1]
+    ImSum = A[max_order + 1]
+    ReSumTemp = 0.0
+
+    for i in max_order-1:-1:0
+        ReSumTemp = ReSum * r[1] - ImSum * r[3] + B[i+1]
+        ImSum = ImSum * r[1] + ReSum * r[3] + A[i+1]
+        ReSum = ReSumTemp
+    end
+
+    p_norm = 1.0 / (1.0 + r[6])
+    x = r[1]
+    xpr = r[2] * p_norm
+    y = r[3]
+    ypr = r[4] * p_norm
+
+    B2P = B2perp_exact_bnd(ImSum, ReSum+irho, irho, x, xpr, y, ypr)
+
+    r[6] -= rad_const * (1.0 + r[6])^2 * B2P * (1.0 + x*irho) * L / sqrt(1.0 - xpr*xpr - ypr*ypr)
+
+    p_norm = 1.0 / (1.0 + r[6])
+    r[2] = xpr/p_norm
+    r[4] = ypr/p_norm
+
+    r[2] -= L * ReSum
+    r[4] += L * ImSum
+    return nothing
+end
+
 function bend_edge!(r6::AbstractVector{Float64}, rhoinv::Float64, theta::Float64, beti::Float64)
     # Forest 12.41, ideal wedge, map U(theta, rhoinv)
 
@@ -798,6 +835,206 @@ function ExactSectorBend!(r::Array{Float64,1}, le::Float64, beti::Float64, angle
                 strthinkick!(r6, A, B, K2, max_order)
                 exact_bend!(r6, irho, L2, beti)
                 strthinkick!(r6, A, B, K1, max_order)
+                exact_bend!(r6, irho, L1, beti)
+            end
+        end
+
+        r6[5] -= le*beti  # r6[ct_], absolute path length
+
+        bend_edge!(r6, irho, -exit_angle, beti)
+        if FringeQuadExit != 0
+            multipole_fringe!(r6, le, A, B, max_order, -1.0, 1, beti)
+        end
+        if FringeBendExit != 0
+            bend_fringe!(r6, -irho, gk, beti)
+        end
+        Yrot!(r6, exit_angle, beti)
+
+        # Misalignment at exit
+        if !iszero(R2)
+            multmv!(r6, R2)
+        end
+        if !iszero(T2)
+            addvv!(r6, T2)
+        end
+        if check_lost(r6)
+            lost_flags[c] = 1
+        end
+    end
+    
+    if !iszero(KickAngle[1])
+        B[1] += sin(KickAngle[1]) / le
+    end
+    if !iszero(KickAngle[2])
+        A[1] -= sin(KickAngle[2]) / le
+    end
+    return nothing
+end
+
+function ExactSectorBend_rad!(r::Array{Float64,1}, le::Float64, rad_const::Float64, beti::Float64, angle::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+    max_order::Int, num_int_steps::Int, entrance_angle::Float64, exit_angle::Float64, FringeBendEntrance::Int, FringeBendExit::Int,
+    FringeQuadEntrance::Int, FringeQuadExit::Int, gk::Float64,
+    T1::Array{Float64,1}, T2::Array{Float64,1}, 
+    R1::Array{Float64,2}, R2::Array{Float64,2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1},
+    KickAngle::Array{Float64,1}, num_particles::Int, lost_flags::Array{Int64,1})
+    
+    irho = angle / le
+    DRIFT1 = 0.6756035959798286638
+    DRIFT2 = -0.1756035959798286639
+    KICK1 = 1.351207191959657328
+    KICK2 = -1.702414383919314656
+    SL = le / num_int_steps
+    L1 = SL * DRIFT1
+    L2 = SL * DRIFT2
+    K1 = SL * KICK1
+    K2 = SL * KICK2
+
+    B0 = B[1]
+    A0 = A[1]
+
+    if !iszero(KickAngle[1])
+        B[1] -= sin(KickAngle[1]) / le
+    end
+    if !iszero(KickAngle[2])
+        A[1] += sin(KickAngle[2]) / le
+    end
+
+    for c in 1:num_particles
+        if isone(lost_flags[c])
+            continue
+        end
+        r6 = @view r[(c-1)*6+1:c*6]
+        # Misalignment at entrance
+        if !iszero(T1)
+            addvv!(r6, T1)
+        end
+        if !iszero(R1)
+            multmv!(r6, R1)
+        end
+
+        Yrot!(r6, entrance_angle, beti)
+
+        if FringeBendEntrance != 0
+            bend_fringe!(r6, irho, gk, beti)
+        end
+
+        if FringeQuadEntrance != 0
+            multipole_fringe!(r6, le, A, B, max_order, 1.0, 1, beti)
+        end
+
+        bend_edge!(r6, irho, -entrance_angle, beti)
+
+        # Integrator
+        if num_int_steps == 0
+            exact_bend!(r6, irho, le, beti)
+        else
+            for m in 1:num_int_steps
+                exact_bend!(r6, irho, L1, beti)
+                exactbndthinkick_rad!(r6, A, B, K1, irho, max_order, beti, rad_const)
+                exact_bend!(r6, irho, L2, beti)
+                exactbndthinkick_rad!(r6, A, B, K2, irho, max_order, beti, rad_const)
+                exact_bend!(r6, irho, L2, beti)
+                exactbndthinkick_rad!(r6, A, B, K1, irho, max_order, beti, rad_const)
+                exact_bend!(r6, irho, L1, beti)
+            end
+        end
+
+        r6[5] -= le*beti  # r6[ct_], absolute path length
+
+        bend_edge!(r6, irho, -exit_angle, beti)
+        if FringeQuadExit != 0
+            multipole_fringe!(r6, le, A, B, max_order, -1.0, 1, beti)
+        end
+        if FringeBendExit != 0
+            bend_fringe!(r6, -irho, gk, beti)
+        end
+        Yrot!(r6, exit_angle, beti)
+
+        # Misalignment at exit
+        if !iszero(R2)
+            multmv!(r6, R2)
+        end
+        if !iszero(T2)
+            addvv!(r6, T2)
+        end
+        if check_lost(r6)
+            lost_flags[c] = 1
+        end
+    end
+    
+    if !iszero(KickAngle[1])
+        B[1] += sin(KickAngle[1]) / le
+    end
+    if !iszero(KickAngle[2])
+        A[1] -= sin(KickAngle[2]) / le
+    end
+    return nothing
+end
+
+function ExactSectorBend_rad_P!(r::Array{Float64,1}, le::Float64, rad_const::Float64, beti::Float64, angle::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+    max_order::Int, num_int_steps::Int, entrance_angle::Float64, exit_angle::Float64, FringeBendEntrance::Int, FringeBendExit::Int,
+    FringeQuadEntrance::Int, FringeQuadExit::Int, gk::Float64,
+    T1::Array{Float64,1}, T2::Array{Float64,1}, 
+    R1::Array{Float64,2}, R2::Array{Float64,2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1},
+    KickAngle::Array{Float64,1}, num_particles::Int, lost_flags::Array{Int64,1})
+    
+    irho = angle / le
+    DRIFT1 = 0.6756035959798286638
+    DRIFT2 = -0.1756035959798286639
+    KICK1 = 1.351207191959657328
+    KICK2 = -1.702414383919314656
+    SL = le / num_int_steps
+    L1 = SL * DRIFT1
+    L2 = SL * DRIFT2
+    K1 = SL * KICK1
+    K2 = SL * KICK2
+
+    B0 = B[1]
+    A0 = A[1]
+
+    if !iszero(KickAngle[1])
+        B[1] -= sin(KickAngle[1]) / le
+    end
+    if !iszero(KickAngle[2])
+        A[1] += sin(KickAngle[2]) / le
+    end
+
+    Threads.@threads for c in 1:num_particles
+        if isone(lost_flags[c])
+            continue
+        end
+        r6 = @view r[(c-1)*6+1:c*6]
+        # Misalignment at entrance
+        if !iszero(T1)
+            addvv!(r6, T1)
+        end
+        if !iszero(R1)
+            multmv!(r6, R1)
+        end
+
+        Yrot!(r6, entrance_angle, beti)
+
+        if FringeBendEntrance != 0
+            bend_fringe!(r6, irho, gk, beti)
+        end
+
+        if FringeQuadEntrance != 0
+            multipole_fringe!(r6, le, A, B, max_order, 1.0, 1, beti)
+        end
+
+        bend_edge!(r6, irho, -entrance_angle, beti)
+
+        # Integrator
+        if num_int_steps == 0
+            exact_bend!(r6, irho, le, beti)
+        else
+            for m in 1:num_int_steps
+                exact_bend!(r6, irho, L1, beti)
+                exactbndthinkick_rad!(r6, A, B, K1, irho, max_order, beti, rad_const)
+                exact_bend!(r6, irho, L2, beti)
+                exactbndthinkick_rad!(r6, A, B, K2, irho, max_order, beti, rad_const)
+                exact_bend!(r6, irho, L2, beti)
+                exactbndthinkick_rad!(r6, A, B, K1, irho, max_order, beti, rad_const)
                 exact_bend!(r6, irho, L1, beti)
             end
         end
@@ -940,6 +1177,7 @@ function pass!(ele::ESBEND, r_in::Array{Float64,1}, num_particles::Int64, partic
     # num_particles: number of particles
     lost_flags = particles.lost_flag
     E0 = particles.energy
+    rad_const = 0.0
     if use_exact_beti == 1
         beti = 1.0 / particles.beta
     else
@@ -954,7 +1192,21 @@ function pass!(ele::ESBEND, r_in::Array{Float64,1}, num_particles::Int64, partic
             ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures,
             ele.KickAngle, num_particles, lost_flags)
     else
-        println("error: no SR method for exact sector bend")
+        if particles.mass == m_e
+            rad_const = RAD_CONST_E * particles.gamma^3
+        elseif particles.mass == m_p
+            rad_const = RAD_CONST_P * particles.gamma^3
+        else
+            rad_const = 0.0
+            println("SR is not implemented for this particle mass.")
+        end
+        ExactSectorBend_rad!(r_in, ele.len, rad_const, beti, ele.angle, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
+            ele.e1, ele.e2,
+            ele.FringeBendEntrance, ele.FringeBendExit,
+            ele.FringeQuadEntrance, ele.FringeQuadExit,
+            ele.gK,
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures,
+            ele.KickAngle, num_particles, lost_flags)
     end
     return nothing
 end
@@ -965,6 +1217,7 @@ function pass_P!(ele::ESBEND, r_in::Array{Float64,1}, num_particles::Int64, part
     # num_particles: number of particles
     lost_flags = particles.lost_flag
     E0 = particles.energy
+    rad_const = 0.0
     if use_exact_beti == 1
         beti = 1.0 / particles.beta
     else
@@ -979,7 +1232,21 @@ function pass_P!(ele::ESBEND, r_in::Array{Float64,1}, num_particles::Int64, part
             ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures,
             ele.KickAngle, num_particles, lost_flags)
     else
-        println("error: no SR method for exact sector bend")
+        if particles.mass == m_e
+            rad_const = RAD_CONST_E * particles.gamma^3
+        elseif particles.mass == m_p
+            rad_const = RAD_CONST_P * particles.gamma^3
+        else
+            rad_const = 0.0
+            println("SR is not implemented for this particle mass.")
+        end
+        ExactSectorBend_rad_P!(r_in, ele.len, rad_const, beti, ele.angle, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
+            ele.e1, ele.e2,
+            ele.FringeBendEntrance, ele.FringeBendExit,
+            ele.FringeQuadEntrance, ele.FringeQuadExit,
+            ele.gK,
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures,
+            ele.KickAngle, num_particles, lost_flags)
     end
     return nothing
 end
@@ -1191,6 +1458,38 @@ function bend_edge!(r6::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, rhoinv::Float6
     return nothing
 end
 
+function exactbndthinkick_rad!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A::Array{Float64,1}, B::Array{Float64,1}, 
+    L::Float64, irho::Float64, max_order::Int, beti::Float64, rad_const::Float64) where {T, TPS_Dim, Max_TPS_Degree}
+    # AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
+    ReSum = CTPS(T(B[max_order + 1]), TPS_Dim, Max_TPS_Degree)
+    ImSum = CTPS(T(A[max_order + 1]), TPS_Dim, Max_TPS_Degree)
+    ReSumTemp = CTPS(T(0.0), TPS_Dim, Max_TPS_Degree)
+
+    for i in max_order-1:-1:0
+        ReSumTemp = ReSum * r[1] - ImSum * r[3] + B[i+1]
+        ImSum = ImSum * r[1] + ReSum * r[3] + A[i+1]
+        ReSum = ReSumTemp
+    end
+
+    p_norm = 1.0 / (1.0 + r[6])
+    x = r[1]
+    xpr = r[2] * p_norm
+    y = r[3]
+    ypr = r[4] * p_norm
+
+    B2P = B2perp_exact_bnd(ImSum, ReSum+irho, irho, x, xpr, y, ypr)
+
+    r[6] -= rad_const * (1.0 + r[6])^2 * B2P * (1.0 + x*irho) * L / sqrt(1.0 - xpr*xpr - ypr*ypr)
+
+    p_norm = 1.0 / (1.0 + r[6])
+    r[2] = xpr/p_norm
+    r[4] = ypr/p_norm
+
+    r[2] -= L * ReSum
+    r[4] += L * ImSum
+    return nothing
+end
+
 function ExactSectorBend!(r6::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le::Float64, beti::Float64, angle::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_steps::Int, entrance_angle::Float64, exit_angle::Float64, FringeBendEntrance::Int, FringeBendExit::Int,
     FringeQuadEntrance::Int, FringeQuadExit::Int, gk::Float64,
@@ -1283,9 +1582,102 @@ function ExactSectorBend!(r6::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le::Floa
     return nothing
 end
 
+function ExactSectorBend_rad!(r6::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le::Float64, rad_const::Float64, beti::Float64, angle::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+    max_order::Int, num_int_steps::Int, entrance_angle::Float64, exit_angle::Float64, FringeBendEntrance::Int, FringeBendExit::Int,
+    FringeQuadEntrance::Int, FringeQuadExit::Int, gk::Float64,
+    T1::Array{Float64,1}, T2::Array{Float64,1}, 
+    R1::Array{Float64,2}, R2::Array{Float64,2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1},
+    KickAngle::Array{Float64,1}) where {T, TPS_Dim, Max_TPS_Degree}
+    
+    irho = angle / le
+    DRIFT1 = 0.6756035959798286638
+    DRIFT2 = -0.1756035959798286639
+    KICK1 = 1.351207191959657328
+    KICK2 = -1.702414383919314656
+    SL = le / num_int_steps
+    L1 = SL * DRIFT1
+    L2 = SL * DRIFT2
+    K1 = SL * KICK1
+    K2 = SL * KICK2
+
+    B0 = B[1]
+    A0 = A[1]
+
+    if !iszero(KickAngle[1])
+        B[1] -= sin(KickAngle[1]) / le
+    end
+    if !iszero(KickAngle[2])
+        A[1] += sin(KickAngle[2]) / le
+    end
+
+
+    # Misalignment at entrance
+    if !iszero(T1)
+        addvv!(r6, T1)
+    end
+    if !iszero(R1)
+        multmv!(r6, R1)
+    end
+
+    Yrot!(r6, entrance_angle, beti)
+
+    if FringeBendEntrance != 0
+        bend_fringe!(r6, irho, gk, beti)
+    end
+
+    if FringeQuadEntrance != 0
+        multipole_fringe!(r6, le, A, B, max_order, 1.0, 1, beti)
+    end
+
+    bend_edge!(r6, irho, -entrance_angle, beti)
+
+    # Integrator
+    if num_int_steps == 0
+        exact_bend!(r6, irho, le, beti)
+    else
+        for m in 1:num_int_steps
+            exact_bend!(r6, irho, L1, beti)
+            exactbndthinkick_rad!(r6, A, B, K1, irho, max_order, beti, rad_const)
+            exact_bend!(r6, irho, L2, beti)
+            exactbndthinkick_rad!(r6, A, B, K2, irho, max_order, beti, rad_const)
+            exact_bend!(r6, irho, L2, beti)
+            exactbndthinkick_rad!(r6, A, B, K1, irho, max_order, beti, rad_const)
+            exact_bend!(r6, irho, L1, beti)
+        end
+    end
+
+    r6[5] -= le*beti  # r6[ct_], absolute path length
+
+    bend_edge!(r6, irho, -exit_angle, beti)
+    if FringeQuadExit != 0
+        multipole_fringe!(r6, le, A, B, max_order, -1.0, 1, beti)
+    end
+    if FringeBendExit != 0
+        bend_fringe!(r6, -irho, gk, beti)
+    end
+    Yrot!(r6, exit_angle, beti)
+
+    # Misalignment at exit
+    if !iszero(R2)
+        multmv!(r6, R2)
+    end
+    if !iszero(T2)
+        addvv!(r6, T2)
+    end
+    
+    if !iszero(KickAngle[1])
+        B[1] += sin(KickAngle[1]) / le
+    end
+    if !iszero(KickAngle[2])
+        A[1] -= sin(KickAngle[2]) / le
+    end
+    return nothing
+end
+
 function pass_TPSA!(ele::ESBEND, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; E0::Float64=0.0, m0::Float64=m_e) where {T, TPS_Dim, Max_TPS_Degree}
     gamma = E0 / m0
     beta = sqrt(1 - 1 / (gamma * gamma))
+    rad_const = 0.0
     if use_exact_beti == 1
         beti = 1.0 / beta
     else
@@ -1300,7 +1692,21 @@ function pass_TPSA!(ele::ESBEND, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}};
             ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures,
             ele.KickAngle)
     else
-        println("error: no SR method for exact sector bend")
+        if m0 == m_e
+            rad_const = RAD_CONST_E * gamma^3
+        elseif m0 == m_p
+            rad_const = RAD_CONST_P * gamma^3
+        else
+            rad_const = 0.0
+            println("SR is not implemented for this particle mass.")
+        end
+        ExactSectorBend_rad!(r_in, ele.len, rad_const, beti, ele.angle, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
+            ele.e1, ele.e2,
+            ele.FringeBendEntrance, ele.FringeBendExit,
+            ele.FringeQuadEntrance, ele.FringeQuadExit,
+            ele.gK,
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures,
+            ele.KickAngle)
     end
     return nothing
 end

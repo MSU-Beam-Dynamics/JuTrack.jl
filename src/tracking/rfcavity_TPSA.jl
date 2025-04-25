@@ -12,7 +12,11 @@ function RFCavityPass!(r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le, nv, f
     # end
     C0 = 2.99792458e8  # Speed of light in vacuum
     halflength = le / 2.0
-    beti = 1.0 / beta
+    if use_exact_beti == 1
+        beti = 1.0 / beta
+    else
+        beti = 1.0
+    end
 
     if le == 0
         # for c in 1:num_particles

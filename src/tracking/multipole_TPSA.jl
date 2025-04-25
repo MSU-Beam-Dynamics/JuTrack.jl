@@ -2,16 +2,16 @@ function StrB2perp(bx::CTPS{T, TPS_Dim, Max_TPS_Degree}, by::CTPS{T, TPS_Dim, Ma
                 x::CTPS{T, TPS_Dim, Max_TPS_Degree}, xpr::CTPS{T, TPS_Dim, Max_TPS_Degree}, 
                 y::CTPS{T, TPS_Dim, Max_TPS_Degree}, ypr::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
     # Calculates sqr(|B x e|) , where e is a unit vector in the direction of velocity
-    v_norm2 = 1.0 / (1.0 + xpr^2 + ypr^2)
-    return (by^2 + bx^2 + (bx*ypr - by*xpr)^2) * v_norm2
+    # v_norm2 = 1.0 / (1.0 + xpr^2 + ypr^2)
+    # return (by^2 + bx^2 + (bx*ypr - by*xpr)^2) * v_norm2
+    return bx*bx + by*by + (bx*xpr - by*ypr)^2
 end
-function strthinkickrad!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A, B, L, E0, max_order) where {T, TPS_Dim, Max_TPS_Degree}
+function strthinkickrad!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A::AbstractVector{Float64}, B::AbstractVector{Float64},
+                        L::Float64, E0::Float64, max_order::Int, rad_const::Float64) where {T, TPS_Dim, Max_TPS_Degree}
     # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
     ReSum = CTPS(T(B[max_order + 1]), TPS_Dim, Max_TPS_Degree)
     ImSum = CTPS(T(A[max_order + 1]), TPS_Dim, Max_TPS_Degree)
     ReSumTemp = CTPS(zero(T), TPS_Dim, Max_TPS_Degree)
-    irho = 0.0 # straight elements
-    CRAD = CGAMMA * E0^3 / (2.0*pi*1e27) # [m]/[GeV^3] M.Sands (4.1)
 
     for i in reverse(1:max_order)
         ReSumTemp = ReSum * r[1] - ImSum * r[3] + B[i]
@@ -27,9 +27,9 @@ function strthinkickrad!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A, B, L, E
     y = r[3]
     ypr = r[4] * p_norm
     B2P = StrB2perp(ImSum, ReSum , x , xpr, y ,ypr)
+    factor = L / (p_norm)^2 / sqrt(1.0 - xpr^2 - ypr^2)
 
-    dp_0 = r[6]
-    r[6] = r[6] - CRAD * (1.0+r[6])^2 * B2P * (1.0 + x*irho + (xpr^2 + ypr^2) / 2.0) * L
+    r[6] -= rad_const * B2P * factor
 
     # momentums after losing energy
     p_norm = 1.0 / (1.0 + r[6])
@@ -37,13 +37,12 @@ function strthinkickrad!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A, B, L, E
     r[2] = xpr / p_norm
     r[4] = ypr / p_norm
 
-    r[2] -= L * (ReSum - (dp_0 - r[1]*irho)*irho)
+    r[2] -= L * ReSum
     r[4] += L * ImSum
-    r[5] += L * irho * r[1]
     return nothing
 end
 
-function StrMPoleSymplectic4RadPass(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le::Float64, beti::Float64,
+function StrMPoleSymplectic4RadPass(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le::Float64, rad_const::Float64, beti::Float64,
     A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_step::Int, 
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
@@ -109,14 +108,13 @@ function StrMPoleSymplectic4RadPass(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}},
     # Integrator
     for m in 1:num_int_step
         drift6!(r, L1, beti)
-        strthinkickrad!(r, A, B, K1, E0, max_order)
+        strthinkickrad!(r, A, B, K1, E0, max_order, rad_const)
         drift6!(r, L2, beti)
-        strthinkickrad!(r, A, B, K2, E0, max_order)
+        strthinkickrad!(r, A, B, K2, E0, max_order, rad_const)
         drift6!(r, L2, beti)
-        strthinkickrad!(r, A, B, K1, E0, max_order)
+        strthinkickrad!(r, A, B, K1, E0, max_order, rad_const)
         drift6!(r, L1, beti)
     end
-
     # if FringeQuadExit != 0 && B[2] != 0
     #     if useLinFrEleExit == 1
     #         linearQuadFringeElegantExit!(r, B[2], fringeIntM0, fringeIntP0)
@@ -151,7 +149,8 @@ function StrMPoleSymplectic4RadPass(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}},
     return nothing
 end
 
-function strthinkick!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A, B, L, max_order) where {T, TPS_Dim, Max_TPS_Degree}
+function strthinkick!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A::AbstractVector{Float64}, B::AbstractVector{Float64}, 
+                        L::Float64, max_order::Int) where {T, TPS_Dim, Max_TPS_Degree}
     ReSum = CTPS(T(B[max_order + 1]), TPS_Dim, Max_TPS_Degree)
     ImSum = CTPS(T(A[max_order + 1]), TPS_Dim, Max_TPS_Degree)
     ReSumTemp = CTPS(zero(T), TPS_Dim, Max_TPS_Degree)
@@ -168,11 +167,13 @@ function strthinkick!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, A, B, L, max_
 end
 
 
-function StrMPoleSymplectic4Pass!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le, beti, A, B, max_order, num_int_step, 
-    FringeQuadEntrance, FringeQuadExit, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
-    fringeIntM0,  # I0m/K1, I1m/K1, I2m/K1, I3m/K1, Lambda2m/K1 
-    fringeIntP0,  # I0p/K1, I1p/K1, I2p/K1, I3p/K1, Lambda2p/K1
-    T1, T2, R1, R2, RApertures, EApertures, KickAngle) where {T, TPS_Dim, Max_TPS_Degree}
+function StrMPoleSymplectic4Pass!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le::Float64, beti::Float64, 
+    A::AbstractVector{Float64}, B::AbstractVector{Float64}, max_order::Int, num_int_step::Int, 
+    FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
+    fringeIntM0::AbstractVector{Float64},  # I0m/K1, I1m/K1, I2m/K1, I3m/K1, Lambda2m/K1 
+    fringeIntP0::AbstractVector{Float64},  # I0p/K1, I1p/K1, I2p/K1, I3p/K1, Lambda2p/K1
+    T1::AbstractVector{Float64}, T2::AbstractVector{Float64}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
+    RApertures::AbstractVector{Float64}, EApertures::AbstractVector{Float64}, KickAngle::AbstractVector{Float64}) where {T, TPS_Dim, Max_TPS_Degree}
 
     DRIFT1  =  0.6756035959798286638
     DRIFT2 = -0.1756035959798286639
@@ -253,6 +254,7 @@ function pass_TPSA!(ele::KQUAD, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; 
     else
         beti = 1.0 
     end
+    rad_const = 0.0
     PolynomB = zeros(4)
     if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
         PolynomB[2] = ele.k1
@@ -261,7 +263,15 @@ function pass_TPSA!(ele::KQUAD, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
         else
-            StrMPoleSymplectic4RadPass(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            if m0 == m_e
+                rad_const = RAD_CONST_E * gamma^3
+            elseif m0 == m_p
+                rad_const = RAD_CONST_P * gamma^3
+            else
+                rad_const = 0.0
+                println("SR is not implemented for this particle mass.")
+            end
+            StrMPoleSymplectic4RadPass(r_in, ele.len,rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0)
         end
@@ -275,7 +285,15 @@ function pass_TPSA!(ele::KQUAD, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
         else
-            StrMPoleSymplectic4RadPass(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            if m0 == m_e
+                rad_const = RAD_CONST_E * gamma^3
+            elseif m0 == m_p
+                rad_const = RAD_CONST_P * gamma^3
+            else
+                rad_const = 0.0
+                println("SR is not implemented for this particle mass.")
+            end
+            StrMPoleSymplectic4RadPass(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0)
         end
@@ -295,6 +313,7 @@ function pass_TPSA!(ele::KSEXT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; 
         beti = 1.0 
     end
     PolynomB = zeros(4)
+    rad_const = 0.0
 
     if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
         PolynomB[3] = ele.k2 / 2.0
@@ -303,7 +322,15 @@ function pass_TPSA!(ele::KSEXT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
         else
-            StrMPoleSymplectic4RadPass(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            if m0 == m_e
+                rad_const = RAD_CONST_E * gamma^3
+            elseif m0 == m_p
+                rad_const = RAD_CONST_P * gamma^3
+            else
+                rad_const = 0.0
+                println("SR is not implemented for this particle mass.")
+            end
+            StrMPoleSymplectic4RadPass(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0)
         end
@@ -317,7 +344,15 @@ function pass_TPSA!(ele::KSEXT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
         else
-            StrMPoleSymplectic4RadPass(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            if m0 == m_e
+                rad_const = RAD_CONST_E * gamma^3
+            elseif m0 == m_p
+                rad_const = RAD_CONST_P * gamma^3
+            else
+                rad_const = 0.0
+                println("SR is not implemented for this particle mass.")
+            end
+            StrMPoleSymplectic4RadPass(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0)
         end
@@ -336,6 +371,7 @@ function pass_TPSA!(ele::KOCT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; E
     else
         beti = 1.0 
     end
+    rad_const = 0.0
     PolynomB = zeros(4)
     if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
         PolynomB[4] = ele.k3 / 6.0
@@ -344,7 +380,15 @@ function pass_TPSA!(ele::KOCT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; E
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
         else
-            StrMPoleSymplectic4RadPass(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            if m0 == m_e
+                rad_const = RAD_CONST_E * gamma^3
+            elseif m0 == m_p
+                rad_const = RAD_CONST_P * gamma^3
+            else
+                rad_const = 0.0
+                println("SR is not implemented for this particle mass.")
+            end
+            StrMPoleSymplectic4RadPass(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0)
         end
@@ -358,7 +402,15 @@ function pass_TPSA!(ele::KOCT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; E
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
         else
-            StrMPoleSymplectic4RadPass(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            if m0 == m_e
+                rad_const = RAD_CONST_E * gamma^3
+            elseif m0 == m_p
+                rad_const = RAD_CONST_P * gamma^3
+            else
+                rad_const = 0.0
+                println("SR is not implemented for this particle mass.")
+            end
+            StrMPoleSymplectic4RadPass(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0)
         end

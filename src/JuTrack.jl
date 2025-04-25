@@ -3,10 +3,13 @@ using Enzyme
 # Enzyme.API.runtimeActivity!(true) # this is temporarily used
 const CoordLimit = 1.0
 const AngleLimit = 1.0
-const m_e = 0.51099895e6
+const m_e = 0.51099895069e6
 const m_p = 938.27208816e6
 const m_goldion = 931.49410242e6 # charge 79, atomic number 197
-const CGAMMA =	8.846056192e-05
+const CGAMMA =	8.846273768691263e-5
+const __RE = 2.8179403205e-15 # classical electron radius
+const RAD_CONST_E = 2.0/3.0*__RE
+const RAD_CONST_P = RAD_CONST_E * m_e/m_p 
 const epsilon_0 = 8.854187817e-12
 const speed_of_light = 2.99792458e8 # m/s
 const charge_e = 1.602176634e-19 # C
@@ -65,7 +68,7 @@ include("utils/fma.jl")
 # include("utils/square_matrix.jl")
 
 export Beam
-export m_e, m_p, m_goldion, charge_e, speed_of_light, epsilon_0, CGAMMA, CoordLimit, AngleLimit, use_exact_Hamiltonian, use_exact_drift
+export m_e, m_p, m_goldion, charge_e, speed_of_light, epsilon_0, CGAMMA, CoordLimit, AngleLimit, use_exact_Hamiltonian, use_exact_drift, use_exact_beti
 export qr_eigen, diag1, randn_approx
 # export Lattice, add!, buildlattice
 export CRABCAVITY,CRABCAVITY_K2, easyCRABCAVITY, AccelCavity, LorentzBoost, InvLorentzBoost, StrongGaussianBeam, 
@@ -82,11 +85,12 @@ export QUAD, LBEND, ESBEND, ERBEND, buildlatt
 export TRANSLATION, YROTATION
 export SPACECHARGE, QUAD_SC, DRIFT_SC, KQUAD_SC, KSEXT_SC, KOCT_SC, SBEND_SC, RBEND_SC, calculate_K
 export EdwardsTengTwiss, AbstractTwiss, twissPropagate, findm66, periodicEdwardsTengTwiss, twissline, ADtwissline, twissring, ADfindm66, ADtwissring, ADperiodicEdwardsTengTwiss
-export fastfindm66, fastfindm66_refpts, ADfastfindm66_refpts
+export fastfindm66, fastfindm66_refpts, ADfastfindm66_refpts, findm66_refpts
 export linepass!, pass!, ringpass!, linepass_TPSA!, pass_TPSA!, ringpass_TPSA!, check_lost
 export plinepass!, pringpass!, pass_P!, ADlinepass!, ADlinepass_TPSA!, ADringpass!, ADpringpass!, ADplinepass!
 export matrix_to_array, array_to_matrix
 export total_length, spos, findelem, insert_space_charge, array_optics, get_len, symplectic
+export find_closed_orbit_6d, find_closed_orbit_4d, tracking_U0, integral_U0, rad_on!, rad_off!, fast_closed_orbit_4d, fast_closed_orbit_6d
 # export CMscan, TPSVar6D, TPSVar4D, twiss_from_6x6, get_variables, evaluate, construct_sqr_matrix
 export ADfindm66_refpts
 
