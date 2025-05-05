@@ -1,3 +1,7 @@
+"""
+GAN model for space-charge Hamioltonian generation using U-Net architecture for the generator and PatchGAN for the discriminator.
+Related paper: "A symplectic machine learning model for fast simulation of space-charge effects" by J. Wan, Y. Hao and J. Qiang.
+"""
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -22,9 +26,9 @@ class GeneratorUNet(nn.Module):
         self.up2 = self.up_block(1024, 512, dropout=0.5)                # Input channels after concatenation
         self.up3 = self.up_block(1024, 512, dropout=0.5)
         self.up4 = self.up_block(1024, 512, dropout=0.5)
-        self.up5 = self.up_block(768, 256)                              # Adjusted input channels
-        self.up6 = self.up_block(384, 128)                              # Adjusted input channels
-        self.up7 = self.up_block(192, 64)                               # Adjusted input channels
+        self.up5 = self.up_block(768, 256)                              
+        self.up6 = self.up_block(384, 128)                              
+        self.up7 = self.up_block(192, 64)                               
 
         # Final output layer
         self.final = nn.Sequential(
@@ -105,8 +109,8 @@ class Discriminator(nn.Module):
             *discriminator_block(64, 128),
             *discriminator_block(128, 256),
             # *discriminator_block(256, 512),
-            nn.ZeroPad2d((1, 0, 1, 0)),  # Padding to maintain output size
-            nn.Conv2d(256, 1, kernel_size=4, padding=1)  # Output a single-channel feature map
+            nn.ZeroPad2d((1, 0, 1, 0)),  
+            nn.Conv2d(256, 1, kernel_size=4, padding=1)  
         )
 
     def forward(self, img_A, img_B):
@@ -115,6 +119,7 @@ class Discriminator(nn.Module):
         return self.model(img_input)
 
 def smooth_prediction(prediction, kernel_size=5, sigma=2):
+    # Smooth the prediction using a Gaussian kernel
     prediction = torch.FloatTensor(prediction)
     coords = torch.arange(kernel_size, dtype=torch.float32) - (kernel_size - 1) / 2
     grid = torch.exp(-0.5 * (coords ** 2) / (sigma ** 2))
@@ -124,29 +129,3 @@ def smooth_prediction(prediction, kernel_size=5, sigma=2):
     
     smoothed_prediction = F.conv2d(prediction, kernel_2d, padding=kernel_size // 2)
     return smoothed_prediction.numpy()
-
-# def run_model(input_tensor):
-#     N = input_tensor.shape[0]
-#     x_mean = 6.102476433105514e-05
-#     x_std = 0.0004464707186886363
-#     y_mean = 0.027209823576209675   
-#     y_std = 0.47506135581501213
-
-#     # Initialize generator and discriminator
-#     generator = GeneratorUNet(in_channels=1, out_channels=1)
-#     # discriminator = Discriminator(in_channels=1)
-
-#     # load the model
-#     generator.load_state_dict(torch.load('generator_TVregularization_epoch_3000.pth', map_location="cuda:0"))
-#     # discriminator.load_state_dict(torch.load('discriminator_TVregularization_epoch_3000.pth'))
-
-#     input_tensor = (input_tensor - x_mean) / x_std
-#     input_tensor = torch.FloatTensor(input_tensor.reshape(N, 1, 128, 128))
-#     # predict the output
-#     generator.eval()
-#     with torch.no_grad():
-#         output_tensor = generator(input_tensor)
-    
-#     output_tensor = output_tensor * y_std + y_mean
-#     # smoothed_output = smooth_prediction(output_tensor, kernel_size=5, sigma=2)
-#     return output_tensor.numpy()

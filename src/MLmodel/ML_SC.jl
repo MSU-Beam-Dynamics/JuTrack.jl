@@ -1,3 +1,8 @@
+"""
+Define the ML space charge elements for JuTrack.
+The ML space charge elements are based on the pre-trained model and implemented with Python libraries.
+One has to mauanlly include the file ML_SC.jl with PyCall correctly set up when using these element.
+"""
 using StatsBase
 using StatsBase: Weights
 using PyCall

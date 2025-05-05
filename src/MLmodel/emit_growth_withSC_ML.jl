@@ -1,25 +1,50 @@
-# This script shows how to use the machine learning-based space charge model to track the particles through the beamline, 
-# and calculate the emittance growth.
+"""
+This script demonstrates how to use a machine learning-based space charge model (transverse space charge only) 
+to track particles through a beamline and calculate emittance growth.
+Related paper: "A symplectic machine learning model for fast simulation of space-charge effects" by J. Wan, Y. Hao and J. Qiang.
 
-# To run the ML model, you must have PyCall, StatsBase, and ONNXRuntime installed in your Julia environment. 
-# The Python path of PyCall should be correctly set. The Python environment should have the following packages: Pytorch, numpy and scipy.
+The model is based on a neural network trained on a large dataset of particle tracking simulations.
+The beam is assumed coasting beam within a 13mm x 13mm perfectly conducting pipe.
+The model is trained using PyTorch and saved in ONNX format.
+The pre-trained model is over 100MB and is not included in the repository. It will be automatically downloaded in this script.
 
-# The machine learning model is over 100MB, so it is not included in the repository. It will be downloaded in this script.
+Essential packagess in Julia environment: 
+- JuTrack
+- PyCall
+- StatsBase
+- ONNXRuntime
 
+The Python functionality is provided by the PyCall package, which allows Julia to call Python code and use Python libraries.
+The Python path of PyCall should be correctly set up to use the required packages.
+The Python environment linked to PyCall must have the following packages: 
+- Pytorch
+- numpy 
+- scipy
+"""
 using JuTrack
 using Downloads
 using ProgressMeter
 using DelimitedFiles
 import ONNXRunTime as ORT
-include("ML_SC.jl")
-pushfirst!(PyVector(pyimport("sys")."path"), "src/MLmodel")
+
+# Julia functions for particle tracking with space charge
+# Adjust the path to the file if you are using a different directory. 
+# Or download it at https://github.com/MSU-Beam-Dynamics/JuTrack.jl/blob/main/src/MLmodel/ML_SC.jl
+include("ML_SC.jl") 
+
+# Load Python functions
+# correctly set the path to the python file if you are using a different directory.
+# Or download it at https://github.com/MSU-Beam-Dynamics/JuTrack.jl/blob/main/src/MLmodel/GAN_model.py
+pushfirst!(PyVector(pyimport("sys")."path"), "src/MLmodel") 
 GAN_model = pyimport("GAN_model")
+
+# Download the pre-trained model
 url = "https://github.com/MSU-Beam-Dynamics/JuTrack.jl/releases/download/v0.3.0/generator_TVregularization_epoch_5000.onnx"
 dest_path = "src/MLmodel/model.onnx"
 Downloads.download(url, dest_path)
 model = ORT.load_inference(dest_path)
 
-
+# Parameters for the pre-trained model
 x_mean = 6.102458832397462e-05
 x_std = 0.0004449417922594988
 y_mean = 0.02980841330718319
@@ -29,6 +54,7 @@ yedges = range(-0.01, 0.01; length=128+1)
 delta = 0.02 / 128
 xaxis = np.arange(-0.01+delta/2, 0.01+delta/2, delta)
 
+# Beam line
 D1L = 0.2
 D2L = 0.4
 D3L = 0.2
@@ -104,42 +130,3 @@ for i in 1:N
     X1[i, :] = beam1.r[1, 1:4]
     next!(prog)
 end
-
-
-# plt.figure(figsize=(9, 4))
-# plt.subplot(1, 2, 1)
-# plt.plot(np.arange(N+1), new_emit[1:N+1, 1].*1e6, label="without SC")
-# plt.plot(np.arange(N+1), new_emit1[1:N+1, 1].*1e6, label="with SC")
-# plt.xlabel("periods", fontsize=16, fontname="Times New Roman")
-# plt.ylabel("emit (mm*mrad)", fontsize=16, fontname="Times New Roman")
-# plt.title("x emittance", fontsize=16, fontname="Times New Roman")
-# plt.xticks(fontsize=14, fontname="Times New Roman")
-# plt.yticks(fontsize=14, fontname="Times New Roman")
-# # plt.yscale("log")
-# plt.legend(prop=Dict("family"=>"Times New Roman"), frameon=false)
-# # plt.ylim(0.172, 0.175)
-# plt.subplot(1, 2, 2)
-# plt.plot(np.arange(N+1), new_emit[1:N+1, 2].*1e6, label="without SC")
-# plt.plot(np.arange(N+1), new_emit1[1:N+1, 2].*1e6, label="with SC")
-# plt.xlabel("periods", fontsize=16, fontname="Times New Roman")
-# plt.ylabel("emit (mm*mrad)", fontsize=16, fontname="Times New Roman")
-# plt.title("y emittance", fontsize=16, fontname="Times New Roman")
-# plt.legend(prop=Dict("family"=>"Times New Roman"), frameon=false)
-# plt.xticks(fontsize=14, fontname="Times New Roman")
-# plt.yticks(fontsize=14, fontname="Times New Roman")
-# # plt.ylim(0.172, 0.175)
-# # plt.yscale("log")
-# plt.tight_layout()
-# plt.show()
-
-# emit_growth = zeros(N)
-# for i in 1:N
-#     emit_growth[i] = (new_emit1[i+1, 1] / new_emit1[1, 1] * new_emit1[i+1, 2] / new_emit1[1, 2] - 1) * 100
-# end
-# plt.plot(np.arange(10000), emit_growth[1:10000], label="emit growth 5000")
-# plt.xlabel("periods", fontsize=16, fontname="Times New Roman")
-# plt.ylabel("emit growth (%)", fontsize=16, fontname="Times New Roman")
-# plt.xticks(fontsize=14, fontname="Times New Roman")
-# plt.yticks(fontsize=14, fontname="Times New Roman")
-# plt.tight_layout()
-# plt.show()
