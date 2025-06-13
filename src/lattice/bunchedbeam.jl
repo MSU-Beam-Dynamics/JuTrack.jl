@@ -147,14 +147,35 @@ function initilize_6DGaussiandist!(beam::Beam, optics::AbstractOptics4D, lmap::A
     eta_p=lmap.alphac-1.0/beam.gamma^2
     
     Qs=sqrt(lmap.RF.volt*lmap.RF.h*abs(eta_p*cos(lmap.RF.phis))/2/π/beam.beta^2/beam.energy)
+    println("Qs: ", Qs)
+
+    delta_max = sqrt((lmap.RF.volt/eta_p/beam.beta^2/beam.energy/lmap.RF.h/abs(eta_p))*(-2*cos(lmap.RF.phis)+sin(π - 2*lmap.RF.phis)))
+    println("delta_max: ", delta_max)
 
     emit_deltap_z=beam.emittance[3]*2.99792458e8/beam.beta/beam.energy
     invbeta_deltap_z=Qs*lmap.RF.k/lmap.RF.h/abs(eta_p)
+    
     for c in 1:beam.nmacro
         beam.r[c, 5] = beam.temp5[c] * sqrt(emit_deltap_z/invbeta_deltap_z)
         beam.r[c, 6] = beam.r[c, 6] * sqrt(emit_deltap_z*invbeta_deltap_z)
     end
     
+    # reset the momentum deviation if it is too large
+    for c in 1:beam.nmacro
+        beam.temp1[c] = beam.r[c, 5]*(-lmap.RF.k) + lmap.RF.phis #beam phase: ϕ
+
+        #-cos(ϕs)-cos(ϕ)+sin(ϕs)(π-ϕs-ϕ)
+        beam.temp2[c] = (-cos(lmap.RF.phis)) - cos(beam.temp1[c]) + sin(lmap.RF.phis)* (π - lmap.RF.phis - beam.temp1[c])
+
+        #delta separatrix * factor=0.95, bucket height
+        beam.temp3[c] = sqrt((lmap.RF.volt/lmap.RF.h/(eta_p)/π/beam.beta^2/beam.energy) * beam.temp2[c]) *0.95
+
+        if abs(beam.r[c, 6]) > beam.temp3[c]
+            beam.r[c, 6] = beam.temp3[c] * (rand() - 0.5) * 2.0
+        end
+    
+    end
+
     return nothing
 end
 

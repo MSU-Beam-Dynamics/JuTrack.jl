@@ -22,7 +22,7 @@ function normal_mat(op2d::optics2D)
 end
 
 function invnormal_mat(op2d::optics2D)
-    return [sqrt(op2d.beta) 0.0; -op2d.alpha*sqrt(op2d.beta)  1.0/sqrt(op2d.beta)]
+    return [sqrt(op2d.beta) 0.0; -op2d.alpha/sqrt(op2d.beta)  1.0/sqrt(op2d.beta)] #prima era -op2d.alpha*sqrt(op2d.beta)
 end
 
 
@@ -33,8 +33,8 @@ function normal_mat(op4d::optics4DUC)
 end
 
 function invnormal_mat(op4d::optics4DUC)
-    invnfmx=[sqrt(op4d.optics_x.beta) 0.0; -op4d.optics_x.alpha*sqrt(op4d.optics_x.beta)  1.0/sqrt(op4d.optics_x.beta)]
-    invnfmy=[sqrt(op4d.optics_y.beta) 0.0; -op4d.optics_y.alpha*sqrt(op4d.optics_y.beta)  1.0/sqrt(op4d.optics_y.beta)]
+    invnfmx=[sqrt(op4d.optics_x.beta) 0.0; -op4d.optics_x.alpha/sqrt(op4d.optics_x.beta)  1.0/sqrt(op4d.optics_x.beta)] #prima era -op2d.alpha*sqrt(op2d.beta)
+    invnfmy=[sqrt(op4d.optics_y.beta) 0.0; -op4d.optics_y.alpha/sqrt(op4d.optics_y.beta)  1.0/sqrt(op4d.optics_y.beta)] #prima era -op2d.alpha*sqrt(op2d.beta)
     return[invnfmx zeros(2,2); zeros(2,2) invnfmy]
 end
 

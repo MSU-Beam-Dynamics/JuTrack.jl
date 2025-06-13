@@ -16,6 +16,11 @@ mutable struct Lattice
     LongitudinalRLCWakes::Vector{LongitudinalRLCWake}
     # LongitudinalWakes::Vector{LongitudinalWake}
     # StrongGaussianBeams::Vector{StrongGaussianBeam}
+    TransferMap4D::Vector{TransferMap4D}                  #added
+    Inverse_TransferMap4D::Vector{Inverse_TransferMap4D}
+    TransferMap4DChrom::Vector{TransferMap4DChrom}
+    SC_lens::Vector{SC_lens}
+
     rfca_index::Int64
     drift_index::Int64
     marker_index::Int64
@@ -29,7 +34,12 @@ mutable struct Lattice
     corrector_index::Int64
     crabcavity_index::Int64
     spacecharge_index::Int64
-    LongitudinalRLCWake_index::Int64
+    LongitudinalRLCWake_index::Int64 #added
+    TransferMap4D_index::Int64
+    Inverse_TransferMap4D_index::Int64
+    TransferMap4DChrom_index::Int64
+    SC_lens_index::Int64
+
     element_order::Vector{Tuple{Int64, Int64}}  # Stores (type, index) tuples
     nelems::Int64
     function Lattice(;nelems::Int64=0)
@@ -47,10 +57,17 @@ mutable struct Lattice
         crabcavities=Vector{CRABCAVITY}(undef, nelems)
         spacecharges=Vector{SPACECHARGE}(undef, nelems)
         LongitudinalRLCWakes=Vector{LongitudinalRLCWake}(undef, nelems)
+        SC_lens=Vector{SC_lens}(undef, nelems)          #added
+        TransferMap4D=Vector{TransferMap4D}(undef, nelems)
+        Inverse_TransferMap4D=Vector{Inverse_TransferMap4D}(undef, nelems)
+        TransferMap4DChrom=Vector{TransferMap4DChrom}(undef, nelems)
+
         element_order=Vector{Tuple{Int64, Int64}}(undef, nelems)
         # nelems::Int64=0
         new(rfcas, drifts, markers, quads, kquads, ksexts, kocts, sbends, thinmultipoles, solenoids, correctors, crabcavities, 
-            spacecharges, LongitudinalRLCWakes, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, element_order, 0)
+            spacecharges, LongitudinalRLCWakes, spacecharges, LongitudinalRLCWakes, 
+            TransferMap4D, Inverse_TransferMap4D, TransferMap4DChrom, SC_lens, 
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, element_order, 0)
     end
 end
 
@@ -155,31 +172,37 @@ end
 
 
 # added
-# function add!(lattice::Lattice, elem::TransferMap4DChrom)
-#     index = lattice.TransferMap4DChrom_index
-#     lattice.TransferMap4DChrom[index] = elem
-#     lattice.element_order[lattice.nelems + 1] = (15, index)
-#     lattice.nelems += 1
-#     lattice.TransferMap4DChrom_index += 1
-# end
-# function add!(lattice::Lattice, elem::TransferMap4D)
-#     index = lattice.TransferMap4D_index
-#     lattice.TransferMap4D[index] = elem
-#     lattice.element_order[lattice.nelems + 1] = (16, index)
-#     lattice.nelems += 1
-#     lattice.TransferMap4D_index += 1
-# end
-# function add!(lattice::Lattice, elem::SC_lens)
-#     index = lattice.SC_lens_index
-#     lattice.SC_lens[index] = elem
-#     lattice.element_order[lattice.nelems + 1] = (17, index)
-#     lattice.nelems += 1
-#     lattice.SC_lens_index += 1
-# end
-# function add!(lattice::Lattice, elem::Inverse_TransferMap4D)
-#     index = lattice.Inverse_TransferMap4D_index
-#     lattice.Inverse_TransferMap4D[index] = elem
-#     lattice.element_order[lattice.nelems + 1] = (18, index)
-#     lattice.nelems += 1
-#     lattice.Inverse_TransferMap4D_index += 1
-# end
+
+function add!(lattice::Lattice, elem::TransferMap4D)
+    index = lattice.TransferMap4D_index
+    lattice.TransferMap4D[index] = elem
+    lattice.element_order[lattice.nelems + 1] = (16, index)
+    lattice.nelems += 1
+    lattice.TransferMap4D_index += 1
+end
+
+function add!(lattice::Lattice, elem::Inverse_TransferMap4D)
+    index = lattice.Inverse_TransferMap4D_index
+    lattice.Inverse_TransferMap4D[index] = elem
+    lattice.element_order[lattice.nelems + 1] = (18, index)
+    lattice.nelems += 1
+    lattice.Inverse_TransferMap4D_index += 1
+end
+
+function add!(lattice::Lattice, elem::TransferMap4DChrom)
+    index = lattice.TransferMap4DChrom_index
+    lattice.TransferMap4DChrom[index] = elem
+    lattice.element_order[lattice.nelems + 1] = (15, index)
+    lattice.nelems += 1
+    lattice.TransferMap4DChrom_index += 1
+end
+
+function add!(lattice::Lattice, elem::SC_lens)
+    index = lattice.SC_lens_index
+    lattice.SC_lens[index] = elem
+    lattice.element_order[lattice.nelems + 1] = (17, index)
+    lattice.nelems += 1
+    lattice.SC_lens_index += 1
+end
+
+ 

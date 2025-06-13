@@ -162,6 +162,17 @@ function plinepass!(lattice::Lattice, particles::Beam)
             pass_P!(lattice.LongitudinalRLCWakes[lattice.element_order[i][2]], particles6, np, particles)
         elseif lattice.element_order[i][1] == 15
             pass_P!(lattice.LongitudinalWakes[lattice.element_order[i][2]], particles6, np, particles)
+
+        """# added
+        elseif lattice.element_order[i][1] == 16
+            pass_P!(lattice.TransferMap4DChrom[lattice.element_order[i][2]], particles6, np, particles)
+        elseif lattice.element_order[i][1] == 17
+            pass_P!(lattice.TransferMap4D[lattice.element_order[i][2]], particles6, np, particles)
+        elseif lattice.element_order[i][1] == 18
+            pass_P!(lattice.SC_lens[lattice.element_order[i][2]], particles6, np, particles)
+        elseif lattice.element_order[i][1] == 19
+            pass_P!(lattice.Inverse_TransferMap4D[lattice.element_order[i][2]], particles6, np, particles)
+        """
         # else
         #     println("Unknown element type: $lattice.element_order[i][1]")
         end
@@ -210,6 +221,17 @@ function ADplinepass!(lattice::Lattice, particles::Beam, id::Vector{Int}, elems:
                 pass_P!(lattice.LongitudinalRLCWakes[lattice.element_order[i][2]], particles6, np, particles)
             elseif lattice.element_order[i][1] == 15
                 pass_P!(lattice.LongitudinalWakes[lattice.element_order[i][2]], particles6, np, particles)
+
+            """# added
+            elseif lattice.element_order[i][1] == 16
+                pass_P!(lattice.TransferMap4DChrom[lattice.element_order[i][2]], particles6, np, particles)
+            elseif lattice.element_order[i][1] == 17
+                pass_P!(lattice.TransferMap4D[lattice.element_order[i][2]], particles6, np, particles)
+            elseif lattice.element_order[i][1] == 18
+                pass_P!(lattice.SC_lens[lattice.element_order[i][2]], particles6, np, particles)
+            elseif lattice.element_order[i][1] == 19
+                pass_P!(lattice.Inverse_TransferMap4D[lattice.element_order[i][2]], particles6, np, particles)
+            """
             # else
             #     println("Unknown element type: $(lattice.element_order[i][1])")
             end
@@ -269,6 +291,18 @@ function linepass_TPSA!(line::Lattice, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degr
             pass_TPSA!(line.LongitudinalRLCWakes[lattice.element_order[i][2]], rin)
         elseif lattice.element_order[i][1] == 15
             pass_TPSA!(line.LongitudinalWakes[lattice.element_order[i][2]], rin)
+
+        """# added
+        elseif lattice.element_order[i][1] == 16
+            pass_TPSA!(lattice.TransferMap4DChrom[lattice.element_order[i][2]], rin)
+        elseif lattice.element_order[i][1] == 17
+            pass_TPSA!(lattice.TransferMap4D[lattice.element_order[i][2]], rin)
+        elseif lattice.element_order[i][1] == 18
+            pass_TPSA!(lattice.SC_lens[lattice.element_order[i][2]], rin)
+        elseif lattice.element_order[i][1] == 19
+            pass_TPSA!(lattice.Inverse_TransferMap4D[lattice.element_order[i][2]], rin)
+        """
+
         # else
         #     println("Unknown element type: $typ")
         end
@@ -326,6 +360,18 @@ function ADlinepass_TPSA!(line::Lattice, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_De
                 pass_TPSA!(line.LongitudinalRLCWakes[line.element_order[i][2]], rin)
             elseif line.element_order[i][1] == 15
                 pass_TPSA!(line.LongitudinalWakes[line.element_order[i][2]], rin)
+
+            """# added
+            elseif lattice.element_order[i][1] == 16
+                pass_TPSA!(lattice.TransferMap4DChrom[lattice.element_order[i][2]], rin)
+            elseif lattice.element_order[i][1] == 17
+                pass_TPSA!(lattice.TransferMap4D[lattice.element_order[i][2]], rin)
+            elseif lattice.element_order[i][1] == 18
+                pass_TPSA!(lattice.SC_lens[lattice.element_order[i][2]], rin)
+            elseif lattice.element_order[i][1] == 19
+                pass_TPSA!(lattice.Inverse_TransferMap4D[lattice.element_order[i][2]], rin)
+            """
+                
             # else
             #     println("Unknown element type: $(line.element_order[i][1])")
             end
