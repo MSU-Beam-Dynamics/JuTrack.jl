@@ -92,6 +92,7 @@ function pass_P!(rlcwake::LongitudinalRLCWake, r, np, beam)
 
 end
 
+
 function pass!(lm::LongitudinalRFMap, r, np, beam) 
     gamma = beam.gamma
     eta = lm.alphac - 1.0 / gamma / gamma
@@ -106,9 +107,52 @@ function pass!(lm::LongitudinalRFMap, r, np, beam)
     end
     return nothing
 end
+
+
+"""
+######################################
+#### added for dp change ####
+function RF_dp!(ac::AccelCavity, r, np, β2E::Float64, sv) 
+    v_β2E=ac.volt/β2E
+   
+    for c in 1:np
+        r6 = @view r[(c-1)*6+1:c*6]
+        sv = sin((-ac.k) * r6[5] + ac.phis) - sin(ac.phis)
+        r6[6] += v_β2E * sv
+    end
+
+    return nothing
+end
+
+function pass!(lm::LongitudinalRFMap, r, np, beam)
+    gamma = beam.gamma
+    eta = lm.alphac - 1.0 / gamma / gamma
+    
+    for c in 1:np
+        if beam.lost_flag[c] == 1
+            continue
+        end
+        r6 = @view r[(c-1)*6+1:c*6]
+        if !isnan(r6[1])
+            r6[5] -= (2π * lm.RF.h * eta / lm.RF.k) * r6[6]
+        end
+    end
+
+    β2E=beam.beta*beam.beta*beam.energy
+    RF_dp!(lm.RF, r, np, β2E, beam.temp1)
+
+    return nothing
+end
+
+#### end added for dp change ####
+######################################
+"""
+
+
 function pass_P!(lm::LongitudinalRFMap, r, np, beam) 
     gamma = beam.gamma
     eta = lm.alphac - 1.0 / gamma / gamma
+    
     @Threads.threads for c in 1:np
         if beam.lost_flag[c] == 1
             continue

@@ -1,4 +1,4 @@
-using JuTrack
+using Revise, JuTrack
 using Test
 using BenchmarkTools
 using Plots
@@ -29,7 +29,7 @@ end
 
 
 begin
-    num_particles = 5000
+    num_particles = 1000
     turns = 10000
 
     pbeam = Beam(zeros(num_particles, 6), np=Int(0.688e11), energy=275e9, emittance = [11.3e-9, 1e-9, 3.7e-2], mass=938.272e6)  #[11.3e-9, 1e-9, 3.7e-2] #3.7e-2 -> 6cm
@@ -50,20 +50,13 @@ begin
     estrong = StrongGaussianBeam(1.0, m_e, 1.0, Int(1.72e11), 10e9,  opIPe, [95e-6, 8.5e-6, 0.007], 5)
     initilize_zslice!(estrong, :gaussian, :evennpar, 5.0)
 
-    # define crab cavity
-    crab_ratio = 0.33
-    overcrab = 1.0
-
-    pcrabu = easyCRABCAVITY(freq=197.0e6, halfthetac=overcrab*12.5e-3*(1+crab_ratio))
+    # crab cavity
+    crab_ratio=0.33
+    overcrab=1.0
+    pcrabu1st = easyCRABCAVITY(freq=197.0e6, halfthetac=overcrab*12.5e-3*(1+crab_ratio))
     pcrabu2nd = easyCRABCAVITY(freq=197.0e6*2.0, halfthetac=-overcrab*12.5e-3*crab_ratio)
-    pcrabd = easyCRABCAVITY(freq=197.0e6, halfthetac=-overcrab*12.5e-3*(1+crab_ratio))
+    pcrabd1st = easyCRABCAVITY(freq=197.0e6, halfthetac=-overcrab*12.5e-3*(1+crab_ratio))
     pcrabd2nd = easyCRABCAVITY(freq=197.0e6*2.0, halfthetac=overcrab*12.5e-3*crab_ratio)
-
-    """
-    pcrab1st = easyCRABCAVITY(freq=197.0e6, halfthetac=overcrab*12.5e-3*(1+crab_ratio))
-    pcrab2nd = easyCRABCAVITY(freq=197.0e6*2.0, halfthetac=-overcrab*12.5e-3*crab_ratio)
-    crab_crossing_setup!(pstrong, 12.5e-3, pcrab1st, pcrab2nd) #ma pass! è x track
-    """
 
     # define Lorentz boost
     lb = LorentzBoost(12.5e-3)
@@ -73,8 +66,10 @@ begin
     nSC = 5
     ds = 3800 /(nSC + 1)
     opSC = optics4DUC(1.0, 0.0, 1.0, 0.0)
-    sc_BE = SC_lens(opSC, ds, nSC)
     w = 0.0
+    turns_rec = 100
+    sc_BE = SC_lens(opSC, ds, nSC, turns_rec, w)
+
 
     phi_advx = LinRange(0, 0.228, nSC+1)
     phi_advy = LinRange(0, 0.210, nSC+1)
@@ -107,12 +102,10 @@ begin
     bb = false
     lumi = 0.0
 
-    ring = [oneturn, TM1, sc_BE, TM1_inv, TM2, sc_BE, TM2_inv, TM3, sc_BE, TM3_inv, TM4, sc_BE, TM4_inv, TM5, sc_BE, TM5_inv] 
-
-    #ring = [oneturn, lmap]
+    #ring = [oneturn, mainRF, lmap, TM1, sc_BE, TM1_inv, TM2, sc_BE, TM2_inv, TM3, sc_BE, TM3_inv, TM4, sc_BE, TM4_inv, TM5, sc_BE, TM5_inv] 
+    #ring = [oneturn, mainRF, lmap]
     #ring = [oneturn, TM1, TM1_inv, TM2, TM2_inv, TM3, TM3_inv, TM4, TM4_inv, TM5, TM5_inv]
-    #ring = [oneturn, pcrabu, pcrabu2nd, lb, estrong, invlb, pcrabd, pcrabd2nd] #se TransferMap4D dentro SC function
-
+    #ring = [oneturn,  oneturn, mainRF, lmap, pcrabu1st, pcrabu2nd, lb, estrong, invlb, pcrabd1st, pcrabd2nd]
 end
 
 
@@ -131,8 +124,6 @@ begin
     X1 = zeros(N, 4)
     
     for i in 1:N
-
-        #linepass!(ring, pbeam)
 
         linepass!(ring, pbeam)
 
@@ -162,8 +153,7 @@ begin
         records[i]=record(pbeam.centroid[1], pbeam.centroid[3], pbeam.centroid[5],
                         pbeam.beamsize[1], pbeam.beamsize[3], pbeam.beamsize[5],
                         pbeam.emittance[1], pbeam.emittance[2], pbeam.emittance[3], lumi)
-
-
+        
 
         # save
         """if i % 100 == 0
@@ -216,8 +206,7 @@ diff_tunex = sqrt.((tunex_1 .- tunex_2) .^2  .+ (tuney_1 .- tuney_2) .^2 )
 maximum(diff_tunex)
 
 scatter(tunex_1, tuney_1, marker_z = log10.(diff_tunex .+ 1e-15), markersize = .9,  color = :jet, clim=(-10,-2), 
-    aspect_ratio=:equal, legend=:topleft, xlabel="Horizontal Tune", ylabel= "Vertical Tune", label="nSC = 10", dpi=300, size=(600,500),
-    xlim = (0.225, 0.230), ylim= (0.207, 0.212))
+    aspect_ratio=:equal, legend=:topleft, xlabel="Horizontal Tune", ylabel= "Vertical Tune", label="nSC = 10", dpi=300, size=(600,500))
     
 
 maximum(tunex_1)-minimum(tunex_1)
@@ -234,10 +223,14 @@ open("test_EIC_jutrack_tune_.jls", "w") do f
 end
 
 
-"""
-factorSC = 2*pbeam.classrad0/pbeam.beta^2/pbeam.gamma^3*sc_BE.ds*pbeam.np
-pbeam.classrad0
-#in EPIC = 1.535e-18
-pbeam.gamma
-# in EPIC 300, qui 540e3 ??? - beta molto simile
-"""
+# total half turns tune
+#FFT
+fftx=fft(@view records.cx[5001:end]) # N/2 + 1 to N/2
+ffty=fft(@view records.cy[5001:end])
+fftz=fft(@view records.cz[5001:end])
+fftf=fftfreq(5000, 1.0)
+turns = 10000
+plot(@view(fftf[1:turns÷2]), abs.(@view fftx[1:turns÷2]),  legendfontsize = 15, xlabel=L"tune", label = L"$centroid - x$", xlim=(0.2,0.3)) #xlim=(0.02,0.035),
+plot(@view(fftf[1:turns÷2]), abs.(@view ffty[1:turns÷2]),  legendfontsize = 15, xlabel=L"tune", label = L"$centroid - y$", xlim=(0.2,0.3)) #xlim=(0.01,0.025),
+plot(@view(fftf[1:turns÷2]), abs.(@view fftz[1:turns÷2]),  legendfontsize = 15, xlabel=L"tune", label = L"$centroid - z$", xlim=(0.0,0.025))
+

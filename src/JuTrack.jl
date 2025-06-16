@@ -87,6 +87,7 @@ export matrix_to_array, array_to_matrix
 export total_length, spos, findelem, insert_space_charge, array_optics, get_len
 export ADfindm66_refpts
 #added
+export RF_dp!
 export SC_lens
 export SC_kick, track_SC!, sc_in_element
 export track!

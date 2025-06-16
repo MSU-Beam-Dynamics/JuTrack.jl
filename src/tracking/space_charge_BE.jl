@@ -42,12 +42,43 @@ function SC_kick!(SC::SC_lens, bbSC::Beam, r_in, num_macro)
     σz = bbSC.beamsize[5]
 
     track_SC!(r_in, σx, σy, σz, bbSC.temp1, bbSC, factorSC, num_macro)
+    return σx, σy
     
 end
 
 function pass!(SC::SC_lens, r_in::Array{Float64,1}, num_macro::Int64, bbSC::Beam)
     SC_kick!(SC, bbSC, r_in, num_macro)
 end
+
+
+
+# function for smoothing, replacing beamsize
+#=
+function SC_kick!(SC::SC_lens, bbSC::Beam, r_in, num_macro, sx, sy)
+
+    factorSC = 2*bbSC.classrad0/bbSC.beta^2/bbSC.gamma^3*bbSC.np*SC.ds
+    weight = SC.w
+
+    get_emittance!(bbSC)
+    σz = bbSC.beamsize[5]
+
+    σx = sx *weight + bbSC.beamsize[1]*(1.0-weight)
+    σy = sy *weight + bbSC.beamsize[3]*(1.0-weight)
+
+    track_SC!(r_in, σx, σy, σz, bbSC.temp1, bbSC, factorSC, num_macro)
+
+    return σx, σy
+    
+end
+
+
+function pass!(SC::SC_lens, r_in::Array{Float64,1}, num_macro::Int64, bbSC::Beam)
+    SC_kick!(SC, bbSC, r_in, num_macro, sx, sy)
+end
+
+=#
+
+
 
 
 """
@@ -139,22 +170,5 @@ end
 
 
 
-"""
-# function for smoothing, replacing beamsize
-
-function SC_kick!(SC::SC_lens, bbSC::BunchedBeam, sx, sy)
-    factorSC = 2*bbSC.particle.classrad0/bbSC.beta^2/bbSC.gamma^3*bbSC.num_particle*SC.ds
-    
-    get_emittance!(bbSC)
-    σz = bbSC.beamsize[5]
-
-    σx = sx *weight + bbSC.beamsize[1]*(1.0-weight)
-    σy = sy *weight + bbSC.beamsize[3]*(1.0-weight)
-
-    track!(σx, σy, σz, bbSC.temp1, bbSC, factorSC)
-    
-end
-
-"""
 
 
