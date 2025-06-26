@@ -2,7 +2,6 @@ using SpecialFunctions
 # using Enzyme
 import .EnzymeRules: forward # , reverse, augmented_primal
 using .EnzymeRules
-using SpecialFunctions
 # using Statistics
 # using StaticArrays
 function erfcx_AD(z)

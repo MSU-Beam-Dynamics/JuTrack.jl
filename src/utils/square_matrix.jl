@@ -435,11 +435,6 @@ function inverse_map(fs::Vector{CTPS{T,D,M}}, order,
     iteration_limit::Int=0) where {T,D,M}
 
     n = length(fs)
-    # dimension check
-    # if get(TPS_Dim, fs[1]) != n
-    # error("Dimension mismatch: length(fs) = $n, TPS dim = $(get(TPS_Dim,fs[1]))")
-    # end
-
     # Build linear Jacobian and nonlinear remainder
     A = zeros(T,n,n)
     nl = Vector{CTPS{T,D,M}}(undef,n)
@@ -564,36 +559,36 @@ function numerical_inverse_6D_fast(funcs, tpsinv, jacinv, wvals; max_iter=3, tol
     zdiff = Matrix{ComplexF64}(undef, n, 6)
     wdiff = Matrix{ComplexF64}(undef, n, 6)
     for it in 1:max_iter
-        # compute wdiff in-place
         Threads.@threads for i in 1:n
-            vals = funcs(zapprox[i])   # returns a 6‑element tuple/array
+            vals = funcs(zapprox[i])
             @inbounds for j in 1:6
                 wdiff[i, j] = vals[j] - wvals[j][i]
             end
         end
-        # fill & solve jacobian in-place
+
         Threads.@threads for i in 1:n
             J = MMatrix{6,6,ComplexF64}(undef)
-            # jacinv returns 36-element vector row-major
-            vals = [evaluate(jacinv[j], (zapprox[i])) for j in 1:36]
+            vals = [evaluate(jacinv[j], zapprox[i]) for j in 1:36]
             J .= transpose(reshape(vals,6,6))
-            invJ = inv(J)
-            zdiff[i, :] = -invJ * @view wdiff[i, :]
+    
+            zdiff[i, :] = -J \ @view wdiff[i, :]
         end
 
-        # update zapprox
         Threads.@threads for i in 1:n
-            zapprox[i] += SVector(zdiff[i, :]...)
+            zapprox[i] += SVector(zdiff[i, :]...)  
         end
-
-        if sum(abs, zdiff) < tol
+    
+        # Relative stopping condition
+        total_diff = sum(norm, zdiff)
+        total_z = sum(norm, zapprox)
+        if total_diff / max(total_z, 1e-12) < tol
             break
         end
     end
     return transpose(reduce(hcat, zapprox))
 end
 
-function itearation_freq(dtheta, theta0, freq, nmap, z_to_w, w_to_z; jacobian=nothing, dist_avoid_res=0.01)
+function itearation_freq(dtheta, theta0, freq, nmap, z_to_w, w_to_z; jacobian=nothing, dist_avoid_res=0.001)
     n1, n2, n3 = size(dtheta[1,:,:,:])
     t = theta0 .+ dtheta
     w_x = exp.(1.0im .* t[1,:,:,:])
@@ -1093,6 +1088,11 @@ end
 
 #     map = TPSVar6D(order)
 #     x, px, y, py, z, pz = get_variables(map)
+#     twiss = (
+#         horizontal = (0.0, 1.0, 0.0, 0.0),
+#         vertical   = (0.0, 1.0, 0.0, 0.0),
+#         longitudinal = (0.0, 1.0, 0.0, 0.0)
+#     )
 
 #     # crabbing kicks
 #     delta_px = -tan(theta_c) * sin(k_c * z) / (k_c * sqrt(beta_cc*beta_IP))
@@ -1152,7 +1152,7 @@ end
 #             z3mapfunc(zs),
 #             z3cmapfunc(zs)
 #         ]
-#     end
+#     end, twiss
 # end
 # CMscan(crab_cavity_map, 3, 3, [0.26, 0.23, 0.005], 
 #     -0.0002, -0.0002, 0.0001, 0.0001, -0.0001, -0.0001,

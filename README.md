@@ -26,6 +26,7 @@ author = {Jinyu Wan and Helena Alamprese and Christian Ratcliff and Ji Qiang and
 * Or using online installation via
 ```
 using Pkg
+ENV["JULIA_PKG_USE_CLI_GIT"] = "true" # required if installing within Julia's REPL
 Pkg.add(url="https://github.com/MSU-Beam-Dynamics/JuTrack.jl")
 ```
 

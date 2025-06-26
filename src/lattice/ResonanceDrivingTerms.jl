@@ -1,6 +1,6 @@
 
 function avedata(ring, dpp; E0::Float64=3e9, m0::Float64=m_e)
-    twi = twissring(ring, dpp, 1, E0=E0, m0=m0)
+    twi = twissring(ring, dpp, 0, E0=E0, m0=m0)
     long = findall(x -> x.len > 0, ring)
     beta, alpha, gamma, mu, dp = array_optics(twi)
 
@@ -452,7 +452,7 @@ end
 
 function ADavedata(ring, dpp, changed_ids, changed_elems; E0=3e9, m0=m_e)
     refpts = [i for i in 1:length(ring)]
-    twi = ADtwissring(ring, dpp, 1, refpts, changed_ids, changed_elems, E0=E0, m0=m0)
+    twi = ADtwissring(ring, dpp, 0, refpts, changed_ids, changed_elems, E0=E0, m0=m0)
     nlong = 0
     for i in eachindex(ring)
         if get_len(ring[i]) > 0

@@ -1,8 +1,8 @@
-"""
-Define the ML space charge elements for JuTrack.
-The ML space charge elements are based on the pre-trained model and implemented with Python libraries.
-One has to mauanlly include the file ML_SC.jl with PyCall correctly set up when using these element.
-"""
+# """
+# Define the ML space charge elements for JuTrack.
+# The ML space charge elements are based on the pre-trained model and implemented with Python libraries.
+# One has to mauanlly include the file ML_SC.jl with PyCall correctly set up when using these element.
+# """
 using StatsBase
 using StatsBase: Weights
 using PyCall
@@ -145,7 +145,7 @@ function DriftPass_SC_ML!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64
             if !iszero(R1)
                 multmv!(r6, R1)
             end
-            drift6!(r6, le/2.0)
+            drift6!(r6, le/2.0, 1.0)
             # Misalignment at exit
             if !iszero(R2)
                 multmv!(r6, R2)
@@ -174,7 +174,7 @@ function DriftPass_SC_ML!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64
             if !iszero(R1)
                 multmv!(r6, R1)
             end
-            drift6!(r6, le/2.0)
+            drift6!(r6, le/2.0, 1.0)
             # Misalignment at exit
             if !iszero(R2)
                 multmv!(r6, R2)
@@ -274,13 +274,13 @@ function StrMPoleSymplectic4Pass_SC!(r::Array{Float64,1}, le::Float64, A::Array{
 
             # Integrator
             for m in 1:num_int_step
-                fastdrift!(r6, NormL1, L1)
+                fastdrift!(r6, NormL1, L1, 1.0)
                 strthinkick!(r6, A, B, K1, max_order)
-                fastdrift!(r6, NormL2, L2)
+                fastdrift!(r6, NormL2, L2, 1.0)
                 strthinkick!(r6, A, B, K2, max_order)
-                fastdrift!(r6, NormL2, L2)
+                fastdrift!(r6, NormL2, L2, 1.0)
                 strthinkick!(r6, A, B, K1, max_order)
-                fastdrift!(r6, NormL1, L1)
+                fastdrift!(r6, NormL1, L1, 1.0)
             end
 
             if check_lost(r6)
@@ -301,13 +301,13 @@ function StrMPoleSymplectic4Pass_SC!(r::Array{Float64,1}, le::Float64, A::Array{
     
             # Integrator
             for m in 1:num_int_step
-                fastdrift!(r6, NormL1, L1)
+                fastdrift!(r6, NormL1, L1, 1.0)
                 strthinkick!(r6, A, B, K1, max_order)
-                fastdrift!(r6, NormL2, L2)
+                fastdrift!(r6, NormL2, L2, 1.0)
                 strthinkick!(r6, A, B, K2, max_order)
-                fastdrift!(r6, NormL2, L2)
+                fastdrift!(r6, NormL2, L2, 1.0)
                 strthinkick!(r6, A, B, K1, max_order)
-                fastdrift!(r6, NormL1, L1)
+                fastdrift!(r6, NormL1, L1, 1.0)
             end
             
             if step == Nsteps

@@ -1,26 +1,27 @@
-"""
-This script demonstrates how to use a machine learning-based space charge model (transverse space charge only) 
-to track particles through a beamline and calculate emittance growth.
-Related paper: "A symplectic machine learning model for fast simulation of space-charge effects" by J. Wan, Y. Hao and J. Qiang.
+# """
+# This script demonstrates how to use a machine learning-based space charge model (transverse space charge only) 
+# to track particles through a beamline and calculate emittance growth.
+# The beam is assumed a coasting beam within a 13mm x 13mm perfectly conducting pipe (where the training data was generated).
+# Related paper: "A symplectic machine learning model for fast simulation of space-charge effects" by J. Wan, Y. Hao and J. Qiang.
 
-The model is based on a neural network trained on a large dataset of particle tracking simulations.
-The beam is assumed coasting beam within a 13mm x 13mm perfectly conducting pipe.
-The model is trained using PyTorch and saved in ONNX format.
-The pre-trained model is over 100MB and is not included in the repository. It will be automatically downloaded in this script.
+# The model is based on a neural network trained on a large dataset of particle tracking simulations.
+# The model has been trained using PyTorch and saved in ONNX format.
+# The pre-trained model is over 100MB and is not included in the repository. It will be automatically downloaded in this script.
+# The model will be called from Julia.PyCall using Pytorch in Python.
 
-Essential packagess in Julia environment: 
-- JuTrack
-- PyCall
-- StatsBase
-- ONNXRuntime
+# Essential packagess in Julia environment: 
+# - JuTrack
+# - PyCall
+# - StatsBase
+# - ONNXRuntime
 
-The Python functionality is provided by the PyCall package, which allows Julia to call Python code and use Python libraries.
-The Python path of PyCall should be correctly set up to use the required packages.
-The Python environment linked to PyCall must have the following packages: 
-- Pytorch
-- numpy 
-- scipy
-"""
+# The Python functionality is provided by the PyCall package, which allows Julia to call Python code and use Python libraries.
+# The Python path of PyCall should be correctly set up beforing using this script.
+# The following packages are required in the Python environment linked to PyCall: 
+# - Pytorch
+# - numpy 
+# - scipy
+# """
 using JuTrack
 using Downloads
 using ProgressMeter

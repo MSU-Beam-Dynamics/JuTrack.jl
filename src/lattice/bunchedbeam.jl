@@ -11,6 +11,8 @@ function diagm1(v)
     return M
 end
 
+@inline det2x2(a11, a12, a21, a22) = a11*a22 - a12*a21
+
 """
     get_centroid!(beam::Beam)
 
@@ -83,7 +85,11 @@ function get_emittance!(beam::Beam)
         end
     end
     @inbounds for i in 1:3
-        beam.emittance[i] = sqrt(det_small_matrix(beam.moment2nd[2*i-1:2*i,2*i-1:2*i]))
+        # beam.emittance[i] = sqrt(det_small_matrix(beam.moment2nd[2*i-1:2*i,2*i-1:2*i]))
+        m = beam.moment2nd
+        beam.emittance[i] = det2x2(
+        m[2i-1,2i-1], m[2i-1,2i],
+        m[2i  ,2i-1], m[2i  ,2i]) |> sqrt
     end
     @inbounds for i in 1:6
         beam.beamsize[i] = sqrt(beam.moment2nd[i, i])

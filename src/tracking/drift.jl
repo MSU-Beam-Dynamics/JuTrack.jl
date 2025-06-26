@@ -43,6 +43,17 @@ function drift6!(r::AbstractVector{Float64}, le::Float64, beti::Float64)
     # AT uses small angle approximation pz = 1 + delta. 
     # MADX use pz = sqrt((1 + 2*delta/beta + delta^2 - px^2 - py^2).
     if isone(use_exact_Hamiltonian)
+        if 1.0 + 2.0*r[6]*beti + r[6]^2 - r[2]^2 - r[4]^2 <= 0.0
+            # This is a special case when the particle is lost.
+            # We set the particle to NaN to indicate it is lost.
+            r[1] = NaN
+            r[2] = NaN
+            r[3] = NaN
+            r[4] = NaN
+            r[5] = NaN
+            r[6] = NaN
+            return nothing
+        end
         NormL = le / sqrt(1.0 + 2.0*r[6]*beti + r[6]^2 - r[2]^2 - r[4]^2)
         r[5] += NormL * (1.0*beti + r[6]) - le*beti
     else

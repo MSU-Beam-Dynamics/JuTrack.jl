@@ -35,29 +35,16 @@ function obj(dlist)
     return tot_21000 + tot_10110 + tot_30000 + tot_10200 + tot_10020
 end
 
-function f(x1, x2)
-    # Find elements with names "SDM" and "SFM" in the RING
-    # changed_id1 = findelem(RING, :name, "SDM")
-    # changed_id2 = findelem(RING, :name, "SFM")
-    
-    # Combine the found element indices
-    changed_ids = vcat(SDM_index, SFM_index)
-    # Create new elements based on the found indices
-    changed_elems1 = [KSEXT(len=0.21, k2=x1) for id in SDM_index]
-    changed_elems2 = [KSEXT(len=0.21, k2=x2) for id in SFM_index]
-    
-    changed_elems = [changed_elems1..., changed_elems2...] #vcat(changed_elems1, changed_elems2)
-    
-    # Find the index of the MARKER element in the RING
-    index = findelem(RING, MARKER)
-    
-    # Compute the RDT
-    dlist, s = ADcomputeRDT(RING, index, changed_ids, changed_elems, E0=3.5e9, m0=m_e)
-    
-    # Return the objective function value
-    return obj(dlist)
-end
+function f(x1, x2, ring, sdm_id, sfm_id)
+    changed_ids      = vcat(sdm_id, sfm_id)
+    changed_elems    = vcat([KSEXT(len=0.21, k2=x1) for _ in sdm_id],
+                            [KSEXT(len=0.21, k2=x2) for _ in sfm_id])
 
+    idx_marker       = findelem(ring, MARKER)
+    dlist, _         = ADcomputeRDT(ring, idx_marker, changed_ids,
+                                    changed_elems; E0=3.5e9, m0=m_e)
+    return obj(dlist)               # <— scalar
+end
 
 function gradient_descent(x1_init, x2_init; lr=0.001, tol=1e-6, max_iter=100)
     x1_his = [x1_init]
@@ -68,8 +55,8 @@ function gradient_descent(x1_init, x2_init; lr=0.001, tol=1e-6, max_iter=100)
     x1, x2 = x1_init, x2_init
     for iter in 1:max_iter
         # Calculate gradients
-        g1 = autodiff(ForwardWithPrimal, f, Duplicated(x1, 1.0), Const(x2))
-        g2 = autodiff(ForwardWithPrimal, f, Const(x1), Duplicated(x2, 1.0))
+        g1 = autodiff(ForwardWithPrimal, f, Duplicated(x1, 1.0), Const(x2), Const(RING), Const(SDM_index), Const(SFM_index))
+        g2 = autodiff(ForwardWithPrimal, f, Const(x1), Duplicated(x2, 1.0), Const(RING), Const(SDM_index), Const(SFM_index))
         grad_x1 = g1[1]
         grad_x2 = g2[1]
 
@@ -98,7 +85,7 @@ x1_init = -10.0
 x2_init = 10.0
 
 # Run gradient descent
-x1_his, x2_his, g1_his, g2_his, f_his = gradient_descent(x1_init, x2_init, lr=1e-7, max_iter=20)
+x1_his, x2_his, g1_his, g2_his, f_his = gradient_descent(x1_init, x2_init, lr=1e-4, max_iter=20)
 
 # using PyCall
 # @pyimport matplotlib.pyplot as plt

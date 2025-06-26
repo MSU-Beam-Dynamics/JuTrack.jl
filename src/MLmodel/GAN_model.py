@@ -1,5 +1,5 @@
 """
-GAN model for space-charge Hamioltonian generation using U-Net architecture for the generator and PatchGAN for the discriminator.
+GAN model for space-charge Hamioltonian generation.
 Related paper: "A symplectic machine learning model for fast simulation of space-charge effects" by J. Wan, Y. Hao and J. Qiang.
 """
 import torch

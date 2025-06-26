@@ -1,13 +1,12 @@
 name = "JuTrack"
 uuid = "a43d9089-7dde-42d4-b2b6-ab2f8db67ed6"
-version = "0.3.0"
+version = "1.1.0"
 
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
-FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 ONNXRunTime = "e034b28e-924e-41b2-b98f-d2bbeb830c6a"
@@ -21,4 +20,5 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
+julia  = "1.10"
 Enzyme = "=0.13.3"
