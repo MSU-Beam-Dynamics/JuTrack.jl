@@ -103,17 +103,4 @@ export autodiff, Forward, ForwardWithPrimal, gradient, jacobian, Duplicated, set
 
 export dynamic_aperture, naff, FMA, computeRDT, ADcomputeRDT
 export drift6!, multmv!, addvv!, linearQuadFringeElegantEntrance!, QuadFringePassP!, fastdrift!, strthinkick!
-export activate_env
-"""
-    activate_env(; instantiate = true)
-
-Activate JuTrack's own folder as the active environment and
-(optionally) run `Pkg.instantiate()` so the Manifest.toml is obeyed.
-"""
-function activate_env(; instantiate=true)
-    import Pkg
-    Pkg.activate(@__DIR__)          # folder that holds Project + Manifest
-    instantiate && Pkg.instantiate()
-    return nothing
-end
 end

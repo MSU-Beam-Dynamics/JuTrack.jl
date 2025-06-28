@@ -23,19 +23,31 @@ author = {Jinyu Wan and Helena Alamprese and Christian Ratcliff and Ji Qiang and
 * Install Julia at [here](https://julialang.org/downloads/oldreleases/) (1.10.4 is preferred).
 
 * Download the package for offline isntallation.
-* Or using online installation via
+* Or use git:
+```
+git clone https://github.com/MSU-Beam-Dynamics/JuTrack.jl
+```
+
+* Create Julia environment and install dependencies
+```
+cd JuTrack.jl
+julia --project=. -e 'using Pkg; Pkg.instantiate()'
+```
+
+# Use the package in Julia
+Start Julia pointing to the JuTrack environment (change the path to your JuTrack directory accordingly):
+```
+julia --project=/path/to/JuTrack.jl -e 'using Pkg; Pkg.instantiate()'
+```
+
+Or activate the JuTrack environment in the Julia code (change the path to your JuTrack directory accordingly):
 ```
 using Pkg
-ENV["JULIA_PKG_USE_CLI_GIT"] = "true" # required if installing within Julia's REPL
-Pkg.add(url="https://github.com/MSU-Beam-Dynamics/JuTrack.jl")
+Pkg.activate("/path/to/JuTrack.jl")
+Pkg.instantiate()
 ```
 
-* Installation of Enzyme. v0.13.3 is perferred. 
-```
-Pkg.add(name="Enzyme", version="0.13.3")
-```
-
-# Import the package in Julia
+Import JuTrack:
 ```
 using JuTrack
 ```
