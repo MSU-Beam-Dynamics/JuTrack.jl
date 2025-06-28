@@ -22,8 +22,7 @@ author = {Jinyu Wan and Helena Alamprese and Christian Ratcliff and Ji Qiang and
 
 * Install Julia at [here](https://julialang.org/downloads/oldreleases/) (1.10.4 is preferred).
 
-* Download the package for offline isntallation.
-* Or use git:
+* Download the package:
 ```
 git clone https://github.com/MSU-Beam-Dynamics/JuTrack.jl
 ```
@@ -31,16 +30,11 @@ git clone https://github.com/MSU-Beam-Dynamics/JuTrack.jl
 * Create Julia environment and install dependencies
 ```
 cd JuTrack.jl
-julia --project=. -e 'using Pkg; Pkg.instantiate()'
+julia --project=. -e "using Pkg; Pkg.instantiate()"
 ```
 
 # Use the package in Julia
-Start Julia pointing to the JuTrack environment (change the path to your JuTrack directory accordingly):
-```
-julia --project=/path/to/JuTrack.jl -e 'using Pkg; Pkg.instantiate()'
-```
-
-Or activate the JuTrack environment in the Julia code (change the path to your JuTrack directory accordingly):
+Activate the JuTrack environment in the Julia code (change the path to your JuTrack directory accordingly):
 ```
 using Pkg
 Pkg.activate("/path/to/JuTrack.jl")

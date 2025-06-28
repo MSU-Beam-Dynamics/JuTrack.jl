@@ -23,10 +23,17 @@ end
 function __init__()
 py"""
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle, Wedge, Arc, Polygon
-from matplotlib.lines import Line2D
-from matplotlib.transforms import Affine2D
+try:
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Rectangle, Wedge, Arc
+    from matplotlib.lines import Line2D
+    from matplotlib.transforms import Affine2D
+except ImportError:
+    raise ImportError("Please install matplotlib associated with PyCall to use the lattice plot function.")
+# import matplotlib.pyplot as plt
+# from matplotlib.patches import Rectangle, Wedge, Arc, Polygon
+# from matplotlib.lines import Line2D
+# from matplotlib.transforms import Affine2D
 
 def plot_lattice(lattice, width=0.25, axis=True):
     fig, ax = plt.subplots(figsize=(8, 8))
