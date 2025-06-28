@@ -27,7 +27,8 @@ author = {Jinyu Wan and Helena Alamprese and Christian Ratcliff and Ji Qiang and
 git clone https://github.com/MSU-Beam-Dynamics/JuTrack.jl
 ```
 
-* Create Julia environment and install dependencies
+* Since Julia and its packages are under very active development, it is strongly recommended to create a separate environment for each piece of work.
+To create a JuTrack environment and install its dependencies (errors may occur if not using this method to install all dependencies):
 ```
 cd JuTrack.jl
 julia --project=. -e "using Pkg; Pkg.instantiate()"

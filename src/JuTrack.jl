@@ -1,4 +1,5 @@
 module JuTrack
+using PyCall
 using Enzyme
 # Enzyme.API.runtimeActivity!(true) # this is temporarily used
 const CoordLimit = 1.0
@@ -15,7 +16,15 @@ const speed_of_light = 2.99792458e8 # m/s
 const charge_e = 1.602176634e-19 # C
 use_exact_Hamiltonian = 1 # use exact pz
 use_exact_beti = 0 # use delta p/p0 as the sixth coordinate. Change it to 1 to use delta E/p0 
-
+const _jlplotlib_available = let ok
+    try
+        pyimport("matplotlib.pyplot")
+        ok = true
+    catch
+        ok = false
+    end
+    ok
+end
 include("TPSA/TPSA.jl")
 include("lattice/beam.jl")
 include("lattice/canonical_elements.jl")
@@ -65,7 +74,12 @@ include("utils/lattice_utils.jl")
 include("utils/matrix.jl")
 include("utils/dynamic_aperture.jl")
 include("utils/fma.jl")
-include("utils/lattice_plot.jl")
+if _jlplotlib_available
+    include("utils/lattice_plot.jl")
+else
+    @warn "Matplotlib is not available. Lattice plotting functions will not work."
+end
+# include("utils/lattice_plot.jl")
 
 export Beam
 export m_e, m_p, m_goldion, charge_e, speed_of_light, epsilon_0, CGAMMA, CoordLimit, AngleLimit, use_exact_Hamiltonian, use_exact_drift, use_exact_beti
