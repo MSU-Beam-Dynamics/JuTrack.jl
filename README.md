@@ -20,7 +20,7 @@ author = {Jinyu Wan and Helena Alamprese and Christian Ratcliff and Ji Qiang and
 
 # Installation
 
-* Install Julia at [here](https://julialang.org/downloads/oldreleases/) (1.10.4 is preferred).
+* Install Julia at [here](https://julialang.org/downloads/oldreleases/) (1.10.4 is required! Use other Julia versions may result in an error).
 
 * Download the package:
 ```
