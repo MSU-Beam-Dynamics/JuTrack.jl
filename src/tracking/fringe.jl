@@ -88,7 +88,7 @@ function quadPartialFringeMatrix!(R, K1, inFringe, fringeInt, part)
     return nothing
 end
 
-function linearQuadFringeElegantEntrance!(r6::AbstractVector{Float64}, b2, fringeIntM0, fringeIntP0)
+function linearQuadFringeElegantEntrance!(r6, b2, fringeIntM0, fringeIntP0)
     # AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
     R = zeros(6, 6)
     inFringe = -1.0
@@ -115,7 +115,7 @@ function linearQuadFringeElegantEntrance!(r6::AbstractVector{Float64}, b2, fring
     return nothing
 end
 
-function linearQuadFringeElegantExit!(r6::AbstractVector{Float64}, b2, fringeIntM0, fringeIntP0)
+function linearQuadFringeElegantExit!(r6, b2, fringeIntM0, fringeIntP0)
     # AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
     R = zeros(6, 6)
     inFringe = 1.0
@@ -142,7 +142,7 @@ function linearQuadFringeElegantExit!(r6::AbstractVector{Float64}, b2, fringeInt
     return nothing
 end
 
-function edge_fringe_entrance!(r::AbstractVector{Float64}, inv_rho, edge_angle, fint, gap, method)
+function edge_fringe_entrance!(r, inv_rho, edge_angle, fint, gap, method)
     # AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
     #      method 0 no fringe field
     #      method 1 legacy version Brown First Order
@@ -174,7 +174,7 @@ function edge_fringe_entrance!(r::AbstractVector{Float64}, inv_rho, edge_angle, 
     return nothing
 end
 
-function edge_fringe_exit!(r::AbstractVector{Float64}, inv_rho, edge_angle, fint, gap, method)
+function edge_fringe_exit!(r, inv_rho, edge_angle, fint, gap, method)
     # AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
     #      method 0 no fringe field
     #      method 1 legacy version Brown First Order

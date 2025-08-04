@@ -13,17 +13,17 @@ function QuadLinearPass!(r::Array{Float64,1}, le::Float64, k1::Float64, beti::Fl
         if !isnan(r6[1])
             p_norm = 1.0 / (1.0 + r6[6])
 
+            # Misalignment at entrance
+            if !iszero(T1)
+                addvv!(r6, T1)
+            end
+            if !iszero(R1)
+                multmv!(r6, R1)
+            end
+
             if iszero(k1)
                 drift6!(r6, le, beti)
             else
-                # Misalignment at entrance
-                if !iszero(T1)
-                    addvv!(r6, T1)
-                end
-                if !iszero(R1)
-                    multmv!(r6, R1)
-                end
-
                 x   = r6[1]
                 xpr = r6[2]*p_norm
                 y   = r6[3]
@@ -57,17 +57,17 @@ function QuadLinearPass!(r::Array{Float64,1}, le::Float64, k1::Float64, beti::Fl
                 r6[5]+= g*(x*x*(le-MHD*M12)-y*y*(le-MVD*M34))/4.0
                 r6[5]+= (xpr*xpr*(le+MHD*M12)+ypr*ypr*(le+MVD*M34))/4.0
                 r6[5]+= (x*xpr*M12*M21 + y*ypr*M34*M43)/2.0
+            end
 
-                # Misalignment at exit
-                if !iszero(R2)
-                    multmv!(r6, R2)
-                end
-                if !iszero(T2)
-                    addvv!(r6, T2)
-                end
-                if check_lost(r6)
-                    lost_flags[c] = 1
-                end
+            # Misalignment at exit
+            if !iszero(R2)
+                multmv!(r6, R2)
+            end
+            if !iszero(T2)
+                addvv!(r6, T2)
+            end
+            if check_lost(r6)
+                lost_flags[c] = 1
             end
         end
     end

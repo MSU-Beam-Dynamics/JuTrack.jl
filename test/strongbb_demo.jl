@@ -1,3 +1,5 @@
+# Using Enzyme to calculate the gradient of a strong beam-beam interaction function
+# The implementation of fast TPSA is still under development, so we use the Enzyme AD for now.
 using JuTrack
 
 function f1(x)
@@ -6,8 +8,8 @@ function f1(x)
     vact=vbase/cos(ϕs*π/180.0)
     mainRFe=AccelCavity(freq=591e6, volt=vact, h=7560.0, phis=π-ϕs*π/180.0)
     tunex, tuney=50.08, 44.14
-    αc=3.42/tunex/tunex
-    lmap=LongitudinalRFMap(αc, mainRFe)
+    alphac=3.42/tunex/tunex
+    lmap=LongitudinalRFMap(alphac, mainRFe)
     opIPp=optics4DUC(0.8, 0.0, 0.072, 0.0)
     opIPe=optics4DUC(0.45,0.0,0.056,0.0)
     pstrong=StrongGaussianBeam(1.0, m_p, 1.0, Int(0.688e11), 275e9,  opIPp, [x, 8.5e-6, 0.06], 9)

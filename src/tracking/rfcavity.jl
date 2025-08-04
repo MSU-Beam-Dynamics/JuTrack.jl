@@ -21,10 +21,6 @@ function RFCavityPass!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq::F
             end
             r6 = @view r_in[(c-1)*6+1:c*6]
             if !isnan(r6[1])
-                if isinf(2 * pi * freq * ((r6[5] - lag) / C0 - (h / freq - T0) * nturn) - philag)
-                    println(c)
-                    println(r6)
-                end
                 r6[6] += -nv * sin(2 * pi * freq * ((r6[5] - lag) / C0 - (h / freq - T0) * nturn) - philag) / beta^2
             end
         end

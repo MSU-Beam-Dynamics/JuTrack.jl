@@ -65,8 +65,6 @@ end
 function StrMPoleSymplectic4Pass!(r::Array{Float64,1}, le::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_step::Int, 
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
-    fringeIntM0::Array{Float64,1},  # I0m/K1, I1m/K1, I2m/K1, I3m/K1, Lambda2m/K1 
-    fringeIntP0::Array{Float64,1},  # I0p/K1, I1p/K1, I2p/K1, I3p/K1, Lambda2p/K1
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
     RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{Float64,1}, 
     num_particles::Int, lost_flags::Array{Int64,1})
@@ -82,17 +80,6 @@ function StrMPoleSymplectic4Pass!(r::Array{Float64,1}, le::Float64, beti::Float6
     L2 = SL*DRIFT2
     K1 = SL*KICK1
     K2 = SL*KICK2
-
-    # if FringeQuadEntrance==2 #&& !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
-    #     useLinFrEleEntrance = 1
-    # else
-    #     useLinFrEleEntrance = 0
-    # end
-    # if FringeQuadExit==2 #&& !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
-    #     useLinFrEleExit = 1
-    # else
-    #     useLinFrEleExit = 0
-    # end
 
     if le > 0
         B[1] -= sin(KickAngle[1])/le
@@ -112,14 +99,6 @@ function StrMPoleSymplectic4Pass!(r::Array{Float64,1}, le::Float64, beti::Float6
                 multmv!(r6, R1)
             end
 
-            # if FringeQuadEntrance != 0 && B[2] != 0
-            #     if useLinFrEleEntrance == 1
-            #         linearQuadFringeElegantEntrance!(r6, B[2], fringeIntM0, fringeIntP0)
-            #     else
-            #         QuadFringePassP!(r6, B[2])
-            #     end
-            # end
-
             if FringeQuadEntrance != 0 
                 multipole_fringe!(r6, le, A, B, max_order, 1.0, 1, beti)
             end
@@ -135,13 +114,6 @@ function StrMPoleSymplectic4Pass!(r::Array{Float64,1}, le::Float64, beti::Float6
                 drift6!(r6, L1, beti)
             end
 
-            # if FringeQuadExit != 0 && B[2] != 0
-            #     if useLinFrEleExit == 1
-            #         linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
-            #     else
-            #         QuadFringePassN!(r6, B[2])
-            #     end
-            # end
             if FringeQuadExit != 0
                 multipole_fringe!(r6, le, A, B, max_order, -1.0, 1, beti)
             end
@@ -169,8 +141,6 @@ end
 function StrMPoleSymplectic4RadPass!(r::Array{Float64,1}, le::Float64, rad_const::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_step::Int, 
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
-    fringeIntM0::Array{Float64,1},  # I0m/K1, I1m/K1, I2m/K1, I3m/K1, Lambda2m/K1 
-    fringeIntP0::Array{Float64,1},  # I0p/K1, I1p/K1, I2p/K1, I3p/K1, Lambda2p/K1
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
     RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{Float64,1}, E0::Float64,
     num_particles::Int, lost_flags::Array{Int64,1})
@@ -186,17 +156,6 @@ function StrMPoleSymplectic4RadPass!(r::Array{Float64,1}, le::Float64, rad_const
     L2 = SL*DRIFT2
     K1 = SL*KICK1
     K2 = SL*KICK2
-
-    # if FringeQuadEntrance==2# && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
-    #     useLinFrEleEntrance = 1
-    # else
-    #     useLinFrEleEntrance = 0
-    # end
-    # if FringeQuadExit==2#&& !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
-    #     useLinFrEleExit = 1
-    # else
-    #     useLinFrEleExit = 0
-    # end
 
     if le > 0
         B[1] -= sin(KickAngle[1])/le
@@ -216,13 +175,6 @@ function StrMPoleSymplectic4RadPass!(r::Array{Float64,1}, le::Float64, rad_const
                 multmv!(r6, R1)
             end
 
-            # if FringeQuadEntrance != 0 && B[2] != 0
-            #     if useLinFrEleEntrance == 1
-            #         linearQuadFringeElegantEntrance!(r6, B[2], fringeIntM0, fringeIntP0)
-            #     else
-            #         QuadFringePassP!(r6, B[2])
-            #     end
-            # end
             if FringeQuadEntrance != 0 
                 multipole_fringe!(r6, le, A, B, max_order, 1.0, 1, beti)
             end
@@ -238,13 +190,6 @@ function StrMPoleSymplectic4RadPass!(r::Array{Float64,1}, le::Float64, rad_const
                 drift6!(r6, L1, beti)
             end
 
-            # if FringeQuadExit != 0 && B[2] != 0
-            #     if useLinFrEleExit == 1
-            #         linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
-            #     else
-            #         QuadFringePassN!(r6, B[2])
-            #     end
-            # end
             if FringeQuadExit != 0
                 multipole_fringe!(r6, le, A, B, max_order, -1.0, 1, beti)
             end
@@ -287,8 +232,7 @@ function pass!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, particl
         PolynomB[2] = ele.k1
         if ele.rad == 0
             StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
             if particles.mass == m_e
                 rad_const = RAD_CONST_E * particles.gamma^3
@@ -299,8 +243,7 @@ function pass!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, particl
                 println("SR is not implemented for this particle mass.")
             end
             StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
+                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
     else
         PolynomB[1] = ele.PolynomB[1]
@@ -309,7 +252,7 @@ function pass!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, particl
         PolynomB[4] = ele.PolynomB[4] / 6.0
         if ele.rad == 0
             StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
             if particles.mass == m_e
@@ -321,7 +264,7 @@ function pass!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, particl
                 println("SR is not implemented for this particle mass.")
             end
             StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
     end
@@ -346,8 +289,7 @@ function pass!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, particl
         PolynomB[3] = ele.k2 / 2.0
         if ele.rad == 0
             StrMPoleSymplectic4Pass!(r_in, ele.len, beti,ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
             if particles.mass == m_e
                 rad_const = RAD_CONST_E * particles.gamma^3
@@ -358,8 +300,7 @@ function pass!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, particl
                 println("SR is not implemented for this particle mass.")
             end
             StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
+                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
     else
         PolynomB[1] = ele.PolynomB[1]
@@ -368,8 +309,7 @@ function pass!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, particl
         PolynomB[4] = ele.PolynomB[4] / 6.0
         if ele.rad == 0
             StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
             if particles.mass == m_e
                 rad_const = RAD_CONST_E * particles.gamma^3
@@ -380,8 +320,7 @@ function pass!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, particl
                 println("SR is not implemented for this particle mass.")
             end
             StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
+                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
     end
     return nothing
@@ -405,8 +344,7 @@ function pass!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, particle
         PolynomB[4] = ele.k3 / 6.0
         if ele.rad == 0
             StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
             if particles.mass == m_e
                 rad_const = RAD_CONST_E * particles.gamma^3
@@ -417,8 +355,7 @@ function pass!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, particle
                 println("SR is not implemented for this particle mass.")
             end
             StrMPoleSymplectic4RadPass!(r_in, ele.len, beti, particles.mass, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
+                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
     else
         PolynomB[1] = ele.PolynomB[1]
@@ -427,8 +364,7 @@ function pass!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, particle
         PolynomB[4] = ele.PolynomB[4] / 6.0
         if ele.rad == 0
             StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
             if particles.mass == m_e
                 rad_const = RAD_CONST_E * particles.gamma^3
@@ -439,8 +375,7 @@ function pass!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, particle
                 println("SR is not implemented for this particle mass.")
             end
             StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
+                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
     end
     return nothing
@@ -452,8 +387,6 @@ end
 function StrMPoleSymplectic4Pass_P!(r::Array{Float64,1}, le::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_step::Int, 
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
-    fringeIntM0::Array{Float64,1},  # I0m/K1, I1m/K1, I2m/K1, I3m/K1, Lambda2m/K1 
-    fringeIntP0::Array{Float64,1},  # I0p/K1, I1p/K1, I2p/K1, I3p/K1, Lambda2p/K1
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
     RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{Float64,1}, 
     num_particles::Int, lost_flags::Array{Int64,1})
@@ -468,17 +401,6 @@ function StrMPoleSymplectic4Pass_P!(r::Array{Float64,1}, le::Float64, beti::Floa
     L2 = SL*DRIFT2
     K1 = SL*KICK1
     K2 = SL*KICK2
-
-    # if FringeQuadEntrance==2 #&& !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
-    #     useLinFrEleEntrance = 1
-    # else
-    #     useLinFrEleEntrance = 0
-    # end
-    # if FringeQuadExit==2 #&& !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
-    #     useLinFrEleExit = 1
-    # else
-    #     useLinFrEleExit = 0
-    # end
 
     B[1] -= sin(KickAngle[1])/le
     A[1] += sin(KickAngle[2])/le
@@ -498,13 +420,6 @@ function StrMPoleSymplectic4Pass_P!(r::Array{Float64,1}, le::Float64, beti::Floa
             end
 
 
-            # if FringeQuadEntrance != 0 && B[2] != 0
-            #     if useLinFrEleEntrance == 1
-            #         linearQuadFringeElegantEntrance!(r6, B[2], fringeIntM0, fringeIntP0)
-            #     else
-            #         QuadFringePassP!(r6, B[2])
-            #     end
-            # end
             if FringeQuadEntrance != 0 
                 multipole_fringe!(r6, le, A, B, max_order, 1.0, 1, beti)
             end
@@ -521,13 +436,6 @@ function StrMPoleSymplectic4Pass_P!(r::Array{Float64,1}, le::Float64, beti::Floa
                 drift6!(r6, L1, beti)
             end
 
-            # if FringeQuadExit != 0 && B[2] != 0
-            #     if useLinFrEleExit == 1
-            #         linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
-            #     else
-            #         QuadFringePassN!(r6, B[2])
-            #     end
-            # end
             if FringeQuadExit != 0
                 multipole_fringe!(r6, le, A, B, max_order, -1.0, 1, beti)
             end
@@ -553,8 +461,6 @@ end
 function StrMPoleSymplectic4RadPass_P!(r::Array{Float64,1}, le::Float64, rad_const::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_step::Int, 
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
-    fringeIntM0::Array{Float64,1},  # I0m/K1, I1m/K1, I2m/K1, I3m/K1, Lambda2m/K1 
-    fringeIntP0::Array{Float64,1},  # I0p/K1, I1p/K1, I2p/K1, I3p/K1, Lambda2p/K1
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
     RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{Float64,1}, E0::Float64,
     num_particles::Int, lost_flags::Array{Int64,1})
@@ -569,17 +475,6 @@ function StrMPoleSymplectic4RadPass_P!(r::Array{Float64,1}, le::Float64, rad_con
     L2 = SL*DRIFT2
     K1 = SL*KICK1
     K2 = SL*KICK2
-
-    # if FringeQuadEntrance==2 && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
-    #     useLinFrEleEntrance = 1
-    # else
-    #     useLinFrEleEntrance = 0
-    # end
-    # if FringeQuadExit==2 && !isnothing(fringeIntM0) && !isnothing(fringeIntP0)
-    #     useLinFrEleExit = 1
-    # else
-    #     useLinFrEleExit = 0
-    # end
 
     if le > 0
         B[1] -= sin(KickAngle[1])/le
@@ -609,13 +504,6 @@ function StrMPoleSymplectic4RadPass_P!(r::Array{Float64,1}, le::Float64, rad_con
             #     checkiflostEllipticalAp(r6, EApertures)
             # end
 
-            # if FringeQuadEntrance != 0 && B[2] != 0
-            #     if useLinFrEleEntrance == 1
-            #         linearQuadFringeElegantEntrance!(r6, B[2], fringeIntM0, fringeIntP0)
-            #     else
-            #         QuadFringePassP!(r6, B[2])
-            #     end
-            # end
 
             if FringeQuadEntrance != 0 
                 multipole_fringe!(r6, le, A, B, max_order, 1.0, 1, beti)
@@ -632,13 +520,6 @@ function StrMPoleSymplectic4RadPass_P!(r::Array{Float64,1}, le::Float64, rad_con
                 drift6!(r6, L1, beti)
             end
 
-            # if FringeQuadExit != 0 && B[2] != 0
-            #     if useLinFrEleExit == 1
-            #         linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
-            #     else
-            #         QuadFringePassN!(r6, B[2])
-            #     end
-            # end
             if FringeQuadExit != 0
                 multipole_fringe!(r6, le, A, B, max_order, -1.0, 1, beti)
             end
@@ -689,8 +570,7 @@ function pass_P!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, parti
         PolynomB[2] = ele.k1
         if ele.rad == 0
             StrMPoleSymplectic4Pass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
             if particles.mass == m_e
                 rad_const = RAD_CONST_E * particles.gamma^3
@@ -701,8 +581,7 @@ function pass_P!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, parti
                 println("SR is not implemented for this particle mass.")
             end
             StrMPoleSymplectic4RadPass_P!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
+                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
     else
         PolynomB[1] = ele.PolynomB[1]
@@ -711,7 +590,7 @@ function pass_P!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, parti
         PolynomB[4] = ele.PolynomB[4] / 6.0
         if ele.rad == 0
             StrMPoleSymplectic4Pass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
             if particles.mass == m_e
@@ -723,7 +602,7 @@ function pass_P!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, parti
                 println("SR is not implemented for this particle mass.")
             end
             StrMPoleSymplectic4RadPass_P!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
     end
@@ -748,7 +627,7 @@ function pass_P!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, parti
         PolynomB[3] = ele.k2 / 2.0
         if ele.rad == 0
             StrMPoleSymplectic4Pass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
             if particles.mass == m_e
@@ -760,7 +639,7 @@ function pass_P!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, parti
                 println("SR is not implemented for this particle mass.")
             end
             StrMPoleSymplectic4RadPass_P!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
     else
@@ -770,7 +649,7 @@ function pass_P!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, parti
         PolynomB[4] = ele.PolynomB[4] / 6.0
         if ele.rad == 0
             StrMPoleSymplectic4Pass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
             if particles.mass == m_e
@@ -782,7 +661,7 @@ function pass_P!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, parti
                 println("SR is not implemented for this particle mass.")
             end
             StrMPoleSymplectic4RadPass_P!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
     end
@@ -807,7 +686,7 @@ function pass_P!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, partic
         PolynomB[4] = ele.k3 / 6.0
         if ele.rad == 0
             StrMPoleSymplectic4Pass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
             if particles.mass == m_e
@@ -819,7 +698,7 @@ function pass_P!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, partic
                 println("SR is not implemented for this particle mass.")
             end
             StrMPoleSymplectic4RadPass_P!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
     else
@@ -829,8 +708,7 @@ function pass_P!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, partic
         PolynomB[4] = ele.PolynomB[4] / 6.0
         if ele.rad == 0
             StrMPoleSymplectic4Pass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
         else
             if particles.mass == m_e
                 rad_const = RAD_CONST_E * particles.gamma^3
@@ -841,8 +719,7 @@ function pass_P!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, partic
                 println("SR is not implemented for this particle mass.")
             end
             StrMPoleSymplectic4RadPass_P!(r_in, ele.len, rad_const, beti,ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
+                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
         end
     end
     return nothing

@@ -5,7 +5,7 @@ using LinearAlgebra
 using FFTW
 using StaticArrays
 using PyCall
-np = pyimport("numpy")
+# np = pyimport("numpy")
 # using TimerOutputs
 # const to = TimerOutput()
 # using Infiltrator
@@ -559,14 +559,14 @@ function numerical_inverse_6D_fast(funcs, tpsinv, jacinv, wvals; max_iter=3, tol
     zdiff = Matrix{ComplexF64}(undef, n, 6)
     wdiff = Matrix{ComplexF64}(undef, n, 6)
     for it in 1:max_iter
-        Threads.@threads for i in 1:n
+         for i in 1:n
             vals = funcs(zapprox[i])
             @inbounds for j in 1:6
                 wdiff[i, j] = vals[j] - wvals[j][i]
             end
         end
 
-        Threads.@threads for i in 1:n
+         for i in 1:n
             J = MMatrix{6,6,ComplexF64}(undef)
             vals = [evaluate(jacinv[j], zapprox[i]) for j in 1:36]
             J .= transpose(reshape(vals,6,6))
@@ -574,7 +574,7 @@ function numerical_inverse_6D_fast(funcs, tpsinv, jacinv, wvals; max_iter=3, tol
             zdiff[i, :] = -J \ @view wdiff[i, :]
         end
 
-        Threads.@threads for i in 1:n
+         for i in 1:n
             zapprox[i] += SVector(zdiff[i, :]...)  
         end
     
@@ -640,30 +640,33 @@ function itearation_freq(dtheta, theta0, freq, nmap, z_to_w, w_to_z; jacobian=no
     phiy = (-1.0im).*log.(n_wy./w_y) .- freq[2]
     phiz = (-1.0im).*log.(n_wz./w_z) .- freq[3]
 
-    phix_fft = np.fft.fftn(phix)
-    phiy_fft = np.fft.fftn(phiy)
-    phiz_fft = np.fft.fftn(phiz)
+    # phix_fft = np.fft.fftn(phix)
+    # phiy_fft = np.fft.fftn(phiy)
+    # phiz_fft = np.fft.fftn(phiz)
+    phix_fft = fft(phix)
+    phiy_fft = fft(phiy)
+    phiz_fft = fft(phiz)
 
     # Define a helper function similar to numpy.fft.fftfreq.
-    # function fftfreq_np(n::Integer, d::Real=1.0)
-    #     if iseven(n)
-    #         freqs = vcat(
-    #             0:(n÷2-1),
-    #             -n÷2,
-    #             -(n÷2-1):-1
-    #         )
-    #     else
-    #         freqs = vcat(
-    #             0:((n-1)÷2),
-    #             -((n-1)÷2):-1
-    #         )
-    #     end
-    #     return freqs ./ (n*d)
-    # end
+    function fftfreq_np(n::Integer, d::Real=1.0)
+        if iseven(n)
+            freqs = vcat(
+                0:(n÷2-1),
+                -n÷2,
+                -(n÷2-1):-1
+            )
+        else
+            freqs = vcat(
+                0:((n-1)÷2),
+                -((n-1)÷2):-1
+            )
+        end
+        return freqs ./ (n*d)
+    end
 
-    fl1 = np.fft.fftfreq(n1, 1.0/n1)
-    fl2 = np.fft.fftfreq(n2, 1.0/n2)
-    fl3 = np.fft.fftfreq(n3, 1.0/n3)
+    fl1 = fftfreq_np(n1, 1.0/n1)
+    fl2 = fftfreq_np(n2, 1.0/n2)
+    fl3 = fftfreq_np(n3, 1.0/n3)
 
     freq1list = [a for a in fl1, b in fl2, c in fl3]
     freq2list = [b for a in fl1, b in fl2, c in fl3]
@@ -718,13 +721,13 @@ function itearation_freq(dtheta, theta0, freq, nmap, z_to_w, w_to_z; jacobian=no
     theta_mz[1,1,1] = 0.0+0.0im
 
     dt = zeros(ComplexF64, 3, n1, n2, n3)
-    dt[1, :, :, :] = np.fft.ifftn(theta_mx)
-    dt[2, :, :, :] = np.fft.ifftn(theta_my)
-    dt[3, :, :, :] = np.fft.ifftn(theta_mz)
+    dt[1, :, :, :] = ifft(theta_mx)
+    dt[2, :, :, :] = ifft(theta_my)
+    dt[3, :, :, :] = ifft(theta_mz)
     return dt, newfreq, theta_mx, theta_my, theta_mz
 end
 
-function CMscan(transfer_map, dim, order, tunes, 
+function CMscan(transfer_map, ring, dim, order, tunes, 
             x_min, x_max, y_min, y_max, z_min, z_max, 
             n_x, n_y, n_z, pxini, pyini, pzini, filename="CMscan.txt")
     x_vals = range(x_min, x_max, length=n_x)
@@ -735,7 +738,7 @@ function CMscan(transfer_map, dim, order, tunes,
 
     tunex, tuney, tunez = tunes
     freq_init = [2*pi*tunex, 2*pi*tuney, 2*pi*tunez]
-    hp, tpsMap, Uinv = transfer_map(dim, order, tunes)
+    hp, tpsMap, Uinv = transfer_map(dim, order, tunes, ring)
 
     leftvects = compute_action_angle_polynomials(hp, dim, order)
     ztow, wtoz, w0z = compute_inverse_maps(leftvects, dim, order)

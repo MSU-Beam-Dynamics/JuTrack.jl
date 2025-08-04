@@ -82,15 +82,42 @@ twi = periodicEdwardsTengTwiss(RING, 0.0, 0)
 ```
 
 # Automatic differentiation
+We provide two options for fast AD calculation, fastTPSA and Enzyme. fastTPSA is a first-order dual-number modual, and Enzyme is a third-party package that do AD at compiler level. Both method provide comparably fast AD. The fastTPSA is written in pure Julia that is supposed to be more stable. While Enzyme supports all kinds of differentiable functions, which is not limited by the tracking code in JuTrack.
+
+fastTPSA example:
 Obtain derivatives of tracking result w.r.t the quadrupole strength k1
 ```
-function tracking_wrt_k1(x)
+set_tps_dim(2) # 2 variables
+function tracking_wrt_k1(x1::DTPSAD{NVAR(), Float64}, x2::DTPSAD{NVAR(), Float64})
+    D1 = TDRIFT(len=1.0)        # in fastTPSA, we use T+ElementName.  
+    D2 = TDRIFT(len=1.0)        # The use of TELEMENT is the same as standard ELEMENT 
+    Q1 = TKQUAD(len=1.0)        # All parameters in TELEMENT are described as TPS variables
+    Q2 = TKQUAD(len=1.0)
+
+    Q1.k1 = x1
+    Q2.k1 = x2
+
+    beam = TBeam([0.1 0.0 0.0 0.0 0.0 0.0])
+
+    LINE = [D1, Q1, D2, Q2] 
+    linepass!(LINE, beam)
+    return beam.r
+end
+k1 = -0.9
+k2 = 0.3
+g, r = Jacobian(tracking_wrt_k1, [k1, k2], true)
+```
+
+Enzyme example:
+Obtain derivatives of tracking result w.r.t the quadrupole strength k1
+```
+function tracking_wrt_k1(X)
     D1 = DRIFT(len=1.0)
     D2 = DRIFT(len=1.0)
-    Q1 = KQUAD(len=1.0, k1=x) 
-    Q2 = KQUAD(len=1.0, k1=0.3)
+    Q1 = KQUAD(len=1.0, k1=X[1]) 
+    Q2 = KQUAD(len=1.0, k1=X[2])
 
-    beam = Beam([0.1 0.0 0.0 0.0 0.0 0.0], energy=3.5e9)
+    beam = Beam([0.1 0.0 0.0 0.0 0.0 0.0])
 
     # !!! avoid creating large lattice in the differentiable function.
     # !!! load or create your lattice outside the function if it is large.
@@ -99,7 +126,8 @@ function tracking_wrt_k1(x)
     return beam.r
 end
 k1 = -0.9
-derivatives, results = autodiff(ForwardWithPrimal, tracking_wrt_k1, Duplicated(k1, 1.0))
+k2 = 0.3
+derivatives, results = jacobian(ForwardWithPrimal, tracking_wrt_k1, [k1, k2])
 ```
 
 # Parallel computation setting

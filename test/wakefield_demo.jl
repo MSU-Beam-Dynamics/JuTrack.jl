@@ -1,3 +1,5 @@
+# Using Enzyme to calculate the gradient of a wakefield function
+# The implementation of fast TPSA is still under development, so we use the Enzyme AD for now.
 using JuTrack
 
 function f(x1)
@@ -15,7 +17,7 @@ function f(x1)
 end
 
 println(f(180e9))
-# the grad here may not make sense, but it is just a test
+# the grad here may be physically meaningless. it is just a test
 grad = autodiff(Forward, f,  Duplicated(180e9, 1.0)) 
 println(grad)
 

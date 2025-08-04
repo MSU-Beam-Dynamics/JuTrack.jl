@@ -46,8 +46,6 @@ function StrMPoleSymplectic4RadPass(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}},
     A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_step::Int, 
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
-    fringeIntM0::Array{Float64,1},  # I0m/K1, I1m/K1, I2m/K1, I3m/K1, Lambda2m/K1 
-    fringeIntP0::Array{Float64,1},  # I0p/K1, I1p/K1, I2p/K1, I3p/K1, Lambda2p/K1
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
     RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{Float64,1}, E0::Float64) where {T, TPS_Dim, Max_TPS_Degree}
 
@@ -170,8 +168,6 @@ end
 function StrMPoleSymplectic4Pass!(r::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le::Float64, beti::Float64, 
     A::AbstractVector{Float64}, B::AbstractVector{Float64}, max_order::Int, num_int_step::Int, 
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
-    fringeIntM0::AbstractVector{Float64},  # I0m/K1, I1m/K1, I2m/K1, I3m/K1, Lambda2m/K1 
-    fringeIntP0::AbstractVector{Float64},  # I0p/K1, I1p/K1, I2p/K1, I3p/K1, Lambda2p/K1
     T1::AbstractVector{Float64}, T2::AbstractVector{Float64}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
     RApertures::AbstractVector{Float64}, EApertures::AbstractVector{Float64}, KickAngle::AbstractVector{Float64}) where {T, TPS_Dim, Max_TPS_Degree}
 
@@ -260,7 +256,7 @@ function pass_TPSA!(ele::KQUAD, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; 
         PolynomB[2] = ele.k1
         if ele.rad == 0
             StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
         else
             if m0 == m_e
@@ -272,7 +268,7 @@ function pass_TPSA!(ele::KQUAD, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; 
                 println("SR is not implemented for this particle mass.")
             end
             StrMPoleSymplectic4RadPass(r_in, ele.len,rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0)
         end
     else
@@ -282,7 +278,7 @@ function pass_TPSA!(ele::KQUAD, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; 
         PolynomB[4] = ele.PolynomB[4] / 6.0
         if ele.rad == 0
             StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
         else
             if m0 == m_e
@@ -294,7 +290,7 @@ function pass_TPSA!(ele::KQUAD, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; 
                 println("SR is not implemented for this particle mass.")
             end
             StrMPoleSymplectic4RadPass(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0)
         end
     end
@@ -319,7 +315,7 @@ function pass_TPSA!(ele::KSEXT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; 
         PolynomB[3] = ele.k2 / 2.0
         if ele.rad == 0
             StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit,
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
         else
             if m0 == m_e
@@ -331,7 +327,7 @@ function pass_TPSA!(ele::KSEXT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; 
                 println("SR is not implemented for this particle mass.")
             end
             StrMPoleSymplectic4RadPass(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0)
         end
     else
@@ -341,7 +337,7 @@ function pass_TPSA!(ele::KSEXT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; 
         PolynomB[4] = ele.PolynomB[4] / 6.0
         if ele.rad == 0
             StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
         else
             if m0 == m_e
@@ -353,7 +349,7 @@ function pass_TPSA!(ele::KSEXT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; 
                 println("SR is not implemented for this particle mass.")
             end
             StrMPoleSymplectic4RadPass(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0)
         end
     end
@@ -377,7 +373,7 @@ function pass_TPSA!(ele::KOCT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; E
         PolynomB[4] = ele.k3 / 6.0
         if ele.rad == 0
             StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
         else
             if m0 == m_e
@@ -389,7 +385,7 @@ function pass_TPSA!(ele::KOCT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; E
                 println("SR is not implemented for this particle mass.")
             end
             StrMPoleSymplectic4RadPass(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0)
         end
     else
@@ -399,7 +395,7 @@ function pass_TPSA!(ele::KOCT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; E
         PolynomB[4] = ele.PolynomB[4] / 6.0
         if ele.rad == 0
             StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
         else
             if m0 == m_e
@@ -411,7 +407,7 @@ function pass_TPSA!(ele::KOCT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; E
                 println("SR is not implemented for this particle mass.")
             end
             StrMPoleSymplectic4RadPass(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0)
         end
     end

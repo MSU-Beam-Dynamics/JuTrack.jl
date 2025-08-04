@@ -6,8 +6,8 @@ function elem_to_py(e::AbstractElement)
     )
     if hasproperty(e, :angle)
         jd["angle"] = getfield(e, :angle)
-        e1 = getfield(e, :e1)
-        e2 = getfield(e, :e2)
+        e1 = hasproperty(e, :e1) ? getfield(e, :e1) : 0.0
+        e2 = hasproperty(e, :e2) ? getfield(e, :e2) : 0.0
         if abs(e1 - jd["angle"]/2.0) < 1e-10 && abs(e2 - jd["angle"]/2.0) < 1e-10
             jd["type"] = "RBEND"
         end
@@ -130,7 +130,7 @@ def plot_lattice(lattice, width=0.25, axis=True):
                                     np.sin(theta)])
 
 
-        elif et == 'SBEND':
+        elif et == 'SBEND' or et == 'ESBEND' or et == 'LBEND':
             phi = elem.get('angle', 0.0)
             e1  = elem.get('e1',    0.0)
             e2  = elem.get('e2',    0.0)
@@ -172,7 +172,12 @@ def plot_lattice(lattice, width=0.25, axis=True):
 
             pos += L * np.array([np.cos(theta), np.sin(theta)])
 
-
+        elif et == 'SPECIAL':
+            # marker for special elements as a vertical long line
+            special = Rectangle((0, -width/2), L, width*5,
+                                edgecolor='black', facecolor='purple',
+                                transform=trans)
+            ax.add_patch(special)
         else:
             end = pos + L * np.array([np.cos(theta), np.sin(theta)])
             ax.plot([pos[0], end[0]], [pos[1], end[1]],
@@ -207,6 +212,9 @@ scale: Scale factor for the plotted elements.
 axis: If true, show the axis; otherwise, hide it.
 """
 function plot_lattice(lattice, scale=0.25, axis=true)
+    if lattice isa AbstractVector{<:AbstractTPSAElement}
+        lattice = TPSAD2Number(lattice)
+    end
     py_lattice = [elem_to_py(e) for e in lattice]
     py"plot_lattice"(py_lattice, scale, axis)
 end

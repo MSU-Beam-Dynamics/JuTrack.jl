@@ -230,7 +230,7 @@ LQLS3 = 1.8
 LQLS4 = 5.187944e-01
 
 
-LBEND = 0.0
+lbend = 0.0
 
 #
 # ARC quadrupole strengths and support parameterrs
@@ -813,11 +813,11 @@ DMNS_6 = CHICANE(ARC_ANG_M6, TH2_DCCN, "001")
 DPLS_6 = CHICANE(ARC_ANG_P6, TH2_DCCN, "002")
 DPLS_8 = CHICANE(ARC_ANG_P8, TH2_DCCN, "003")
 DMNS_8 = CHICANE(ARC_ANG_M8, TH2_DCCN, "004")
-# DCCN = RBEND(name="DCCN", len=LBEND, angle=ARC_BEND_ANGLE)
-# DMNS_6 = RBEND(name="DMNS_6", len=LBEND, angle=ARC_BEND_ANGLE - IP6_ANGLE/8.0)
-# DPLS_6 = RBEND(name="DPLS_6", len=LBEND, angle=ARC_BEND_ANGLE + IP6_ANGLE/8.0)
-# DPLS_8 = RBEND(name="DPLS_8", len=LBEND, angle=ARC_BEND_ANGLE + IP8_ANGLE/8.0)
-# DMNS_8 = RBEND(name="DMNS_8", len=LBEND, angle=ARC_BEND_ANGLE - IP8_ANGLE/8.0)
+# DCCN = RBEND(name="DCCN", len=lbend, angle=ARC_BEND_ANGLE)
+# DMNS_6 = RBEND(name="DMNS_6", len=lbend, angle=ARC_BEND_ANGLE - IP6_ANGLE/8.0)
+# DPLS_6 = RBEND(name="DPLS_6", len=lbend, angle=ARC_BEND_ANGLE + IP6_ANGLE/8.0)
+# DPLS_8 = RBEND(name="DPLS_8", len=lbend, angle=ARC_BEND_ANGLE + IP8_ANGLE/8.0)
+# DMNS_8 = RBEND(name="DMNS_8", len=lbend, angle=ARC_BEND_ANGLE - IP8_ANGLE/8.0)
 
 # DB23_1 = RBEND(name="DB23_1", len=L01_STR, angle=ROT_ANGLE)
 # DB23_2 = RBEND(name="DB23_2", len=L01_STR, angle=ROT_ANGLE)

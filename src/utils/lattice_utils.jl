@@ -5,7 +5,9 @@ end
 function get_len_value(L::Float64)
     return L[1]
 end
-
+function get_len_value(L::DTPSAD{N, T}) where {N, T}
+    return L
+end
 function total_length(ring::Vector)
     leng = 0.0
     for i in eachindex(ring)
@@ -25,9 +27,18 @@ Calculate the s position of each element in the lattice.
 # Return
 - pos::Vector{Float64}: a vector of s positions
 """
-function spos(ring::Vector)
+function spos(ring::Vector{AbstractNumberElement})
     pos = zeros(length(ring))
     len = 0.0
+    for i in eachindex(ring)
+        len += get_len(ring[i])
+        pos[i] = len
+    end
+    return pos
+end
+function spos(ring::Vector{AbstractTPSAElement})
+    pos = zeros(DTPSAD{NVAR(), Float64}, length(ring))
+    len = zero(DTPSAD{NVAR(), Float64})
     for i in eachindex(ring)
         len += get_len(ring[i])
         pos[i] = len
@@ -47,9 +58,17 @@ Calculate the s position of the specified elements in the lattice.
 # Return
 - pos::Vector{Float64}: a vector of s positions of the specified elements
 """
-function spos(ring::Vector, idx::Vector)
+function spos(ring::Vector{AbstractNumberElement}, idx::Vector{Int})
     pos_all = spos(ring)
     pos = zeros(length(idx))
+    for i in 1:length(idx)
+        pos[i] = pos_all[idx[i]]
+    end
+    return pos
+end
+function spos(ring::Vector{AbstractTPSAElement}, idx::Vector{Int})
+    pos_all = spos(ring)
+    pos = zeros(DTPSAD{NVAR(), Float64}, length(idx))
     for i in 1:length(idx)
         pos[i] = pos_all[idx[i]]
     end
@@ -133,14 +152,14 @@ ele_index = findelem(ring, DRIFT)
 function findelem(ring::Vector, type::Type)
     c = 0
     for i in eachindex(ring)
-        if typeof(ring[i]) == type
+        if isa(ring[i], type)
             c += 1
         end
     end
     ele_index = zeros(Int, c)
     c = 0
     for i in eachindex(ring)
-        if typeof(ring[i]) == type
+        if isa(ring[i], type)
             c += 1
             ele_index[c] = i
         end
@@ -157,19 +176,21 @@ function use_exact_drift(flag)
 end
 
 function array_optics(Twi)
-    beta = zeros(length(Twi), 2)
+    # use type of Twi[1].betax to determine the type of beta, alpha, gamma, mu, dp
+    T = typeof(Twi[1].betax)
+    beta = zeros(T, length(Twi), 2)
     beta[:, 1] = [Twi[i].betax for i in eachindex(Twi)]
     beta[:, 2] = [Twi[i].betay for i in eachindex(Twi)]
-    alpha = zeros(length(Twi), 2)
+    alpha = zeros(T, length(Twi), 2)
     alpha[:, 1] = [Twi[i].alphax for i in eachindex(Twi)]
     alpha[:, 2] = [Twi[i].alphay for i in eachindex(Twi)]
-    gamma = zeros(length(Twi), 2)
+    gamma = zeros(T, length(Twi), 2)
     gamma[:, 1] = [Twi[i].gammax for i in eachindex(Twi)]
     gamma[:, 2] = [Twi[i].gammay for i in eachindex(Twi)]
-    mu = zeros(length(Twi), 2)
+    mu = zeros(T, length(Twi), 2)
     mu[:, 1] = [Twi[i].mux for i in eachindex(Twi)]
     mu[:, 2] = [Twi[i].muy for i in eachindex(Twi)]
-    dp = zeros(length(Twi), 4)
+    dp = zeros(T, length(Twi), 4)
     dp[:, 1] = [Twi[i].dx for i in eachindex(Twi)]
     dp[:, 2] = [Twi[i].dpx for i in eachindex(Twi)]
     dp[:, 3] = [Twi[i].dy for i in eachindex(Twi)]

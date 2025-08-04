@@ -4,6 +4,7 @@
 Abstract type for all elements in the lattice.
 """
 abstract type AbstractElement end
+abstract type AbstractNumberElement <: AbstractElement end
 
 """
     MARKER(;name::String = "MARKER", len::Float64 = 0.0)
@@ -14,12 +15,13 @@ Example:
 marker = MARKER(name="MARKER1")
 ```
 """
-mutable struct MARKER <: AbstractElement
+mutable struct MARKER <: AbstractNumberElement
     name::String
     len::Float64
     eletype::String
 
     MARKER(;name::String = "MARKER", len::Float64 = 0.0) = new(name, len, "MARKER")
+    MARKER(name::String, len::Float64, eletype::String) = new(name, len, eletype)
 end
 
 """
@@ -43,7 +45,7 @@ Example:
 drift = DRIFT(name="D1", len=1.0)
 ```
 """
-mutable struct DRIFT <: AbstractElement
+mutable struct DRIFT <: AbstractNumberElement
     name::String
     len::Float64
     T1::Array{Float64,1}
@@ -57,6 +59,10 @@ mutable struct DRIFT <: AbstractElement
     DRIFT(;name::String = "DRIFT", len::Float64 = 0.0, T1::Array{Float64,1} = zeros(6), 
         T2::Array{Float64,1} = zeros(6), R1::Array{Float64,2} = zeros(6,6), R2::Array{Float64,2} = zeros(6,6), 
         RApertures::Array{Float64,1} = zeros(6), EApertures::Array{Float64,1} = zeros(6)) = new(name, len, T1, T2, R1, R2, RApertures, EApertures, "DRIFT")
+    # constructor with all parameters
+    DRIFT(name::String, len::Float64, T1::Array{Float64,1}, T2::Array{Float64,1}, 
+        R1::Array{Float64,2}, R2::Array{Float64,2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, eletype::String) = 
+        new(name, len, T1, T2, R1, R2, RApertures, EApertures, eletype)
 end
 
 """
@@ -86,7 +92,7 @@ Example:
 drift = DRIFT_SC(name="D1_SC", len=0.5, a=13e-3, b=13e-3, Nl=15, Nm=15)
 ```
 """
-mutable struct DRIFT_SC <: AbstractElement
+mutable struct DRIFT_SC <: AbstractNumberElement
     name::String
     len::Float64
     T1::Array{Float64,1}
@@ -106,14 +112,18 @@ mutable struct DRIFT_SC <: AbstractElement
         T2::Array{Float64,1} = zeros(6), R1::Array{Float64,2} = zeros(6,6), R2::Array{Float64,2} = zeros(6,6), 
         RApertures::Array{Float64,1} = zeros(6), EApertures::Array{Float64,1} = zeros(6), a::Float64 = 1.0, b::Float64 = 1.0,
         Nl::Int64 = 10, Nm::Int64 = 10, Nsteps::Int64=1) = new(name, len, T1, T2, R1, R2, RApertures, EApertures, a, b, Nl, Nm, Nsteps, "DRIFT_SC")
+    # constructor with all parameters
+    DRIFT_SC(name::String, len::Float64, T1::Array{Float64,1}, T2::Array{Float64,1}, 
+        R1::Array{Float64,2}, R2::Array{Float64,2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, 
+        a::Float64, b::Float64, Nl::Int64, Nm::Int64, Nsteps::Int64, eletype::String) = 
+        new(name, len, T1, T2, R1, R2, RApertures, EApertures, a, b, Nl, Nm, Nsteps, eletype)
 end
 
 """
     KQUAD(;name::String = "Quad", len::Float64 = 0.0, k1::Float64 = 0.0, 
         PolynomA::Array{Float64,1} = zeros(Float64, 4), PolynomB::Array{Float64,1} = zeros(Float64, 4), 
         MaxOrder::Int64=1, NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
-        FringeQuadExit::Int64 = 0, FringeIntM0::Array{Float64,1} = zeros(Float64, 5), 
-        FringeIntP0::Array{Float64,1} = zeros(Float64, 5), T1::Array{Float64,1} = zeros(Float64, 6), 
+        FringeQuadExit::Int64 = 0, T1::Array{Float64,1} = zeros(Float64, 6), 
         T2::Array{Float64,1} = zeros(Float64, 6), R1::Array{Float64,2} = zeros(Float64, 6, 6), 
         R2::Array{Float64,2} = zeros(Float64, 6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6), 
         EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{Float64,1} = zeros(Float64, 2))
@@ -125,7 +135,7 @@ Example:
 quad = KQUAD(name="Q1", len=0.5, k1=0.5)
 ```
 """
-mutable struct KQUAD <: AbstractElement
+mutable struct KQUAD <: AbstractNumberElement
     name::String
     len::Float64
     k1::Float64
@@ -136,8 +146,6 @@ mutable struct KQUAD <: AbstractElement
     rad::Int64
     FringeQuadEntrance::Int64
     FringeQuadExit::Int64
-    FringeIntM0::Array{Float64,1} # ununsed
-    FringeIntP0::Array{Float64,1} # ununsed
     T1::Array{Float64,1}
     T2::Array{Float64,1}
     R1::Array{Float64,2}
@@ -151,8 +159,7 @@ mutable struct KQUAD <: AbstractElement
                     PolynomA::Array{Float64,1} = zeros(Float64, 4), 
                     PolynomB::Array{Float64,1} = zeros(Float64, 4), MaxOrder::Int64=1, 
                     NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
-                    FringeQuadExit::Int64 = 0, FringeIntM0::Array{Float64,1} = zeros(Float64, 5), 
-                    FringeIntP0::Array{Float64,1} = zeros(Float64, 5), T1::Array{Float64,1} = zeros(Float64, 6), 
+                    FringeQuadExit::Int64 = 0, T1::Array{Float64,1} = zeros(Float64, 6), 
                     T2::Array{Float64,1} = zeros(Float64, 6), R1::Array{Float64,2} = zeros(Float64, 6, 6), 
                     R2::Array{Float64,2} = zeros(Float64, 6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6), 
                     EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{Float64,1} = zeros(Float64, 2))
@@ -160,16 +167,22 @@ mutable struct KQUAD <: AbstractElement
             PolynomB[2] = k1
         end
         new(name, len, k1, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit, 
-            FringeIntM0, FringeIntP0, T1, T2, R1, R2, RApertures, EApertures, KickAngle, "KQUAD")
+            T1, T2, R1, R2, RApertures, EApertures, KickAngle, "KQUAD")
     end
+    # constructor with all parameters
+    KQUAD(name::String, len::Float64, k1::Float64, PolynomA::Array{Float64,1}, 
+        PolynomB::Array{Float64,1}, MaxOrder::Int64, NumIntSteps::Int64, rad::Int64, 
+        FringeQuadEntrance::Int64, FringeQuadExit::Int64, T1::Array{Float64,1}, 
+        T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
+        RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{Float64,1}, eletype::String) = new(name, len, k1, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
+            T1, T2, R1, R2, RApertures, EApertures, KickAngle, eletype)
 end
 
 """
     KQUAD_SC(;name::String = "Quad", len::Float64 = 0.0, k1::Float64 = 0.0, 
         PolynomA::Array{Float64,1} = zeros(Float64, 4), PolynomB::Array{Float64,1} = zeros(Float64, 4), 
         MaxOrder::Int64=1, NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
-        FringeQuadExit::Int64 = 0, FringeIntM0::Array{Float64,1} = zeros(Float64, 5), 
-        FringeIntP0::Array{Float64,1} = zeros(Float64, 5), T1::Array{Float64,1} = zeros(Float64, 6), 
+        FringeQuadExit::Int64 = 0, T1::Array{Float64,1} = zeros(Float64, 6), 
         T2::Array{Float64,1} = zeros(Float64, 6), R1::Array{Float64,2} = zeros(Float64, 6, 6), 
         R2::Array{Float64,2} = zeros(Float64, 6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6), 
         EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{Float64,1} = zeros(Float64, 2),
@@ -181,7 +194,7 @@ Example:
 quad = KQUAD_SC(name="Q1_SC", len=0.5, k1=0.5, a=13e-3, b=13e-3, Nl=15, Nm=15)
 ```
 """
-mutable struct KQUAD_SC <: AbstractElement
+mutable struct KQUAD_SC <: AbstractNumberElement
     name::String
     len::Float64
     k1::Float64
@@ -192,8 +205,6 @@ mutable struct KQUAD_SC <: AbstractElement
     rad::Int64
     FringeQuadEntrance::Int64
     FringeQuadExit::Int64
-    FringeIntM0::Array{Float64,1}
-    FringeIntP0::Array{Float64,1}
     T1::Array{Float64,1}
     T2::Array{Float64,1}
     R1::Array{Float64,2}
@@ -212,8 +223,7 @@ mutable struct KQUAD_SC <: AbstractElement
                     PolynomA::Array{Float64,1} = zeros(Float64, 4), 
                     PolynomB::Array{Float64,1} = zeros(Float64, 4), MaxOrder::Int64=1, 
                     NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
-                    FringeQuadExit::Int64 = 0, FringeIntM0::Array{Float64,1} = zeros(Float64, 5), 
-                    FringeIntP0::Array{Float64,1} = zeros(Float64, 5), T1::Array{Float64,1} = zeros(Float64, 6), 
+                    FringeQuadExit::Int64 = 0, T1::Array{Float64,1} = zeros(Float64, 6), 
                     T2::Array{Float64,1} = zeros(Float64, 6), R1::Array{Float64,2} = zeros(Float64, 6, 6), 
                     R2::Array{Float64,2} = zeros(Float64, 6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6), 
                     EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{Float64,1} = zeros(Float64, 2),
@@ -221,17 +231,26 @@ mutable struct KQUAD_SC <: AbstractElement
         if k1 != 0.0 && PolynomB[2] == 0.0
             PolynomB[2] = k1
         end
-        new(name, len, k1, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit, 
-            FringeIntM0, FringeIntP0, T1, T2, R1, R2, RApertures, EApertures, KickAngle, a, b, Nl, Nm, Nsteps, "KQUAD_SC")
+        new(name, len, k1, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
+            T1, T2, R1, R2, RApertures, EApertures, KickAngle, a, b, Nl, Nm, Nsteps, "KQUAD_SC")
     end
+    # constructor with all parameters
+    KQUAD_SC(name::String, len::Float64, k1::Float64, PolynomA::Array{Float64,1}, 
+        PolynomB::Array{Float64,1}, MaxOrder::Int64, NumIntSteps::Int64, rad::Int64, 
+        FringeQuadEntrance::Int64, FringeQuadExit::Int64, T1::Array{Float64,1}, 
+        T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
+        RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{Float64,1},
+        a::Float64, b::Float64, Nl::Int64, Nm::Int64, Nsteps::Int64, eletype::String) = 
+        new(name, len, k1, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance,
+            FringeQuadExit, T1, T2, R1, R2, RApertures, EApertures, KickAngle,
+            a, b, Nl, Nm, Nsteps, eletype)
 end
 
 """
     KSEXT(;name::String = "Sext", len::Float64 = 0.0, k2::Float64 = 0.0, 
         PolynomA::Array{Float64,1} = zeros(Float64, 4), PolynomB::Array{Float64,1} = zeros(Float64, 4), 
         MaxOrder::Int64=2, NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
-        FringeQuadExit::Int64 = 0, FringeIntM0::Array{Float64,1} = zeros(Float64, 5), 
-        FringeIntP0::Array{Float64,1} = zeros(Float64, 5), T1::Array{Float64,1} = zeros(Float64, 6), 
+        FringeQuadExit::Int64 = 0, T1::Array{Float64,1} = zeros(Float64, 6), 
         T2::Array{Float64,1} = zeros(Float64, 6), R1::Array{Float64,2} = zeros(Float64, 6, 6), 
         R2::Array{Float64,2} = zeros(Float64, 6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6), 
         EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{Float64,1} = zeros(Float64, 2))
@@ -242,7 +261,7 @@ Example:
 sext = KSEXT(name="S1", len=0.5, k2=0.5)
 ```
 """
-mutable struct KSEXT <: AbstractElement
+mutable struct KSEXT <: AbstractNumberElement
     name::String
     len::Float64
     k2::Float64
@@ -253,8 +272,6 @@ mutable struct KSEXT <: AbstractElement
     rad::Int64
     FringeQuadEntrance::Int64
     FringeQuadExit::Int64
-    FringeIntM0::Array{Float64,1}
-    FringeIntP0::Array{Float64,1}
     T1::Array{Float64,1}
     T2::Array{Float64,1}
     R1::Array{Float64,2}
@@ -268,8 +285,7 @@ mutable struct KSEXT <: AbstractElement
                     PolynomA::Array{Float64,1} = zeros(Float64, 4), 
                     PolynomB::Array{Float64,1} = zeros(Float64, 4), MaxOrder::Int64=2, 
                     NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
-                    FringeQuadExit::Int64 = 0, FringeIntM0::Array{Float64,1} = zeros(Float64, 5), 
-                    FringeIntP0::Array{Float64,1} = zeros(Float64, 5), T1::Array{Float64,1} = zeros(Float64, 6), 
+                    FringeQuadExit::Int64 = 0, T1::Array{Float64,1} = zeros(Float64, 6), 
                     T2::Array{Float64,1} = zeros(Float64, 6), R1::Array{Float64,2} = zeros(Float64, 6, 6), 
                     R2::Array{Float64,2} = zeros(Float64, 6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6), 
                     EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{Float64,1} = zeros(Float64, 2))
@@ -277,16 +293,23 @@ mutable struct KSEXT <: AbstractElement
             PolynomB[3] = k2
         end
         new(name, len, k2, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit, 
-            FringeIntM0, FringeIntP0, T1, T2, R1, R2, RApertures, EApertures, KickAngle, "KSEXT")
+            T1, T2, R1, R2, RApertures, EApertures, KickAngle, "KSEXT")
     end
+    # constructor with all parameters
+    KSEXT(name::String, len::Float64, k2::Float64, PolynomA::Array{Float64,1}, 
+        PolynomB::Array{Float64,1}, MaxOrder::Int64, NumIntSteps::Int64, rad::Int64, 
+        FringeQuadEntrance::Int64, FringeQuadExit::Int64, T1::Array{Float64,1}, 
+        T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
+        RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{Float64,1}, eletype::String) = 
+        new(name, len, k2, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance,
+            FringeQuadExit, T1, T2, R1, R2, RApertures, EApertures, KickAngle, eletype)
 end
 
 """
     KSEXT_SC(;name::String = "Sext", len::Float64 = 0.0, k2::Float64 = 0.0, 
         PolynomA::Array{Float64,1} = zeros(Float64, 4), PolynomB::Array{Float64,1} = zeros(Float64, 4), 
         MaxOrder::Int64=2, NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
-        FringeQuadExit::Int64 = 0, FringeIntM0::Array{Float64,1} = zeros(Float64, 5), 
-        FringeIntP0::Array{Float64,1} = zeros(Float64, 5), T1::Array{Float64,1} = zeros(Float64, 6), 
+        FringeQuadExit::Int64 = 0, T1::Array{Float64,1} = zeros(Float64, 6), 
         T2::Array{Float64,1} = zeros(Float64, 6), R1::Array{Float64,2} = zeros(Float64, 6, 6), 
         R2::Array{Float64,2} = zeros(Float64, 6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6),
         EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{Float64,1} = zeros(Float64, 2),
@@ -298,7 +321,7 @@ Example:
 sext = KSEXT_SC(name="S1_SC", len=0.5, k2=0.5, a=13e-3, b=13e-3, Nl=15, Nm=15)
 ```
 """
-mutable struct KSEXT_SC <: AbstractElement
+mutable struct KSEXT_SC <: AbstractNumberElement
     name::String
     len::Float64
     k2::Float64
@@ -309,8 +332,6 @@ mutable struct KSEXT_SC <: AbstractElement
     rad::Int64
     FringeQuadEntrance::Int64
     FringeQuadExit::Int64
-    FringeIntM0::Array{Float64,1}
-    FringeIntP0::Array{Float64,1}
     T1::Array{Float64,1}
     T2::Array{Float64,1}
     R1::Array{Float64,2}
@@ -329,8 +350,7 @@ mutable struct KSEXT_SC <: AbstractElement
                     PolynomA::Array{Float64,1} = zeros(Float64, 4), 
                     PolynomB::Array{Float64,1} = zeros(Float64, 4), MaxOrder::Int64=2, 
                     NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
-                    FringeQuadExit::Int64 = 0, FringeIntM0::Array{Float64,1} = zeros(Float64, 5), 
-                    FringeIntP0::Array{Float64,1} = zeros(Float64, 5), T1::Array{Float64,1} = zeros(Float64, 6), 
+                    FringeQuadExit::Int64 = 0, T1::Array{Float64,1} = zeros(Float64, 6), 
                     T2::Array{Float64,1} = zeros(Float64, 6), R1::Array{Float64,2} = zeros(Float64, 6, 6), 
                     R2::Array{Float64,2} = zeros(Float64, 6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6),
                     EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{Float64,1} = zeros(Float64, 2),
@@ -339,16 +359,25 @@ mutable struct KSEXT_SC <: AbstractElement
             PolynomB[3] = k2
         end
         new(name, len, k2, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit, 
-            FringeIntM0, FringeIntP0, T1, T2, R1, R2, RApertures, EApertures, KickAngle, a, b, Nl, Nm, Nsteps, "KSEXT_SC")
+            T1, T2, R1, R2, RApertures, EApertures, KickAngle, a, b, Nl, Nm, Nsteps, "KSEXT_SC")
     end
+    # constructor with all parameters
+    KSEXT_SC(name::String, len::Float64, k2::Float64, PolynomA::Array{Float64,1}, 
+        PolynomB::Array{Float64,1}, MaxOrder::Int64, NumIntSteps::Int64, rad::Int64, 
+        FringeQuadEntrance::Int64, FringeQuadExit::Int64, T1::Array{Float64,1}, 
+        T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
+        RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{Float64,1}, 
+        a::Float64, b::Float64, Nl::Int64, Nm::Int64, Nsteps::Int64, eletype::String) = 
+        new(name, len, k2, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance,
+            FringeQuadExit, T1, T2, R1, R2, RApertures, EApertures, KickAngle,
+            a, b, Nl, Nm, Nsteps, eletype)
 end
 
 """
     KOCT(;name::String = "OCT", len::Float64 = 0.0, k3::Float64 = 0.0, 
         PolynomA::Array{Float64,1} = zeros(Float64, 4), PolynomB::Array{Float64,1} = zeros(Float64, 4), 
         MaxOrder::Int64=3, NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
-        FringeQuadExit::Int64 = 0, FringeIntM0::Array{Float64,1} = zeros(Float64, 5), 
-        FringeIntP0::Array{Float64,1} = zeros(Float64, 5), T1::Array{Float64,1} = zeros(Float64, 6), 
+        FringeQuadExit::Int64 = 0, T1::Array{Float64,1} = zeros(Float64, 6), 
         T2::Array{Float64,1} = zeros(Float64, 6), R1::Array{Float64,2} = zeros(Float64, 6, 6), 
         R2::Array{Float64,2} = zeros(Float64, 6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6), 
         EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{Float64,1} = zeros(Float64, 2))
@@ -359,7 +388,7 @@ Example:
 oct = KOCT(name="O1", len=0.5, k3=0.5)
 ```
 """
-mutable struct KOCT <: AbstractElement
+mutable struct KOCT <: AbstractNumberElement
     name::String
     len::Float64
     k3::Float64
@@ -370,8 +399,6 @@ mutable struct KOCT <: AbstractElement
     rad::Int64
     FringeQuadEntrance::Int64
     FringeQuadExit::Int64
-    FringeIntM0::Array{Float64,1}
-    FringeIntP0::Array{Float64,1}
     T1::Array{Float64,1}
     T2::Array{Float64,1}
     R1::Array{Float64,2}
@@ -385,25 +412,31 @@ mutable struct KOCT <: AbstractElement
                     PolynomA::Array{Float64,1} = zeros(Float64, 4), 
                     PolynomB::Array{Float64,1} = zeros(Float64, 4), MaxOrder::Int64=3, 
                     NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
-                    FringeQuadExit::Int64 = 0, FringeIntM0::Array{Float64,1} = zeros(Float64, 5), 
-                    FringeIntP0::Array{Float64,1} = zeros(Float64, 5), T1::Array{Float64,1} = zeros(Float64, 6), 
+                    FringeQuadExit::Int64 = 0, T1::Array{Float64,1} = zeros(Float64, 6), 
                     T2::Array{Float64,1} = zeros(Float64, 6), R1::Array{Float64,2} = zeros(Float64, 6, 6), 
                     R2::Array{Float64,2} = zeros(Float64, 6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6), 
                     EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{Float64,1} = zeros(Float64, 2))
         if k3 != 0.0 && PolynomB[4] == 0.0
             PolynomB[4] = k3
         end
-        new(name, len, k3, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit, 
-            FringeIntM0, FringeIntP0, T1, T2, R1, R2, RApertures, EApertures, KickAngle, "KOCT")
+        new(name, len, k3, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
+            T1, T2, R1, R2, RApertures, EApertures, KickAngle, "KOCT")
     end
+    # constructor with all parameters
+    KOCT(name::String, len::Float64, k3::Float64, PolynomA::Array{Float64,1}, 
+        PolynomB::Array{Float64,1}, MaxOrder::Int64, NumIntSteps::Int64, rad::Int64, 
+        FringeQuadEntrance::Int64, FringeQuadExit::Int64, T1::Array{Float64,1}, 
+        T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
+        RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{Float64,1}, eletype::String) = 
+        new(name, len, k3, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance,
+            FringeQuadExit, T1, T2, R1, R2, RApertures, EApertures, KickAngle, eletype)
 end
 
 """
     KOCT_SC(;name::String = "OCT", len::Float64 = 0.0, k3::Float64 = 0.0, 
         PolynomA::Array{Float64,1} = zeros(Float64, 4), PolynomB::Array{Float64,1} = zeros(Float64, 4), 
         MaxOrder::Int64=3, NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
-        FringeQuadExit::Int64 = 0, FringeIntM0::Array{Float64,1} = zeros(Float64, 5), 
-        FringeIntP0::Array{Float64,1} = zeros(Float64, 5), T1::Array{Float64,1} = zeros(Float64, 6), 
+        FringeQuadExit::Int64 = 0, T1::Array{Float64,1} = zeros(Float64, 6), 
         T2::Array{Float64,1} = zeros(Float64, 6), R1::Array{Float64,2} = zeros(Float64, 6, 6), 
         R2::Array{Float64,2} = zeros(Float64, 6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6),
         EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{Float64,1} = zeros(Float64, 2),
@@ -415,7 +448,7 @@ Example:
 oct = KOCT_SC(name="O1_SC", len=0.5, k3=0.5, a=13e-3, b=13e-3, Nl=15, Nm=15)
 ```
 """
-mutable struct KOCT_SC <: AbstractElement
+mutable struct KOCT_SC <: AbstractNumberElement
     name::String
     len::Float64
     k3::Float64
@@ -426,8 +459,6 @@ mutable struct KOCT_SC <: AbstractElement
     rad::Int64
     FringeQuadEntrance::Int64
     FringeQuadExit::Int64
-    FringeIntM0::Array{Float64,1}
-    FringeIntP0::Array{Float64,1}
     T1::Array{Float64,1}
     T2::Array{Float64,1}
     R1::Array{Float64,2}
@@ -446,8 +477,7 @@ mutable struct KOCT_SC <: AbstractElement
                     PolynomA::Array{Float64,1} = zeros(Float64, 4), 
                     PolynomB::Array{Float64,1} = zeros(Float64, 4), MaxOrder::Int64=3, 
                     NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
-                    FringeQuadExit::Int64 = 0, FringeIntM0::Array{Float64,1} = zeros(Float64, 5), 
-                    FringeIntP0::Array{Float64,1} = zeros(Float64, 5), T1::Array{Float64,1} = zeros(Float64, 6), 
+                    FringeQuadExit::Int64 = 0, T1::Array{Float64,1} = zeros(Float64, 6), 
                     T2::Array{Float64,1} = zeros(Float64, 6), R1::Array{Float64,2} = zeros(Float64, 6, 6), 
                     R2::Array{Float64,2} = zeros(Float64, 6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6),
                     EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{Float64,1} = zeros(Float64, 2),
@@ -456,15 +486,23 @@ mutable struct KOCT_SC <: AbstractElement
             PolynomB[4] = k3
         end
         new(name, len, k3, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit, 
-            FringeIntM0, FringeIntP0, T1, T2, R1, R2, RApertures, EApertures, KickAngle, a, b, Nl, Nm, Nsteps, "KOCT_SC")
+            T1, T2, R1, R2, RApertures, EApertures, KickAngle, a, b, Nl, Nm, Nsteps, "KOCT_SC")
     end
+    # constructor with all parameters
+    KOCT_SC(name::String, len::Float64, k3::Float64, PolynomA::Array{Float64,1}, 
+        PolynomB::Array{Float64,1}, MaxOrder::Int64, NumIntSteps::Int64, rad::Int64, 
+        FringeQuadEntrance::Int64, FringeQuadExit::Int64, T1::Array{Float64,1}, 
+        T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
+        RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{Float64,1}, 
+        a::Float64, b::Float64, Nl::Int64, Nm::Int64, Nsteps::Int64, eletype::String) = 
+        new(name, len, k3, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance,
+            FringeQuadExit, T1, T2, R1, R2, RApertures, EApertures, KickAngle, a, b, Nl, Nm, Nsteps, eletype)
 end
 
 """
     thinMULTIPOLE(;name::String = "thinMULTIPOLE", len::Float64 = 0.0, PolynomA::Array{Float64,1} = zeros(Float64, 4), 
         PolynomB::Array{Float64,1} = zeros(Float64, 4), MaxOrder::Int64=1, NumIntSteps::Int64 = 1, rad::Int64=0, 
-        FringeQuadEntrance::Int64 = 0, FringeQuadExit::Int64 = 0, FringeIntM0::Array{Float64,1} = zeros(Float64, 5), 
-        FringeIntP0::Array{Float64,1} = zeros(Float64, 5), T1::Array{Float64,1} = zeros(Float64, 6), 
+        FringeQuadEntrance::Int64 = 0, FringeQuadExit::Int64 = 0, T1::Array{Float64,1} = zeros(Float64, 6), 
         T2::Array{Float64,1} = zeros(Float64, 6), R1::Array{Float64,2} = zeros(Float64, 6, 6), 
         R2::Array{Float64,2} = zeros(Float64, 6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6), 
         EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{Float64,1} = zeros(Float64, 2))
@@ -477,7 +515,7 @@ Example:
 multipole = thinMULTIPOLE(name="M1", len=0.5, PolynomA=[0.0, 0.0, 0.0, 0.0], PolynomB=[0.0, 0.0, 0.0, 0.0])
 ```
 """
-mutable struct thinMULTIPOLE <: AbstractElement
+mutable struct thinMULTIPOLE <: AbstractNumberElement
     name::String
     len::Float64
     PolynomA::Array{Float64,1}
@@ -487,8 +525,6 @@ mutable struct thinMULTIPOLE <: AbstractElement
     rad::Int64
     FringeQuadEntrance::Int64
     FringeQuadExit::Int64
-    FringeIntM0::Array{Float64,1}
-    FringeIntP0::Array{Float64,1}
     T1::Array{Float64,1}
     T2::Array{Float64,1}
     R1::Array{Float64,2}
@@ -500,8 +536,7 @@ mutable struct thinMULTIPOLE <: AbstractElement
 
     function thinMULTIPOLE(;name::String = "thinMULTIPOLE", len::Float64 = 0.0, PolynomA::Array{Float64,1} = zeros(Float64, 4), 
                     PolynomB::Array{Float64,1} = zeros(Float64, 4), MaxOrder::Int64=1, NumIntSteps::Int64 = 1, rad::Int64=0, 
-                    FringeQuadEntrance::Int64 = 0, FringeQuadExit::Int64 = 0, FringeIntM0::Array{Float64,1} = zeros(Float64, 5), 
-                    FringeIntP0::Array{Float64,1} = zeros(Float64, 5), T1::Array{Float64,1} = zeros(Float64, 6), 
+                    FringeQuadEntrance::Int64 = 0, FringeQuadExit::Int64 = 0, T1::Array{Float64,1} = zeros(Float64, 6), 
                     T2::Array{Float64,1} = zeros(Float64, 6), R1::Array{Float64,2} = zeros(Float64, 6, 6), 
                     R2::Array{Float64,2} = zeros(Float64, 6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6), 
                     EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{Float64,1} = zeros(Float64, 2))
@@ -513,8 +548,15 @@ mutable struct thinMULTIPOLE <: AbstractElement
             MaxOrder = 3
         end
         new(name, len, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
-            FringeIntM0, FringeIntP0, T1, T2, R1, R2, RApertures, EApertures, KickAngle, "thinMULTIPOLE")
+            T1, T2, R1, R2, RApertures, EApertures, KickAngle, "thinMULTIPOLE")
     end
+    # constructor with all parameters
+    thinMULTIPOLE(name::String, len::Float64, PolynomA::Array{Float64,1}, 
+    PolynomB::Array{Float64,1}, MaxOrder::Int64, NumIntSteps::Int64, rad::Int64, FringeQuadEntrance::Int64, 
+    FringeQuadExit::Int64, T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
+    RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{Float64,1}, eletype::String) = new(name, len, 
+    PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
+            T1, T2, R1, R2, RApertures, EApertures, KickAngle, eletype)
 end
 
 """
@@ -533,7 +575,7 @@ Example:
 bend = SBEND(name="B1", len=0.5, angle=0.5)
 ```
 """
-mutable struct SBEND <: AbstractElement
+mutable struct SBEND <: AbstractNumberElement
     name::String
     len::Float64
     angle::Float64
@@ -584,6 +626,20 @@ mutable struct SBEND <: AbstractElement
             FringeBendEntrance, FringeBendExit, FringeQuadEntrance, FringeQuadExit, FringeIntM0, FringeIntP0, 
             T1, T2, R1, R2, RApertures, EApertures, KickAngle, "SBEND")
     end
+    # constructor with all parameters
+    SBEND(name::String, len::Float64, angle::Float64, e1::Float64, e2::Float64, 
+        PolynomA::Array{Float64,1}, PolynomB::Array{Float64,1}, MaxOrder::Int64, NumIntSteps::Int64, rad::Int64, 
+        fint1::Float64, fint2::Float64, gap::Float64, FringeBendEntrance::Int64, FringeBendExit::Int64, 
+        FringeQuadEntrance::Int64, FringeQuadExit::Int64, FringeIntM0::Array{Float64,1}, 
+        FringeIntP0::Array{Float64,1}, T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, 
+        R2::Array{Float64,2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{Float64,1}, 
+        eletype::String) = new(name, len, angle, e1, e2, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, fint1, fint2,
+            gap, FringeBendEntrance, FringeBendExit, FringeQuadEntrance,
+            FringeQuadExit, FringeIntM0, FringeIntP0,
+            T1, T2, R1, R2, RApertures,
+            EApertures,
+            KickAngle,
+            eletype)
 end
 
 """
@@ -604,7 +660,7 @@ Example:
 bend = SBEND_SC(name="B1_SC", len=0.5, angle=0.5, a=13e-3, b=13e-3, Nl=15, Nm=15)
 ```
 """
-mutable struct SBEND_SC <: AbstractElement
+mutable struct SBEND_SC <: AbstractNumberElement
     name::String
     len::Float64
     angle::Float64
@@ -661,6 +717,16 @@ mutable struct SBEND_SC <: AbstractElement
             FringeBendEntrance, FringeBendExit, FringeQuadEntrance, FringeQuadExit, FringeIntM0, FringeIntP0, 
             T1, T2, R1, R2, RApertures, EApertures, KickAngle, a, b, Nl, Nm, Nsteps, "SBEND_SC")
     end
+    # constructor with all parameters
+    SBEND_SC(name::String, len::Float64, angle::Float64, e1::Float64, e2::Float64, PolynomA::Array{Float64,1}, 
+    PolynomB::Array{Float64,1}, MaxOrder::Int64, NumIntSteps::Int64, rad::Int64, fint1::Float64, fint2::Float64, 
+    gap::Float64, FringeBendEntrance::Int64, FringeBendExit::Int64, FringeQuadEntrance::Int64, FringeQuadExit::Int64, 
+    FringeIntM0::Array{Float64,1}, FringeIntP0::Array{Float64,1}, T1::Array{Float64,1}, T2::Array{Float64,1}, 
+    R1::Array{Float64,2}, R2::Array{Float64,2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, 
+    KickAngle::Array{Float64,1}, a::Float64, b::Float64, Nl::Int64, Nm::Int64, Nsteps::Int64, eletype::String) = new(name, len, 
+    angle, e1, e2, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, fint1, fint2, gap, 
+            FringeBendEntrance, FringeBendExit, FringeQuadEntrance, FringeQuadExit, FringeIntM0, FringeIntP0, 
+            T1, T2, R1, R2, RApertures, EApertures, KickAngle, a, b, Nl, Nm, Nsteps, eletype)
 end
 
 """
@@ -743,7 +809,7 @@ Example:
 bend = LBEND(name="B1", len=0.5, angle=0.5)
 ```
 """
-mutable struct LBEND <: AbstractElement
+mutable struct LBEND <: AbstractNumberElement
     name::String
     len::Float64
     angle::Float64
@@ -770,10 +836,16 @@ mutable struct LBEND <: AbstractElement
         new(name, len, angle, e1, e2, K, ByError, fint1, fint2, FullGap, 
             T1, T2, R1, R2, RApertures, EApertures, "LBEND")
     end
+    # constructor with all parameters
+    LBEND(name::String, len::Float64, angle::Float64, e1::Float64, e2::Float64, 
+    K::Float64, ByError::Float64, fint1::Float64, fint2::Float64, FullGap::Float64, 
+    T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
+    RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, eletype::String) = new(name, len, angle, e1, e2, 
+    K, ByError, fint1, fint2, FullGap, T1, T2, R1, R2, RApertures, EApertures, eletype)
 end
 
 
-mutable struct ESBEND <: AbstractElement
+mutable struct ESBEND <: AbstractNumberElement
     name::String
     len::Float64
     angle::Float64
@@ -819,6 +891,15 @@ mutable struct ESBEND <: AbstractElement
             FringeBendEntrance, FringeBendExit, FringeQuadEntrance, FringeQuadExit, 
             T1, T2, R1, R2, RApertures, EApertures, KickAngle, "ESBEND")
     end
+    # constructor with all parameters
+    ESBEND(name::String, len::Float64, angle::Float64, e1::Float64, e2::Float64, 
+    PolynomA::Array{Float64,1}, PolynomB::Array{Float64,1}, MaxOrder::Int64, 
+    NumIntSteps::Int64, rad::Int64, gK::Float64, FringeBendEntrance::Int64, 
+    FringeBendExit::Int64, FringeQuadEntrance::Int64, FringeQuadExit::Int64, 
+    T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
+    RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{Float64,1}, eletype::String) = new(name, len, angle, 
+    e1, e2, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, gK, FringeBendEntrance, FringeBendExit, 
+    FringeQuadEntrance, FringeQuadExit, T1, T2, R1, R2, RApertures, EApertures, KickAngle, eletype)
 end
 
 function ERBEND(;name::String = "ESBend", len::Float64 = 0.0, angle::Float64 = 0.0, 
@@ -857,7 +938,7 @@ Example:
 rf = RFCA(name="RF1", len=0.5, volt=1e6, freq=1e6)
 ```
 """
-mutable struct RFCA <: AbstractElement
+mutable struct RFCA <: AbstractNumberElement
     name::String
     len::Float64
     volt::Float64
@@ -872,6 +953,9 @@ mutable struct RFCA <: AbstractElement
                     lag::Float64 = 0.0, philag::Float64 = 0.0, energy::Float64 = 0.0)
         new(name, len, volt, freq, h, lag, philag, energy, "RFCA")
     end
+    # constructor with all parameters
+    RFCA(name::String, len::Float64, volt::Float64, freq::Float64, h::Float64, lag::Float64, philag::Float64, energy::Float64, eletype::String) = 
+        new(name, len, volt, freq, h, lag, philag, energy, eletype)
 end
 
 """
@@ -884,7 +968,7 @@ Example:
 solenoid = SOLENOID(name="S1", len=0.5, ks=1.0)
 ```
 """
-mutable struct SOLENOID <: AbstractElement
+mutable struct SOLENOID <: AbstractNumberElement
     name::String
     len::Float64
     ks::Float64 # rad/m
@@ -898,6 +982,9 @@ mutable struct SOLENOID <: AbstractElement
                     T2::Array{Float64,1} = zeros(6), R1::Array{Float64,2} = zeros(6,6), R2::Array{Float64,2} = zeros(6,6))
         new(name, len, ks, T1, T2, R1, R2, "SOLENOID")
     end
+    # constructor with all parameters
+    SOLENOID(name::String, len::Float64, ks::Float64, T1::Array{Float64,1}, T2::Array{Float64,1}, 
+    R1::Array{Float64,2}, R2::Array{Float64,2}, eletype::String) = new(name, len, ks, T1, T2, R1, R2, eletype)
 end
 
 """
@@ -911,7 +998,7 @@ Example:
 corrector = CORRECTOR(name="C1", len=0.5, xkick=1e-3)
 ```
 """
-mutable struct CORRECTOR <: AbstractElement
+mutable struct CORRECTOR <: AbstractNumberElement
     name::String
     len::Float64
     xkick::Float64
@@ -927,6 +1014,10 @@ mutable struct CORRECTOR <: AbstractElement
                         R2::Array{Float64,2} = zeros(6,6))
         new(name, len, xkick, ykick, T1, T2, R1, R2, "CORRECTOR")
     end
+    # constructor with all parameters
+    CORRECTOR(name::String, len::Float64, xkick::Float64, ykick::Float64, 
+    T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, eletype::String) = 
+        new(name, len, xkick, ykick, T1, T2, R1, R2, eletype)
 end
 
 function HKICKER(;name::String = "HKicker", len::Float64 = 0.0, xkick::Float64 = 0.0)
@@ -936,7 +1027,7 @@ function VKICKER(;name::String = "VKicker", len::Float64 = 0.0, ykick::Float64 =
     return CORRECTOR(name=name, len=len, xkick=0.0, ykick=ykick)
 end
 
-mutable struct SPACECHARGE <: AbstractElement
+mutable struct SPACECHARGE <: AbstractNumberElement
     # spectral space charge
     # this element is treated as an integrated effect of space charge over a length of effective_len
     name::String
@@ -952,10 +1043,13 @@ mutable struct SPACECHARGE <: AbstractElement
                         Nm::Int64 = 15, a::Float64 = 10e-3, b::Float64 = 10e-3)
         new(name, len, effective_len, Nl, Nm, a, b, "SPACECHARGE")
     end
+    # constructor with all parameters
+    SPACECHARGE(name::String, len::Float64, effective_len::Float64, Nl::Int64, Nm::Int64, a::Float64, b::Float64, eletype::String) = 
+        new(name, len, effective_len, Nl, Nm, a, b, eletype)
 end
 
 # TRANSLATION and YROTATION are used to convert the MAD-X lattice files
-mutable struct TRANSLATION <: AbstractElement
+mutable struct TRANSLATION <: AbstractNumberElement
     name::String
     len::Float64
     dx::Float64
@@ -965,9 +1059,12 @@ mutable struct TRANSLATION <: AbstractElement
     function TRANSLATION(;name::String = "TRANSLATION", len::Float64 = 0.0, dx::Float64 = 0.0, dy::Float64 = 0.0, ds::Float64 = 0.0)
         new(name, len, dx, dy, ds, "TRANSLATION")
     end
+    # constructor with all parameters
+    TRANSLATION(name::String, len::Float64, dx::Float64, dy::Float64, ds::Float64, eletype::String) = 
+        new(name, len, dx, dy, ds, eletype)
 end
 
-mutable struct YROTATION <: AbstractElement
+mutable struct YROTATION <: AbstractNumberElement
     name::String
     len::Float64
     angle::Float64
@@ -975,6 +1072,9 @@ mutable struct YROTATION <: AbstractElement
     function YROTATION(;name::String = "YROTATION", len::Float64 = 0.0, angle::Float64 = 0.0)
         new(name, len, angle, "YROTATION")
     end
+    # constructor with all parameters
+    YROTATION(name::String, len::Float64, angle::Float64, eletype::String) = 
+        new(name, len, angle, eletype)
 end
 # non-canonical elements
 """
@@ -988,7 +1088,7 @@ Example:
 quad = QUAD(name="Q1", len=0.5, k1=1.0)
 ```
 """
-mutable struct QUAD <: AbstractElement
+mutable struct QUAD <: AbstractNumberElement
     name::String
     len::Float64
     k1::Float64
@@ -1007,6 +1107,11 @@ mutable struct QUAD <: AbstractElement
                     RApertures::Array{Float64,1} = zeros(6), EApertures::Array{Float64,1} = zeros(6))
         new(name, len, k1, rad, T1, T2, R1, R2, RApertures, EApertures, "QUAD")
     end
+    # constructor with all parameters
+    QUAD(name::String, len::Float64, k1::Float64, rad::Int64, 
+    T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
+    RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, eletype::String) = 
+        new(name, len, k1, rad, T1, T2, R1, R2, RApertures, EApertures, eletype)
 end
 
 """
@@ -1021,7 +1126,7 @@ Example:
 quad = QUAD_SC(name="Q1_SC", len=0.5, k1=1.0, a=13e-3, b=13e-3, Nl=15, Nm=15)
 ```
 """
-mutable struct QUAD_SC <: AbstractElement
+mutable struct QUAD_SC <: AbstractNumberElement
     name::String
     len::Float64
     k1::Float64
@@ -1046,6 +1151,12 @@ mutable struct QUAD_SC <: AbstractElement
                     a::Float64 = 1.0, b::Float64 = 1.0, Nl::Int64 = 10, Nm::Int64 = 10, Nsteps::Int64=1)
         new(name, len, k1, rad, T1, T2, R1, R2, RApertures, EApertures, a, b, Nl, Nm, Nsteps, "QUAD_SC")
     end
+    # constructor with all parameters
+    QUAD_SC(name::String, len::Float64, k1::Float64, rad::Int64,
+    T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2},
+    RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, a::Float64, b::Float64,
+    Nl::Int64, Nm::Int64, Nsteps::Int64, eletype::String) = 
+        new(name, len, k1, rad, T1, T2, R1, R2, RApertures, EApertures, a, b, Nl, Nm, Nsteps, eletype)
 end
 
 ###########################################
@@ -1059,7 +1170,7 @@ Example:
 crab = CRABCAVITY(name="CRAB1", len=0.5, volt=1e6, freq=1e6)
 ```
 """
-mutable struct CRABCAVITY <: AbstractElement
+mutable struct CRABCAVITY <: AbstractNumberElement
     name::String 
     len::Float64 
     volt::Float64  # voltage
@@ -1074,9 +1185,13 @@ mutable struct CRABCAVITY <: AbstractElement
         k = 2*π*freq/2.99792458e8
         return new(name, len, volt, freq, k, phi, errors, energy, "CRABCAVITY")
     end
+    # constructor with all parameters
+    CRABCAVITY(name::String, len::Float64, volt::Float64, freq::Float64, k::Float64, phi::Float64,
+    errors::Array{Float64,1}, energy::Float64, eletype::String) = 
+        new(name, len, volt, freq, k, phi, errors, energy, eletype)
 end
 
-mutable struct CRABCAVITY_K2 <: AbstractElement
+mutable struct CRABCAVITY_K2 <: AbstractNumberElement
     name::String 
     len::Float64 
     volt::Float64  # voltage
@@ -1092,10 +1207,14 @@ mutable struct CRABCAVITY_K2 <: AbstractElement
         k = 2*π*freq/2.99792458e8
         return new(name, len, volt, freq, k, phi, k2, errors, energy, "CRABCAVITY_K2")
     end
+    # constructor with all parameters
+    CRABCAVITY_K2(name::String, len::Float64, volt::Float64, freq::Float64, k::Float64, phi::Float64,
+    k2::Float64, errors::Array{Float64,1}, energy::Float64, eletype::String) = 
+        new(name, len, volt, freq, k, phi, k2, errors, energy, eletype)
 end
 
 
-mutable struct easyCRABCAVITY <: AbstractElement
+mutable struct easyCRABCAVITY <: AbstractNumberElement
     name::String 
     len::Float64 
     halfthetac::Float64 
@@ -1108,9 +1227,13 @@ mutable struct easyCRABCAVITY <: AbstractElement
         freq::Float64 = 0.0, k::Float64 = 0.0, phi::Float64 = 0.0, errors::Array{Float64,1} = zeros(2), eletype::String = "easyCRABCAVITY")
         return new(name, len, halfthetac, freq, k, phi, errors, eletype)
     end
+    # constructor with all parameters
+    easyCRABCAVITY(name::String, len::Float64, halfthetac::Float64, freq::Float64,
+    k::Float64, phi::Float64, errors::Array{Float64,1}, eletype::String) = 
+        new(name, len, halfthetac, freq, k, phi, errors, eletype)
 end
 
-mutable struct AccelCavity <: AbstractElement
+mutable struct AccelCavity <: AbstractNumberElement
     name::String 
     len::Float64 
     volt::Float64  # voltage
@@ -1124,19 +1247,22 @@ mutable struct AccelCavity <: AbstractElement
         k = 2*π*freq/2.99792458e8
         return new(name, len, volt, freq, k, h, phis, "AccelCavity")
     end
+    # constructor with all parameters
+    AccelCavity(name::String, len::Float64, volt::Float64, freq::Float64, k::Float64, h::Float64, phis::Float64, eletype::String) = 
+        new(name, len, volt, freq, k, h, phis, eletype)
 end
 
 
-abstract type AbstractTransferMap <:AbstractElement end
+abstract type AbstractTransferMap <:AbstractNumberElement end
 abstract type AbstractTransverseMap <:AbstractTransferMap end
 abstract type AbstractLongitudinalMap <:AbstractTransferMap end
 mutable struct LongitudinalRFMap <: AbstractLongitudinalMap
     alphac::Float64
-    RF::AbstractElement
-    LongitudinalRFMap(alphac::Float64, RF::AbstractElement)=new(alphac, RF)
+    RF::AbstractNumberElement
+    LongitudinalRFMap(alphac::Float64, RF::AbstractNumberElement)=new(alphac, RF)
 end
 
-mutable struct LorentzBoost <: AbstractElement
+mutable struct LorentzBoost <: AbstractNumberElement
     angle::Float64
     cosang::Float64
     tanang::Float64
@@ -1144,7 +1270,7 @@ mutable struct LorentzBoost <: AbstractElement
     LorentzBoost(angle)=new(angle, cos(angle), tan(angle), 0)
 end
 
-mutable struct InvLorentzBoost <: AbstractElement
+mutable struct InvLorentzBoost <: AbstractNumberElement
     angle::Float64
     sinang::Float64
     cosang::Float64
@@ -1189,7 +1315,7 @@ Construct a 4D optics element with uncoupled optics.
 optics4DUC(bx::Float64, ax::Float64, by::Float64, ay::Float64)=optics4DUC(optics2D(bx,ax),optics2D(by,ay))
 
 ######### strong beam-beam
-abstract type AbstractStrongBeamBeam <:AbstractElement end
+abstract type AbstractStrongBeamBeam <:AbstractNumberElement end
 
 mutable struct StrongThinGaussianBeam <: AbstractStrongBeamBeam
     amplitude::Float64
@@ -1198,7 +1324,8 @@ mutable struct StrongThinGaussianBeam <: AbstractStrongBeamBeam
     zloc::Float64
     xoffset::Float64
     yoffset::Float64
-    StrongThinGaussianBeam(amp::Float64, rx::Float64, ry::Float64, zloc::Float64=0.0, xoff::Float64=0.0, yoff::Float64=0.0)=new(amp,rx,ry,zloc,xoff,yoff)
+    StrongThinGaussianBeam(amp::Float64, rx::Float64, ry::Float64, zloc::Float64=0.0, 
+    xoff::Float64=0.0, yoff::Float64=0.0)=new(amp,rx,ry,zloc,xoff,yoff)
 end
 
 """
@@ -1234,6 +1361,13 @@ mutable struct StrongGaussianBeam <: AbstractStrongBeamBeam  # Strong Beam with 
         radconst=4*pi/3*classrad0/mass/mass/mass
         new(charge,mass,atomnum,classrad0,radconst,np,energy,momentum,gamma,beta, op, bs, nz, zeros(nz), zeros(nz), zeros(nz), zeros(nz))
     end  
+    # constructor with all parameters
+    StrongGaussianBeam(charge::Float64, mass::Float64, atomnum::Float64, classrad0::Float64, radconst::Float64, 
+            num_particle::Int, total_energy::Float64, momentum::Float64, gamma::Float64, beta::Float64, 
+            optics::AbstractOptics4D, beamsize::Vector{Float64}, nzslice::Int, zslice_center::Vector{Float64}, 
+            zslice_npar::Vector{Float64}, xoffsets::Vector{Float64}, yoffsets::Vector{Float64}) = 
+        new(charge, mass, atomnum, classrad0, radconst, num_particle, total_energy, momentum, gamma, beta,
+            optics, beamsize, nzslice, zslice_center, zslice_npar, xoffsets, yoffsets)
 end
 
 
@@ -1269,11 +1403,13 @@ end
 
 A longitudinal RLC wake element.
 """
-mutable struct LongitudinalRLCWake <: AbstractElement
+mutable struct LongitudinalRLCWake <: AbstractNumberElement
     freq::Float64
     Rshunt::Float64
     Q0::Float64
     LongitudinalRLCWake(;freq::Float64=1.0e9, Rshunt::Float64=1.0e6, Q0::Float64=1.0)=new(freq, Rshunt, Q0)
+    # constructor with all parameters
+    LongitudinalRLCWake(freq::Float64, Rshunt::Float64, Q0::Float64) = new(freq, Rshunt, Q0)
 end
 function wakefieldfunc_RLCWake(rlcwake::LongitudinalRLCWake, t::Float64)
     Q0p=sqrt(rlcwake.Q0^2 - 1.0/4.0)
@@ -1286,10 +1422,13 @@ function wakefieldfunc_RLCWake(rlcwake::LongitudinalRLCWake, t::Float64)
     end
 end
 
-mutable struct LongitudinalWake <: AbstractElement
+mutable struct LongitudinalWake <: AbstractNumberElement
     times::AbstractVector
     wakefields::AbstractVector
     wakefield::Function
+    # constructor with all parameters
+    LongitudinalWake(times::AbstractVector, wakefields::AbstractVector, wakefield::Function) = 
+        new(times, wakefields, wakefield)
 end
 """
     LongitudinalWake(times::AbstractVector, wakefields::AbstractVector, wakefield::Function)
