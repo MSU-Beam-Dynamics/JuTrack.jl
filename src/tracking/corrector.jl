@@ -46,7 +46,7 @@ function CorrectorPass!(r::Array{Float64,1}, le::Float64, xkick::Float64, ykick:
     return nothing
 end
 
-function pass!(ele::CORRECTOR, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass!(ele::CORRECTOR, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     # ele: CORRECTOR
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -106,7 +106,7 @@ function CorrectorPass_P!(r::Array{Float64,1}, le::Float64, xkick::Float64, ykic
     return nothing
 end
 
-function pass_P!(ele::CORRECTOR, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass_P!(ele::CORRECTOR, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     # ele: CORRECTOR
     # r_in: 6-by-num_particles array
     # num_particles: number of particles

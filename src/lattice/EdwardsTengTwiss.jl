@@ -534,7 +534,7 @@ Find the 6x6 transfer matrix of a sequence using TPSA.
 # Returns
 - `Matrix{Float64}`: 6x6 transfer matrix.
 """
-function findm66(seq::Vector{<:AbstractNumberElement}, dp::Float64, order::Int; E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
+function findm66(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int; E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
 	if dp == 0.0 && orb[6] != 0.0
 		dp = orb[6]
 	end
@@ -560,7 +560,8 @@ function findm66(seq::Vector{<:AbstractNumberElement}, dp::Float64, order::Int; 
 	end
 	return map
 end
-function findm66(seq::Vector{<:AbstractTPSAElement}, dp::Float64, order::Int; E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
+function findm66(seq::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp::Float64, order::Int; 
+		E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6)) where {N, T}
 	if dp == 0.0 && orb[6] != 0.0
 		dp = orb[6]
 	end
@@ -590,7 +591,7 @@ function findm66(seq::Vector{<:AbstractTPSAElement}, dp::Float64, order::Int; E0
 	# end
 	# return map
 end
-function ADfindm66(seq::Vector{<:AbstractNumberElement}, dp::Float64, order::Int, changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractNumberElement}; 
+function ADfindm66(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractElement{Float64}}; 
 	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
 	map = zeros(Float64, 6, 6)
 	if order == 0
@@ -618,7 +619,7 @@ function ADfindm66(seq::Vector{<:AbstractNumberElement}, dp::Float64, order::Int
 	return map
 end
 
-function ADfindm66_refpts(seq::Vector{<:AbstractNumberElement}, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractNumberElement}; 
+function ADfindm66_refpts(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractElement{Float64}}; 
 	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
 	if dp == 0.0 && orb[6] != 0.0
 		dp = orb[6]
@@ -656,7 +657,7 @@ function ADfindm66_refpts(seq::Vector{<:AbstractNumberElement}, dp::Float64, ord
 	return map_list
 end
 
-function findm66_refpts(seq::Vector{<:AbstractNumberElement}, dp::Float64, order::Int, refpts::Vector{Int}; E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
+function findm66_refpts(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, refpts::Vector{Int}; E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
 	if dp == 0.0 && orb[6] != 0.0
 		dp = orb[6]
 	end
@@ -708,7 +709,7 @@ Find the 6x6 transfer matrix of a lattice using numerical differentiation.
 # Returns
 - `Matrix{Float64}`: 6x6 transfer matrix.
 """
-function fastfindm66(LATTICE::Vector{<:AbstractNumberElement}, dp=0.0; E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
+function fastfindm66(LATTICE::Vector{<:AbstractElement{Float64}}, dp=0.0; E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
 	if dp == 0.0 && orb[6] != 0.0
 		dp = orb[6]
 	end
@@ -743,7 +744,8 @@ function fastfindm66(LATTICE::Vector{<:AbstractNumberElement}, dp=0.0; E0::Float
     return M66
 end
 
-function fastfindm66(LATTICE::Vector{<:AbstractTPSAElement}, dp=0.0; E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
+function fastfindm66(LATTICE::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp=0.0; 
+	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6)) where {N, T}
 	if dp == 0.0 && orb[6] != 0.0
 		dp = orb[6]
 	end
@@ -771,7 +773,7 @@ function fastfindm66(LATTICE::Vector{<:AbstractTPSAElement}, dp=0.0; E0::Float64
     end
     RIN[13, :] = orbitin
 
-    beam = TBeam(RIN, energy=E0, mass=m0)
+    beam = Beam(RIN, energy=E0, mass=m0)
     linepass!(LATTICE, beam)
     TMAT3 = transpose(beam.r)
     M66 = (TMAT3[:,1:6] - TMAT3[:,7:12]) ./ scaling
@@ -792,7 +794,7 @@ Find the 6x6 transfer matrix of a lattice at specified locations using numerical
 # Returns
 - `M66_refpts`: 6x6 transfer matrix at specified locations.
 """
-function fastfindm66_refpts(LATTICE::Vector{<:AbstractNumberElement}, dp::Float64, refpts::Vector{Int}; 
+function fastfindm66_refpts(LATTICE::Vector{<:AbstractElement{Float64}}, dp::Float64, refpts::Vector{Int}; 
 	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
 	if dp == 0.0 && orb[6] != 0.0
 		dp = orb[6]
@@ -838,8 +840,8 @@ function fastfindm66_refpts(LATTICE::Vector{<:AbstractNumberElement}, dp::Float6
     return M66_refpts
 end
 
-function fastfindm66_refpts(LATTICE::Vector{<:AbstractTPSAElement}, dp::Float64, refpts::Vector{Int}; 
-	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
+function fastfindm66_refpts(LATTICE::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp::Float64, refpts::Vector{Int}; 
+	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6)) where {N, T}
 	if dp == 0.0 && orb[6] != 0.0
 		dp = orb[6]
 	end
@@ -872,7 +874,7 @@ function fastfindm66_refpts(LATTICE::Vector{<:AbstractTPSAElement}, dp::Float64,
     # rout = linepass!(LATTICE, beam, refpts)
     M66_refpts = zeros(DTPSAD{NVAR(), Float64}, 6, 6, length(refpts))
     for i in 1:length(refpts)
-		beam = TBeam(copy(RIN), energy=E0, mass=m0)
+		beam = Beam(copy(RIN), energy=E0, mass=m0)
 		if i == 1
 			linepass!(LATTICE[1:refpts[1]], beam)
 		else
@@ -885,7 +887,7 @@ function fastfindm66_refpts(LATTICE::Vector{<:AbstractTPSAElement}, dp::Float64,
     return M66_refpts
 end
 
-function ADfastfindm66(LATTICE::Vector{<:AbstractNumberElement}, dp, changed_idx, changed_ele; E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
+function ADfastfindm66(LATTICE::Vector{<:AbstractElement{Float64}}, dp, changed_idx, changed_ele; E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
 	if dp == 0.0 && orb[6] != 0.0
 		dp = orb[6]
 	end
@@ -968,7 +970,7 @@ function ADfastfindm66_refpts(LATTICE, dp::Float64, refpts::Vector{Int}, changed
 end
 
 """
-	twissline(tin::EdwardsTengTwiss,seq::Vector{<:AbstractNumberElement}, dp::Float64, order::Int, endindex::Int)
+	twissline(tin::EdwardsTengTwiss,seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, endindex::Int)
 
 Propagate the Twiss parameters through a sequence of elements.
 
@@ -982,7 +984,7 @@ Propagate the Twiss parameters through a sequence of elements.
 # Returns
 - `EdwardsTengTwiss`: Output Twiss parameters.
 """
-function twissline(tin::EdwardsTengTwiss,seq::Vector{<:AbstractNumberElement}, dp::Float64, order::Int, endindex::Int; 
+function twissline(tin::EdwardsTengTwiss,seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, endindex::Int; 
 	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
 	if dp == 0.0 && orb[6] != 0.0
 		dp = orb[6]
@@ -1003,8 +1005,8 @@ function twissline(tin::EdwardsTengTwiss,seq::Vector{<:AbstractNumberElement}, d
 	return ret
 end
 
-function twissline(tin::EdwardsTengTwissTPSA,seq::Vector{<:AbstractTPSAElement}, dp::Float64, order::Int, endindex::Int; 
-	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
+function twissline(tin::EdwardsTengTwissTPSA,seq::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp::Float64, order::Int, endindex::Int; 
+	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6)) where {N, T}
 	if dp == 0.0 && orb[6] != 0.0
 		dp = orb[6]
 	end
@@ -1025,7 +1027,7 @@ function twissline(tin::EdwardsTengTwissTPSA,seq::Vector{<:AbstractTPSAElement},
 end
 
 """
-	twissline(tin::EdwardsTengTwiss,seq::Vector{<:AbstractNumberElement}, dp::Float64, order::Int, refpts::Vector{Int})
+	twissline(tin::EdwardsTengTwiss,seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, refpts::Vector{Int})
 
 Propagate the Twiss parameters through a sequence of elements. Save the results at specified locations.
 
@@ -1039,7 +1041,7 @@ Propagate the Twiss parameters through a sequence of elements. Save the results 
 # Returns
 - `Vector{EdwardsTengTwiss}`: Output Twiss parameters at specified locations.
 """
-function twissline(tin::EdwardsTengTwiss,seq::Vector{<:AbstractNumberElement}, dp::Float64, order::Int, refpts::Vector{Int}; 
+function twissline(tin::EdwardsTengTwiss,seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, refpts::Vector{Int}; 
 	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
 	if dp == 0.0 && orb[6] != 0.0
 		dp = orb[6]
@@ -1065,8 +1067,8 @@ function twissline(tin::EdwardsTengTwiss,seq::Vector{<:AbstractNumberElement}, d
 	return ret_vector
 end
 
-function twissline(tin::EdwardsTengTwissTPSA,seq::Vector{<:AbstractTPSAElement}, dp::Float64, order::Int, refpts::Vector{Int}; 
-	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
+function twissline(tin::EdwardsTengTwissTPSA,seq::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp::Float64, order::Int, refpts::Vector{Int}; 
+	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6)) where {N, T}
 	if dp == 0.0 && orb[6] != 0.0
 		dp = orb[6]
 	end
@@ -1109,7 +1111,7 @@ This function is used for automatic differentiation.
 # Returns
 - `Vector{EdwardsTengTwiss}`: Output Twiss parameters at specified locations.
 """
-function ADtwissline(tin::EdwardsTengTwiss,seq::Vector{<:AbstractNumberElement}, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractNumberElement}; 
+function ADtwissline(tin::EdwardsTengTwiss,seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractElement{Float64}}; 
 	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
 	if dp == 0.0 && orb[6] != 0.0
 		dp = orb[6]
@@ -1154,19 +1156,19 @@ end
 
 
 """
-	periodicEdwardsTengTwiss(seq::Vector{<:AbstractNumberElement}, dp, order::Int)
+	periodicEdwardsTengTwiss(seq::Vector{<:AbstractElement{Float64}}, dp, order::Int)
 
 Calculate the Twiss parameters for a periodic lattice.
 
 # Arguments
-- `seq::Vector{<:AbstractNumberElement}`: Sequence of elements.
+- `seq::Vector{<:AbstractElement{Float64}}`: Sequence of elements.
 - `dp::Float64`: Momentum deviation.
 - `order::Int`: Order of the map. 0 for finite difference, others for TPSA.
 
 # Returns
 - `EdwardsTengTwiss`: Output Twiss parameters.
 """
-function periodicEdwardsTengTwiss(seq::Vector{<:AbstractNumberElement}, dp::Float64, order::Int; 
+function periodicEdwardsTengTwiss(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int; 
 	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
 	if dp == 0.0 && orb[6] != 0.0
 		dp = orb[6]
@@ -1221,8 +1223,8 @@ function periodicEdwardsTengTwiss(seq::Vector{<:AbstractNumberElement}, dp::Floa
 	return EdwardsTengTwiss(betax,betay,alfx,alfy,gamx,gamy,eta[1],eta[2],eta[3],eta[4],0.0,0.0,smux,cmux,smuy,cmuy,R,1)
 end
 
-function periodicEdwardsTengTwiss(seq::Vector{<:AbstractTPSAElement}, dp::Float64, order::Int; 
-	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
+function periodicEdwardsTengTwiss(seq::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp::Float64, order::Int; 
+	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6)) where {N, T}
 	if dp == 0.0 && orb[6] != 0.0
 		dp = orb[6]
 	end
@@ -1276,8 +1278,8 @@ function periodicEdwardsTengTwiss(seq::Vector{<:AbstractTPSAElement}, dp::Float6
 	return EdwardsTengTwissTPSA(betax,betay,alfx,alfy,gamx,gamy,eta[1],eta[2],eta[3],eta[4],DTPSAD(0.0),DTPSAD(0.0),smux,cmux,smuy,cmuy,R,1)
 end
 
-function ADperiodicEdwardsTengTwiss(seq::Vector{<:AbstractNumberElement}, dp::Float64, order::Int, 
-	changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractNumberElement}; 
+function ADperiodicEdwardsTengTwiss(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, 
+	changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractElement{Float64}}; 
 	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
 	if dp == 0.0 && orb[6] != 0.0
 		dp = orb[6]
@@ -1345,7 +1347,7 @@ function ADperiodicEdwardsTengTwiss(seq::Vector{<:AbstractNumberElement}, dp::Fl
 end
 
 """
-	twissring(seq::Vector{<:AbstractNumberElement}, dp::Float64, order::Int)
+	twissring(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int)
 
 Calculate the periodic Twiss parameters along the ring.
 
@@ -1357,7 +1359,7 @@ Calculate the periodic Twiss parameters along the ring.
 # Returns
 - `twis`: Twiss parameters along the ring.
 """
-function twissring(seq::Vector{<:AbstractNumberElement}, dp::Float64, order::Int; E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
+function twissring(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int; E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
 	twi0 = periodicEdwardsTengTwiss(seq, dp, order, E0=E0, m0=m0, orb=orb)
 	nele = length(seq)
 	refpts = [i for i in 1:nele]
@@ -1365,7 +1367,7 @@ function twissring(seq::Vector{<:AbstractNumberElement}, dp::Float64, order::Int
 	return twis
 end
 
-function twissring(seq::Vector{<:AbstractNumberElement}, dp::Float64, order::Int, refpts::Vector{Int}; 
+function twissring(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, refpts::Vector{Int}; 
 	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
 	twi0 = periodicEdwardsTengTwiss(seq, dp, order, E0=E0, m0=m0, orb=orb)
 	nele = length(seq)
@@ -1373,22 +1375,22 @@ function twissring(seq::Vector{<:AbstractNumberElement}, dp::Float64, order::Int
 	return twis
 end
 
-function twissring(seq::Vector{<:AbstractTPSAElement}, dp::Float64, order::Int; 
-	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
+function twissring(seq::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp::Float64, order::Int; 
+	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6)) where {N, T}
 	twi0 = periodicEdwardsTengTwiss(seq, dp, order, E0=E0, m0=m0, orb=orb)
 	nele = length(seq)
 	refpts = [i for i in 1:nele]
 	twis = twissline(twi0, seq, dp, order, refpts, E0=E0, m0=m0, orb=orb)
 	return twis
 end
-function twissring(seq::Vector{<:AbstractTPSAElement}, dp::Float64, order::Int, refpts::Vector{Int}; 
-	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
+function twissring(seq::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp::Float64, order::Int, refpts::Vector{Int}; 
+	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6)) where {N, T}
 	twi0 = periodicEdwardsTengTwiss(seq, dp, order, E0=E0, m0=m0, orb=orb)
 	twis = twissline(twi0, seq, dp, order, refpts, E0=E0, m0=m0, orb=orb)
 	return twis
 end
 
-function ADtwissring(seq::Vector{<:AbstractNumberElement}, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractNumberElement}; 
+function ADtwissring(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractElement{Float64}}; 
 	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
 	twi0 = ADperiodicEdwardsTengTwiss(seq, dp, order, changed_idx, changed_ele, E0=E0, m0=m0, orb=orb)
 	nele = length(seq)

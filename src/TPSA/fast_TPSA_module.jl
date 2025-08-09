@@ -31,6 +31,9 @@ function DTPSAD(a::Number, i::Integer)
     return DTPSAD{NVAR(),T}(convert(T, a), z)
 end
 
+function DTPSAD(a::DTPSAD{N,T}) where {N,T}
+    return DTPSAD{N,T}(a.val, a.deriv)
+end
 function Base.convert(::Type{DTPSAD{N,T}}, b::Number) where {N,T<:Number}
     DTPSAD{N,T}(convert(T, b), zero(SVector{N,T}))
 end

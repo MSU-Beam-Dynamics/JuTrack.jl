@@ -46,7 +46,7 @@ function RFCavityPass!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq::F
     return nothing
 end
 
-function pass!(ele::RFCA, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass!(ele::RFCA, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     # ele: RFCA
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -112,7 +112,7 @@ function RFCavityPass_P!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq:
     return nothing
 end
 
-function pass_P!(ele::RFCA, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass_P!(ele::RFCA, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     # ele: RFCA
     # r_in: 6-by-num_particles array
     # num_particles: number of particles

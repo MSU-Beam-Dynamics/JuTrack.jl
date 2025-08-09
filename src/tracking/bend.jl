@@ -255,11 +255,11 @@ function BendSymplecticPass!(r::Array{Float64,1}, le::Float64, beti::Float64, ir
 end
 
 
-function pass!(ele::SBEND, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass!(ele::SBEND, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     # ele: SBEND
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
-    # particles: Beam object
+    # particles: Beam{Float64} object
     lost_flags = particles.lost_flag
     irho = ele.angle / ele.len
     E0 = particles.energy
@@ -487,7 +487,7 @@ function BendSymplecticPass_P!(r::Array{Float64,1}, le::Float64, beti::Float64, 
 end
 
 
-function pass_P!(ele::SBEND, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass_P!(ele::SBEND, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     # ele: SBEND
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -1171,7 +1171,7 @@ function ExactSectorBend_P!(r::Array{Float64,1}, le::Float64, beti::Float64, ang
     return nothing
 end
 
-function pass!(ele::ESBEND, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass!(ele::ESBEND, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     # ele: ESBEND
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -1211,7 +1211,7 @@ function pass!(ele::ESBEND, r_in::Array{Float64,1}, num_particles::Int64, partic
     return nothing
 end
 
-function pass_P!(ele::ESBEND, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass_P!(ele::ESBEND, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     # ele: ESBEND
     # r_in: 6-by-num_particles array
     # num_particles: number of particles

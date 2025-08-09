@@ -1,6 +1,6 @@
 # TRANSLATION and YROTATION are used to convert the MAD-X lattice files
 # The transer map is the same as the one in MAD-X.
-function pass!(elem::TRANSLATION, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass!(elem::TRANSLATION, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     for c in 1:num_particles
         if isone(particles.lost_flag[c])
             continue
@@ -24,7 +24,7 @@ function pass!(elem::TRANSLATION, r_in::Array{Float64,1}, num_particles::Int64, 
     return nothing
 end
 
-function pass_P!(elem::TRANSLATION, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass_P!(elem::TRANSLATION, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     if use_exact_beti == 1
         beta = particles.beta
     else
@@ -68,7 +68,7 @@ function pass_TPSA!(elem::TRANSLATION, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Deg
 end
 
 # YROTATION
-function pass!(elem::YROTATION, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass!(elem::YROTATION, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     angle = -elem.angle
     if angle == 0.0
         return nothing
@@ -101,7 +101,7 @@ function pass!(elem::YROTATION, r_in::Array{Float64,1}, num_particles::Int64, pa
     return nothing
 end
 
-function pass_P!(elem::YROTATION, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass_P!(elem::YROTATION, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     angle = -elem.angle
     if angle == 0.0
         return nothing

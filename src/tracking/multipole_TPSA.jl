@@ -243,7 +243,7 @@ function pass_TPSA!(ele::KQUAD, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; 
     # ele: KQUAD
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
-    gamma = E0 / m0
+    gamma = (E0 + m0) / m0
     beta = sqrt(1.0 - 1.0 / (gamma^2))
     if use_exact_beti == 1
         beti = 1.0 / beta
@@ -301,7 +301,7 @@ function pass_TPSA!(ele::KSEXT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; 
     # ele: KSEXT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
-    gamma = E0 / m0
+    gamma = (E0 + m0) / m0
     beta = sqrt(1.0 - 1.0 / (gamma^2))
     if use_exact_beti == 1
         beti = 1.0 /beta
@@ -360,7 +360,7 @@ function pass_TPSA!(ele::KOCT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; E
     # ele: KOCT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
-    gamma = E0 / m0
+    gamma = (E0 + m0) / m0
     beta = sqrt(1.0 - 1.0 / (gamma^2))
     if use_exact_beti == 1
         beti = 1.0 / beta

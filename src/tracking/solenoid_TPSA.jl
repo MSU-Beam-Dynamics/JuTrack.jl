@@ -3,7 +3,7 @@ function pass_TPSA!(ele::SOLENOID, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}
     R1 = ele.R1
     T2 = ele.T2
     R2 = ele.R2
-    gamma = E0/m0
+    gamma = (E0 + m0) / m0
     beta = sqrt(1.0 - 1.0/(gamma*gamma))
     if use_exact_beti == 1
         beti = 1.0 / beta

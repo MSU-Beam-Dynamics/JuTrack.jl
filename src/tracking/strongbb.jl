@@ -231,20 +231,20 @@ function track_sbb_P!(rin, num_macro, temp1, temp2, temp3, temp4, temp5, sgb::St
 end
 
 
-function pass!(sgb::StrongGaussianBeam, r_in::Array{Float64,1}, num_macro::Int, wb::Beam)
+function pass!(sgb::StrongGaussianBeam, r_in::Array{Float64,1}, num_macro::Int, wb::Beam{Float64})
     factor=wb.classrad0/wb.gamma*wb.charge*sgb.charge
     lumi=track_sbb!(r_in, num_macro, wb.temp1, wb.temp2, wb.temp3, wb.temp4, wb.temp5, sgb, factor)
     lumi *= wb.np / wb.nmacro
     return nothing
 end
 
-function pass_lumi!(sgb::StrongGaussianBeam, r_in::Array{Float64,1}, num_macro::Int, wb::Beam)
+function pass_lumi!(sgb::StrongGaussianBeam, r_in::Array{Float64,1}, num_macro::Int, wb::Beam{Float64})
     factor=wb.classrad0/wb.gamma*wb.charge*sgb.charge
     lumi=track_sbb!(r_in, num_macro, wb.temp1, wb.temp2, wb.temp3, wb.temp4, wb.temp5, sgb, factor)
     lumi *= wb.np / wb.nmacro
 end
 
-function pass_P!(sgb::StrongGaussianBeam, r_in::Array{Float64,1}, num_macro::Int, wb::Beam)
+function pass_P!(sgb::StrongGaussianBeam, r_in::Array{Float64,1}, num_macro::Int, wb::Beam{Float64})
     error("Strong beam-beam using parallel computing is not implemented yet.")
 
     factor=wb.classrad0/wb.gamma*wb.charge*sgb.charge
@@ -253,7 +253,7 @@ function pass_P!(sgb::StrongGaussianBeam, r_in::Array{Float64,1}, num_macro::Int
     return nothing
 end
 
-function pass_lumi_P!(sgb::StrongGaussianBeam, r_in::Array{Float64,1}, num_macro::Int, wb::Beam)
+function pass_lumi_P!(sgb::StrongGaussianBeam, r_in::Array{Float64,1}, num_macro::Int, wb::Beam{Float64})
     error("Strong beam-beam using parallel computing is not implemented yet.")
     factor=wb.classrad0/wb.gamma*wb.charge*sgb.charge
     lumi=track_sbb_P!(r_in, num_macro, wb.temp1, wb.temp2, wb.temp3, wb.temp4, wb.temp5, sgb, factor)

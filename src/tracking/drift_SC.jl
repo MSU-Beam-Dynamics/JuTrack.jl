@@ -63,7 +63,7 @@ function DriftPass_SC!(r_in::Array{Float64,1}, le::Float64, beti::Float64, T1::A
     return nothing
 end
 
-function pass!(ele::DRIFT_SC, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass!(ele::DRIFT_SC, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     # ele: EDRIFT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -150,7 +150,7 @@ function DriftPass_SC_P!(r_in::Array{Float64,1}, le::Float64, beti::Float64, T1:
     return nothing
 end
 
-function pass_P!(ele::DRIFT_SC, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass_P!(ele::DRIFT_SC, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     # ele: EDRIFT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles

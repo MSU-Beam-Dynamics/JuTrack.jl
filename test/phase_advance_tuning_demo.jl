@@ -23,7 +23,7 @@ function Q_perturb(ESR_crab)
 end
 
 ESR_perturb = Q_perturb(ESR_crab) # Perturbed ESR lattice
-idx = findelem(ESR_crab,TCRABCAVITY)
+idx = findelem(ESR_crab, CRABCAVITY)
 
 function get_phase14_zero(x1, x2, x3, x4, x5, x6, x7)
     X = [x1, x2, x3, x4, x5, x6, x7]
@@ -122,24 +122,24 @@ x0_vals, goal_vals, grad_vals = multi_val_op(xinit, 100, 1e-4, ESR_crab)
 #     return ESR_crab
 # end
 
-# ESR_perturb = Q_perturb(ESR_crab)
+# ESR_perturb = Q_perturb(ESR_crab) # Perturbed ESR lattice
 
 # idx = findelem(ESR_crab,CRABCAVITY)
 
-# xinit = [ESR_perturb[9].k1; ESR_perturb[13].k1; ESR_perturb[17].k1; ESR_perturb[23].k1; ESR_perturb[27].k1; ESR_perturb[31].k1; ESR_perturb[5537].k1]
+# xinit = [-1e-6, 1e-6, -1e-6, 1e-6, -1e-6, 1e-6, -1e-6]
 
 # zero_idx = [9,13,17,23,27,31,5537]
 # function get_phase14_zero(x)
 #     changed_idx = [9,13,17,23,27,31,5537]
 #     L = 0.25
 #     E0 = 17.846262619763e9
-#     new_Q1 = KQUAD(len=L, k1=x[1])
-#     new_Q2 = KQUAD(len=L, k1=x[2])
-#     new_Q3 = KQUAD(len=L, k1=x[3])
-#     new_Q4 = KQUAD(len=L, k1=x[4])
-#     new_Q5 = KQUAD(len=L, k1=x[5])
-#     new_Q6 = KQUAD(len=L, k1=x[6])
-#     new_Q7 = KQUAD(len=L, k1=x[7])
+#     new_Q1 = QUAD(len=L, k1=x[1])
+#     new_Q2 = QUAD(len=L, k1=x[2])
+#     new_Q3 = QUAD(len=L, k1=x[3])
+#     new_Q4 = QUAD(len=L, k1=x[4])
+#     new_Q5 = QUAD(len=L, k1=x[5])
+#     new_Q6 = QUAD(len=L, k1=x[6])
+#     new_Q7 = QUAD(len=L, k1=x[7])
 #     changed_ele = [new_Q1, new_Q2, new_Q3, new_Q4, new_Q5, new_Q6, new_Q7]
 #     refpts = [i for i in 1:5550]
 #     # refpts = [35, 5533, length(ESR_crab)]

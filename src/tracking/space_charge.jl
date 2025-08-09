@@ -204,7 +204,7 @@ function space_charge!(r_in, K, Nl, Nm, dx, dy, a, b, Np, dt, lost_flags)
     return nothing
 end
 
-function pass!(ele::SPACECHARGE, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass!(ele::SPACECHARGE, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     # ele: SPACECHARGE
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -227,7 +227,7 @@ function pass_TPSA!(ele::SPACECHARGE, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degr
     return nothing
 end
 
-function pass_P!(ele::SPACECHARGE, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass_P!(ele::SPACECHARGE, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     # println("Parallel computing is not implemented for space charge yet.")
     lost_flags = particles.lost_flag
     I = particles.current

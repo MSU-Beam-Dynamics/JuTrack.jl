@@ -1,5 +1,5 @@
 
-function avedata(ring::Vector{<:AbstractNumberElement}, dpp::Float64; E0::Float64=3e9, m0::Float64=m_e)
+function avedata(ring::Vector{<:AbstractElement{Float64}}, dpp::Float64; E0::Float64=3e9, m0::Float64=m_e)
     twi = twissring(ring, dpp, 0, E0=E0, m0=m0)
     long = findall(x -> x.len > 0, ring)
     beta, alpha, gamma, mu, dp = array_optics(twi)
@@ -58,7 +58,7 @@ function avedata(ring::Vector{<:AbstractNumberElement}, dpp::Float64; E0::Float6
     return avebeta, avemu, avedisp, beta, alpha, mu, dp
 end
 
-function avedata(ring::Vector{<:AbstractTPSAElement}, dpp::Float64; E0::Float64=3e9, m0::Float64=m_e)
+function avedata(ring::Vector{<:AbstractElement{DTPSAD{N, T}}}, dpp::Float64; E0::Float64=3e9, m0::Float64=m_e) where {N, T}
     twi = twissring(ring, dpp, 0, E0=E0, m0=m0)
     long = findall(x -> x.len > 0, ring)
     beta, alpha, gamma, mu, dp = array_optics(twi)
@@ -649,7 +649,7 @@ Compute Hamiltonian resonance driving terms (RDTs).
 # Returns
 - `d::DrivingTerms`: structure of driving terms
 """
-function computeRDT(ring::Vector{<:AbstractNumberElement}, index::Vector{Int}; 
+function computeRDT(ring::Vector{<:AbstractElement{Float64}}, index::Vector{Int}; 
     chromatic=false, coupling=false, geometric1=false, geometric2=false, tuneshifts=false, E0=3e9, m0=m_e)
     # Compute Hamiltonian resonance driving terms (RDTs)
     # ring: lattice sequence
@@ -723,8 +723,8 @@ function computeRDT(ring::Vector{<:AbstractNumberElement}, index::Vector{Int};
     return dlist, s1
 end
 
-function computeRDT(ring::Vector{<:AbstractTPSAElement}, index::Vector{Int}; 
-    chromatic=false, coupling=false, geometric1=false, geometric2=false, tuneshifts=false, E0=3e9, m0=m_e)
+function computeRDT(ring::Vector{<:AbstractElement{DTPSAD{N, T}}}, index::Vector{Int}; 
+    chromatic=false, coupling=false, geometric1=false, geometric2=false, tuneshifts=false, E0=3e9, m0=m_e) where {N, T}
     # Compute Hamiltonian resonance driving terms (RDTs)
     # ring: lattice sequence
     # index: index of the element to compute the RDTs
@@ -735,13 +735,13 @@ function computeRDT(ring::Vector{<:AbstractTPSAElement}, index::Vector{Int};
         chromatic, coupling, geometric1, geometric2, tuneshifts = true, true, true, true, true
     end
 
-    indB = findelem(ring, TSBEND)
-    indQ = findelem(ring, TKQUAD)
+    indB = findelem(ring, SBEND)
+    indQ = findelem(ring, KQUAD)
     if length(indQ) == 0
-        indQ = findelem(ring, TQUAD)
+        indQ = findelem(ring, QUAD)
     end
-    indS = findelem(ring, TKSEXT)
-    indO = findelem(ring, TKOCT)
+    indS = findelem(ring, KSEXT)
+    indO = findelem(ring, KOCT)
     indDQSO = sort(union(indB, indQ, indS, indO))
 
     AVEBETA, AVEMU, AVEDISP, beta, alpha, mu, dp = avedata(ring, 0.0, E0=E0, m0=m0)  

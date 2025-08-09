@@ -20,7 +20,7 @@ RING_TPSAD = Number2TPSAD(RING)
 # Calculate the Jacobian using JuTrack's first-order TPSA
 ###############################################################
 function fast_TPSA_jacobian(x, xp, y, yp, z, delta)
-    beam = TBeam([x xp y yp z delta])
+    beam = Beam([x xp y yp z delta])
     ringpass!(RING_TPSAD, beam, 1)
     return beam.r[1, :]
 end

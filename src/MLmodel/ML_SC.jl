@@ -46,7 +46,7 @@ function space_charge_ML!(r_in, K, num_particles, le, lost_flags, model, x_mean,
     r_in[4:6:end] .-= (le * K).* dh_dy
     return nothing
 end
-mutable struct DRIFT_SC_ML <: AbstractElement
+mutable struct DRIFT_SC_ML <: AbstractElement{Float64}
     name::String
     len::Float64
     T1::Array{Float64,1}
@@ -67,7 +67,7 @@ mutable struct DRIFT_SC_ML <: AbstractElement
         RApertures::Array{Float64,1} = zeros(6), EApertures::Array{Float64,1} = zeros(6), a::Float64 = 1.0, b::Float64 = 1.0,
         Nl::Int64 = 10, Nm::Int64 = 10, Nsteps::Int64=1) = new(name, len, T1, T2, R1, R2, RApertures, EApertures, a, b, Nl, Nm, Nsteps, "DRIFT_SC")
 end
-mutable struct KQUAD_SC_ML <: AbstractElement
+mutable struct KQUAD_SC_ML <: AbstractElement{Float64}
     name::String
     len::Float64
     k1::Float64

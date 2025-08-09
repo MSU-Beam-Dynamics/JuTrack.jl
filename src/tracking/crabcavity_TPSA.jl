@@ -2,7 +2,7 @@ function pass_TPSA!(ele::CRABCAVITY, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degre
     if E0 == 0.0
         println("Warning: beam energy is not defined")
     end
-    gamma = E0 / m0
+    gamma = (E0 + m0) / m0
     beta = sqrt(1.0 - 1.0 / gamma^2)
     if use_exact_beti == 1
         beti = 1.0 / beta
@@ -35,7 +35,7 @@ function pass_TPSA!(ele::CRABCAVITY_K2, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_De
     if E0 == 0.0
         println("Warning: beam energy is not defined")
     end
-    gamma = E0 / m0
+    gamma = (E0 + m0) / m0
     beta = sqrt(1.0 - 1.0 / gamma^2)
     ang = ele.k * r_in[5] + ele.phi
     if use_exact_beti == 1
@@ -71,7 +71,7 @@ function pass_TPSA!(ele::CRABCAVITY_K2, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_De
 end
 
 function pass_TPSA!(ele::easyCRABCAVITY, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; E0::Float64=0.0, m0::Float64=m_e) where {T, TPS_Dim, Max_TPS_Degree}
-    gamma = E0 / m0
+    gamma = (E0 + m0) / m0
     beta = sqrt(1.0 - 1.0 / gamma^2)
     if use_exact_beti == 1
         beti = 1.0 / beta
@@ -88,7 +88,7 @@ function pass_TPSA!(ele::easyCRABCAVITY, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_D
 end
 
 function pass_TPSA!(ele::AccelCavity, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; E0::Float64=0.0, m0::Float64=m_e) where {T, TPS_Dim, Max_TPS_Degree}
-    gamma = E0 / m0
+    gamma = (E0 + m0) / m0
     beta = sqrt(1.0 - 1.0 / gamma^2)
     if use_exact_beti == 1
         beti = 1.0 / beta

@@ -74,7 +74,7 @@ function QuadLinearPass!(r::Array{Float64,1}, le::Float64, k1::Float64, beti::Fl
     return nothing
 end
 
-function pass!(ele::QUAD, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass!(ele::QUAD, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     # ele: KQUAD
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -165,7 +165,7 @@ function QuadLinearPass_P!(r::Array{Float64,1}, le::Float64, k1::Float64, beti::
     return nothing
 end
 
-function pass_P!(ele::QUAD, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass_P!(ele::QUAD, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     # ele: KQUAD
     # r_in: 6-by-num_particles array
     # num_particles: number of particles

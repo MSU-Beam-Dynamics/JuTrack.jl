@@ -12,7 +12,7 @@ RING = Number2TPSAD(RING)
 
 SDM_index = findelem(RING, :name, "SDM") # 0.21m, -17 /m^-3
 SFM_index = findelem(RING, :name, "SFM") # 0.21m, 15 /m^-3
-idx_marker       = findelem(RING, TMARKER)
+idx_marker       = findelem(RING, MARKER)
 
 for i in 1:length(SDM_index)
     RING[SDM_index[i]].PolynomB[3] = -100.0 
@@ -60,7 +60,7 @@ function gradient_descent(x1_init, x2_init; lr=0.001, tol=1e-6, max_iter=100)
     x1, x2 = x1_init, x2_init
     for iter in 1:max_iter
         # Calculate gradients
-        g, y = Gradient(f, [x1, x2], Primal=true)
+        g, y = Gradient(f, [x1, x2], true)
         grad_x1 = g[1]
         grad_x2 = g[2]
 

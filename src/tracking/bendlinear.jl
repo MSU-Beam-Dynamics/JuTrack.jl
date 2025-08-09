@@ -171,7 +171,7 @@ end
 
 
 
-function pass!(ele::LBEND, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass!(ele::LBEND, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     # ele: LBEND
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -185,7 +185,7 @@ function pass!(ele::LBEND, r_in::Array{Float64,1}, num_particles::Int64, particl
     return nothing
 end
 
-function pass_P!(ele::LBEND, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass_P!(ele::LBEND, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     # ele: LBEND
     # r_in: 6-by-num_particles array
     # num_particles: number of particles

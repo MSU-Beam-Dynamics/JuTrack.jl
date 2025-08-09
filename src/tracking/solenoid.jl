@@ -1,4 +1,4 @@
-function pass!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     lost_flags = particles.lost_flag
     T1 = ele.T1
     R1 = ele.R1
@@ -71,7 +71,7 @@ end
 
 ##########################################################################################
 # multi-threading
-function pass_P!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass_P!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     lost_flags = particles.lost_flag
     T1 = ele.T1
     R1 = ele.R1

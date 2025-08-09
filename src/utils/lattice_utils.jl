@@ -27,7 +27,7 @@ Calculate the s position of each element in the lattice.
 # Return
 - pos::Vector{Float64}: a vector of s positions
 """
-function spos(ring::Vector{AbstractNumberElement})
+function spos(ring::Vector{AbstractElement{Float64}})
     pos = zeros(length(ring))
     len = 0.0
     for i in eachindex(ring)
@@ -36,9 +36,9 @@ function spos(ring::Vector{AbstractNumberElement})
     end
     return pos
 end
-function spos(ring::Vector{AbstractTPSAElement})
-    pos = zeros(DTPSAD{NVAR(), Float64}, length(ring))
-    len = zero(DTPSAD{NVAR(), Float64})
+function spos(ring::Vector{AbstractElement{DTPSAD{N, T}}}) where {N, T}
+    pos = zeros(DTPSAD{N, T}, length(ring))
+    len = zero(DTPSAD{N, T})
     for i in eachindex(ring)
         len += get_len(ring[i])
         pos[i] = len
@@ -58,7 +58,7 @@ Calculate the s position of the specified elements in the lattice.
 # Return
 - pos::Vector{Float64}: a vector of s positions of the specified elements
 """
-function spos(ring::Vector{AbstractNumberElement}, idx::Vector{Int})
+function spos(ring::Vector{AbstractElement{Float64}}, idx::Vector{Int})
     pos_all = spos(ring)
     pos = zeros(length(idx))
     for i in 1:length(idx)
@@ -66,9 +66,9 @@ function spos(ring::Vector{AbstractNumberElement}, idx::Vector{Int})
     end
     return pos
 end
-function spos(ring::Vector{AbstractTPSAElement}, idx::Vector{Int})
+function spos(ring::Vector{AbstractElement{DTPSAD{N, T}}}, idx::Vector{Int}) where {N, T}
     pos_all = spos(ring)
-    pos = zeros(DTPSAD{NVAR(), Float64}, length(idx))
+    pos = zeros(DTPSAD{N, T}, length(idx))
     for i in 1:length(idx)
         pos[i] = pos_all[idx[i]]
     end

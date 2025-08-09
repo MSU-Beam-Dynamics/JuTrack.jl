@@ -26,11 +26,13 @@ const _jlplotlib_available = let ok
     ok
 end
 include("TPSA/TPSA.jl")
+include("TPSA/fast_TPSA_module.jl")
+using .TPSAadStatic
+export DTPSAD, NVAR, set_tps_dim, Gradient, Jacobian
+export Number2TPSAD, TPSAD2Number, to_TPSAD, to_Number
 include("lattice/beam.jl")
 include("lattice/canonical_elements.jl")
-include("TPSA/fast_TPSA_module.jl")
 include("TPSA/fast_TPSA_tracking.jl")
-include("lattice/lattice.jl")
 include("tracking/bend.jl")
 include("tracking/drift.jl")
 include("tracking/multipole.jl")
@@ -56,7 +58,6 @@ include("tracking/solenoid_TPSA.jl")
 include("tracking/crabcavity_TPSA.jl")
 include("tracking/thinmultipole_TPSA.jl")
 include("tracking/corrector_TPSA.jl")
-include("tracking/track.jl")
 include("tracking/track_vector.jl")
 include("lattice/EdwardsTengTwiss.jl")
 include("lattice/ResonanceDrivingTerms.jl")
@@ -119,11 +120,4 @@ export autodiff, Forward, ForwardWithPrimal, gradient, jacobian, Duplicated, set
 
 export dynamic_aperture, naff, FMA, computeRDT, ADcomputeRDT
 export drift6!, multmv!, addvv!, linearQuadFringeElegantEntrance!, QuadFringePassP!, fastdrift!, strthinkick!
-
-using .TPSAadStatic
-export TBeam, DTPSAD, NVAR, set_tps_dim, Gradient, Jacobian, AbstractTPSAElement, AbstractNumberElement
-export TQUAD, TDRIFT, TCORRECTOR, TSOLENOID, TKQUAD, TKSEXT, TKOCT, TSBEND, TRBEND
-export TESBEND, TERBEND, TRFCA, TCRABCAVITY, TCRABCAVITYK2, TthinMULTIPOLE, TMARKER
-export Number2TPSAD, TPSAD2Number, to_TPSAD, to_Number
-export TTRANSLATION, TYROTATION
 end

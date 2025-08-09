@@ -214,7 +214,7 @@ function StrMPoleSymplectic4RadPass!(r::Array{Float64,1}, le::Float64, rad_const
     return nothing
 end
 
-function pass!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     # ele: KQUAD
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -271,7 +271,7 @@ function pass!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, particl
     return nothing
 end
 
-function pass!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     # ele: KSEXT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -326,7 +326,7 @@ function pass!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, particl
     return nothing
 end
 
-function pass!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     # ele: KOCT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -552,7 +552,7 @@ function StrMPoleSymplectic4RadPass_P!(r::Array{Float64,1}, le::Float64, rad_con
     return nothing
 end
 
-function pass_P!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass_P!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     # ele: KQUAD
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -609,7 +609,7 @@ function pass_P!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, parti
     return nothing
 end
 
-function pass_P!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass_P!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     # ele: KSEXT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -668,7 +668,7 @@ function pass_P!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, parti
     return nothing
 end
 
-function pass_P!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass_P!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     # ele: KOCT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles

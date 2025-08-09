@@ -1,605 +1,5 @@
 # use first-order TPSA. It is faster than other TPSA modules.
 using .TPSAadStatic
-mutable struct TBeam{N, T <: Number}
-    r::Matrix{DTPSAD{N, T}}
-    np::Int # default is the same as nmacro
-    nmacro::Int
-    energy::DTPSAD{N, T} # energy in eV
-    lost_flag::Vector{Int}
-    charge::DTPSAD{N, T}
-    mass::DTPSAD{N, T}
-    gamma::DTPSAD{N, T}
-    beta::DTPSAD{N, T}
-    atomnum::DTPSAD{N, T}
-    classrad0::DTPSAD{N, T}
-    radconst::DTPSAD{N, T}
-    T0::Float64 # revolution period
-    nturn::Int # number of turns
-    znbin::Int # number of bins in z
-    inzindex::Vector{Int} # index of z bin
-    zhist::Vector
-    zhist_edges::Vector
-    temp1::Vector
-    temp2::Vector
-    temp3::Vector
-    temp4::Vector
-    temp5::Vector
-    emittance::Vector # emittance in x, y, z
-    centroid::Vector # centroid in x, px, y, py, z, pz
-    moment2nd::Matrix # 2nd momentum matrix
-    beamsize::Vector # Beam size in x, px, y, py, z, pz
-    current::DTPSAD{N, T} # beam current for space charge calculation
-end
-
-function TBeam(r::Matrix{Float64}; energy::Float64=1e9, np::Int=size(r, 1), charge::Float64=-1.0, mass::Float64=m_e, atn::Float64=1.0,
-        emittance::Vector{Float64}=zeros(Float64, 3), centroid::Vector{Float64}=zeros(Float64, 6), T0::Float64=0.0, znbin::Int=99, current::Float64=0.0)
-    nmacro = size(r, 1)
-    r_GTPS = DTPSAD.(r)
-    lost_flag = zeros(Int, nmacro)
-    gamma = DTPSAD(energy) / DTPSAD(mass)
-    beta = sqrt(1.0 - 1.0 / gamma^2)
-    classrad0 = DTPSAD(charge) * DTPSAD(charge) / (DTPSAD(atn) * DTPSAD(mass)) / 4.0 / Float64(pi) / 55.26349406 * 1e-6
-    radconst = 4 * Float64(pi) / 3 * classrad0 / DTPSAD(mass)^3
-    inzindex = zeros(Int, nmacro)
-    zhist = zeros(DTPSAD{NVAR(), Float64}, znbin)
-    zhist_edges = zeros(DTPSAD{NVAR(), Float64}, znbin + 1)
-    return TBeam{NVAR(), Float64}(r_GTPS, np, nmacro, DTPSAD(energy), lost_flag, DTPSAD(charge), DTPSAD(mass), gamma, beta, DTPSAD(atn), classrad0, radconst,
-                T0, 1, znbin, inzindex, zhist, zhist_edges,
-                zeros(DTPSAD{NVAR(), Float64}, nmacro), zeros(DTPSAD{NVAR(), Float64}, nmacro), zeros(DTPSAD{NVAR(), Float64}, nmacro),
-                zeros(DTPSAD{NVAR(), Float64}, nmacro), zeros(DTPSAD{NVAR(), Float64}, nmacro), emittance,
-                centroid, zeros(DTPSAD{NVAR(), Float64}, 6, 6), zeros(DTPSAD{NVAR(), Float64}, 6), DTPSAD(current))
-end
-
-function TBeam(r_GTPS::Matrix{DTPSAD{N, T}}; energy::Float64=1e9, np::Int=size(r_GTPS, 1), charge::Float64=-1.0, mass::Float64=m_e, atn::Float64=1.0,
-        emittance::Vector{Float64}=zeros(Float64, 3), centroid::Vector{Float64}=zeros(Float64, 6), T0::Float64=0.0, znbin::Int=99, current::Float64=0.0) where {N, T <: Number}
-    nmacro = size(r_GTPS, 1)
-    lost_flag = zeros(Int, nmacro)
-    gamma = DTPSAD(energy) / DTPSAD(mass)
-    beta = sqrt(1.0 - 1.0 / gamma^2)
-    classrad0 = DTPSAD(charge) * DTPSAD(charge) / (DTPSAD(atn) * DTPSAD(mass)) / 4.0 / Float64(pi) / 55.26349406 * 1e-6
-    radconst = 4 * Float64(pi) / 3 * classrad0 / DTPSAD(mass)^3
-    inzindex = zeros(Int, nmacro)
-    zhist = zeros(DTPSAD{N, T}, znbin)
-    zhist_edges = zeros(DTPSAD{N, T}, znbin + 1)
-    return TBeam{N, T}(r_GTPS, np, nmacro, DTPSAD(energy), lost_flag, DTPSAD(charge), DTPSAD(mass), gamma, beta, DTPSAD(atn), classrad0, radconst,
-                T0, 1, znbin, inzindex, zhist, zhist_edges,
-                zeros(DTPSAD{N, T}, nmacro), zeros(DTPSAD{N, T}, nmacro), zeros(DTPSAD{N, T}, nmacro),
-                zeros(DTPSAD{N, T}, nmacro), zeros(DTPSAD{N, T}, nmacro), emittance,
-                centroid, zeros(DTPSAD{N, T}, 6, 6), zeros(DTPSAD{N, T}, 6), DTPSAD(current))
-end
-
-abstract type AbstractTPSAElement <: AbstractElement end
-
-mutable struct TMARKER{N, T} <: AbstractTPSAElement
-    name::String
-    len::DTPSAD{N, T}
-    eletype::String
-end
-function TMARKER(; name::String = "MARKER", len::T = 0.0) where T <: Number
-    TMARKER{NVAR(), T}(name, DTPSAD(len), "MARKER")
-end
-function TMARKER(name::String, len::DTPSAD{N, T}, eletype::String) where {N, T <: Number}
-    TMARKER{N, T}(name, len, eletype)
-end
-
-mutable struct TDRIFT{N, T} <: AbstractTPSAElement
-    name::String
-    len::DTPSAD{N, T}
-    T1::Array{DTPSAD{N, T},1}
-    T2::Array{DTPSAD{N, T},1}
-    R1::Array{DTPSAD{N, T},2}
-    R2::Array{DTPSAD{N, T},2}
-    RApertures::Array{Float64,1}
-    EApertures::Array{Float64,1}
-    eletype::String
-end
-function TDRIFT(;name::String = "DRIFT", len::T = 0.0, T1::Array{T,1} = zeros(6), 
-                T2::Array{T,1} = zeros(6), R1::Array{T,2} = zeros(6, 6), R2::Array{T,2} = zeros(6, 6), 
-                RApertures::Array{Float64,1} = zeros(6), EApertures::Array{Float64,1} = zeros(6)) where T <: Number
-    TDRIFT{NVAR(), T}(name, DTPSAD(len), DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2), RApertures, EApertures, "DRIFT")
-end
-TDRIFT(name::String, len::DTPSAD{N, T}, T1::Array{DTPSAD{N, T},1}, 
-        T2::Array{DTPSAD{N, T},1}, R1::Array{DTPSAD{N, T},2}, R2::Array{DTPSAD{N, T},2}, 
-        RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, eletype::String) where {N, T <: Number} =
-    TDRIFT{N, T}(name, len, T1, T2, R1, R2, RApertures, EApertures, eletype)
-
-mutable struct TQUAD{N, T} <: AbstractTPSAElement
-    name::String
-    len::DTPSAD{N, T}
-    k1::DTPSAD{N, T}
-    rad::Int64
-    T1::Array{DTPSAD{N, T},1}
-    T2::Array{DTPSAD{N, T},1}
-    R1::Array{DTPSAD{N, T},2}
-    R2::Array{DTPSAD{N, T},2}
-    RApertures::Array{Float64,1}
-    EApertures::Array{Float64,1}
-    eletype::String
-end
-function TQUAD(;name::String = "Quad", len::T = 0.0, k1::T = 0.0, rad::Int64 = 0, 
-                T1::Array{T,1} = zeros(6), T2::Array{T,1} = zeros(6), 
-                R1::Array{T,2} = zeros(6, 6), R2::Array{T,2} = zeros(6, 6), 
-                RApertures::Array{Float64,1} = zeros(6), EApertures::Array{Float64,1} = zeros(6)) where T <: Number
-    TQUAD{NVAR(), T}(name, DTPSAD(len), DTPSAD(k1), rad, DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2), RApertures, EApertures, "QUAD")
-end
-TQUAD(name::String, len::DTPSAD{N, T}, k1::DTPSAD{N, T}, rad::Int64, 
-        T1::Array{DTPSAD{N, T},1}, T2::Array{DTPSAD{N, T},1}, 
-        R1::Array{DTPSAD{N, T},2}, R2::Array{DTPSAD{N, T},2}, 
-        RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, eletype::String) where {N, T <: Number} =
-    TQUAD{N, T}(name, len, k1, rad, T1, T2, R1, R2, RApertures, EApertures, eletype)
-
-mutable struct TKQUAD{N, T} <: AbstractTPSAElement
-    name::String
-    len::DTPSAD{N, T}
-    k1::DTPSAD{N, T}
-    PolynomA::Array{DTPSAD{N, T},1}
-    PolynomB::Array{DTPSAD{N, T},1}
-    MaxOrder::Int64
-    NumIntSteps::Int64
-    rad::Int64
-    FringeQuadEntrance::Int64
-    FringeQuadExit::Int64
-    T1::Array{DTPSAD{N, T},1}
-    T2::Array{DTPSAD{N, T},1}
-    R1::Array{DTPSAD{N, T},2}
-    R2::Array{DTPSAD{N, T},2}
-    RApertures::Array{Float64,1}
-    EApertures::Array{Float64,1}
-    KickAngle::Array{DTPSAD{N, T},1}
-    eletype::String
-end
-function TKQUAD(;name::String = "Quad", len::T = 0.0, k1::T = 0.0, 
-            PolynomA::Array{T,1} = zeros(4), 
-            PolynomB::Array{T,1} = zeros(4), MaxOrder::Int64=1, 
-            NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
-            FringeQuadExit::Int64 = 0, T1::Array{T,1} = zeros(6), 
-            T2::Array{T,1} = zeros(6), R1::Array{T,2} = zeros(6, 6), 
-            R2::Array{T,2} = zeros(6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6), 
-            EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{T,1} = zeros(2)) where T <: Number
-    if k1 != 0.0 && PolynomB[2] == 0.0
-        PolynomB[2] = k1
-    end
-    TKQUAD{NVAR(), T}(name, DTPSAD(len), DTPSAD(k1), DTPSAD.(PolynomA), DTPSAD.(PolynomB), MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
-        DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2), RApertures, EApertures, DTPSAD.(KickAngle), "KQUAD")
-end
-TKQUAD(name::String, len::DTPSAD{N, T}, k1::DTPSAD{N, T}, 
-        PolynomA::Array{DTPSAD{N, T},1}, PolynomB::Array{DTPSAD{N, T},1}, MaxOrder::Int64, 
-        NumIntSteps::Int64, rad::Int64, FringeQuadEntrance::Int64, FringeQuadExit::Int64, 
-        T1::Array{DTPSAD{N, T},1}, T2::Array{DTPSAD{N, T},1}, 
-        R1::Array{DTPSAD{N, T},2}, R2::Array{DTPSAD{N, T},2}, 
-        RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{DTPSAD{N, T},1}, eletype::String) where {N, T <: Number} =
-    TKQUAD{N, T}(name, len, k1, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
-        T1, T2, R1, R2, RApertures, EApertures, KickAngle, eletype)
-
-mutable struct TKSEXT{N, T} <: AbstractTPSAElement
-    name::String
-    len::DTPSAD{N, T}
-    k2::DTPSAD{N, T}
-    PolynomA::Array{DTPSAD{N, T},1}
-    PolynomB::Array{DTPSAD{N, T},1}
-    MaxOrder::Int64
-    NumIntSteps::Int64
-    rad::Int64
-    FringeQuadEntrance::Int64
-    FringeQuadExit::Int64
-    T1::Array{DTPSAD{N, T},1}
-    T2::Array{DTPSAD{N, T},1}
-    R1::Array{DTPSAD{N, T},2}
-    R2::Array{DTPSAD{N, T},2}
-    RApertures::Array{Float64,1}
-    EApertures::Array{Float64,1}
-    KickAngle::Array{DTPSAD{N, T},1}
-    eletype::String
-end
-function TKSEXT(;name::String = "Sext", len::T = 0.0, k2::T = 0.0, 
-                PolynomA::Array{T,1} = zeros(4), 
-                PolynomB::Array{T,1} = zeros(4), MaxOrder::Int64=2, 
-                NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
-                FringeQuadExit::Int64 = 0, T1::Array{T,1} = zeros(6), 
-                T2::Array{T,1} = zeros(6), R1::Array{T,2} = zeros(6, 6), 
-                R2::Array{T,2} = zeros(6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6), 
-                EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{T,1} = zeros(2)) where T <: Number
-    if k2 != 0.0 && PolynomB[3] == 0.0
-        PolynomB[3] = k2
-    end
-    TKSEXT{NVAR(), T}(name, DTPSAD(len), DTPSAD(k2), DTPSAD.(PolynomA), DTPSAD.(PolynomB), MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
-        DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2), RApertures, EApertures, DTPSAD.(KickAngle), "KSEXT")
-end
-TKSEXT(name::String, len::DTPSAD{N, T}, k2::DTPSAD{N, T}, 
-        PolynomA::Array{DTPSAD{N, T},1}, PolynomB::Array{DTPSAD{N, T},1}, MaxOrder::Int64, 
-        NumIntSteps::Int64, rad::Int64, FringeQuadEntrance::Int64, FringeQuadExit::Int64, 
-        T1::Array{DTPSAD{N, T},1}, T2::Array{DTPSAD{N, T},1}, 
-        R1::Array{DTPSAD{N, T},2}, R2::Array{DTPSAD{N, T},2}, 
-        RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{DTPSAD{N, T},1}, eletype::String) where {N, T <: Number} =
-    TKSEXT{N, T}(name, len, k2, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
-        T1, T2, R1, R2, RApertures, EApertures, KickAngle, eletype)
-
-mutable struct TKOCT{N, T} <: AbstractTPSAElement
-    name::String
-    len::DTPSAD{N, T}
-    k3::DTPSAD{N, T}
-    PolynomA::Array{DTPSAD{N, T},1}
-    PolynomB::Array{DTPSAD{N, T},1}
-    MaxOrder::Int64
-    NumIntSteps::Int64
-    rad::Int64
-    FringeQuadEntrance::Int64
-    FringeQuadExit::Int64
-    T1::Array{DTPSAD{N, T},1}
-    T2::Array{DTPSAD{N, T},1}
-    R1::Array{DTPSAD{N, T},2}
-    R2::Array{DTPSAD{N, T},2}
-    RApertures::Array{Float64,1}
-    EApertures::Array{Float64,1}
-    KickAngle::Array{DTPSAD{N, T},1}
-    eletype::String
-end
-function TKOCT(;name::String = "OCT", len::T = 0.0, k3::T = 0.0, 
-                PolynomA::Array{T,1} = zeros(4), 
-                PolynomB::Array{T,1} = zeros(4), MaxOrder::Int64=3, 
-                NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
-                FringeQuadExit::Int64 = 0, T1::Array{T,1} = zeros(6), 
-                T2::Array{T,1} = zeros(6), R1::Array{T,2} = zeros(6, 6), 
-                R2::Array{T,2} = zeros(6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6), 
-                EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{T,1} = zeros(2)) where T <: Number
-    if k3 != 0.0 && PolynomB[4] == 0.0
-        PolynomB[4] = k3
-    end
-    TKOCT{NVAR(), T}(name, DTPSAD(len), DTPSAD(k3), DTPSAD.(PolynomA), DTPSAD.(PolynomB), MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
-        DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2), RApertures, EApertures, DTPSAD.(KickAngle), "KOCT")
-end
-TKOCT(name::String, len::DTPSAD{N, T}, k3::DTPSAD{N, T}, 
-        PolynomA::Array{DTPSAD{N, T},1}, PolynomB::Array{DTPSAD{N, T},1}, MaxOrder::Int64, 
-        NumIntSteps::Int64, rad::Int64, FringeQuadEntrance::Int64, FringeQuadExit::Int64, 
-        T1::Array{DTPSAD{N, T},1}, T2::Array{DTPSAD{N, T},1}, 
-        R1::Array{DTPSAD{N, T},2}, R2::Array{DTPSAD{N, T},2}, 
-        RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{DTPSAD{N, T},1}, eletype::String) where {N, T <: Number} =
-    TKOCT{N, T}(name, len, k3, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
-        T1, T2, R1, R2, RApertures, EApertures, KickAngle, eletype)
-
-mutable struct TCORRECTOR{N, T} <: AbstractTPSAElement
-    name::String
-    len::DTPSAD{N, T}
-    xkick::DTPSAD{N, T}
-    ykick::DTPSAD{N, T}
-    T1::Array{DTPSAD{N, T},1}
-    T2::Array{DTPSAD{N, T},1}
-    R1::Array{DTPSAD{N, T},2}
-    R2::Array{DTPSAD{N, T},2}
-    eletype::String
-end
-function TCORRECTOR(;name::String = "CORRECTOR", len::T = 0.0, xkick::T = 0.0, ykick::T = 0.0, 
-                    T1::Array{T,1} = zeros(6), T2::Array{T,1} = zeros(6), R1::Array{T,2} = zeros(6, 6), 
-                    R2::Array{T,2} = zeros(6, 6)) where T <: Number
-    TCORRECTOR{NVAR(), T}(name, DTPSAD(len), DTPSAD(xkick), DTPSAD(ykick), DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2), "CORRECTOR")
-end
-TCORRECTOR(name::String, len::DTPSAD{N, T}, xkick::DTPSAD{N, T}, ykick::DTPSAD{N, T}, 
-            T1::Array{DTPSAD{N, T},1}, T2::Array{DTPSAD{N, T},1}, 
-            R1::Array{DTPSAD{N, T},2}, R2::Array{DTPSAD{N, T},2}, eletype::String) where {N, T <: Number} =
-    TCORRECTOR{N, T}(name, len, xkick, ykick, T1, T2, R1, R2, eletype)
-
-mutable struct TSOLENOID{N, T} <: AbstractTPSAElement
-    name::String
-    len::DTPSAD{N, T}
-    ks::DTPSAD{N, T} # rad/m
-    T1::Array{DTPSAD{N, T},1}
-    T2::Array{DTPSAD{N, T},1}
-    R1::Array{DTPSAD{N, T},2}
-    R2::Array{DTPSAD{N, T},2}
-    eletype::String
-end
-function TSOLENOID(;name::String = "Solenoid", len::T = 0.0, ks::T = 0.0, T1::Array{T,1} = zeros(6), 
-                T2::Array{T,1} = zeros(6), R1::Array{T,2} = zeros(6, 6), R2::Array{T,2} = zeros(6, 6)) where T <: Number
-    TSOLENOID{NVAR(), T}(name, DTPSAD(len), DTPSAD(ks), DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2), "SOLENOID")
-end
-TSOLENOID(name::String, len::DTPSAD{N, T}, ks::DTPSAD{N, T}, 
-            T1::Array{DTPSAD{N, T},1}, T2::Array{DTPSAD{N, T},1}, 
-            R1::Array{DTPSAD{N, T},2}, R2::Array{DTPSAD{N, T},2}, eletype::String) where {N, T <: Number} =
-    TSOLENOID{N, T}(name, len, ks, T1, T2, R1, R2, eletype)
-
-mutable struct TSBEND{N, T} <: AbstractTPSAElement
-    name::String
-    len::DTPSAD{N, T}
-    angle::DTPSAD{N, T}
-    e1::DTPSAD{N, T}
-    e2::DTPSAD{N, T}
-    PolynomA::Array{DTPSAD{N, T},1}
-    PolynomB::Array{DTPSAD{N, T},1}
-    MaxOrder::Int64
-    NumIntSteps::Int64
-    rad::Int64
-    fint1::DTPSAD{N, T}
-    fint2::DTPSAD{N, T}
-    gap::DTPSAD{N, T}
-    FringeBendEntrance::Int64
-    FringeBendExit::Int64
-    FringeQuadEntrance::Int64
-    FringeQuadExit::Int64
-    FringeIntM0::Array{DTPSAD{N, T},1}
-    FringeIntP0::Array{DTPSAD{N, T},1}
-    T1::Array{DTPSAD{N, T},1}
-    T2::Array{DTPSAD{N, T},1}
-    R1::Array{DTPSAD{N, T},2}
-    R2::Array{DTPSAD{N, T},2}
-    RApertures::Array{Float64,1}
-    EApertures::Array{Float64,1}
-    KickAngle::Array{DTPSAD{N, T},1}
-    eletype::String
-end
-function TSBEND(;name::String = "SBend", len::T = 0.0, angle::T = 0.0, e1::T = 0.0, e2::T = 0.0, 
-                PolynomA::Array{T,1} = zeros(4), PolynomB::Array{T,1} = zeros(4), 
-                MaxOrder::Int64=0, NumIntSteps::Int64 = 10, rad::Int64=0, fint1::T = 0.0, fint2::T = 0.0, 
-                gap::T = 0.0, FringeBendEntrance::Int64 = 1, FringeBendExit::Int64 = 1, 
-                FringeQuadEntrance::Int64 = 0, FringeQuadExit::Int64 = 0, FringeIntM0::Array{T,1} = zeros(5), 
-                FringeIntP0::Array{T,1} = zeros(5), T1::Array{T,1} = zeros(6), 
-                T2::Array{T,1} = zeros(6), R1::Array{T,2} = zeros(6, 6), 
-                R2::Array{T,2} = zeros(6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6), 
-                EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{T,1} = zeros(2)) where T <: Number
-    if PolynomB[2] != 0.0
-        MaxOrder = 1
-    end
-    if PolynomB[3] != 0.0
-        MaxOrder = 2
-    end
-    if PolynomB[4] != 0.0
-        MaxOrder = 3
-    end
-    TSBEND{NVAR(), T}(name, DTPSAD(len), DTPSAD(angle), DTPSAD(e1), DTPSAD(e2), DTPSAD.(PolynomA), DTPSAD.(PolynomB), MaxOrder, NumIntSteps, rad, DTPSAD(fint1), DTPSAD(fint2), DTPSAD(gap),
-        FringeBendEntrance, FringeBendExit, FringeQuadEntrance, FringeQuadExit, DTPSAD.(FringeIntM0), DTPSAD.(FringeIntP0),
-        DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2), RApertures, EApertures, DTPSAD.(KickAngle), "SBEND")
-end
-TSBEND(name::String, len::DTPSAD{N, T}, angle::DTPSAD{N, T}, e1::DTPSAD{N, T}, e2::DTPSAD{N, T}, 
-        PolynomA::Array{DTPSAD{N, T},1}, PolynomB::Array{DTPSAD{N, T},1}, MaxOrder::Int64, 
-        NumIntSteps::Int64, rad::Int64, fint1::DTPSAD{N, T}, fint2::DTPSAD{N, T}, 
-        gap::DTPSAD{N, T}, FringeBendEntrance::Int64, FringeBendExit::Int64, 
-        FringeQuadEntrance::Int64, FringeQuadExit::Int64, FringeIntM0::Array{DTPSAD{N, T},1}, 
-        FringeIntP0::Array{DTPSAD{N, T},1}, T1::Array{DTPSAD{N, T},1}, 
-        T2::Array{DTPSAD{N, T},1}, R1::Array{DTPSAD{N, T},2}, R2::Array{DTPSAD{N, T},2},
-        RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{DTPSAD{N, T},1},
-        eletype::String) where {N, T <: Number} =
-    TSBEND{N, T}(name, len, angle, e1, e2, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, fint1, fint2, gap,
-        FringeBendEntrance, FringeBendExit, FringeQuadEntrance, FringeQuadExit,
-        FringeIntM0, FringeIntP0,
-        T1, T2, R1, R2, RApertures, EApertures, KickAngle, eletype)
-
-function TRBEND(;name::String = "RBend", len::T = 0.0, angle::T = 0.0, PolynomA::Array{T,1} = zeros(4), 
-                PolynomB::Array{T,1} = zeros(4), MaxOrder::Int64=0, NumIntSteps::Int64 = 10, rad::Int64=0, fint1::T = 0.0, 
-                fint2::T = 0.0, gap::T = 0.0, FringeBendEntrance::Int64 = 1, FringeBendExit::Int64 = 1, 
-                FringeQuadEntrance::Int64 = 0, FringeQuadExit::Int64 = 0, FringeIntM0::Array{T,1} = zeros(5), 
-                FringeIntP0::Array{T,1} = zeros(5), T1::Array{T,1} = zeros(6), T2::Array{T,1} = zeros(6), 
-                R1::Array{T,2} = zeros(6, 6), R2::Array{T,2} = zeros(6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6), 
-                EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{T,1} = zeros(2)) where T <: Number
-    e1 = angle/2.0
-    e2 = angle/2.0
-    if PolynomB[2] != 0.0
-        MaxOrder = 1
-    end
-    if PolynomB[3] != 0.0
-        MaxOrder = 2
-    end
-    if PolynomB[4] != 0.0
-        MaxOrder = 3
-    end
-    return TSBEND(name=name, len=len, angle=angle, e1=e1, e2=e2, PolynomA=PolynomA, PolynomB=PolynomB, MaxOrder=MaxOrder, 
-                NumIntSteps=NumIntSteps, rad=rad, fint1=fint1, fint2=fint2, gap=gap, FringeBendEntrance=FringeBendEntrance, 
-                FringeBendExit=FringeBendExit, FringeQuadEntrance=FringeQuadEntrance, FringeQuadExit=FringeQuadExit, 
-                FringeIntM0=FringeIntM0, FringeIntP0=FringeIntP0, T1=T1, T2=T2, R1=R1, R2=R2, RApertures=RApertures, 
-                EApertures=EApertures, KickAngle=KickAngle)
-end
-
-mutable struct TESBEND{N, T} <: AbstractTPSAElement
-    name::String
-    len::DTPSAD{N, T}
-    angle::DTPSAD{N, T}
-    e1::DTPSAD{N, T}
-    e2::DTPSAD{N, T}
-    PolynomA::Array{DTPSAD{N, T},1}
-    PolynomB::Array{DTPSAD{N, T},1}
-    MaxOrder::Int64
-    NumIntSteps::Int64
-    rad::Int64
-    gK::DTPSAD{N, T}
-    FringeBendEntrance::Int64
-    FringeBendExit::Int64
-    FringeQuadEntrance::Int64
-    FringeQuadExit::Int64
-    T1::Array{DTPSAD{N, T},1}
-    T2::Array{DTPSAD{N, T},1}
-    R1::Array{DTPSAD{N, T},2}
-    R2::Array{DTPSAD{N, T},2}
-    RApertures::Array{Float64,1}
-    EApertures::Array{Float64,1}
-    KickAngle::Array{DTPSAD{N, T},1}
-    eletype::String
-end
-function TESBEND(;name::String = "ESBend", len::T = 0.0, angle::T = 0.0, e1::T = 0.0, e2::T = 0.0, 
-                PolynomA::Array{T,1} = zeros(4), PolynomB::Array{T,1} = zeros(4), 
-                MaxOrder::Int64=0, NumIntSteps::Int64 = 10, rad::Int64=0,
-                gK::T = 0.0, FringeBendEntrance::Int64 = 1, FringeBendExit::Int64 = 1, 
-                FringeQuadEntrance::Int64 = 0, FringeQuadExit::Int64 = 0, T1::Array{T,1} = zeros(6), 
-                T2::Array{T,1} = zeros(6), R1::Array{T,2} = zeros(6, 6), 
-                R2::Array{T,2} = zeros(6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6), 
-                EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{T,1} = zeros(2)) where T <: Number
-    if PolynomB[2] != 0.0
-        MaxOrder = 1
-    end
-    if PolynomB[3] != 0.0
-        MaxOrder = 2
-    end
-    if PolynomB[4] != 0.0
-        MaxOrder = 3
-    end
-    TESBEND{NVAR(), T}(name, DTPSAD(len), DTPSAD(angle), DTPSAD(e1), DTPSAD(e2), DTPSAD.(PolynomA), DTPSAD.(PolynomB), MaxOrder, NumIntSteps, rad, DTPSAD(gK), 
-        FringeBendEntrance, FringeBendExit, FringeQuadEntrance, FringeQuadExit, 
-        DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2), RApertures, EApertures, DTPSAD.(KickAngle), "ESBEND")
-end
-TESBEND(name::String, len::DTPSAD{N, T}, angle::DTPSAD{N, T}, e1::DTPSAD{N, T}, e2::DTPSAD{N, T}, 
-        PolynomA::Array{DTPSAD{N, T},1}, PolynomB::Array{DTPSAD{N, T},1}, MaxOrder::Int64, 
-        NumIntSteps::Int64, rad::Int64, gK::DTPSAD{N, T}, FringeBendEntrance::Int64, FringeBendExit::Int64, 
-        FringeQuadEntrance::Int64, FringeQuadExit::Int64, T1::Array{DTPSAD{N, T},1}, 
-        T2::Array{DTPSAD{N, T},1}, R1::Array{DTPSAD{N, T},2}, R2::Array{DTPSAD{N, T},2},
-        RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{DTPSAD{N, T},1},
-        eletype::String) where {N, T <: Number} =
-    TESBEND{N, T}(name, len, angle, e1, e2, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, gK,
-        FringeBendEntrance, FringeBendExit, FringeQuadEntrance, FringeQuadExit,
-        T1, T2, R1, R2, RApertures, EApertures, KickAngle, eletype)
-
-function TERBEND(;name::String = "ESBend", len::T = 0.0, angle::T = 0.0, 
-    PolynomA::Array{T,1} = zeros(4), PolynomB::Array{T,1} = zeros(4), 
-    MaxOrder::Int64=0, NumIntSteps::Int64 = 10, rad::Int64=0,
-    gK::T = 0.0, FringeBendEntrance::Int64 = 1, FringeBendExit::Int64 = 1, 
-    FringeQuadEntrance::Int64 = 0, FringeQuadExit::Int64 = 0, T1::Array{T,1} = zeros(6), 
-    T2::Array{T,1} = zeros(6), R1::Array{T,2} = zeros(6, 6), 
-    R2::Array{T,2} = zeros(6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6), 
-    EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{T,1} = zeros(2)) where T <: Number
-
-    e1 = angle/2.0
-    e2 = angle/2.0
-    if PolynomB[2] != 0.0
-        MaxOrder = 1
-    end
-    if PolynomB[3] != 0.0
-        MaxOrder = 2
-    end
-    if PolynomB[4] != 0.0
-        MaxOrder = 3
-    end
-    return TESBEND(name=name, len=len, angle=angle, e1=e1, e2=e2, PolynomA=PolynomA, PolynomB=PolynomB, MaxOrder=MaxOrder, 
-                NumIntSteps=NumIntSteps, rad=rad, gK=gK, FringeBendEntrance=FringeBendEntrance, 
-                FringeBendExit=FringeBendExit, FringeQuadEntrance=FringeQuadEntrance, FringeQuadExit=FringeQuadExit, 
-                T1=T1, T2=T2, R1=R1, R2=R2, RApertures=RApertures, EApertures=EApertures, KickAngle=KickAngle)
-end
-
-mutable struct TRFCA{N, T} <: AbstractTPSAElement
-    name::String
-    len::DTPSAD{N, T}
-    volt::DTPSAD{N, T}
-    freq::DTPSAD{N, T}
-    h::DTPSAD{N, T}
-    lag::DTPSAD{N, T}
-    philag::DTPSAD{N, T}
-    energy::DTPSAD{N, T}
-    eletype::String
-end
-function TRFCA(;name::String = "RFCA", len::T = 0.0, volt::T = 0.0, freq::T = 0.0, h::T = 1.0, 
-                lag::T = 0.0, philag::T = 0.0, energy::T = 0.0) where T <: Number
-    TRFCA{NVAR(), T}(name, DTPSAD(len), DTPSAD(volt), DTPSAD(freq), DTPSAD(h), DTPSAD(lag), DTPSAD(philag), DTPSAD(energy), "RFCA")
-end
-TRFCA(name::String, len::DTPSAD{N, T}, volt::DTPSAD{N, T}, freq::DTPSAD{N, T}, 
-        h::DTPSAD{N, T}, lag::DTPSAD{N, T}, philag::DTPSAD{N, T}, energy::DTPSAD{N, T}, eletype::String) where {N, T <: Number} =
-    TRFCA{N, T}(name, len, volt, freq, h, lag, philag, energy, eletype)
-
-mutable struct TCRABCAVITY{N, T} <: AbstractTPSAElement
-    name::String 
-    len::DTPSAD{N, T}
-    volt::DTPSAD{N, T}  # voltage
-    freq::DTPSAD{N, T}  # frequency
-    k::DTPSAD{N, T}  # wave number
-    phi::DTPSAD{N, T}  # phase
-    errors::Array{DTPSAD{N, T},1} # 1: Voltage error, 2: Phase error
-    energy::DTPSAD{N, T}
-    eletype::String 
-end
-function TCRABCAVITY(;name::String = "CRABCAVITY", len::T = 0.0, volt::T = 0.0, 
-    freq::T = 0.0, phi::T = 0.0, errors::Array{T,1} = zeros(2), energy::T = 1e9) where T <: Number
-    k = 2*π*freq/2.99792458e8
-    return TCRABCAVITY{NVAR(), T}(name, DTPSAD(len), DTPSAD(volt), DTPSAD(freq), DTPSAD(k), DTPSAD(phi), DTPSAD.(errors), DTPSAD(energy), "CRABCAVITY")
-end
-TCRABCAVITY(name::String, len::DTPSAD{N, T}, volt::DTPSAD{N, T}, freq::DTPSAD{N, T}, k::DTPSAD{N, T},
-            phi::DTPSAD{N, T}, errors::Array{DTPSAD{N, T},1}, energy::DTPSAD{N, T}, eletype::String) where {N, T <: Number} =
-    TCRABCAVITY{N, T}(name, len, volt, freq, k, phi, errors, energy, eletype)
-
-mutable struct TCRABCAVITYK2{N, T} <: AbstractTPSAElement
-    name::String 
-    len::DTPSAD{N, T}
-    volt::DTPSAD{N, T}  # voltage
-    freq::DTPSAD{N, T}  # frequency
-    k::DTPSAD{N, T}  # wave number
-    phi::DTPSAD{N, T}  # phase
-    errors::Array{DTPSAD{N, T},1} # 1: Voltage error, 2: Phase error
-    k2::DTPSAD{N, T}
-    energy::DTPSAD{N, T}
-    eletype::String 
-end
-function TCRABCAVITYK2(;name::String = "CRABCAVITY", len::T = 0.0, volt::T = 0.0, 
-    freq::T = 0.0, phi::T = 0.0, k2::T = 0.0, errors::Array{T,1} = zeros(2), energy::T = 1e9) where T <: Number
-    k = 2*π*freq/2.99792458e8
-    return TCRABCAVITYK2{NVAR(), T}(name, DTPSAD(len), DTPSAD(volt), DTPSAD(freq), DTPSAD(k), DTPSAD(phi), DTPSAD(k2), DTPSAD.(errors), DTPSAD(energy), "CRABCAVITY")
-end
-TCRABCAVITYK2(name::String, len::DTPSAD{N, T}, volt::DTPSAD{N, T}, freq::DTPSAD{N, T}, k::DTPSAD{N, T},
-            phi::DTPSAD{N, T}, k2::DTPSAD{N, T}, errors::Array{DTPSAD{N, T},1}, energy::DTPSAD{N, T}, eletype::String) where {N, T <: Number} =
-    TCRABCAVITYK2{N, T}(name, len, volt, freq, k, phi, k2, errors, energy, eletype)
-
-mutable struct TthinMULTIPOLE{N, T} <: AbstractTPSAElement
-    name::String
-    len::DTPSAD{N, T}
-    PolynomA::Array{DTPSAD{N, T},1}
-    PolynomB::Array{DTPSAD{N, T},1}
-    MaxOrder::Int64
-    NumIntSteps::Int64
-    rad::Int64
-    FringeQuadEntrance::Int64
-    FringeQuadExit::Int64
-    T1::Array{DTPSAD{N, T},1}
-    T2::Array{DTPSAD{N, T},1}
-    R1::Array{DTPSAD{N, T},2}
-    R2::Array{DTPSAD{N, T},2}
-    RApertures::Array{Float64,1}
-    EApertures::Array{Float64,1}
-    KickAngle::Array{DTPSAD{N, T},1}
-    eletype::String
-end
-function TthinMULTIPOLE(;name::String = "thinMULTIPOLE", len::T = 0.0, PolynomA::Array{T,1} = zeros(4), 
-                PolynomB::Array{T,1} = zeros(4), MaxOrder::Int64=1, NumIntSteps::Int64 = 1, rad::Int64=0, 
-                FringeQuadEntrance::Int64 = 0, FringeQuadExit::Int64 = 0, T1::Array{T,1} = zeros(6), 
-                T2::Array{T,1} = zeros(6), R1::Array{T,2} = zeros(6, 6), 
-                R2::Array{T,2} = zeros(6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6), 
-                EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{T,1} = zeros(2)) where T <: Number
-
-    if PolynomB[3] != 0.0
-        MaxOrder = 2
-    end
-    if PolynomB[4] != 0.0
-        MaxOrder = 3
-    end
-    TthinMULTIPOLE{NVAR(), T}(name, DTPSAD(len), DTPSAD.(PolynomA), DTPSAD.(PolynomB), MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
-        DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2), RApertures, EApertures, DTPSAD.(KickAngle), "thinMULTIPOLE")
-end
-TthinMULTIPOLE(name::String, len::DTPSAD{N, T}, PolynomA::Array{DTPSAD{N, T},1}, 
-                PolynomB::Array{DTPSAD{N, T},1}, MaxOrder::Int64, NumIntSteps::Int64, rad::Int64, 
-                FringeQuadEntrance::Int64, FringeQuadExit::Int64, T1::Array{DTPSAD{N, T},1}, 
-                T2::Array{DTPSAD{N, T},1}, R1::Array{DTPSAD{N, T},2}, R2::Array{DTPSAD{N, T},2},
-                RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{DTPSAD{N, T},1},
-                eletype::String) where {N, T <: Number} =
-    TthinMULTIPOLE{N, T}(name, len, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
-        T1, T2, R1, R2, RApertures, EApertures, KickAngle, eletype)
-
-# TRANSLATION and YROTATION are used to convert the MAD-X lattice files
-mutable struct TTRANSLATION{N, T} <: AbstractTPSAElement
-    name::String
-    len::DTPSAD{N, T}
-    dx::DTPSAD{N, T}
-    dy::DTPSAD{N, T}
-    ds::DTPSAD{N, T}
-    eletype::String
-end
-function TTRANSLATION(;name::String = "TRANSLATION", len::T = 0.0, dx::T = 0.0, dy::T = 0.0, ds::T = 0.0) where T <: Number
-    TTRANSLATION{NVAR(), T}(name, DTPSAD(len), DTPSAD(dx), DTPSAD(dy), DTPSAD(ds), "TRANSLATION")
-end
-TTRANSLATION(name::String, len::DTPSAD{N, T}, dx::DTPSAD{N, T}, dy::DTPSAD{N, T}, ds::DTPSAD{N, T}, eletype::String) where {N, T <: Number} =
-    TTRANSLATION{N, T}(name, len, dx, dy, ds, eletype)
-
-mutable struct TYROTATION{N, T} <: AbstractTPSAElement
-    name::String
-    len::DTPSAD{N, T}
-    angle::DTPSAD{N, T}
-    eletype::String
-end
-function TYROTATION(;name::String = "YROTATION", len::T = 0.0, angle::T = 0.0) where T <: Number
-    TYROTATION{NVAR(), T}(name, DTPSAD(len), DTPSAD(angle), "YROTATION")
-end
-TYROTATION(name::String, len::DTPSAD{N, T}, angle::DTPSAD{N, T}, eletype::String) where {N, T <: Number} =
-    TYROTATION{N, T}(name, len, angle, eletype)
 
 function strthinkick!(r::SubArray, A::Vector{DTPSAD{N, T}}, B::Vector{DTPSAD{N, T}}, L::DTPSAD{N, T}, max_order::Int) where {N, T <: Number}
     # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
@@ -1181,7 +581,7 @@ function drift6!(r::SubArray, le::DTPSAD{N, T}) where {N, T <: Number}
     return nothing
 end 
 
-function pass!(ele::TDRIFT, rin::Vector{DTPSAD{N, T}}, npart::Int, particles::TBeam) where {N, T <: Number}
+function pass!(ele::DRIFT{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, npart::Int, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     @inbounds for c in 1:npart
         lost_flag = particles.lost_flag[c]
         if lost_flag == 1
@@ -1207,7 +607,7 @@ function pass!(ele::TDRIFT, rin::Vector{DTPSAD{N, T}}, npart::Int, particles::TB
     return nothing
 end
 
-function pass!(ele::TQUAD, rin::Vector{DTPSAD{N, T}}, npart::Int, particles::TBeam) where {N, T <: Number}
+function pass!(ele::QUAD{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, npart::Int, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     @inbounds for c in 1:npart
         lost_flag = particles.lost_flag[c]
         if lost_flag == 1
@@ -1273,7 +673,7 @@ function pass!(ele::TQUAD, rin::Vector{DTPSAD{N, T}}, npart::Int, particles::TBe
     return nothing
 end
 
-function pass!(ele::TCORRECTOR, rin::Vector{DTPSAD{N, T}}, npart::Int, particles::TBeam) where {N, T <: Number}
+function pass!(ele::CORRECTOR{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, npart::Int, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     @inbounds for c in 1:npart
         lost_flag = particles.lost_flag[c]
         if lost_flag == 1
@@ -1310,11 +710,11 @@ function pass!(ele::TCORRECTOR, rin::Vector{DTPSAD{N, T}}, npart::Int, particles
     return nothing
 end
 
-function pass!(ele::TMARKER, rin::Vector{DTPSAD{N, T}}, npart::Int, particles::TBeam) where {N, T <: Number}
+function pass!(ele::MARKER{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, npart::Int, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     return nothing
 end
 
-function pass!(ele::TSOLENOID, rin::Vector{DTPSAD{N, T}}, npart::Int, particles::TBeam) where {N, T <: Number}
+function pass!(ele::SOLENOID{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, npart::Int, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     @inbounds for c in 1:npart
         lost_flag = particles.lost_flag[c]
         if lost_flag == 1
@@ -1661,7 +1061,7 @@ function StrMPoleSymplectic4RadPass!(r::Vector{DTPSAD{N, T}}, le::DTPSAD{N, T}, 
     return nothing
 end
 
-function pass!(ele::TKQUAD, r_in::Vector{DTPSAD{N, T}}, num_particles::Int64, particles::TBeam) where {N, T <: Number}
+function pass!(ele::KQUAD{DTPSAD{N, T}}, r_in::Vector{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     lost_flags = particles.lost_flag
     PolynomB = zeros(DTPSAD{N, T}, 4)
     E0 = particles.energy
@@ -1710,7 +1110,7 @@ function pass!(ele::TKQUAD, r_in::Vector{DTPSAD{N, T}}, num_particles::Int64, pa
     return nothing
 end
 
-function pass!(ele::TKSEXT, r_in::Vector{DTPSAD{N, T}}, num_particles::Int64, particles::TBeam) where {N, T <: Number}
+function pass!(ele::KSEXT{DTPSAD{N, T}}, r_in::Vector{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     rad_const = DTPSAD(0.0)
     lost_flags = particles.lost_flag
     PolynomB = zeros(DTPSAD{N, T}, 4)
@@ -1757,7 +1157,7 @@ function pass!(ele::TKSEXT, r_in::Vector{DTPSAD{N, T}}, num_particles::Int64, pa
     return nothing
 end
 
-function pass!(ele::TKOCT, r_in::Vector{DTPSAD{N, T}}, num_particles::Int64, particles::TBeam) where {N, T <: Number}
+function pass!(ele::KOCT{DTPSAD{N, T}}, r_in::Vector{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     rad_const = DTPSAD(0.0)
 
     lost_flags = particles.lost_flag
@@ -2001,7 +1401,7 @@ function BendSymplecticPassRad!(r::Vector{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti:
     return nothing
 end
 
-function pass!(ele::TSBEND, r_in::Vector{DTPSAD{N, T}}, num_particles::Int64, particles::TBeam) where {N, T <: Number}
+function pass!(ele::SBEND{DTPSAD{N, T}}, r_in::Vector{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     lost_flags = particles.lost_flag
     irho = ele.angle / ele.len
     E0 = particles.energy
@@ -2027,7 +1427,7 @@ function pass!(ele::TSBEND, r_in::Vector{DTPSAD{N, T}}, num_particles::Int64, pa
     return nothing
 end
 
-function pass!(ele::TESBEND, r_in::Array{DTPSAD{N, T},1}, num_particles::Int64, particles::TBeam) where {N, T <: Number}
+function pass!(ele::ESBEND{DTPSAD{N, T}}, r_in::Array{DTPSAD{N, T},1}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     lost_flags = particles.lost_flag
     E0 = particles.energy
     rad_const = DTPSAD(0.0)
@@ -2059,7 +1459,7 @@ function pass!(ele::TESBEND, r_in::Array{DTPSAD{N, T},1}, num_particles::Int64, 
     return nothing
 end
 
-function pass!(ele::TRFCA, rin::Vector{DTPSAD{N, T}}, npart::Int64, particles::TBeam) where {N, T <: Number}
+function pass!(ele::RFCA{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, npart::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     if ele.energy == 0
         println("Energy is not defined for RFCA ", ele.name)
     end
@@ -2095,7 +1495,7 @@ function pass!(ele::TRFCA, rin::Vector{DTPSAD{N, T}}, npart::Int64, particles::T
     return nothing
 end
 
-function pass!(cavity::TCRABCAVITY, rin::Vector{DTPSAD{N, T}}, npart::Int64, particles::TBeam) where {N, T <: Number}
+function pass!(cavity::CRABCAVITY{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, npart::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     beta = particles.beta
     @inbounds for c in 1:npart
         if isone(particles.lost_flag[c])
@@ -2122,7 +1522,7 @@ function pass!(cavity::TCRABCAVITY, rin::Vector{DTPSAD{N, T}}, npart::Int64, par
     return nothing
 end
 
-function pass!(cavity::TCRABCAVITYK2, rin::Vector{DTPSAD{N, T}}, npart::Int64, particles::TBeam) where {N, T <: Number}
+function pass!(cavity::CRABCAVITY_K2{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, npart::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     beta = particles.beta
     @inbounds for c in 1:npart
         if isone(particles.lost_flag[c])
@@ -2157,7 +1557,7 @@ function pass!(cavity::TCRABCAVITYK2, rin::Vector{DTPSAD{N, T}}, npart::Int64, p
     return nothing
 end
 
-function pass!(ele::TthinMULTIPOLE, rin::Vector{DTPSAD{N, T}}, npart::Int64, particles::TBeam) where {N, T <: Number}
+function pass!(ele::thinMULTIPOLE{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, npart::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
 
     # no bending
@@ -2205,7 +1605,7 @@ function pass!(ele::TthinMULTIPOLE, rin::Vector{DTPSAD{N, T}}, npart::Int64, par
     return nothing
 end
 
-function pass!(elem::TTRANSLATION, r_in::Vector{DTPSAD{N, T}}, num_particles::Int64, particles::TBeam) where {N, T <: Number}
+function pass!(elem::TRANSLATION{DTPSAD{N, T}}, r_in::Vector{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     @inbounds for c in 1:num_particles
         if isone(particles.lost_flag[c])
             continue
@@ -2229,7 +1629,7 @@ function pass!(elem::TTRANSLATION, r_in::Vector{DTPSAD{N, T}}, num_particles::In
     return nothing
 end
 
-function pass!(elem::TYROTATION, r_in::Vector{DTPSAD{N, T}}, num_particles::Int64, particles::TBeam) where {N, T <: Number}
+function pass!(elem::YROTATION{DTPSAD{N, T}}, r_in::Vector{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     angle = -elem.angle
     if angle == 0.0
         return nothing
@@ -2262,7 +1662,7 @@ function pass!(elem::TYROTATION, r_in::Vector{DTPSAD{N, T}}, num_particles::Int6
     return nothing
 end
 
-function linepass!(line::Vector{<:AbstractElement}, particles::TBeam)
+function linepass!(line::Vector{<:AbstractElement{DTPSAD{N, T}}}, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     np = particles.nmacro
     particles6 = matrix_to_array(particles.r)
     if length(particles6) != np * 6
@@ -2277,7 +1677,7 @@ function linepass!(line::Vector{<:AbstractElement}, particles::TBeam)
     return nothing
 end
 
-function linepass!(line::Vector{<:AbstractElement}, particles::TBeam, refpts::Vector)
+function linepass!(line::Vector{<:AbstractElement{DTPSAD{N, T}}}, particles::Beam{DTPSAD{N, T}}, refpts::Vector) where {N, T <: Number}
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     np = particles.nmacro
@@ -2298,7 +1698,7 @@ function linepass!(line::Vector{<:AbstractElement}, particles::TBeam, refpts::Ve
     return saved_particles
 end
 
-function ringpass!(line::Vector{<:AbstractElement}, particles::TBeam, nturns::Int)
+function ringpass!(line::Vector{<:AbstractElement{DTPSAD{N, T}}}, particles::Beam{DTPSAD{N, T}}, nturns::Int) where {N, T <: Number}
     for turn in 1:nturns
         linepass!(line, particles)
     end
@@ -2330,76 +1730,131 @@ function array_to_matrix(r::Vector{DTPSAD{N, T}}, np::Int) where {N, T <: Number
     return mat
 end
 
-function _strip(param)
-    if isa(param, String)
-        return param
-    elseif isa(param, Float64)
-        return param
-    elseif isa(param, Int64) || isa(param, Int32)
-        return param
-    elseif isa(param, DTPSAD{NVAR(), Float64}) 
-        return param.val
-    elseif isa(param, Vector{DTPSAD{NVAR(), Float64}}) 
-        return [_strip(p) for p in param]
-    elseif isa(param, Matrix{DTPSAD{NVAR(), Float64}})
-        Mat = zeros(Float64, size(param))
-        for i in eachindex(param)
-            Mat[i] = _strip(param[i])
-        end
-        return Mat
-    elseif isa(param, Vector{Float64}) || isa(param, Vector{Int64}) || isa(param, Vector{Int32})
-        return param
-    elseif isa(param, Matrix{Float64}) || isa(param, Matrix{Int64}) || isa(param, Matrix{Int32})
-        return Param
+# Conversion functions for AbstractElement{Float64} ↔ AbstractElement{DTPSAD{N, T}}
+
+function _strip(param::DTPSAD{N, T}) where {N, T}
+    return param.val
+end
+
+function _strip(param::Vector{DTPSAD{N, T}}) where {N, T}
+    return [_strip(p) for p in param]
+end
+
+function _strip(param::Matrix{DTPSAD{N, T}}) where {N, T}
+    Mat = zeros(Float64, size(param))
+    for i in eachindex(param)
+        Mat[i] = _strip(param[i])
     end
+    return Mat
 end
-function to_Number(te::AbstractTPSAElement)
-    real_sym = Symbol(startswith(string(nameof(typeof(te))), "T") ? 
-                string(nameof(typeof(te)))[2:end] : 
-                error("Type $(typeof(te)) does not start with T"))
-    real_type = getfield(parentmodule(typeof(te)), real_sym)
 
+function _strip(param::Union{String, Float64, Int64, Int32, Vector{Float64}, Vector{Int64}, Vector{Int32}, Matrix{Float64}, Matrix{Int64}, Matrix{Int32}})
+    return param
+end
+
+function _strip(param)
+    # Fallback for any other type
+    return param
+end
+
+# Convert AbstractElement{DTPSAD{N, T}} to AbstractElement{Float64}
+function to_Number(te::AbstractElement{DTPSAD{N, T}}) where {N, T}
+    # Get the base element type by removing the DTPSAD parameterization
+    base_type = typeof(te).name.wrapper
+    
+    # Extract field values and convert DTPSAD to Float64
     vals = map(f -> _strip(getfield(te, f)), fieldnames(typeof(te)))
-
-    # 2-c. call inner constructor directly
-    return real_type(vals...)
+    
+    # Create the Float64 version
+    return base_type(vals...)
 end
 
-# convert real elements to their corresponding types
-function TPSAD2Number(line::Vector{<:AbstractTPSAElement})
+# Convert vector of TPSA elements to Number elements
+function TPSAD2Number(line::Vector{<:AbstractElement{DTPSAD{N, T}}}) where {N, T}
     return [to_Number(ele) for ele in line]
 end
 
-## reverse the conversion
-function _strip_inverse(param, fieldname::Symbol)
-    if isa(param, String)
-        return param
-    elseif isa(param, Float64)
-        return DTPSAD(param)
-    elseif isa(param, Int64) || isa(param, Int32) || 
-        isa(param, Vector{Int64}) || isa(param, Vector{Int32}) || 
-        isa(param, Matrix{Int64}) || isa(param, Matrix{Int32})
-        return param
-    elseif isa(param, Vector{Float64}) 
-        if fieldname == :RApertures || fieldname == :EApertures
-            return param
-        else
-            return [DTPSAD(p) for p in param]
-        end
-    elseif isa(param, Matrix{Float64}) 
-        Mat = zeros(DTPSAD{NVAR(), Float64}, size(param, 1), size(param, 2))
-        for i in eachindex(param)
-            Mat[i] = DTPSAD(param[i])
-        end
-        return Mat
+# Reverse conversion functions
+function _strip_inverse(param::Float64, fieldname::Symbol, ::Type{DTPSAD{N, T}}) where {N, T}
+    return DTPSAD(param)
+end
+
+function _strip_inverse(param::Vector{Float64}, fieldname::Symbol, ::Type{DTPSAD{N, T}}) where {N, T}
+    if fieldname == :RApertures || fieldname == :EApertures
+        return param  # Keep apertures as Float64 vectors
+    else
+        return [DTPSAD(p) for p in param]
     end
 end
-function to_TPSAD(ele::AbstractElement)
-    sym = Symbol("T" * string(nameof(typeof(ele))))
-    vals = map(f -> _strip_inverse(getfield(ele, f), f), fieldnames(typeof(ele)))
-    TPSAD_type = getfield(parentmodule(typeof(ele)), sym)
-    return TPSAD_type(vals...)
+
+function _strip_inverse(param::Matrix{Float64}, fieldname::Symbol, ::Type{DTPSAD{N, T}}) where {N, T}
+    Mat = zeros(DTPSAD{N, T}, size(param))
+    for i in eachindex(param)
+        Mat[i] = DTPSAD(param[i])
+    end
+    return Mat
 end
-function Number2TPSAD(line::Vector{<:AbstractElement})
-    return [to_TPSAD(ele) for ele in line]
+
+function _strip_inverse(param::Union{String, Int64, Int32, Vector{Int64}, Vector{Int32}, Matrix{Int64}, Matrix{Int32}}, fieldname::Symbol, ::Type{DTPSAD{N, T}}) where {N, T}
+    return param  # Keep non-Float64 types as-is
+end
+
+function _strip_inverse(param, fieldname::Symbol, ::Type{DTPSAD{N, T}}) where {N, T}
+    return param  # Fallback for any other type
+end
+
+# Convert AbstractElement{Float64} to AbstractElement{DTPSAD{N, T}}
+function to_TPSAD(ele::AbstractElement{Float64}, ::Type{DTPSAD{N, T}}) where {N, T}
+    # Get the base element type
+    base_type = typeof(ele).name.wrapper
+    
+    # Extract field values and convert Float64 to DTPSAD{N, T}
+    vals = map(f -> _strip_inverse(getfield(ele, f), f, DTPSAD{N, T}), fieldnames(typeof(ele)))
+    
+    # Create the DTPSAD version
+    return base_type(vals...)
+end
+
+# Convenience function using current NVAR()
+function to_TPSAD(ele::AbstractElement{Float64})
+    return to_TPSAD(ele, DTPSAD{NVAR(), Float64})
+end
+
+# Convert vector of Number elements to TPSA elements
+function Number2TPSAD(line::Vector{<:AbstractElement{Float64}}, ::Type{DTPSAD{N, T}}) where {N, T}
+    return [to_TPSAD(ele, DTPSAD{N, T}) for ele in line]
+end
+
+# Convenience function using current NVAR()
+function Number2TPSAD(line::Vector{<:AbstractElement{Float64}})
+    return Number2TPSAD(line, DTPSAD{NVAR(), Float64})
+end
+
+# Helper functions for specific NVAR dimensions
+function to_TPSAD_N(ele::AbstractElement{Float64}, N::Int)
+    return to_TPSAD(ele, DTPSAD{N, Float64})
+end
+
+function Number2TPSAD_N(line::Vector{<:AbstractElement{Float64}}, N::Int)
+    return Number2TPSAD(line, DTPSAD{N, Float64})
+end
+
+# Generic conversion between different DTPSAD dimensions
+function convert_TPSAD_dimension(te::AbstractElement{DTPSAD{N1, T}}, ::Type{DTPSAD{N2, T}}) where {N1, N2, T}
+    # First convert to Float64, then to target DTPSAD type
+    number_ele = to_Number(te)
+    return to_TPSAD(number_ele, DTPSAD{N2, T})
+end
+
+function convert_TPSAD_dimension(line::Vector{<:AbstractElement{DTPSAD{N1, T}}}, ::Type{DTPSAD{N2, T}}) where {N1, N2, T}
+    return [convert_TPSAD_dimension(ele, DTPSAD{N2, T}) for ele in line]
+end
+
+# Convenience functions for dimension conversion
+function change_TPSA_dimension(te::AbstractElement{DTPSAD{N1, T}}, N2::Int) where {N1, T}
+    return convert_TPSAD_dimension(te, DTPSAD{N2, T})
+end
+
+function change_TPSA_dimension(line::Vector{<:AbstractElement{DTPSAD{N1, T}}}, N2::Int) where {N1, T}
+    return convert_TPSAD_dimension(line, DTPSAD{N2, T})
 end

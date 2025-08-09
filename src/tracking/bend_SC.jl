@@ -289,11 +289,11 @@ function BendSymplecticPass_SC!(r::Array{Float64,1}, le::Float64, beti::Float64,
     return nothing
 end
 
-function pass!(ele::SBEND_SC, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass!(ele::SBEND_SC, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     # ele: SBEND_SC
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
-    # particles: Beam object
+    # particles: Beam{Float64} object
     lost_flags = particles.lost_flag
     irho = ele.angle / ele.len
     K = calculate_K(particles, particles.current)
@@ -618,7 +618,7 @@ function BendSymplecticPass_P_SC!(r::Array{Float64,1}, le::Float64, beti::Float6
     return nothing
 end
 
-function pass_P!(ele::SBEND_SC, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam)
+function pass_P!(ele::SBEND_SC, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
     # ele: SBEND_SC
     # r_in: 6-by-num_particles array
     # num_particles: number of particles

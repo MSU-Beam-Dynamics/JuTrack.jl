@@ -246,7 +246,7 @@ function pass_TPSA!(ele::SBEND, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; 
     # ele: SBEND
     # r_in: 6-by-1 TPSA array
     irho = ele.angle / ele.len
-    gamma = E0 / m0
+    gamma = (E0 + m0) / m0
     beta = sqrt(1.0 - 1.0 / gamma^2)
     if use_exact_beti == 1
         beti = 1.0 / particles.beta

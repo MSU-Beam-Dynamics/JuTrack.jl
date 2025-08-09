@@ -20,15 +20,15 @@ function array_to_matrix(array::Vector{Float64}, n::Int)
 end
 
 """
-    linepass!(line::Vector, particles::Beam)
+    linepass!(line::Vector, particles::Beam{Float64})
 
 Pass the beam through the line element by element.
 
 # Arguments
 - line::Vector: a vector of beam line elements
-- particles::Beam: a beam object
+- particles::Beam{Float64}: a beam object
 """
-function linepass!(line::Vector, particles::Beam)
+function linepass!(line::Vector, particles::Beam{Float64})
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     np = particles.nmacro
@@ -45,19 +45,19 @@ function linepass!(line::Vector, particles::Beam)
 end
 
 """
-    linepass!(line::Vector, particles::Beam, refpts::Vector)
+    linepass!(line::Vector, particles::Beam{Float64}, refpts::Vector)
 
 Pass particles through the line element by element. Save the particles at the reference points.
 
 # Arguments
 - line::Vector: a vector of beam line elements
-- particles::Beam: a beam object
+- particles::Beam{Float64}: a beam object
 - refpts::Vector: a vector of reference points
 
 # Returns
 - saved_particles::Vector: a vector of saved particles
 """
-function linepass!(line::Vector, particles::Beam, refpts::Vector)
+function linepass!(line::Vector, particles::Beam{Float64}, refpts::Vector)
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     np = particles.nmacro
@@ -79,18 +79,18 @@ function linepass!(line::Vector, particles::Beam, refpts::Vector)
 end
 
 """
-    ADlinepass!(line::Vector, particles::Beam, changed_idx::Vector, changed_ele::Vector)
+    ADlinepass!(line::Vector, particles::Beam{Float64}, changed_idx::Vector, changed_ele::Vector)
 
 Pass particles through the line element by element. The elements in the `changed_idx` will be replaced by the elements in `changed_ele`.
 This is a convinent function to implement automatic differentiation that avoid directly changing parameters in `line``.
 
 # Arguments
 - line::Vector: a vector of beam line elements
-- particles::Beam: a beam object
+- particles::Beam{Float64}: a beam object
 - changed_idx::Vector: a vector of indices of the elements to be changed
 - changed_ele::Vector: a vector of elements to replace the elements in `changed_idx`
 """
-function ADlinepass!(line::Vector, particles::Beam, changed_idx::Vector, changed_ele::Vector)
+function ADlinepass!(line::Vector, particles::Beam{Float64}, changed_idx::Vector, changed_ele::Vector)
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     np = particles.nmacro
@@ -113,7 +113,7 @@ function ADlinepass!(line::Vector, particles::Beam, changed_idx::Vector, changed
     return nothing
 end
 
-function ADlinepass!(line::Vector, id_list::Vector, particles::Beam, changed_idx::Vector, changed_ele::Vector)
+function ADlinepass!(line::Vector, id_list::Vector, particles::Beam{Float64}, changed_idx::Vector, changed_ele::Vector)
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     np = particles.nmacro
@@ -137,7 +137,7 @@ function ADlinepass!(line::Vector, id_list::Vector, particles::Beam, changed_idx
     return nothing
 end
 
-function ADlinepass!(line::Vector, particles::Beam, refpts::Vector, changed_idx::Vector, changed_ele::Vector)
+function ADlinepass!(line::Vector, particles::Beam{Float64}, refpts::Vector, changed_idx::Vector, changed_ele::Vector)
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     np = particles.nmacro
@@ -167,16 +167,16 @@ end
 
 
 """
-    ringpass!(line::Vector, particles::Beam, nturn::Int)
+    ringpass!(line::Vector, particles::Beam{Float64}, nturn::Int)
 
 Pass particles through the ring for `nturn` turns.
 
 # Arguments
 - line::Vector: a vector of beam line elements
-- particles::Beam: a beam object
+- particles::Beam{Float64}: a beam object
 - nturn::Int: number of turns
 """
-function ringpass!(line::Vector, particles::Beam, nturn::Int)
+function ringpass!(line::Vector, particles::Beam{Float64}, nturn::Int)
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     for i in 1:nturn
@@ -186,17 +186,17 @@ function ringpass!(line::Vector, particles::Beam, nturn::Int)
 end
 
 """
-    ringpass!(line::Vector, particles::Beam, nturn::Int, save::Bool)
+    ringpass!(line::Vector, particles::Beam{Float64}, nturn::Int, save::Bool)
 
 Pass particles through the ring for `nturn` turns. Save the particles at each turn.
 
 # Arguments
 - line::Vector: a vector of beam line elements
-- particles::Beam: a beam object
+- particles::Beam{Float64}: a beam object
 - nturn::Int: number of turns
 - save::Bool: Flag
 """
-function ringpass!(line::Vector, particles::Beam, nturn::Int, save::Bool)
+function ringpass!(line::Vector, particles::Beam{Float64}, nturn::Int, save::Bool)
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     save_beam = []
@@ -210,25 +210,25 @@ function ringpass!(line::Vector, particles::Beam, nturn::Int, save::Bool)
 end
 
 """
-    ADringpass!(line::Vector, particles::Beam, nturn::Int, changed_idx::Vector, changed_ele::Vector)
+    ADringpass!(line::Vector, particles::Beam{Float64}, nturn::Int, changed_idx::Vector, changed_ele::Vector)
 
 Pass particles through the ring for `nturn` turns. The elements in the `changed_idx` will be replaced by the elements in `changed_ele`.
 This is a convinent function to implement automatic differentiation that avoid directly changing parameters in `line``.
 
 # Arguments
 - line::Vector: a vector of a ring
-- particles::Beam: a beam object
+- particles::Beam{Float64}: a beam object
 - nturn::Int: number of turns
 - changed_idx::Vector: a vector of indices of the elements to be changed
 - changed_ele::Vector: a vector of elements to replace the elements in `changed_idx`
 """
-function ADringpass!(line::Vector, particles::Beam, nturn::Int, changed_idx::Vector, changed_ele::Vector)
+function ADringpass!(line::Vector, particles::Beam{Float64}, nturn::Int, changed_idx::Vector, changed_ele::Vector)
     for i in 1:nturn
         ADlinepass!(line, particles, changed_idx, changed_ele)    
     end
     return nothing
 end
-function ADringpass!(line::Vector, particles::Beam, nturn::Int, changed_idx::Vector, changed_ele::Vector, save::Bool)
+function ADringpass!(line::Vector, particles::Beam{Float64}, nturn::Int, changed_idx::Vector, changed_ele::Vector, save::Bool)
     save_beam = []
     for i in 1:nturn
         ADlinepass!(line, particles, changed_idx, changed_ele)    
