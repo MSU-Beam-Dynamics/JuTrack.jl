@@ -89,15 +89,15 @@ Obtain derivatives of tracking result w.r.t the quadrupole strength k1
 ```
 set_tps_dim(2) # 2 variables
 function tracking_wrt_k1(x1::DTPSAD{NVAR(), Float64}, x2::DTPSAD{NVAR(), Float64})
-    D1 = TDRIFT(len=1.0)        # in fastTPSA, we use T+ElementName.  
-    D2 = TDRIFT(len=1.0)        # The use of TELEMENT is the same as standard ELEMENT 
-    Q1 = TKQUAD(len=1.0)        # All parameters in TELEMENT are described as TPS variables
-    Q2 = TKQUAD(len=1.0)
+    D1 = DRIFT(len=DTPSAD(1.0))        # in fastTPSA, we use T+ElementName.  
+    D2 = DRIFT(len=DTPSAD(1.0))        # The use of TELEMENT is the same as standard ELEMENT 
+    Q1 = KQUAD(len=DTPSAD(1.0))        # All parameters in TELEMENT are described as TPS variables
+    Q2 = KQUAD(len=DTPSAD(1.0))
 
     Q1.k1 = x1
     Q2.k1 = x2
 
-    beam = TBeam([0.1 0.0 0.0 0.0 0.0 0.0])
+    beam = Beam(DTPSAD.([0.1 0.0 0.0 0.0 0.0 0.0]))
 
     LINE = [D1, Q1, D2, Q2] 
     linepass!(LINE, beam)
