@@ -1662,6 +1662,142 @@ function pass!(elem::YROTATION{DTPSAD{N, T}}, r_in::Vector{DTPSAD{N, T}}, num_pa
     return nothing
 end
 
+function pass!(elem::LongitudinalRLCWake{DTPSAD{N, T}}, r_in::Vector{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
+    histogram1DinZ!(particles, particles.znbin, particles.inzindex, particles.zhist, particles.zhist_edges)
+    eN_b2E=particles.np*1.6021766208e-19*particles.charge^2/particles.energy/particles.beta/particles.beta/particles.atomnum
+    zhist_center = zeros(DTPSAD{NVAR(), Float64}, particles.znbin)
+    zhist_center .= ((particles.zhist_edges[1:end-1]) .+ (particles.zhist_edges[2:end]))./2.0
+    wakefield = zeros(DTPSAD{NVAR(), Float64}, particles.znbin)
+    for i in 1:particles.znbin
+        t = (zhist_center[i] -  0.0*zhist_center[end]) / 2.99792458e8
+        wakefield[i] = wakefieldfunc_RLCWake(elem, t)
+    end
+    wakepotential = zeros(DTPSAD{NVAR(), Float64}, particles.znbin)
+
+    halfzn = particles.znbin ÷ 2
+    for i=1:particles.znbin
+        for j=-halfzn:halfzn
+            if i-j>0 && i-j<=particles.znbin
+                wakepotential[i]+=wakefield[j+halfzn+1]*particles.zhist[i-j]/particles.nmacro
+            end
+        end
+    end
+
+    wakeatedge = zeros(DTPSAD{NVAR(), Float64}, particles.znbin+1)
+    wakeatedge[2:end-1] .= ((wakepotential[1:end-1]) .+ (wakepotential[2:end])) ./ 2.0
+    wakeatedge[1] = 2*wakeatedge[2]-wakeatedge[3]
+    wakeatedge[end] = 2*wakeatedge[end-1]-wakeatedge[end-2]
+
+    zsep = particles.zhist_edges[2]-particles.zhist_edges[1]
+    @inbounds for c in 1:num_particles
+        if isone(particles.lost_flag[c])
+            continue
+        end
+        r6 = @view r_in[(c-1)*6+1:c*6]
+        zloc=r6[5]
+        zindex=particles.inzindex[c]
+        wake1=wakeatedge[zindex]
+        wake2=wakeatedge[zindex+1]
+        wakezloc=wake1+(wake2-wake1)*(zloc-particles.zhist_edges[zindex])/zsep
+        r6[6]-=wakezloc*eN_b2E
+
+        if check_lost_GTPSA(r6)
+            particles.lost_flag[c] = 1
+        end
+    end
+    return nothing
+end
+
+function Bassetti_Erskine_xgty!(res::Vector{DTPSAD{N, T}}, x::DTPSAD{N, T}, y::DTPSAD{N, T}, sigmax::DTPSAD{N, T}, sigmay::DTPSAD{N, T}) where {N, T <: Number}
+    # Only positive y is valid for this function
+    # for y<0, Ex = Ex, Ey = -Ey
+    if y < 0.0
+        Bassetti_Erskine_xgty!(res, x, -y, sigmax, sigmay)
+        res[2] = -res[2]
+        return nothing
+    end
+    termexp=exp(-x*x/2.0/sigmax/sigmax-y*y/2.0/sigmay/sigmay)
+	sqrtδsigma2=sqrt(Complex(2*(sigmax*sigmax-sigmay*sigmay)))
+	term1=erfcx(-1.0im*(x+1.0im*y)/sqrtδsigma2)
+	term2=erfcx(-1.0im*(x*sigmay/sigmax+1.0im*y*sigmax/sigmay)/sqrtδsigma2)
+
+	complex_e=-1.0im*2*sqrt(pi)/sqrtδsigma2*(term1-termexp*term2)
+	res[1]=real(complex_e)
+    res[2]=-imag(complex_e)
+    res[3]=termexp/2.0/π/sigmax/sigmay
+    return nothing
+end
+function Bassetti_Erskine_ygtx!(res::Vector{DTPSAD{N, T}}, x::DTPSAD{N, T}, y::DTPSAD{N, T}, sigmax::DTPSAD{N, T}, sigmay::DTPSAD{N, T}) where {N, T <: Number}
+    # Only negative x is valid for this function
+    # for x>0, Ex = -Ex, Ey = Ey
+    if x > 0.0
+        Bassetti_Erskine_ygtx!(res, -x, y, sigmax, sigmay)
+        res[1] = -res[1]
+        return nothing
+    end
+    termexp=exp(-x*x/2/sigmax/sigmax-y*y/2/sigmay/sigmay)
+	sqrtδsigma2=sqrt(Complex(2*(sigmax*sigmax-sigmay*sigmay)))
+	term1=erfcx(-1.0im*(x+1.0im*y)/sqrtδsigma2)
+	term2=erfcx(-1.0im*(x*sigmay/sigmax+1.0im*y*sigmax/sigmay)/sqrtδsigma2)
+
+	complex_e=-1.0im*2*sqrt(pi)/sqrtδsigma2*(term1-termexp*term2)
+    res[1]=real(complex_e)
+    res[2]=-imag(complex_e)
+    res[3]=termexp/2.0/π/sigmax/sigmay
+	return nothing
+end
+function Bassetti_Erskine!(res::Vector{DTPSAD{N, T}}, x::DTPSAD{N, T}, y::DTPSAD{N, T}, sigmax::DTPSAD{N, T}, sigmay::DTPSAD{N, T}) where {N, T <: Number}
+    if sigmax > sigmay
+        Bassetti_Erskine_xgty!(res, x, y, sigmax, sigmay)
+        return nothing
+    else
+        Bassetti_Erskine_ygtx!(res, x, y, sigmax, sigmay) 
+        return nothing
+    end
+end
+function track_sbb!(rin::Vector{DTPSAD{N, T}}, num_macro::Int64, temp1::Vector{DTPSAD{N, T}}, temp2::Vector{DTPSAD{N, T}}, 
+    temp3::Vector{DTPSAD{N, T}}, temp4::Vector{DTPSAD{N, T}}, temp5::Vector{DTPSAD{N, T}}, sgb::StrongGaussianBeam, factor::DTPSAD{N, T}) where {N, T <: Number}
+    #factor=wb.particle.classrad0/wb.gamma*wb.particle.charge*sgb.particle.charge
+    
+    lumi=DTPSAD{N, T}(0.0)
+    fieldvec = zeros(DTPSAD{N, T}, 3)
+
+    @inbounds for i in 1:sgb.nzslice
+        slicelumi=DTPSAD{N, T}(0.0)
+        @inbounds for j in 1:num_macro
+            r6 = @view rin[(j-1)*6+1:j*6]
+            # temp1: collision zlocation, temp2: beamsize x, temp3: beamsize y, temp4: beta x, temp5: beta y
+            temp1[j] = (r6[5] .+ sgb.zslice_center[i])./2.0
+            temp4[j] = sgb.optics.optics_x.beta .+ sgb.optics.optics_x.gamma .* temp1[j] .* temp1[j] .- 2.0 .* sgb.optics.optics_x.alpha .* temp1[j]
+            temp2[j] = sgb.beamsize[1] .* sqrt.(temp4[j] ./ sgb.optics.optics_x.beta)
+            temp5[j] = sgb.optics.optics_y.beta .+ sgb.optics.optics_y.gamma .* temp1[j] .* temp1[j] .- 2.0 .* sgb.optics.optics_y.alpha .* temp1[j]
+            temp3[j] = sgb.beamsize[2] .* sqrt.(temp5[j] ./ sgb.optics.optics_y.beta)
+        
+            # temp4 and temp5 are free to change now.
+            r6[1] += (r6[2] .* temp1[j])
+            r6[3] += (r6[4] .* temp1[j])
+            Bassetti_Erskine!(fieldvec, r6[1], r6[3], temp2[j], temp3[j])
+            r6[2] += (sgb.zslice_npar[i]*factor) * fieldvec[1]
+            r6[4] += (sgb.zslice_npar[i]*factor) * fieldvec[2]
+            slicelumi += fieldvec[3]
+
+            r6[1] -= (r6[2] .* temp1[j])
+            r6[3] -= (r6[4] .* temp1[j])
+        end
+       
+        lumi += slicelumi * sgb.zslice_npar[i] #  Will do it outside* wb.num_particle / wb.num_macro
+    end
+
+    return lumi
+
+end
+function pass!(sgb::StrongGaussianBeam{DTPSAD{N, T}}, r_in::Vector{DTPSAD{N, T}}, num_macro::Int, wb::Beam{DTPSAD{N, T}}) where {N, T <: Number}
+    factor=wb.classrad0/wb.gamma*wb.charge*sgb.charge
+    lumi=track_sbb!(r_in, num_macro, wb.temp1, wb.temp2, wb.temp3, wb.temp4, wb.temp5, sgb, factor)
+    lumi *= wb.np / wb.nmacro
+    return nothing
+end
+
 function linepass!(line::Vector{<:AbstractElement{DTPSAD{N, T}}}, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     np = particles.nmacro
     particles6 = matrix_to_array(particles.r)

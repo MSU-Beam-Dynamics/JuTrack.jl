@@ -34,6 +34,8 @@ end
 function DTPSAD(a::DTPSAD{N,T}) where {N,T}
     return DTPSAD{N,T}(a.val, a.deriv)
 end
+(::Type{DTPSAD{N,T}})(x::Real) where {N,T} = DTPSAD{N,T}(T(x), zero(SVector{N,T}))
+
 function Base.convert(::Type{DTPSAD{N,T}}, b::Number) where {N,T<:Number}
     DTPSAD{N,T}(convert(T, b), zero(SVector{N,T}))
 end
@@ -110,6 +112,12 @@ Base.log(x::DTPSAD{N,T}) where {N,T} = begin
     end
     v = log(x.val)
     dv = x.deriv ./ x.val
+    DTPSAD{N,T}(v, dv)
+end
+
+Base.log1p(x::DTPSAD{N,T}) where {N,T} = begin
+    v = log1p(x.val)
+    dv = x.deriv ./ (x.val + one(T))
     DTPSAD{N,T}(v, dv)
 end
 
@@ -280,6 +288,26 @@ Base.broadcastable(x::DTPSAD{N,T}) where {N,T} = Ref(x)
 Base.iszero(x::DTPSAD{N,T}) where {N,T} = iszero(x.val) #&& all(iszero, x.deriv)
 
 Base.sign(x::DTPSAD{N,T}) where {N,T} = sign(x.val)
+
+Base.copysign(x::DTPSAD{N,T}, y::DTPSAD{N,T}) where {N,T} = begin
+    # copysign(x, y) returns x with the sign of y
+    s = sign(y.val)
+    if s == 0
+        # Handle y = 0 case: copysign(x, 0.0) = abs(x), copysign(x, -0.0) = -abs(x)
+        s = sign(one(T) / y.val)  # This handles ±0.0 correctly
+    end
+    DTPSAD{N,T}(copysign(x.val, y.val), s .* x.deriv)
+end
+
+Base.copysign(x::DTPSAD{N,T}, y::Real) where {N,T} = begin
+    s = sign(y)
+    if s == 0
+        s = sign(one(T) / y)  # Handle ±0.0
+    end
+    DTPSAD{N,T}(copysign(x.val, y), s .* x.deriv)
+end
+
+Base.copysign(x::Real, y::DTPSAD{N,T}) where {N,T} = copysign(x, y.val)
 
 Base.abs(x::DTPSAD{N,T}) where {N,T} = begin
     s = sign(x.val)
@@ -555,7 +583,21 @@ Base.ones(::Type{DTPSAD{N,T}}, m::Integer, n::Integer, p::Integer) where {N,T} =
     [DTPSAD{N,T}(one(T), zero(SVector{N,T})) for _ in 1:m, _ in 1:n, _ in 1:p]
 
 Base.similar(x::DTPSAD{N,T}) where {N,T} = DTPSAD{N,T}(zero(T), zero(SVector{N,T}))
-Base.transpose(x::DTPSAD{N,T}) where {N,T} = x  
+Base.transpose(x::DTPSAD{N,T}) where {N,T} = x 
+
+Base.round(x::DTPSAD{N,T}) where {N,T} = DTPSAD{N,T}(round(x.val), zero(SVector{N,T}))
+Base.floor(x::DTPSAD{N,T}) where {N,T} = DTPSAD{N,T}(floor(x.val), zero(SVector{N,T}))
+Base.ceil(x::DTPSAD{N,T}) where {N,T} = DTPSAD{N,T}(ceil(x.val), zero(SVector{N,T}))
+
+Base.Int(x::DTPSAD{N,T}) where {N,T} = Int(x.val)
+Base.Float64(x::DTPSAD{N,T}) where {N,T} = Float64(x.val)
+
+
+# Adjoint (conjugate transpose) - same as conj for scalars
+Base.adjoint(x::DTPSAD{N,T}) where {N,T} = conj(x)
+# For real DTPSAD, adjoint is just the identity
+Base.adjoint(x::DTPSAD{N,T}) where {N,T<:Real} = x
+
 # copy
 Base.copy(x::DTPSAD{N,T}) where {N,T} = DTPSAD{N,T}(x.val, x.deriv)
 Base.copy(x::AbstractArray{<:DTPSAD{N,T}}) where {N,T} = 
@@ -613,6 +655,44 @@ function Gradient(f, x::AbstractVector{<:Number}, Primal::Bool=false)
     # promote input to duals with unit derivative
     X = [DTPSAD(x[i], i) for i in 1:n]
     y = f(X...)                            # splat so users can write f(x1,x2,…) or f(X)
+
+    if y isa AbstractVector
+        if length(y) != 1
+            throw(ArgumentError("Function must return a single value. Use Jacobian for multiple outputs."))
+        else
+            y = y[1]  # extract single value from vector
+        end
+    end
+    if y isa Tuple
+        throw(ArgumentError("Function must return a single value. Use 'Jacobian' for multiple outputs."))
+    end
+    
+    y_der = y.deriv                       # StaticVector
+    if Primal
+        return collect(y_der), y.val  # return both derivative and value
+    else
+        return collect(y_der)           # return only the derivative
+    end
+end
+
+function Gradient(f, x::Vector{DTPSAD{N, T}}, Primal::Bool=false) where {N, T}
+    n = length(x)
+    NVAR() != n && set_tps_dim(n)           # make sure the dual length matches
+    # promote input to duals with unit derivative
+    X = copy(x)
+    y = f(X...)                            # splat so users can write f(x1,x2,…) or f(X)
+
+    if y isa AbstractVector
+        if length(y) != 1
+            throw(ArgumentError("Function must return a single value. Use Jacobian for multiple outputs."))
+        else
+            y = y[1]  # extract single value from vector
+        end
+    end
+    if y isa Tuple
+        throw(ArgumentError("Function must return a single value. Use 'Jacobian' for multiple outputs."))
+    end
+    
     y_der = y.deriv                       # StaticVector
     if Primal
         return collect(y_der), y.val  # return both derivative and value
@@ -640,5 +720,26 @@ function Jacobian(F, x::AbstractVector{<:Number}, Primal::Bool=false)
         return J
     end
 end
+
+function Jacobian(F, x::Vector{DTPSAD{N, T}}, Primal::Bool=false) where {N, T}
+    n = length(x)
+    NVAR() != n && set_tps_dim(n)
+    X = copy(x)
+
+    # call F and coerce result to an AbstractVector of DTPSADs
+    Y = F(X...) isa AbstractVector ? F(X...) : collect(F(X...))
+    m = length(Y)
+    J = Matrix{Float64}(undef, m, n)
+    @inbounds for k in 1:m
+        J[k, :] .= Y[k].deriv     # each output’s derivative row
+    end
+    if Primal
+        # if Primal is true, return both Jacobian and function value
+        return J, [y.val for y in Y]
+    else
+        return J
+    end
+end
+
 export Gradient, Jacobian
-end # module TPSAadStatic
+end

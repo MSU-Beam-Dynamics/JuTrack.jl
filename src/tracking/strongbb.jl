@@ -1,9 +1,7 @@
-using SpecialFunctions
-# using Enzyme
+# using SpecialFunctions
 import .EnzymeRules: forward # , reverse, augmented_primal
 using .EnzymeRules
-# using Statistics
-# using StaticArrays
+
 function erfcx_AD(z)
     return [erfcx(z[1])]
 end
@@ -116,9 +114,9 @@ function Bassetti_Erskine_xgty!(res::AbstractVector, x::Float64, y::Float64, sig
     termexp=exp(-x*x/2/sigmax/sigmax-y*y/2/sigmay/sigmay)
 	sqrtδsigma2=sqrt(Complex(2*(sigmax*sigmax-sigmay*sigmay)))
 	term1=erfcx_AD([-1.0im*(x+1.0im*y)/sqrtδsigma2])
-	term2=erfcx_AD([-1im*(x*sigmay/sigmax+1im*y*sigmax/sigmay)/sqrtδsigma2])
-	
-	complex_e=-1im*2*sqrt(pi)/sqrtδsigma2*(term1[1]-termexp*term2[1])
+	term2=erfcx_AD([-1.0im*(x*sigmay/sigmax+1.0im*y*sigmax/sigmay)/sqrtδsigma2])
+
+	complex_e=-1.0im*2*sqrt(pi)/sqrtδsigma2*(term1[1]-termexp*term2[1])
 	res[1]=real(complex_e)
     res[2]=-imag(complex_e)
     res[3]=termexp/2.0/π/sigmax/sigmay
@@ -136,9 +134,9 @@ function Bassetti_Erskine_ygtx!(res::AbstractVector, x::Float64, y::Float64, sig
     termexp=exp(-x*x/2/sigmax/sigmax-y*y/2/sigmay/sigmay)
 	sqrtδsigma2=sqrt(Complex(2*(sigmax*sigmax-sigmay*sigmay)))
 	term1=erfcx_AD([-1.0im*(x+1.0im*y)/sqrtδsigma2])
-	term2=erfcx_AD([-1im*(x*sigmay/sigmax+1im*y*sigmax/sigmay)/sqrtδsigma2])
-	
-	complex_e=-1im*2*sqrt(pi)/sqrtδsigma2*(term1[1]-termexp*term2[1])
+	term2=erfcx_AD([-1.0im*(x*sigmay/sigmax+1.0im*y*sigmax/sigmay)/sqrtδsigma2])
+
+	complex_e=-1.0im*2*sqrt(pi)/sqrtδsigma2*(term1[1]-termexp*term2[1])
     res[1]=real(complex_e)
     res[2]=-imag(complex_e)
     res[3]=termexp/2.0/π/sigmax/sigmay

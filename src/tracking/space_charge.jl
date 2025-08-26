@@ -29,105 +29,7 @@ end
 #     end
 # end
 
-# function calculate_philm(rin, Nl, Nm, dx, dy, a, b, Np, lost_flags)
-#     philm = zeros(Nl, Nm)
-#     gamma2lm = zeros(Nl, Nm)
-#     xmin = minimum(rin[1:6:end])
-#     ymin = minimum(rin[3:6:end])
-#     for i in 1:Nl
-#         for j in 1:Nm
-#             al = i * pi / a
-#             bm = j * pi / b
-#             gamma2lm[i, j] = al^2 + bm^2
-#             for k in 1:Np
-#                 if lost_flags[k] == 1
-#                     continue
-#                 end
-#                 philm[i, j] += sin(al * (rin[(k-1)*6 + 1].-xmin)) * sin(bm * (rin[(k-1)*6 + 3].-ymin)) / gamma2lm[i, j]
-#             end
-#         end
-#     end
-#     philm .*= 4.0 * pi  * 4.0 / (a * b * Np)
-#     return philm, gamma2lm
-# end
-
-# function calculate_philm_P(rin, Nl, Nm, dx, dy, a, b, Np, lost_flags)
-#     philm = zeros(Nl, Nm)
-#     gamma2lm = zeros(Nl, Nm)
-#     xmin = minimum(rin[1:6:end])
-#     ymin = minimum(rin[3:6:end])
-#     for i in 1:Nl
-#         for j in 1:Nm
-#             al = i * pi / a
-#             bm = j * pi / b
-#             gamma2lm[i, j] = al^2 + bm^2
-
-#             local_sum = zeros(Threads.nthreads())  
-        
-#             Threads.@threads for k in 1:Np
-#                 tid = Threads.threadid()
-#                 if lost_flags[k] == 1
-#                     continue
-#                 end
-#                 local_sum[tid] += sin(al * (rin[(k-1)*6 + 1].-xmin)) * sin(bm * (rin[(k-1)*6 + 3].-ymin)) / gamma2lm[i, j]
-#             end
-            
-#             # Sum up all partial results from each thread
-#             philm[i, j] = sum(local_sum)
-#         end
-#     end
-#     philm .*= 4.0 * pi  * 4.0 / (a * b * Np)
-#     return philm, gamma2lm
-# end
-
-# function space_charge!(r_in, K, Nl, Nm, dx, dy, a, b, Np, dt, lost_flags)
-#     philm, gamma2lm = calculate_philm(r_in, Nl, Nm, dx, dy, a, b, Np, lost_flags)
-#     term1 = zeros(Np)
-#     term2 = zeros(Np)
-#     xmin = minimum(r_in[1:6:end])
-#     ymin = minimum(r_in[3:6:end])
-#     for i in 1:Nl
-#         for j in 1:Nm
-#             al = i * pi / a
-#             bm = j * pi / b
-#             term1 .+= (philm[i, j] * al .* cos.(al .* (r_in[1:6:end].-xmin)) .* sin.(bm .* (r_in[3:6:end].-ymin)))
-#             term2 .+= (philm[i, j] * bm .* sin.(al .* (r_in[1:6:end].-xmin)) .* cos.(bm .* (r_in[3:6:end].-ymin)))
-#         end
-#     end
-#     r_in[2:6:end] .-= (dt * K / 2.0) * term1
-#     r_in[4:6:end] .-= (dt * K / 2.0) * term2
-# end
-
-# function space_charge_P!(r_in, K, Nl, Nm, dx, dy, a, b, Np, dt, lost_flags)
-#     philm, gamma2lm = calculate_philm_P(r_in, Nl, Nm, dx, dy, a, b, Np, lost_flags)
-#     term1 = zeros(Np)
-#     term2 = zeros(Np)
-#     xmin = minimum(r_in[1:6:end])
-#     ymin = minimum(r_in[3:6:end])
-#     nthreads = Threads.nthreads()
-#     term1_thread = [zeros(Np) for _ in 1:nthreads]  
-#     term2_thread = [zeros(Np) for _ in 1:nthreads]
-
-#     Threads.@threads for i in 1:Nl
-#         tid = Threads.threadid()
-#         for j in 1:Nm
-#             al = i * pi / a
-#             bm = j * pi / b
-#             term1_thread[tid] .+= (philm[i, j] * al .* cos.(al .* (r_in[1:6:end].-xmin)) .* sin.(bm .* (r_in[3:6:end].-ymin)))
-#             term2_thread[tid] .+= (philm[i, j] * bm .* sin.(al .* (r_in[1:6:end].-xmin)) .* cos.(bm .* (r_in[3:6:end].-ymin)))
-#         end
-#     end
-
-#     # Combine results from all threads
-#     for t in 1:nthreads
-#         term1 .+= term1_thread[t]
-#         term2 .+= term2_thread[t]
-#     end
-#     r_in[2:6:end] .-= (dt * K / 2.0) * term1
-#     r_in[4:6:end] .-= (dt * K / 2.0) * term2
-# end
-
-function compute_delta_pxy!(r_in, K, Nl, Nm, a, b, Np, dt, lost_flags)
+function compute_delta_pxy!(r_in::Vector{T}, K, Nl, Nm, a, b, Np, dt, lost_flags) where T
     x = r_in[1:6:end]
     y = r_in[3:6:end]
     
@@ -138,8 +40,8 @@ function compute_delta_pxy!(r_in, K, Nl, Nm, a, b, Np, dt, lost_flags)
     x_shifted = x .- xmin           # Shift x positions
     y_shifted = y .- ymin           # Shift y positions
     
-    al = (1:Nl) * π / a             
-    bm = (1:Nm) * π / b            
+    al = (1:Nl) * π ./ a             
+    bm = (1:Nm) * π ./ b            
     gamma2lm = al.^2 .+ (bm'.^2)    
     sin_al_xk = sin.(x_shifted * al')      # Np x Nl
     sin_bm_yk = sin.(y_shifted * bm')      # Np x Nm
@@ -149,13 +51,6 @@ function compute_delta_pxy!(r_in, K, Nl, Nm, a, b, Np, dt, lost_flags)
     sin_bm_yk .= sin_bm_yk .* mask
     
     # φ_lm
-    # philm = zeros(Nl, Nm)
-    # for l in 1:Nl
-    #     for m in 1:Nm
-    #         numerator = sum(sin_al_xk[:, l] .* sin_bm_yk[:, m])
-    #         philm[l, m] = numerator / gamma2lm[l, m]
-    #     end
-    # end
     philm = (sin_al_xk' * sin_bm_yk) ./ gamma2lm 
     philm .*= (4.0 * π * 4.0) / (a * b * Np)
     
@@ -167,8 +62,8 @@ function compute_delta_pxy!(r_in, K, Nl, Nm, a, b, Np, dt, lost_flags)
     cos_bm_yi .= cos_bm_yi .* mask
     
     # Initialize term1 and term2
-    term1 = zeros(Np)  # For Δp_x
-    term2 = zeros(Np)  # For Δp_y
+    term1 = zeros(T, Np)  # For Δp_x
+    term2 = zeros(T, Np)  # For Δp_y
     
     # Compute Δp_x and Δp_y
     for l in 1:Nl

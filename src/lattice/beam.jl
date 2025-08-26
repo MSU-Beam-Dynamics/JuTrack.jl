@@ -156,7 +156,7 @@ function Beam(r_GTPS::Matrix{DTPSAD{N, T}}; energy::Float64=1e9, np::Int=size(r_
         emittance::Vector{Float64}=zeros(Float64, 3), centroid::Vector{Float64}=zeros(Float64, 6), T0::Float64=0.0, znbin::Int=99, current::Float64=0.0) where {N, T <: Number}
     nmacro = size(r_GTPS, 1)
     lost_flag = zeros(Int, nmacro)
-    gamma = DTPSAD(energy) / DTPSAD(mass)
+    gamma = (DTPSAD(energy) + DTPSAD(mass)) / DTPSAD(mass)
     beta = sqrt(1.0 - 1.0 / gamma^2)
     classrad0 = DTPSAD(charge) * DTPSAD(charge) / (DTPSAD(atn) * DTPSAD(mass)) / 4.0 / Float64(pi) / 55.26349406 * 1e-6
     radconst = 4 * Float64(pi) / 3 * classrad0 / DTPSAD(mass)^3

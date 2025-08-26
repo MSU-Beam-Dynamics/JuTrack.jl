@@ -1,12 +1,21 @@
-# ==============================================================================
-# This file is part of the TPSA (Truncated Power Series Algebra) Julia package.
-# Translated from Yue Hao's C++ code
-# Author: Jinyu Wan
-# Email: wan@frib.msu.edu
-# Created Date: 11-01-2023
-# Modified Date: 03-21-2025
+# # This file is part of the multivariate high-order TPSA (Truncated Power Series Algebra) package.
+# # Translated from Yue Hao's C++ code
+# # Author: Jinyu Wan
+# # Email: wan@frib.msu.edu
+# # Created Date: 11-01-2023
+# # Modified Date: 08-25-2025
+
+module HighOrderTPS
+
 include("polymap.jl")
 
+export CTPS, cst, assign!, reassign!
+
+"""
+    struct CTPS{T, TPS_Dim, Max_TPS_Degree}
+A truncated power series in `TPS_Dim` variables with coefficients
+of type `T` and maximum total degree `Max_TPS_Degree`.
+"""
 struct CTPS{T, TPS_Dim, Max_TPS_Degree}
     degree::Int
     terms::Int
@@ -14,11 +23,19 @@ struct CTPS{T, TPS_Dim, Max_TPS_Degree}
     polymap::Ref{PolyMap}
 end
 
-global polyMapCache = Dict{Tuple{Int, Int}, PolyMap}()
-# Get or create a PolyMap 
+"""
+Global cache for storing and reusing `PolyMap` objects.  
+"""
+const polyMapCache = Dict{Tuple{Int, Int}, PolyMap}()
+
+"""
+    getOrCreatePolyMap(TPS_Dim::Int, Max_TPS_Degree::Int) -> PolyMap
+Return an existing `PolyMap` from the global cache or construct a new
+one on demand. 
+"""
 function getOrCreatePolyMap(TPS_Dim::Int, Max_TPS_Degree::Int)
     key = (TPS_Dim, Max_TPS_Degree)
-    if haskey(polyMapCache, key)
+    if @inbounds haskey(polyMapCache, key)
         return polyMapCache[key]
     else
         newPolyMap = PolyMap(TPS_Dim, Max_TPS_Degree)
@@ -30,235 +47,171 @@ end
 """
     CTPS(T::Type, TPS_Dim::Int, Max_TPS_Degree::Int)
 
-Create a truncated power series (TPS) object with type `T`, dimension `TPS_Dim`, and maximum degree `Max_TPS_Degree`.
+Construct a zero power series of element type `T`, dimension
+`TPS_Dim` and maximum total degree `Max_TPS_Degree`. 
 """
-function CTPS(T::Type, TPS_Dim::Int, Max_TPS_Degree::Int) 
+function CTPS(T::Type, TPS_Dim::Int, Max_TPS_Degree::Int)
     polymap = getOrCreatePolyMap(TPS_Dim, Max_TPS_Degree)
-    terms = binomial(TPS_Dim + Max_TPS_Degree, Max_TPS_Degree)
-    return CTPS{T, TPS_Dim, Max_TPS_Degree}(0, terms, zeros(T, terms), Ref(polymap)) 
+    terms  = binomial(TPS_Dim + Max_TPS_Degree, Max_TPS_Degree)
+    map    = Vector{T}(undef, terms)
+    fill!(map, zero(T))
+    return CTPS{T, TPS_Dim, Max_TPS_Degree}(0, terms, map, Ref(polymap))
 end
 
 """
     CTPS(a::T, TPS_Dim::Int, Max_TPS_Degree::Int)
 
-Create a truncated power series (TPS) object with type `T`, dimension `TPS_Dim`, and maximum degree `Max_TPS_Degree`, and set the constant term to `a`.
+Construct a power series whose constant term is `a` and all
+higher-order terms are zero.
 """
 function CTPS(a::T, TPS_Dim::Int, Max_TPS_Degree::Int) where T
     polymap = getOrCreatePolyMap(TPS_Dim, Max_TPS_Degree)
-    terms = binomial(TPS_Dim + Max_TPS_Degree, Max_TPS_Degree)
-    map = zeros(T, terms)
+    terms  = binomial(TPS_Dim + Max_TPS_Degree, Max_TPS_Degree)
+    map    = Vector{T}(undef, terms)
+    fill!(map, zero(T))
     map[1] = a
-    return CTPS{T, TPS_Dim, Max_TPS_Degree}(0, terms, map, Ref(polymap)) 
+    return CTPS{T, TPS_Dim, Max_TPS_Degree}(0, terms, map, Ref(polymap))
 end
 
 """
     CTPS(a::T, n::Int, TPS_Dim::Int, Max_TPS_Degree::Int)
 
-Create a truncated power series (TPS) object with type `T`, dimension `TPS_Dim`, and maximum degree `Max_TPS_Degree`, and set the `n`-th variable to `a`.
+Construct a series representing `a + x_n`.  The constant term is set
+to `a` and the coefficient of the n-th variable is one. 
 """
 function CTPS(a::T, n::Int, TPS_Dim::Int, Max_TPS_Degree::Int) where T
-    if n <= TPS_Dim && n > 0
-        terms = binomial(TPS_Dim + Max_TPS_Degree, Max_TPS_Degree)
-        map  = zeros(T, terms)
-        map[n+1] = one(T)
-        map[1] = a
-        polymap = getOrCreatePolyMap(TPS_Dim, Max_TPS_Degree)
-        return CTPS{T, TPS_Dim, Max_TPS_Degree}(1, terms, map, Ref(polymap)) 
-    else
-        error("Num of var out of range in CTPS")
-    end
+    n > 0 && n ≤ TPS_Dim || throw(ArgumentError("variable index out of range"))
+    polymap = getOrCreatePolyMap(TPS_Dim, Max_TPS_Degree)
+    terms  = binomial(TPS_Dim + Max_TPS_Degree, Max_TPS_Degree)
+    map    = Vector{T}(undef, terms)
+    fill!(map, zero(T))
+    map[1]     = a
+    map[n + 1] = one(T)
+    return CTPS{T, TPS_Dim, Max_TPS_Degree}(1, terms, map, Ref(polymap))
 end
 
 """
-    CTPS(M::CTPS{T, TPS_Dim, Max_TPS_Degree})
+    CTPS(M::CTPS)
 
-Copy a truncated power series (TPS) object `M`.
+Copy constructor for truncated power series. 
 """
 function CTPS(M::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
-    map = zeros(T, length(M.map))
-    for i in eachindex(map)
-        map[i] = M.map[i]
-    end
+    map = copy(M.map)
     return CTPS{T, TPS_Dim, Max_TPS_Degree}(M.degree, length(map), map, M.polymap)
 end
 
 """
-    cst(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree})
+    cst(ctps::CTPS)
 
-Return the constant term of a truncated power series (TPS) object `ctps`.
+Return the constant term (zeroth order coefficient) of the truncated
+power series `ctps`.
 """
-function cst(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
-    a0 = ctps.map[1]
-    return a0
+@inline function cst(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
+    return ctps.map[1]
 end
 
 """
-    findindex(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, indexmap::Vector{Int})
+    findindex(ctps, indexmap)
 
-Find the index of the indexmap in the map vector.
+Given an exponent vector `indexmap`, return the corresponding linear
+index into the coefficient array.  
 """
-function findindex(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, indexmap::Vector{Int}) where {T, TPS_Dim, Max_TPS_Degree}
-    # find the index of the indexmap in the map vector
-    # indexmap is a vector of length TPS_Dim + 1, e.g. [0, 1, 1] for x1^1 * x2^1
+function findindex(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, indexmap::AbstractVector{Int}) where {T, TPS_Dim, Max_TPS_Degree}
     dim = TPS_Dim
-    if length(indexmap) == dim
-        total = sum(indexmap)
-        newindexmap = [total; indexmap]
-        return findindex(ctps, newindexmap)
-    end
-    if length(indexmap) != (dim + 1)
-        error("Index map does not have correct length")
-    end
-    SUM = zeros(Int, length(indexmap))
-    for i in 1:length(indexmap)
-        SUM[i] = indexmap[i]
-    end
-
-    for i in 2:dim+1
-        if indexmap[i] < 0
-            error("The index map has invalid component")
+    len = length(indexmap)
+    if len == dim
+        # Compute total degree and construct a new vector of length dim+1
+        total = zero(Int)
+        newmap = Vector{Int}(undef, dim + 1)
+        @inbounds for i in 1:dim
+            EXP = indexmap[i]
+            EXP ≥ 0 || throw(ArgumentError("negative exponent in indexmap"))
+            total += EXP
+            newmap[i + 1] = EXP
         end
-        SUM[i] = SUM[i-1] - indexmap[i]
-    end
-    # sum = copy(sum_buffer)
-    result = Int(1)
-    for i in dim:-1:1
-        if SUM[dim - i + 1] == 0
-            break
+        newmap[1] = total
+        return findindex(ctps, newmap)
+    elseif len == dim + 1
+        # First entry is the total degree
+        total = indexmap[1]
+        total ≥ 0 || throw(ArgumentError("negative total degree in indexmap"))
+        result = 1
+        # Walk from the highest dimension downwards, updating the cumulative sum
+        # `current_sum` represents the remaining degree after accounting for
+        # exponents of the lower dimensions.
+        current_sum = total
+        @inbounds for i in dim:-1:1
+            # If no degree remains, all higher terms vanish
+            if current_sum == 0
+                break
+            end
+            result += binomial(current_sum - 1 + i, i)
+            # Subtract the exponent of the current variable (indexed by dim - i + 2)
+            current_sum -= indexmap[dim - i + 2]
         end
-        result += binomial(SUM[dim - i + 1] - 1 + i, i)
-    end
-    return result
-end
-
-function assign!(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::T, n_var::Int) where {T, TPS_Dim, Max_TPS_Degree}
-    if n_var <= TPS_Dim && n_var > 0
-        map = ctps.map
-        map[n_var+1] = one(T)
-        map[1] = a
-        return nothing
+        return result
     else
-        error("Num of var out of range in CTPS")
+        throw(ArgumentError("indexmap must have length $(dim) or $(dim + 1)"))
     end
 end
 
-function assign!(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::T) where {T, TPS_Dim, Max_TPS_Degree}
+"""
+    assign!(ctps, a)
+
+Assign the constant term of the truncated power series `ctps` to `a`. 
+"""
+@inline function assign!(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::T) where {T, TPS_Dim, Max_TPS_Degree}
     ctps.map[1] = a
     return nothing
 end
 
+"""
+    assign!(ctps, a, n_var)
+
+Assign `ctps` to represent the constant `a` plus a unit coefficient in
+dimension `n_var`.  
+"""
+function assign!(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::T, n_var::Int) where {T, TPS_Dim, Max_TPS_Degree}
+    n_var > 0 && n_var ≤ TPS_Dim || throw(ArgumentError("variable index out of range"))
+    ctps.map[n_var + 1] = one(T)
+    ctps.map[1]        = a
+    return nothing
+end
+
+"""
+    reassign!(ctps, a, n_var)
+
+Reset all coefficients of `ctps` to zero, then assign the constant
+term to `a` and the coefficient of the `n_var`-th variable to one.
+"""
 function reassign!(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::T, n_var::Int) where {T, TPS_Dim, Max_TPS_Degree}
-    if n_var <= TPS_Dim && n_var > 0
-        map = ctps.map
-        for i in eachindex(map)
-            map[i] = zero(T)
-        end
-        map[n_var+1] = one(T)
-        map[1] = a
-        return nothing
-    else
-        error("Num of var out of range in CTPS")
-    end
+    n_var > 0 && n_var ≤ TPS_Dim || throw(ArgumentError("variable index out of range"))
+    fill!(ctps.map, zero(T))
+    ctps.map[1]        = a
+    ctps.map[n_var + 1] = one(T)
+    return nothing
 end
 
+"""
+    element(ctps, ind)
 
-function element(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, ind::Vector{Int}) where {T, TPS_Dim, Max_TPS_Degree}
-    result = findindex(ctps, ind)
-    return ctps.map[result]
+Return the coefficient corresponding to the exponent vector `ind`.
+The exponent vector may be of length `TPS_Dim` or `TPS_Dim + 1`.
+"""
+@inline function element(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, ind::AbstractVector{Int}) where {T, TPS_Dim, Max_TPS_Degree}
+    idx = findindex(ctps, ind)
+    return ctps.map[idx]
 end
 
-# function evaluate(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, inivalue::Vector{U}) where {T, TPS_Dim, Max_TPS_Degree, U}
-#     if length(inivalue) != TPS_Dim
-#         error("Inconsistent dimension to evaluate CTPS")
-#     end
-#     sum = U(ctps.map[1])
-#     for i in 2:ctps.terms
-#         temp = getindexmap(ctps.polymap[], i)
-#         product = U(1)
-#         for j in 1:TPS_Dim
-#             dimpower = U(inivalue[j])^temp[j+1]
-#             product *= dimpower
-#         end
-#         sum += product * U(ctps.map[i])
-#     end
-#     return sum
-# end
+#############################################################################################################################
+##  Overloaded arithmetic and transcendental operations
+#############################################################################################################################
 
-# function derivative(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, ndim::Int, order::Int) where {T, TPS_Dim, Max_TPS_Degree}
-#     if order <= 0
-#         return CTPS(ctps)
-#     end
-#     if order > ctps.degree
-#         return CTPS(T, TPS_Dim, Max_TPS_Degree)
-#     end
-#     if ndim <= TPS_Dim && ndim > 0
-#         derivative_ctps = CTPS(T, TPS_Dim, Max_TPS_Degree)
-#         derivative_ctps = redegree(derivative_ctps, ctps.degree - order)
-#         for i in 2:ctps.terms
-#             temp = getindexmap(ctps.polymap[], i)
-#             if temp[ndim + 1] >= order
-#                 thisdim = temp[ndim + 1]
-#                 # buf = Zygote.Buffer(temp)  # Buffer for Zygote
-#                 # for j in 1:length(buf)
-#                 #     buf[j] = temp[j]
-#                 # end
-#                 temp[ndim + 1] -= order
-#                 temp[1] -= order
-#                 # new_temp = copy(buf)  
-#                 index = findindex(ctps, temp)
-#                 derivative_ctps_map_buffer = copy(derivative_ctps.map)
-#                 # for j in 1:length(derivative_ctps_map_buffer)
-#                 #     derivative_ctps_map_buffer[j] = derivative_ctps.map[j]
-#                 # end
-#                 derivative_ctps_map_buffer[index] = factorial(new_temp[ndim + 1] + order) / factorial(new_temp[ndim + 1]) * ctps.map[i]
-#                 derivative_ctps = CTPS{T, TPS_Dim, Max_TPS_Degree}(derivative_ctps.degree, derivative_ctps.terms, derivative_ctps_map_buffer, derivative_ctps.polymap)
-#                 # derivative_ctps.map = copy(derivative_ctps_map_buffer)
-#                 # derivative_ctps.map[index] = factorial(new_temp[ndim + 1] + order) / factorial(new_temp[ndim + 1]) * ctps.map[i]
-#             end
-#         end
-#         return derivative_ctps
-#     else
-#         error("The dimension is out of range")
-#     end
-# end
+import Base: +, -, *, /, ^, sin, cos, tan, exp, log, sinh, cosh, tanh, asin, acos, atan, asinh, acosh, atanh, sqrt
 
-# function integrate(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, ndim::Int, a0::T) where {T, TPS_Dim, Max_TPS_Degree}
-#     if ndim <= TPS_Dim && ndim > 0
-#         temp = CTPS(a0, TPS_Dim, Max_TPS_Degree)
-#         temp = redegree(temp, ctps.degree + 1)
-#         map_buffer = copy(temp.map)
-#         # map_buffer = Zygote.Buffer(temp.map)
-#         # for i in 1:temp.terms
-#         #     map_buffer[i] = temp.map[i]
-#         # end
-#         for i in 1:ctps.terms
-#             indexlist = getindexmap(ctps.polymap[], i)
-#             thisdim = indexlist[ndim+1]
-#             # indexlist_buffer = Zygote.Buffer(indexlist) 
-#             # for j in 1:length(indexlist_buffer)
-#             #     indexlist_buffer[j] = indexlist[j]
-#             # end
-#             indexlist[ndim+1] += 1
-#             indexlist[1] += 1
-#             # indexlist = copy(indexlist_buffer)
-#             new_i = findindex(ctps, indexlist)
-#             map_buffer[new_i] = ctps.map[i] / (thisdim + 1)
-#         end
-#         temp = CTPS{T, TPS_Dim, Max_TPS_Degree}(temp.degree, temp.terms, map_buffer, temp.polymap)
-#         # temp.map = copy(map_buffer)
-#         return temp
-#     else
-#         error("Inconsistent dimension to integrate")
-#     end
-# end
-
-# Overloaded operations
-import Base: +, -, *, /, sin, cos, tan, sinh, cosh, asin, acos, atan, sqrt, ^, inv, exp, log
-
-# +
 function +(ctps1::CTPS{T, TPS_Dim, Max_TPS_Degree}, ctps2::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
     ctps_new = CTPS(ctps1)
-    for i in eachindex(ctps_new.map)
+    @inbounds for i in eachindex(ctps_new.map)
         ctps_new.map[i] += ctps2.map[i]
     end
     return ctps_new
@@ -269,400 +222,314 @@ function +(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::T) where {T, TPS_Dim, Max_
     ctps_new.map[1] += a
     return ctps_new
 end
-function +(a::T, ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
-    return ctps + a
-end
 
-# Addition with complex and float64
-function +(ctps::CTPS{ComplexF64, TPS_Dim, Max_TPS_Degree}, a::Float64) where {TPS_Dim, Max_TPS_Degree}
-    ctps_new = CTPS(ctps)
-    ctps_new.map[1] += a
-    return ctps_new
-end
+@inline +(a::T, ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree} = ctps + a
 
-function +(a::Float64, ctps::CTPS{ComplexF64, TPS_Dim, Max_TPS_Degree}) where {TPS_Dim, Max_TPS_Degree}
-    return ctps + a
-end
-# -
 function -(ctps1::CTPS{T, TPS_Dim, Max_TPS_Degree}, ctps2::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
     ctps_new = CTPS(ctps1)
-    for i in eachindex(ctps_new.map)
+    @inbounds for i in eachindex(ctps_new.map)
         ctps_new.map[i] -= ctps2.map[i]
     end
     return ctps_new
 end
+
 function -(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::T) where {T, TPS_Dim, Max_TPS_Degree}
     ctps_new = CTPS(ctps)
     ctps_new.map[1] -= a
     return ctps_new
 end
+
 function -(a::T, ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
     ctps_new = CTPS(ctps)
-    ctps_new.map[1] = a - ctps_new.map[1]
-    for i in eachindex(ctps_new.map)[2:end]
+    # Reverse the sign of all coefficients
+    @inbounds for i in eachindex(ctps_new.map)
         ctps_new.map[i] = -ctps_new.map[i]
     end
+    ctps_new.map[1] += a
     return ctps_new
 end
+
 function -(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
     ctps_new = CTPS(ctps)
-    for i in eachindex(ctps_new.map)
-        ctps_new.map[i] = -ctps_new.map[i]
-    end
-    return ctps_new
-end
-# operate with complex number
-function -(ctps::CTPS{ComplexF64, TPS_Dim, Max_TPS_Degree}, a::Float64) where {TPS_Dim, Max_TPS_Degree}
-    ctps_new = CTPS(ctps)
-    ctps_new.map[1] -= a
-    return ctps_new
-end
-function -(a::Float64, ctps::CTPS{ComplexF64, TPS_Dim, Max_TPS_Degree}) where {TPS_Dim, Max_TPS_Degree}
-    ctps_new = CTPS(ctps)
-    ctps_new.map[1] = a - ctps_new.map[1]
-    for i in eachindex(ctps_new.map)[2:end]
+    @inbounds for i in eachindex(ctps_new.map)
         ctps_new.map[i] = -ctps_new.map[i]
     end
     return ctps_new
 end
 
-# *
 function *(ctps1::CTPS{T, TPS_Dim, Max_TPS_Degree}, ctps2::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
-    ctps_new = CTPS(ctps1)
-    ctps_map_buffer = ctps_new.map
-    for i in eachindex(ctps_map_buffer)
-        ctps_map_buffer[i] = 0.0
-    end
-
-    for i in 1:length(ctps1.map)
-        if ctps1.map[i] == 0
+    # Initialise an empty result with zero coefficients
+    ctps_new = CTPS{T, TPS_Dim, Max_TPS_Degree}(0, ctps1.terms, Vector{T}(undef, ctps1.terms), ctps1.polymap)
+    fill!(ctps_new.map, zero(T))
+    # Temporary buffer for exponent addition
+    temp = Vector{Int}(undef, TPS_Dim + 1)
+    # Loop over all non-zero terms of ctps1 and ctps2
+    @inbounds for i in eachindex(ctps1.map)
+        c1 = ctps1.map[i]
+        if c1 == zero(T)
             continue
         end
-        temp1 = getindexmap(ctps1.polymap[], i)
-        j_max = min(length(ctps2.map), binomial(TPS_Dim + Max_TPS_Degree - temp1[1], TPS_Dim))
-        for j in 1:j_max
-            if ctps2.map[j] == 0
+        exp1 = getindexmap(ctps1.polymap[], i)
+        # The maximum degree that can be achieved by multiplying exp1 with exp2
+        deg1 = exp1[1]
+        max_j_terms = binomial(TPS_Dim + (Max_TPS_Degree - deg1), TPS_Dim)
+        # Restrict iteration to avoid computing terms beyond the truncation
+        j_lim = min(ctps2.terms, max_j_terms)
+        for j in 1:j_lim
+            c2 = ctps2.map[j]
+            if c2 == zero(T)
                 continue
-            end 
-            temp2 = getindexmap(ctps2.polymap[], j)
-            # no array operation
-            temp = zeros(Int, TPS_Dim + 1)
-            for k in 1:TPS_Dim+1
-                temp[k] = temp1[k] + temp2[k]
             end
-            index = findindex(ctps_new, temp)
-            ctps_map_buffer[index] += ctps1.map[i] * ctps2.map[j]
+            exp2 = getindexmap(ctps2.polymap[], j)
+            # Compute the sum of exponent vectors exp1 and exp2 into temp
+            @inbounds for k in 1:(TPS_Dim + 1)
+                temp[k] = exp1[k] + exp2[k]
+            end
+            # Insert the product into the appropriate position
+            idx = findindex(ctps_new, temp)
+            ctps_new.map[idx] += c1 * c2
         end
     end
     return ctps_new
 end
+
 function *(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::T) where {T, TPS_Dim, Max_TPS_Degree}
     ctps_new = CTPS(ctps)
-    for i in eachindex(ctps_new.map)
+    @inbounds for i in eachindex(ctps_new.map)
         ctps_new.map[i] *= a
     end
     return ctps_new
 end
-function *(a::T, ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
-    return ctps * a
-end
 
-# operate with complex number
-function *(ctps::CTPS{ComplexF64, TPS_Dim, Max_TPS_Degree}, a::Float64) where {TPS_Dim, Max_TPS_Degree}
-    ctps_new = CTPS(ctps)
-    for i in eachindex(ctps_new.map)
-        ctps_new.map[i] *= a
-    end
-    return ctps_new
-end
-function *(a::Float64, ctps::CTPS{ComplexF64, TPS_Dim, Max_TPS_Degree}) where {TPS_Dim, Max_TPS_Degree}
-    return ctps * a
-end
-
-# /
-function inv(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
-    if cst(ctps) == zero(T)
-        error("Divide by zero in CTPS")
-    end
-    temp = CTPS(ctps) - cst(ctps)
-    term_by_oder = CTPS(1.0 / ctps.map[1], TPS_Dim, Max_TPS_Degree)
-
-    SUM = CTPS(term_by_oder)
-    for i in 1:Max_TPS_Degree
-        term_by_oder *= -temp/cst(ctps)
-        SUM += term_by_oder
-    end
-    return SUM
-end
+@inline *(a::T, ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree} = ctps * a
 
 function /(ctps1::CTPS{T, TPS_Dim, Max_TPS_Degree}, ctps2::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
-    if cst(ctps2) == zero(T)
-        error("Divide by zero in CTPS")
-    end
-
+    c0 = cst(ctps2)
+    c0 == zero(T) && throw(DivideError())
     return ctps1 * inv(ctps2)
 end
+
 function /(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::T) where {T, TPS_Dim, Max_TPS_Degree}
-    if a == zero(T)
-        error("Divide by zero in CTPS")
-    end
+    a == zero(T) && throw(DivideError())
     ctps_new = CTPS(ctps)
-    for i in eachindex(ctps_new.map)
+    @inbounds for i in eachindex(ctps_new.map)
         ctps_new.map[i] /= a
     end
     return ctps_new
 end
+
 function /(a::T, ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
-    if cst(ctps) == zero(T)
-        error("Divide by zero in CTPS")
-    end
+    c0 = cst(ctps)
+    c0 == zero(T) && throw(DivideError())
     return a * inv(ctps)
 end
 
-# operate with complex number
-function /(ctps::CTPS{ComplexF64, TPS_Dim, Max_TPS_Degree}, a::Float64) where {TPS_Dim, Max_TPS_Degree}
-    if a == zero(Float64)
-        error("Divide by zero in CTPS")
+###############################################################
+##  Utility functions for reciprocals and elementary functions
+###############################################################
+
+function inv(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
+    c0 = cst(ctps)
+    c0 == zero(T) && throw(DivideError())
+    # Separate out the non-constant part
+    temp = ctps - c0
+    inv_c0 = one(T) / c0
+    term_by_order = CTPS(inv_c0, TPS_Dim, Max_TPS_Degree)
+    SUM = CTPS(term_by_order)
+    for i in 1:Max_TPS_Degree
+        term_by_order *= -(temp / c0)
+        SUM += term_by_order
     end
-    ctps_new = CTPS(ctps)
-    for i in eachindex(ctps_new.map)
-        ctps_new.map[i] /= a
-    end
-    return ctps_new
-end
-function /(a::Float64, ctps::CTPS{ComplexF64, TPS_Dim, Max_TPS_Degree}) where {TPS_Dim, Max_TPS_Degree}
-    if cst(ctps) == zero(ComplexF64)
-        error("Divide by zero in CTPS")
-    end
-    return a * inv(ctps)
+    return SUM
 end
 
-# exponential
 function exp(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
-    if cst(ctps) == zero(T)
+    a0 = cst(ctps)
+    # When the constant term is zero, exp(ctps) starts at one
+    if a0 == zero(T)
         return CTPS(one(T), TPS_Dim, Max_TPS_Degree)
     end
-    temp = CTPS(ctps)
-    temp -= cst(temp)
-    term_by_oder = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
+    temp = ctps - a0
+    term_by_order = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
     SUM = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
     for i in 1:Max_TPS_Degree
-        index = 1.0 / factorial_double(i)
-        term_by_oder = term_by_oder * temp
-        SUM = SUM + (term_by_oder * T(index))
+        term_by_order *= temp
+        coeff = one(T) / T(factorial_double(i))
+        SUM += term_by_order * coeff
     end
-    SUM = SUM * T(Base.exp(cst(ctps)))
-    return SUM
+    return SUM * T(exp(a0))
 end
 
-# logarithm
 function log(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
-    if cst(ctps) == zero(T)
-        error("Log of zero in CTPS")
-    end
-    temp = CTPS(ctps)
-    temp -= cst(temp)
-    term_by_oder = temp / cst(ctps)
-    SUM = CTPS(zero(T), TPS_Dim, Max_TPS_Degree) + term_by_oder
-
+    a0 = cst(ctps)
+    a0 == zero(T) && throw(DomainError(ctps, "log of zero in CTPS"))
+    temp = ctps - a0
+    term_by_order = temp / a0
+    SUM = CTPS(zero(T), TPS_Dim, Max_TPS_Degree) + term_by_order
     for i in 2:Max_TPS_Degree
-        term_by_oder = term_by_oder * (-temp / cst(ctps))
-        SUM = SUM + (term_by_oder / T(i))
+        term_by_order *= -(temp / a0)
+        SUM += term_by_order / T(i)
     end
-    SUM = SUM + Base.log(cst(ctps))
-    return SUM
+    return SUM + T(log(a0))
 end
 
-# square root
-function sqrt(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
-    if real(cst(ctps)) < 0.0
-        error("Square root of negative number in CTPS")
-    end
-    a0 = sqrt(cst(ctps))
-    temp = CTPS(ctps) - cst(ctps)
-    # temp = temp 
-    term_by_oder = temp / a0
-    SUM = term_by_oder/2.0
-
+function sqrt(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T<:Real, TPS_Dim, Max_TPS_Degree}
+    a0 = cst(ctps)
+    a0 < zero(T) && throw(DomainError(ctps, "square root of negative number in CTPS"))
+    root_a0 = sqrt(a0)
+    temp = ctps - a0
+    term_by_order = temp / root_a0
+    SUM = term_by_order / T(2)
     for i in 2:Max_TPS_Degree
-        index = 1.0 * doublefactorial_double(2 * i - 3) / doublefactorial_double(2 * i)
-        term_by_oder = (-temp) * term_by_oder / cst(ctps)
-        SUM += term_by_oder * index
+        coeff = doublefactorial_double(2 * i - 3) / doublefactorial_double(2 * i)
+        term_by_order *= -temp / a0
+        SUM += term_by_order * T(coeff)
     end
-    SUM = SUM + a0
-    return SUM
+    return SUM + root_a0
 end
 
-# power
 function pow(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, b::Int) where {T, TPS_Dim, Max_TPS_Degree}
-    if b == 1
-        return ctps
-    elseif b == 0
-        return CTPS(one(T), TPS_Dim, Max_TPS_Degree)
+    b == 1 && return ctps
+    b == 0 && return CTPS(one(T), TPS_Dim, Max_TPS_Degree)
+    if b > 1
+        # Handle simple positive integer powers by repeated multiplication
+        result = CTPS(ctps)
+        for i in 2:b
+            result *= ctps
+        end
+        return result
     end
-
-    temp = CTPS(ctps)
+    # Negative or zero constant term requires inversion
+    a0 = cst(ctps)
+    a0 == zero(T) && throw(DomainError(ctps, "power with zero constant term"))
+    temp = ctps - a0
     index = T(b)
-    if cst(ctps) == zero(T)
-        # if mod(b, 1.0) == 0 && b > 1
-        if b > 1
-            SUM = CTPS(ctps)
-            for i in 2:b
-                SUM = SUM * ctps
-            end
-            return SUM
-        else
-            error("Divide by zero, in CTPS::pow")
-        end
-    end
-    temp = temp - cst(temp)
-    term_by_oder = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
-    factor = cst(ctps) ^ b
+    factor = a0^b
+    term_by_order = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
     SUM = CTPS(factor, TPS_Dim, Max_TPS_Degree)
-
     for i in 1:Max_TPS_Degree
-        factor = factor / cst(ctps) * index / i
-        index -= 1.0
-        term_by_oder = term_by_oder * temp
-        SUM = SUM + (term_by_oder * factor)
-        if index == 0.0
-            break
-        end
+        factor = factor / a0 * (index / T(i))
+        index -= one(T)
+        term_by_order *= temp
+        SUM += term_by_order * factor
+        index == zero(T) && break
     end
     return SUM
 end
-function ^(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, b::Int) where {T, TPS_Dim, Max_TPS_Degree}
-    return pow(ctps, b)
-end
 
-# sin
+@inline ^(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, b::Int) where {T, TPS_Dim, Max_TPS_Degree} = pow(ctps, b)
+
+###############################################################
+##  Trigonometric and hyperbolic functions
+###############################################################
+
 function sin(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
-    temp = CTPS(ctps)
     a0 = cst(ctps)
     sin_a0 = sin(a0)
     cos_a0 = cos(a0)
-    temp = temp - a0
-    term_by_oder = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
+    temp = ctps - a0
+    term_by_order = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
     SUM = CTPS(zero(T), TPS_Dim, Max_TPS_Degree)
-
-    is_odd_iteration = 1  
+    odd = true
     for i in 1:Max_TPS_Degree
-        if is_odd_iteration == 1
-            index = cos_a0 * (-1) ^ ((i - 1) / 2) / factorial_double(i)
+        coeff = if odd
+            T(cos_a0 * ((-1) ^ ((i - 1) ÷ 2)) / factorial_double(i))
         else
-            index = sin_a0 * (-1) ^ (i / 2) / factorial_double(i)
+            T(sin_a0 * ((-1) ^ (i ÷ 2)) / factorial_double(i))
         end
-        term_by_oder = term_by_oder * temp
-        SUM = SUM + (term_by_oder * index)
-
-        is_odd_iteration = -is_odd_iteration 
+        term_by_order *= temp
+        SUM += term_by_order * coeff
+        odd = !odd
     end
-    SUM = SUM + sin_a0
-    return SUM
+    return SUM + sin_a0
 end
 
-# cos
 function cos(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
-    temp = CTPS(ctps)
     a0 = cst(ctps)
     sin_a0 = sin(a0)
     cos_a0 = cos(a0)
-    temp = temp - a0
-    term_by_oder = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
+    temp = ctps - a0
+    term_by_order = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
     SUM = CTPS(zero(T), TPS_Dim, Max_TPS_Degree)
-
-    is_odd_iteration = 1  
+    odd = true
     for i in 1:Max_TPS_Degree
-        if is_odd_iteration == 1
-            index = sin_a0 * (-1) ^ ((i + 1) / 2) / factorial_double(i)
+        coeff = if odd
+            T(sin_a0 * ((-1) ^ ((i + 1) ÷ 2)) / factorial_double(i))
         else
-            index = cos_a0 * (-1) ^ (i / 2) / factorial_double(i)
+            T(cos_a0 * ((-1) ^ (i ÷ 2)) / factorial_double(i))
         end
-        term_by_oder = term_by_oder * temp
-        SUM = SUM + (term_by_oder * index)
-    
-        is_odd_iteration = -is_odd_iteration  
+        term_by_order *= temp
+        SUM += term_by_order * coeff
+        odd = !odd
     end
-    SUM = SUM + cos_a0
-    return SUM
+    return SUM + cos_a0
 end
 
-# arcsin
-function asin(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
-    temp = CTPS(ctps)
-    a0 = cst(ctps)
-    arcsin_a0 = asin(a0)
-    cos_y0 = sqrt(one(T) - a0 ^ 2)
-    temp = temp - a0
-    temp1 = CTPS(temp)
-    for i in 1:Max_TPS_Degree + 10
-        temp1 = temp1 - sin(temp1) + (temp + a0*(1.0-cos(temp1)))/cos_y0
-    end
-    return temp1 + arcsin_a0
-end
-
-# arccos
-function acos(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
-    return T(pi / 2) - asin(ctps)
-end
-
-# tangent
-function tan(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
+@inline function tan(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
     return sin(ctps) / cos(ctps)
 end
 
-# acrtan
-function atan(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
-    #      atan(x) = asin( x / sqrt(1 + x^2) )
-    return asin( ctps / sqrt(one(T) + ctps*ctps) )
+function asin(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
+    a0 = cst(ctps)
+    arcsin_a0 = asin(a0)
+    cos_y0 = sqrt(one(T) - a0^2)
+    temp = ctps - a0
+    y = CTPS(temp)
+    # Newton iteration to solve y = asin(x): y + sin(y) - (x - a0) = a0*(1 - cos(y))/cos_y0
+    for _ in 1:(Max_TPS_Degree + 10)
+        y -= sin(y) - (temp + a0 * (one(T) - cos(y))) / cos_y0
+    end
+    return y + arcsin_a0
 end
 
-# hyperbolic sin
+@inline function acos(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
+    return T(pi/2) - asin(ctps)
+end
+
+@inline function atan(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
+    return asin(ctps / sqrt(one(T) + ctps*ctps))
+end
+
 function sinh(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
-    temp = CTPS(ctps)
     a0 = cst(ctps)
     sinh_a0 = sinh(a0)
     cosh_a0 = cosh(a0)
-    temp = temp - a0
-    term_by_oder = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
+    temp = ctps - a0
+    term_by_order = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
     SUM = CTPS(zero(T), TPS_Dim, Max_TPS_Degree)
-
-    is_odd_iteration = 1  
+    odd = true
     for i in 1:Max_TPS_Degree
-        if is_odd_iteration == 1
-            index = cosh_a0 / factorial_double(i)
+        coeff = if odd
+            T(cosh_a0 / factorial_double(i))
         else
-            index = sinh_a0 / factorial_double(i)
+            T(sinh_a0 / factorial_double(i))
         end
-        term_by_oder = term_by_oder * temp
-        SUM = SUM + (term_by_oder * index)
-        is_odd_iteration = -is_odd_iteration
+        term_by_order *= temp
+        SUM += term_by_order * coeff
+        odd = !odd
     end
-    SUM = SUM + sinh_a0
-    return SUM
+    return SUM + sinh_a0
 end
 
-# hyperbolic cos
 function cosh(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
-    temp = CTPS(ctps)
     a0 = cst(ctps)
     sinh_a0 = sinh(a0)
     cosh_a0 = cosh(a0)
-    temp = temp - a0
-    term_by_oder = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
+    temp = ctps - a0
+    term_by_order = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
     SUM = CTPS(zero(T), TPS_Dim, Max_TPS_Degree)
-
-    is_odd_iteration = 1
+    odd = true
     for i in 1:Max_TPS_Degree
-        if is_odd_iteration == 1
-            index = sinh_a0 / factorial_double(i)
+        coeff = if odd
+            T(sinh_a0 / factorial_double(i))
         else
-            index = cosh_a0 / factorial_double(i)
+            T(cosh_a0 / factorial_double(i))
         end
-        term_by_oder = term_by_oder * temp
-        SUM = SUM + (term_by_oder * index)
-        is_odd_iteration = -is_odd_iteration
+        term_by_order *= temp
+        SUM += term_by_order * coeff
+        odd = !odd
     end
-    SUM = SUM + cosh_a0
-    return SUM
+    return SUM + cosh_a0
 end
+
+end 

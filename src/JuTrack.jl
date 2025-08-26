@@ -25,11 +25,16 @@ const _jlplotlib_available = let ok
     end
     ok
 end
-include("TPSA/TPSA.jl")
+# include("TPSA/TPSA.jl")
 include("TPSA/fast_TPSA_module.jl")
+include("TPSA/TPSA.jl")
+using .HighOrderTPS
 using .TPSAadStatic
 export DTPSAD, NVAR, set_tps_dim, Gradient, Jacobian
 export Number2TPSAD, TPSAD2Number, to_TPSAD, to_Number
+include("utils/erfc.jl")
+using .PureErrorFunctions
+export erfcx, erf, erfinv
 include("lattice/beam.jl")
 include("lattice/canonical_elements.jl")
 include("TPSA/fast_TPSA_tracking.jl")
@@ -42,28 +47,15 @@ include("tracking/corrector.jl")
 include("tracking/wakefield.jl")
 include("tracking/quad.jl")
 include("tracking/space_charge.jl")
-include("tracking/drift_SC.jl")
-include("tracking/quad_SC.jl")
-include("tracking/bend_SC.jl")
-include("tracking/multipole_SC.jl")
 include("tracking/refobt.jl")
 include("tracking/bendlinear.jl")
 
-include("tracking/bend_TPSA.jl")
-include("tracking/drift_TPSA.jl")
-include("tracking/multipole_TPSA.jl")
-include("tracking/rfcavity_TPSA.jl")
 include("tracking/solenoid.jl")
-include("tracking/solenoid_TPSA.jl")
-include("tracking/crabcavity_TPSA.jl")
-include("tracking/thinmultipole_TPSA.jl")
-include("tracking/corrector_TPSA.jl")
 include("tracking/track_vector.jl")
 include("lattice/EdwardsTengTwiss.jl")
 include("lattice/ResonanceDrivingTerms.jl")
 
 include("tracking/fringe.jl")
-include("tracking/fringe_TPSA.jl")
 
 # multi-threading
 include("tracking/track_mthread.jl")

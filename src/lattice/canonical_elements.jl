@@ -880,7 +880,7 @@ function SBEND_SC(;name::String = "SBend", len = 0.0, angle = 0.0, e1 = 0.0, e2 
             DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2), RApertures,
             EApertures,
             DTPSAD.(KickAngle),
-            a, b, Nl, Nm, Nsteps, "SBEND_SC")
+            DTPSAD(a), DTPSAD(b), Nl, Nm, Nsteps, "SBEND_SC")
     end
     return SBEND_SC(name, len, angle, e1, e2,
         PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, fint1, fint2, 
@@ -1610,7 +1610,15 @@ function StrongGaussianBeam(charge::Float64, mass::Float64, atomum::Float64, np:
         momentum, gamma, beta, op, bs, nz, 
         zeros(Float64, nz), zeros(Float64, nz), zeros(Float64, nz), zeros(Float64, nz))
 end
- 
+function StrongGaussianBeam(charge::DTPSAD{N, T}, mass::DTPSAD{N, T}, atomum::DTPSAD{N, T}, np::Int, 
+        energy::DTPSAD{N, T}, op::AbstractOptics4D, bs::Vector{DTPSAD{N, T}}, nz::Int) where {N, T}
+    momentum=sqrt(energy*energy-mass*mass)
+    gamma = energy / mass
+    beta = momentum / energy
+    return StrongGaussianBeam(charge, mass, atomum, np, energy, 
+        momentum, gamma, beta, op, bs, nz,
+        zeros(DTPSAD{N, T}, nz), zeros(DTPSAD{N, T}, nz), zeros(DTPSAD{N, T}, nz), zeros(DTPSAD{N, T}, nz))
+end 
 
 # wake field
 function linear_interpolate(x, x_points, y_points)
@@ -1651,18 +1659,21 @@ mutable struct LongitudinalRLCWake{T} <: AbstractElement{T}
     # constructor with all parameters
     LongitudinalRLCWake(freq::T, Rshunt::T, Q0::T) where T = new{T}(freq, Rshunt, Q0)
 end
-function LongitudinalRLCWake(;freq::Float64=1.0e9, Rshunt::Float64=1.0e6, Q0::Float64=1.0)
+function LongitudinalRLCWake(;freq::T=1.0e9, Rshunt::T=1.0e6, Q0::T=1.0) where {T}
+    if freq isa DTPSAD || Rshunt isa DTPSAD || Q0 isa DTPSAD
+        return LongitudinalRLCWake(DTPSAD(freq), DTPSAD(Rshunt), DTPSAD(Q0))
+    end
     return LongitudinalRLCWake(freq, Rshunt, Q0)
 end
 
-function wakefieldfunc_RLCWake(rlcwake::LongitudinalRLCWake, t::Float64)
+function wakefieldfunc_RLCWake(rlcwake::LongitudinalRLCWake, t::T) where {T}
     Q0p=sqrt(rlcwake.Q0^2 - 1.0/4.0)
     w0 = 2*pi*rlcwake.freq
     w0p= w0/rlcwake.Q0*Q0p
     if t>0
-        return 0.0
+        return zero(T)
     else
-        return rlcwake.Rshunt * w0 /rlcwake.Q0 * (cos(w0p * t) +  sin(w0p * t) / 2 / Q0p) * exp(w0 * t / 2 / rlcwake.Q0)
+        return rlcwake.Rshunt * w0 /rlcwake.Q0 * (cos(w0p * t) +  sin(w0p * t) / 2.0 / Q0p) * exp(w0 * t / 2.0 / rlcwake.Q0)
     end
 end
 

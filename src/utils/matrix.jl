@@ -1,8 +1,8 @@
 # calculate eigenvalues of a matrix using the QR algorithm. This function is differntiable
-function classical_gram_schmidt(A)
+function classical_gram_schmidt(A::AbstractMatrix{T}) where T
     n, m = size(A)
-    Q = zeros(n, m)
-    R = zeros(m, m)
+    Q = zeros(T, n, m)
+    R = zeros(T, m, m)
 
     for j = 1:m
         v = A[:, j]
@@ -21,13 +21,13 @@ end
 function matrix_norm(A)
     return sqrt(sum(A .^ 2))
 end
-function diag1(A)
+function diag1(A::AbstractMatrix{T}) where T
     n, m = size(A)
     if n != m
         error("Matrix must be square")
     end
 
-    d = zeros(n)
+    d = zeros(T, n)
     for i in 1:n
         d[i] = A[i, i]
     end
@@ -35,14 +35,14 @@ function diag1(A)
     return d
 end
 
-function qr_eigen(A; max_iters=10000, tolerance=1e-10)
+function qr_eigen(A::AbstractMatrix{T}; max_iters=10000, tolerance=1e-10) where T
     n, m = size(A)
     if n != m
         error("Matrix must be square")
     end
 
     Ak = copy(A)
-    Qk = zeros(n, n)
+    Qk = zeros(T, n, n)
     for i in 1:n
         Qk[i, i] = 1.0
     end

@@ -87,11 +87,11 @@ We provide two options for fast AD calculation, fastTPSA and Enzyme. fastTPSA is
 fastTPSA example:
 Obtain derivatives of tracking result w.r.t the quadrupole strength k1
 ```
-set_tps_dim(2) # 2 variables
+set_tps_dim(2) # 2 variables for fastTPSA
 function tracking_wrt_k1(x1::DTPSAD{NVAR(), Float64}, x2::DTPSAD{NVAR(), Float64})
-    D1 = DRIFT(len=DTPSAD(1.0))        # in fastTPSA, we use T+ElementName.  
-    D2 = DRIFT(len=DTPSAD(1.0))        # The use of TELEMENT is the same as standard ELEMENT 
-    Q1 = KQUAD(len=DTPSAD(1.0))        # All parameters in TELEMENT are described as TPS variables
+    D1 = DRIFT(len=DTPSAD(1.0))        # We use parametric elements in JuTrack.  
+    D2 = DRIFT(len=DTPSAD(1.0))        # When any of the parameters is a DTPSAD type, the element will be ELEMENT{DTPSAD}
+    Q1 = KQUAD(len=DTPSAD(1.0))        # Otherwise, the element will be ELEMENT{Float64}
     Q2 = KQUAD(len=DTPSAD(1.0))
 
     Q1.k1 = x1
@@ -119,8 +119,6 @@ function tracking_wrt_k1(X)
 
     beam = Beam([0.1 0.0 0.0 0.0 0.0 0.0])
 
-    # !!! avoid creating large lattice in the differentiable function.
-    # !!! load or create your lattice outside the function if it is large.
     LINE = [D1, Q1, D2, Q2] 
     linepass!(LINE, beam)
     return beam.r

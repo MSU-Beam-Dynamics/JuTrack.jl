@@ -2,9 +2,9 @@
 using Distributions
 using Random
 
-function diagm1(v)
+function diagm1(v::AbstractVector{T}) where T
     n = length(v)
-    M = zeros(n, n)  
+    M = zeros(T, n, n)
     for i in 1:n
         M[i, i] = v[i] 
     end
@@ -25,16 +25,19 @@ println(beam.centroid)
 """
 function get_centroid!(beam::Beam)
     idx_sur = findall(x -> x == 0, beam.lost_flag)
-    beam.centroid[1] = sum(beam.r[idx_sur, 1]) / beam.nmacro
-    beam.centroid[3] = sum(beam.r[idx_sur, 3]) / beam.nmacro
-    beam.centroid[2] = sum(beam.r[idx_sur, 2]) / beam.nmacro
-    beam.centroid[4] = sum(beam.r[idx_sur, 4]) / beam.nmacro
+    n_surviving = length(idx_sur)
     
-    beam.centroid[5] = sum(beam.r[idx_sur, 5]) / beam.nmacro
-    beam.centroid[6] = sum(beam.r[idx_sur, 6]) / beam.nmacro
+    if n_surviving == 0
+        beam.centroid .= 0.0  # or handle as appropriate
+        return nothing
+    end
+    
+    for i in 1:6
+        beam.centroid[i] = sum(beam.r[idx_sur, i]) / n_surviving
+    end
+    
     return nothing
 end
-
 """
     get_2nd_moment!(beam::Beam)
 
@@ -47,22 +50,28 @@ println(beam.moment2nd)
 """
 function get_2nd_moment!(beam::Beam)
     idx_sur = findall(x -> x == 0, beam.lost_flag)
-    sums = zeros(6,6)
+    n_surviving = length(idx_sur)
     
-    for c in 1:length(idx_sur)
-        # r6 = @view beam.r[idx_sur[c], :]
+    if n_surviving == 0
+        beam.moment2nd .= 0.0
+        return nothing
+    end
+    
+    # Initialize to zero
+    beam.moment2nd .= 0.0
+    
+    # Simple loops that Enzyme can handle
+    for c in idx_sur
         for i in 1:6
             for j in 1:6
-                sums[i, j] += beam.r[idx_sur[c], i] * beam.r[idx_sur[c], j]
+                beam.moment2nd[i, j] += beam.r[c, i] * beam.r[c, j]
             end
         end
     end
-
-    for i in 1:6
-        for j in 1:6
-            beam.moment2nd[i, j] = sums[i, j] / length(idx_sur)
-        end
-    end
+    
+    # Scale by number of particles
+    beam.moment2nd ./= n_surviving
+    
     return nothing
 end
 
@@ -129,7 +138,7 @@ function initilize_6DGaussiandist!(beam::Beam, optics::AbstractOptics4D, lmap::A
     
     eigval,eigvec=qr_eigen(beam.moment2nd)
     
-    mscale=eigvec * diagm1(1.0 ./ sqrt.(eigval)) * eigvec'
+    mscale=eigvec * diagm1(1.0 ./ sqrt.(eigval)) * transpose(eigvec)
     # # #beam.dist=mscale*beam.dist
     for c in 1:beam.nmacro
         beam.temp1[c]  = mscale[1,1] * beam.r[c, 1] + mscale[1,2] * beam.r[c, 2] + mscale[1,3] * beam.r[c, 3] + mscale[1,4] * beam.r[c, 4] + mscale[1,5] * beam.r[c, 5] + mscale[1,6] * beam.r[c, 6]
@@ -191,7 +200,7 @@ function histogram1DinZ!(beam::Beam, nbins::Int64, inzindex, zhist, zhist_edges)
     @inbounds for i in 1:num_macro
         ibin = (beam.r[:, 5][i] - zhist_edges[1])/zsep  # number of bin from 0
         dx = round(ibin) - ibin
-        binnum=Int64(floor(ibin)+1)
+        binnum=Int(floor(ibin)+1)
         inzindex[i] = binnum 
         neighbor = binnum + Int64(sign(dx))
         ratio = (0.5 - abs(dx))/0.5
