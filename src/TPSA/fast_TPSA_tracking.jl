@@ -570,6 +570,11 @@ end
 
 function drift6!(r::SubArray, le::DTPSAD{N, T}) where {N, T <: Number}
     if isone(use_exact_Hamiltonian)
+        # check if sqrt(1.0 + 2.0*r[6] + r[6]^2 - r[2]^2 - r[4]^2) is real
+        if 1.0 + 2.0*r[6] + r[6]^2 - r[2]^2 - r[4]^2 < 0
+            r .= NaN
+            return nothing
+        end
         NormL = le / sqrt(1.0 + 2.0*r[6] + r[6]^2 - r[2]^2 - r[4]^2)
         r[5] += NormL * (1.0 + r[6]) - le
     else
