@@ -20,7 +20,7 @@ author = {Jinyu Wan and Helena Alamprese and Christian Ratcliff and Ji Qiang and
 
 # Installation
 
-* Install Julia at [here](https://julialang.org/downloads/oldreleases/) (1.10.4 is required! Use other Julia versions may result in an error).
+* Install Julia at [here](https://julialang.org/downloads/oldreleases/).
 
 * Download the package:
 ```
@@ -28,21 +28,21 @@ git clone https://github.com/MSU-Beam-Dynamics/JuTrack.jl
 ```
 
 * Since Julia and its packages are under very active development, it is strongly recommended to create a separate environment for each piece of work.
-To create a JuTrack environment and install its dependencies (errors may occur if not using this method to install all dependencies):
+To create a "JuTrack" environment and install all dependencies (errors may occur if not using this method to install all dependencies):
 ```
 cd JuTrack.jl
 julia --project=. -e "using Pkg; Pkg.instantiate()"
 ```
 
 # Use the package in Julia
-Activate the JuTrack environment in the Julia code (change the path to your JuTrack directory accordingly):
+Activate the JuTrack environment we just created in the Julia code (change below path to your JuTrack directory accordingly):
 ```
 using Pkg
-Pkg.activate("/path/to/JuTrack.jl")
-Pkg.instantiate()
+Pkg.activate("/path/to/JuTrack.jl") # use the correct Julia environment
+Pkg.instantiate()                   # check if all dependencies are correctly installed
 ```
 
-Import JuTrack:
+Import JuTrack in Julia:
 ```
 using JuTrack
 ```
@@ -146,6 +146,3 @@ pringpass!(beamline, beam, nturns)
 
 # Known issues
 * JuTrack is actively under development. If you encounter any issues, please open an issue on GitHub or email wan@frib.msu.edu.
-* This package currently supports forward AD. Backward AD is still under development.
-* Downgrade/upgrade the Julia environment to 1.10.4 for any conflicts.
-* Downgrade/upgrade Enzyme version to 0.13.3 with ```Pkg.add(name="Enzyme", version="0.13.3")``` for any conflicts. 

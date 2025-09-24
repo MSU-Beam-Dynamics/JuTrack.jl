@@ -972,7 +972,15 @@ function ADcomputeRDT(ring, index, changed_ids, changed_elems; chromatic=true, c
     #     chromatic, coupling, geometric1, geometric2, tuneshifts = true, true, true, true, true
     # end
 
-    indDQSO = findBQSO(ring)
+    indB = findelem(ring, SBEND)
+    indQ = findelem(ring, KQUAD)
+    if length(indQ) == 0
+        indQ = findelem(ring, QUAD)
+    end
+    indS = findelem(ring, KSEXT)
+    indO = findelem(ring, KOCT)
+    indDQSO = sort(union(indB, indQ, indS, indO))
+
     AVEBETA, AVEMU, AVEDISP, beta, alpha, mu, dp = ADavedata(ring, 0.0, changed_ids, changed_elems, E0=E0, m0=m0)  
     sIndex = spos(ring, indDQSO.-1)
     s = spos(ring)

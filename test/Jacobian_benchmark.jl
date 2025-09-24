@@ -25,18 +25,20 @@ function fast_TPSA_jacobian(x, xp, y, yp, z, delta)
     return beam.r[1, :]
 end
 @btime Jacobian(fast_TPSA_jacobian, [0.001, 0.0, 0.001, 0.0, 0.0, 0.0])
-# 2.568 ms (33856 allocations: 8.39 MiB)
+# 5.333 ms (63671 allocations: 8.39 MiB)
 
 ###############################################################
 # Calculate the Jacobian using Enzyme AD
 ###############################################################
-function AD_jacobian(x)
-    beam = Beam([x[1] x[2] x[3] x[4] x[5] x[6]])
-    ringpass!(RING, beam, 1)
-    return beam.r
-end
-@btime jacobian(Forward, AD_jacobian, [0.001, 0.0, 0.001, 0.0, 0.0, 0.0])
-# 3.091 ms (21211 allocations: 1.65 MiB)
+# function AD_jacobian(x, RING)
+#     beam = Beam([x[1] x[2] x[3] x[4] x[5] x[6]])
+#     ringpass!(RING, beam, 1)
+#     return beam.r[1, :]
+# end
+# @btime jacobian(Forward, AD_jacobian, [0.001, 0.0, 0.001, 0.0, 0.0, 0.0], Const(RING))
+# # 3.685 ms (23918 allocations: 1.39 MiB)
+# @btime jacobian(Reverse, AD_jacobian, [0.001, 0.0, 0.001, 0.0, 0.0, 0.0], Const(RING))
+# # 36.557 ms (255144 allocations: 29.95 MiB)
 
 ##############################################################
 # Calculate the Jacobian using high-order TPSA
@@ -57,4 +59,4 @@ function TPSA_track_jacobian(x, y)
     return jaco
 end
 @btime g = TPSA_track_jacobian(0.001, 0.001)
-# 137.778 ms (5412862 allocations: 462.68 MiB)
+# 115.944 ms (7709567 allocations: 370.66 MiB)

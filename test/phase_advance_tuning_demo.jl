@@ -7,7 +7,7 @@ set_tps_dim(7)  # 7 variables for the TPSA
 E0 = 17.846262619763e9
 
 # Load the ESR main lattice 
-ESR_crab = deserialize("src/demo/ESR/esr_main_linearquad.jls")
+ESR_crab = deserialize("src/demo/ESR/esr_main.jls")
 ESR_crab = Number2TPSAD(ESR_crab) # Convert to TPSA format
 
 function Q_perturb(ESR_crab)
@@ -129,7 +129,7 @@ x0_vals, goal_vals, grad_vals = multi_val_op(xinit, 100, 1e-4, ESR_crab)
 # xinit = [-1e-6, 1e-6, -1e-6, 1e-6, -1e-6, 1e-6, -1e-6]
 
 # zero_idx = [9,13,17,23,27,31,5537]
-# function get_phase14_zero(x)
+# function get_phase14_zero(x, ESR_perturb)
 #     changed_idx = [9,13,17,23,27,31,5537]
 #     L = 0.25
 #     E0 = 17.846262619763e9
@@ -155,38 +155,24 @@ x0_vals, goal_vals, grad_vals = multi_val_op(xinit, 100, 1e-4, ESR_crab)
 #     goal_vals = []
 #     grad_vals = zeros(7, niter)
 #     zero_idx = [9,13,17,23,27,31,5537]
-#     g0 = get_phase14_zero(x0)
+#     g0 = get_phase14_zero(x0, ESR_perturb)
 #     for i in 1:niter
-#         # grads = gradient(Forward, get_phase14_zero, x0)
-#         # grad9 = grads[1]
-#         # grad13 = grads[2]
-#         # grad17 = grads[3]
-#         # grad23 = grads[4]
-#         # grad27 = grads[5]
-#         # grad31 = grads[6]
-#         # grad5537 = grads[7]
-#         grad9 = autodiff(Forward, get_phase14_zero, Duplicated(x0, [1.0,0.0,0.0,0.0,0.0,0.0,0.0]))
-#         grad13 = autodiff(Forward, get_phase14_zero, Duplicated(x0, [0.0,1.0,0.0,0.0,0.0,0.0,0.0]))
-#         grad17 = autodiff(Forward, get_phase14_zero, Duplicated(x0, [0.0,0.0,1.0,0.0,0.0,0.0,0.0]))
-#         grad23 = autodiff(Forward, get_phase14_zero, Duplicated(x0, [0.0,0.0,0.0,1.0,0.0,0.0,0.0]))
-#         grad27 = autodiff(Forward, get_phase14_zero, Duplicated(x0, [0.0,0.0,0.0,0.0,1.0,0.0,0.0]))
-#         grad31 = autodiff(Forward, get_phase14_zero, Duplicated(x0, [0.0,0.0,0.0,0.0,0.0,1.0,0.0]))
-#         grad5537 = autodiff(Forward, get_phase14_zero, Duplicated(x0, [0.0,0.0,0.0,0.0,0.0,0.0,1.0]))
+#         grads = jacobian(Forward, get_phase14_zero, x0, Const(ESR_perturb))
 
-#         x0[1] -= step * grad9[1]
-#         x0[2] -= step * grad13[1]
-#         x0[3] -= step * grad17[1]
-#         x0[4] -= step * grad23[1]
-#         x0[5] -= step * grad27[1]
-#         x0[6] -= step * grad31[1]
-#         x0[7] -= step * grad5537[1]
+#         x0[1] -= step * grads[1][1]
+#         x0[2] -= step * grads[1][2]
+#         x0[3] -= step * grads[1][3]
+#         x0[4] -= step * grads[1][4]
+#         x0[5] -= step * grads[1][5]
+#         x0[6] -= step * grads[1][6]
+#         x0[7] -= step * grads[1][7]
 
-#         new_phase = get_phase14_zero(x0)
+#         new_phase = get_phase14_zero(x0, ESR_perturb)
 #         println("init: ", g0, " now: ", new_phase, "at step ", i)
 #         x0_vals[:, i] = x0
 #         push!(goal_vals, new_phase)
-#         grad_vals[:, i] = [grad9[1], grad13[1], grad17[1], grad23[1], grad27[1], grad31[1], grad5537[1]]
-#         if new_phase < target 
+#         grad_vals[:, i] = [grads[1][1], grads[1][2], grads[1][3], grads[1][4], grads[1][5], grads[1][6], grads[1][7]]
+#         if new_phase < target
 #             println("tuning finished at step ", i)
 #             break
 #         end

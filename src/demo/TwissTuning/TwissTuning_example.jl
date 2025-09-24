@@ -1,7 +1,7 @@
 include("ssrf_ring.jl")
 using JuTrack
 using BenchmarkTools
-using Plots
+# using Plots
 
 set_tps_dim(1) # 1-D optimization
 SSRF = ssrf(-1.063770, 0)
@@ -52,11 +52,11 @@ x0_vals, beta_vals, grad_vals = tuning_test(7.0)
 
 # SSRF = ssrf(-1.063770, 0)
 
-# function twiss_test(xx)
+# changed_idx = findelem(SSRF, :name, "QL1")
+# function twiss_test(xx, changed_idx)
 #     # we don't suggest to create a long lattice inside the function.
 #     # the ring can be set as Const in autodiff function
-#     # or used as a global variable 
-#     changed_idx = findelem(SSRF, :name, "QL1")
+#     # or used as a global variable
 #     changed_elems = [KQUAD(len=0.32, k1=xx) for i in 1:length(changed_idx)]
 #     twi0 = ADperiodicEdwardsTengTwiss(SSRF, 0.0, 0, changed_idx, changed_elems, E0=3.5e9, m0=m_e)
     
@@ -72,10 +72,10 @@ x0_vals, beta_vals, grad_vals = tuning_test(7.0)
 #     beta_vals = Float64[]
 #     grad_vals = Float64[]
 #     for i in 1:niter
-#         beta0 = twiss_test(x0)
-#         grad = autodiff(ForwardWithPrimal, twiss_test, Duplicated(x0, 1.0))
+#         beta0 = twiss_test(x0, changed_idx)
+#         grad = autodiff(ForwardWithPrimal, twiss_test, Duplicated(x0, 1.0), Const(changed_idx))
 #         x0 -= step * grad[1]
-#         beta1 = twiss_test(x0)
+#         beta1 = twiss_test(x0, changed_idx)
 #         println("beta0: ", beta0, " beta1: ", beta1, " grad:", grad[1], " at step ", i)
 #         push!(x0_vals, x0)
 #         push!(beta_vals, beta1)
