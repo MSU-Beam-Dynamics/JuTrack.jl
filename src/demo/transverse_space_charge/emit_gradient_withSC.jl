@@ -1,5 +1,7 @@
 # Calculate the emittance growth due to transverse space charge effects
 # AD automatically obtain derivatives with respect to the lattice parameters 
+using Pkg
+Pkg.activate("."); Pkg.instantiate() # change "." to the path of your JuTrack.jl package
 using JuTrack
 
 function f(D1L::DTPSAD{N, T}, D2L::DTPSAD{N, T}, D3L::DTPSAD{N, T}, 
@@ -70,18 +72,18 @@ D3L = DTPSAD(0.2, 7)
 
 jac = Jacobian(f, [D1L, D2L, D3L, Q1L, Q2L, Q1k, Q2k])
 
-using PyCall
-plt = pyimport("matplotlib.pyplot")
-np = pyimport("numpy")
-plt.figure(figsize=(7, 4))
-plt.plot(np.arange(1, 8), jac[1, :], "x", label="AD, X", markersize=8)
-plt.plot(np.arange(1, 8), jac[2, :], "s", label="AD, Y", markersize=8, markerfacecolor="none")
-plt.xticks(np.arange(1, 8), ["D1L", "Q1L", "Q1k", "D2L", "Q2L", "Q2k", "D3L"], fontsize=14, fontname="Times New Roman")
-plt.yticks(np.arange(-0.5, 0.6, 0.1), fontsize=14, fontname="Times New Roman")
-plt.legend(prop=Dict("family"=>"Times New Roman"), frameon=false)
-plt.ylabel("Gradient", fontsize=16, fontname="Times New Roman")
-plt.ylim(-0.5, 0.5)
-plt.show()
+# using PyCall
+# plt = pyimport("matplotlib.pyplot")
+# np = pyimport("numpy")
+# plt.figure(figsize=(7, 4))
+# plt.plot(np.arange(1, 8), jac[1, :], "x", label="AD, X", markersize=8)
+# plt.plot(np.arange(1, 8), jac[2, :], "s", label="AD, Y", markersize=8, markerfacecolor="none")
+# plt.xticks(np.arange(1, 8), ["D1L", "Q1L", "Q1k", "D2L", "Q2L", "Q2k", "D3L"], fontsize=14, fontname="Times New Roman")
+# plt.yticks(np.arange(-0.5, 0.6, 0.1), fontsize=14, fontname="Times New Roman")
+# plt.legend(prop=Dict("family"=>"Times New Roman"), frameon=false)
+# plt.ylabel("Gradient", fontsize=16, fontname="Times New Roman")
+# plt.ylim(-0.5, 0.5)
+# plt.show()
 
 
 #########################################################################################################################

@@ -9,6 +9,8 @@
 # This benchmark test is done on 08/01/2025 with the latest version of JuTrack.jl
 # with Julia version 1.10.4, Enzyme version v0.13.3
 include("../src/demo/SPEAR3/spear3.jl")
+using Pkg
+Pkg.activate("."); Pkg.instantiate() # change "." to your path of JuTrack.jl
 using JuTrack
 using BenchmarkTools
 

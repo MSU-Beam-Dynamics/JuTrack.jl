@@ -1,6 +1,8 @@
 # JuTrack use matplotlib in Python to plot the lattice
 # PyCall is used to call the Python function from Julia
 # matplotlib and numpy are required Python packages in the Python environment associated with PyCall
+using Pkg
+Pkg.activate("."); Pkg.instantiate() # change "." to your path of JuTrack.jl
 using JuTrack
 D1 = DRIFT(len=0.2)
 Q1 = QUAD(len=0.1, k1=29.6)

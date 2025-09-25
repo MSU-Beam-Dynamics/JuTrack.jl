@@ -1,4 +1,3 @@
-using JuTrack
 function alsu(rad, volt)
     MAINCAV = RFCA(volt=volt, philag=157.529856/2/pi, freq=500416911.0149903, energy=2e9) # volt: 650000.0
     HCAV = RFCA(volt=0.0, philag=353.6975389221756/2/pi, freq=1501250733.044971, energy=2e9)

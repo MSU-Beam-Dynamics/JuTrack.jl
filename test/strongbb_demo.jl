@@ -1,7 +1,8 @@
 # This code simulate strong bb interaction and calculate the final emittance of the electron beam
 # The derivatives of the final results w.r.t. the emittance of the proton beam at IP are automatically calculated via AD
 # This script is just a test for the AD feature in JuTrack. The results may not be physically meaningful.
-
+using Pkg
+Pkg.activate("."); Pkg.instantiate() # change "." to your path of JuTrack.jl
 using JuTrack
 set_tps_dim(3)
 function f1(x1::DTPSAD{N, T}, x2::DTPSAD{N, T}, x3::DTPSAD{N, T}) where {N, T}

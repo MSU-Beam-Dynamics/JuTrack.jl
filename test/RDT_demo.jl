@@ -1,6 +1,8 @@
 # Gradient descent optimization example using JuTrack.
 # Objective:                minimize the sum of the following terms:  h21000, h10110, h30000, h10200, h10020 for the SPEAR3 lattice.
 # Optimization variables:   SDM and SFM.
+using Pkg
+Pkg.activate("."); Pkg.instantiate() # change "." to your path of JuTrack.jl
 using JuTrack
 using Printf
 

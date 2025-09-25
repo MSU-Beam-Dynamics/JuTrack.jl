@@ -1,5 +1,7 @@
 # Example of using JuTrack to tune the ESR lattice for a specific phase advance between two crab cavities
 # Warning: This code is for demonstration purposes. Simply tuning the quadrupoles may result in unstable solutions.
+using Pkg
+Pkg.activate("."); Pkg.instantiate() # change "." to your path of JuTrack.jl
 using JuTrack
 using Serialization
 using Printf

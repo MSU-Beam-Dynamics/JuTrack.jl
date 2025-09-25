@@ -1,4 +1,6 @@
 include("ssrf_ring.jl")
+using Pkg
+Pkg.activate("."); Pkg.instantiate() # change "." to your path of JuTrack.j
 using JuTrack
 using BenchmarkTools
 # using Plots

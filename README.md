@@ -144,5 +144,57 @@ or
 pringpass!(beamline, beam, nturns)
 ```
 
+# Precompile
+Julia compiles functions the first time they are called (Just-In-Time, JIT). For complex code, this first call can take from seconds to minutes, and the cost repeats every time a new Julia process starts.
+
+A custom sysimage precompiles those methods ahead of time, so loading and running functions has little to no latency, making Julia feel much closer to a traditional compiled language.
+
+We provide ready-made helper scripts under the precompile/ directory. The file _agg_warmup.jl includes some sample functions. Add the function calls you want Julia to precompile in this file, and remove any you don't need to reduce the size of the sysimage.
+
+1) Test precompile statements. Move to the JuTrack.jl folder, and type
+
+Windows (PowerShell/CMD):
+```
+julia --project=. --trace-compile=precompile\trace_base.jl precompile\run_warmup.jl
+```
+
+macOS/Linux:
+```
+julia --project=. --trace-compile=precompile/trace_base.jl precompile/run_warmup.jl
+```
+
+
+2) Build the sysimage
+
+Windows:
+```
+julia --project=. precompile\build_sysimage.jl
+```
+
+macOS/Linux:
+```
+julia --project=. precompile/build_sysimage.jl
+```
+
+This creates precompile/JuTrack_sysimage.(dll|dylib|so) for your platform.
+
+3) Use it
+
+Windows:
+```
+julia --sysimage=precompile\JuTrack_sysimage.dll your_code.jl
+```
+
+macOS:
+```
+julia --sysimage=precompile/JuTrack_sysimage.dylib your_code.jl
+```
+
+Linux:
+```
+julia --sysimage=precompile/JuTrack_sysimage.so your_code.jl
+```
+
 # Known issues
 * JuTrack is actively under development. If you encounter any issues, please open an issue on GitHub or email wan@frib.msu.edu.
+* Please ensure using the same OS and Julia verion when using a precompiled sysimage.

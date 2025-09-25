@@ -1,5 +1,7 @@
 # Using Enzyme to calculate the gradient of a wakefield function
 # The implementation of fast TPSA is still under development, so we use the Enzyme AD for now.
+using Pkg
+Pkg.activate("."); Pkg.instantiate() # change "." to your path of JuTrack.jl
 using JuTrack
 
 function f(x1)
