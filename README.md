@@ -82,7 +82,7 @@ twi = periodicEdwardsTengTwiss(RING, 0.0, 0)
 ```
 
 # Automatic differentiation
-We provide two options for fast AD calculation, fastTPSA and Enzyme. fastTPSA is a first-order dual-number module, and Enzyme is a third-party package that runs AD at compiler level. Both methods provide comparably fast AD. The fastTPSA is written in pure Julia that is supposed to be more stable. While Enzyme supports all kinds of differentiable functions, which is not limited by the tracking code in JuTrack.
+We provide two options for fast AD calculation, fastTPSA and Enzyme. fastTPSA is a first-order TPSA module, and Enzyme is a third-party package that runs AD at compiler level. Both methods provide comparably fast AD. The fastTPSA is written in pure Julia that is supposed to be more stable. While Enzyme supports all kinds of differentiable functions, which is not limited by the tracking code in JuTrack.
 
 fastTPSA example:
 Obtain derivatives of tracking result w.r.t the quadrupole strength k1
