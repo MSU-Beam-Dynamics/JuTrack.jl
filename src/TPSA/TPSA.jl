@@ -9,7 +9,7 @@ module HighOrderTPS
 
 include("polymap.jl")
 
-export CTPS, cst, assign!, reassign!
+export CTPS, cst, assign!, reassign!, getindexmap, setindexmap, PolyMap, findindex
 
 """
     struct CTPS{T, TPS_Dim, Max_TPS_Degree}
@@ -530,6 +530,186 @@ function cosh(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS
         odd = !odd
     end
     return SUM + cosh_a0
+end
+
+
+
+#############################################################################################################################
+##  Extended arithmetic operations for mixed real-complex types
+#############################################################################################################################
+
+# Type promotion utilities
+@inline promote_ctps_type(::Type{T1}, ::Type{T2}) where {T1, T2} = promote_type(T1, T2)
+
+# Addition operations with type promotion
+function +(ctps1::CTPS{T1, TPS_Dim, Max_TPS_Degree}, ctps2::CTPS{T2, TPS_Dim, Max_TPS_Degree}) where {T1, T2, TPS_Dim, Max_TPS_Degree}
+    T = promote_type(T1, T2)
+    ctps_new = CTPS(T(zero(T)), TPS_Dim, Max_TPS_Degree)
+    @inbounds for i in eachindex(ctps_new.map)
+        ctps_new.map[i] = T(ctps1.map[i]) + T(ctps2.map[i])
+    end
+    return ctps_new
+end
+
+function +(ctps::CTPS{T1, TPS_Dim, Max_TPS_Degree}, a::T2) where {T1, T2, TPS_Dim, Max_TPS_Degree}
+    T = promote_type(T1, T2)
+    ctps_new = CTPS(T(zero(T)), TPS_Dim, Max_TPS_Degree)
+    @inbounds for i in eachindex(ctps_new.map)
+        ctps_new.map[i] = T(ctps.map[i])
+    end
+    ctps_new.map[1] += T(a)
+    return ctps_new
+end
+
+function +(a::T2, ctps::CTPS{T1, TPS_Dim, Max_TPS_Degree}) where {T1, T2, TPS_Dim, Max_TPS_Degree}
+    return ctps + a
+end
+
+# Subtraction operations with type promotion
+function -(ctps1::CTPS{T1, TPS_Dim, Max_TPS_Degree}, ctps2::CTPS{T2, TPS_Dim, Max_TPS_Degree}) where {T1, T2, TPS_Dim, Max_TPS_Degree}
+    T = promote_type(T1, T2)
+    ctps_new = CTPS(T(zero(T)), TPS_Dim, Max_TPS_Degree)
+    @inbounds for i in eachindex(ctps_new.map)
+        ctps_new.map[i] = T(ctps1.map[i]) - T(ctps2.map[i])
+    end
+    return ctps_new
+end
+
+function -(ctps::CTPS{T1, TPS_Dim, Max_TPS_Degree}, a::T2) where {T1, T2, TPS_Dim, Max_TPS_Degree}
+    T = promote_type(T1, T2)
+    ctps_new = CTPS(T(zero(T)), TPS_Dim, Max_TPS_Degree)
+    @inbounds for i in eachindex(ctps_new.map)
+        ctps_new.map[i] = T(ctps.map[i])
+    end
+    ctps_new.map[1] -= T(a)
+    return ctps_new
+end
+
+function -(a::T2, ctps::CTPS{T1, TPS_Dim, Max_TPS_Degree}) where {T1, T2, TPS_Dim, Max_TPS_Degree}
+    T = promote_type(T1, T2)
+    ctps_new = CTPS(T(zero(T)), TPS_Dim, Max_TPS_Degree)
+    @inbounds for i in eachindex(ctps_new.map)
+        ctps_new.map[i] = -T(ctps.map[i])
+    end
+    ctps_new.map[1] += T(a)
+    return ctps_new
+end
+
+# Multiplication operations with type promotion
+function *(ctps1::CTPS{T1, TPS_Dim, Max_TPS_Degree}, ctps2::CTPS{T2, TPS_Dim, Max_TPS_Degree}) where {T1, T2, TPS_Dim, Max_TPS_Degree}
+    T = promote_type(T1, T2)
+    # Initialize result with promoted type
+    ctps_new = CTPS{T, TPS_Dim, Max_TPS_Degree}(0, ctps1.terms, Vector{T}(undef, ctps1.terms), ctps1.polymap)
+    fill!(ctps_new.map, zero(T))
+    
+    # Temporary buffer for exponent addition
+    temp = Vector{Int}(undef, TPS_Dim + 1)
+    
+    # Loop over all non-zero terms of ctps1 and ctps2
+    @inbounds for i in eachindex(ctps1.map)
+        c1 = T(ctps1.map[i])
+        if c1 == zero(T)
+            continue
+        end
+        exp1 = getindexmap(ctps1.polymap[], i)
+        deg1 = exp1[1]
+        max_j_terms = binomial(TPS_Dim + (Max_TPS_Degree - deg1), TPS_Dim)
+        j_lim = min(ctps2.terms, max_j_terms)
+        
+        for j in 1:j_lim
+            c2 = T(ctps2.map[j])
+            if c2 == zero(T)
+                continue
+            end
+            exp2 = getindexmap(ctps2.polymap[], j)
+            @inbounds for k in 1:(TPS_Dim + 1)
+                temp[k] = exp1[k] + exp2[k]
+            end
+            idx = findindex(ctps_new, temp)
+            ctps_new.map[idx] += c1 * c2
+        end
+    end
+    return ctps_new
+end
+
+function *(ctps::CTPS{T1, TPS_Dim, Max_TPS_Degree}, a::T2) where {T1, T2, TPS_Dim, Max_TPS_Degree}
+    T = promote_type(T1, T2)
+    ctps_new = CTPS(T(zero(T)), TPS_Dim, Max_TPS_Degree)
+    @inbounds for i in eachindex(ctps_new.map)
+        ctps_new.map[i] = T(ctps.map[i]) * T(a)
+    end
+    return ctps_new
+end
+
+function *(a::T2, ctps::CTPS{T1, TPS_Dim, Max_TPS_Degree}) where {T1, T2, TPS_Dim, Max_TPS_Degree}
+    return ctps * a
+end
+
+# Division operations with type promotion
+function /(ctps1::CTPS{T1, TPS_Dim, Max_TPS_Degree}, ctps2::CTPS{T2, TPS_Dim, Max_TPS_Degree}) where {T1, T2, TPS_Dim, Max_TPS_Degree}
+    c0 = cst(ctps2)
+    c0 == zero(T2) && throw(DivideError())
+    return ctps1 * inv(ctps2)
+end
+
+function /(ctps::CTPS{T1, TPS_Dim, Max_TPS_Degree}, a::T2) where {T1, T2, TPS_Dim, Max_TPS_Degree}
+    a == zero(T2) && throw(DivideError())
+    T = promote_type(T1, T2)
+    ctps_new = CTPS(T(zero(T)), TPS_Dim, Max_TPS_Degree)
+    @inbounds for i in eachindex(ctps_new.map)
+        ctps_new.map[i] = T(ctps.map[i]) / T(a)
+    end
+    return ctps_new
+end
+
+function /(a::T2, ctps::CTPS{T1, TPS_Dim, Max_TPS_Degree}) where {T1, T2, TPS_Dim, Max_TPS_Degree}
+    c0 = cst(ctps)
+    c0 == zero(T1) && throw(DivideError())
+    return a * inv(ctps)
+end
+
+# Extended constructor for mixed types
+function CTPS(a::T1, n::Int, TPS_Dim::Int, Max_TPS_Degree::Int, ::Type{T2}) where {T1, T2}
+    T = promote_type(T1, T2)
+    n > 0 && n ≤ TPS_Dim || throw(ArgumentError("variable index out of range"))
+    polymap = getOrCreatePolyMap(TPS_Dim, Max_TPS_Degree)
+    terms = binomial(TPS_Dim + Max_TPS_Degree, Max_TPS_Degree)
+    map = Vector{T}(undef, terms)
+    fill!(map, zero(T))
+    map[1] = T(a)
+    map[n + 1] = one(T)
+    return CTPS{T, TPS_Dim, Max_TPS_Degree}(1, terms, map, Ref(polymap))
+end
+
+# Extended inverse function for complex types
+function inv(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T<:Complex, TPS_Dim, Max_TPS_Degree}
+    c0 = cst(ctps)
+    c0 == zero(T) && throw(DivideError())
+    # Separate out the non-constant part
+    temp = ctps - c0
+    inv_c0 = one(T) / c0
+    term_by_order = CTPS(inv_c0, TPS_Dim, Max_TPS_Degree)
+    SUM = CTPS(term_by_order)
+    for i in 1:Max_TPS_Degree
+        term_by_order *= -(temp / c0)
+        SUM += term_by_order
+    end
+    return SUM
+end
+
+# Extended sqrt function for complex types
+function sqrt(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T<:Complex, TPS_Dim, Max_TPS_Degree}
+    a0 = cst(ctps)
+    root_a0 = sqrt(a0)
+    temp = ctps - a0
+    term_by_order = temp / root_a0
+    SUM = term_by_order / T(2)
+    for i in 2:Max_TPS_Degree
+        coeff = doublefactorial_double(2 * i - 3) / doublefactorial_double(2 * i)
+        term_by_order *= -temp / a0
+        SUM += term_by_order * T(coeff)
+    end
+    return SUM + root_a0
 end
 
 end 
