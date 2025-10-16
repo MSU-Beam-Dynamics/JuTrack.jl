@@ -1,6 +1,7 @@
-function alsu(rad, volt)
-    MAINCAV = RFCA(volt=volt, philag=157.529856/2/pi, freq=500416911.0149903, energy=2e9) # volt: 650000.0
-    HCAV = RFCA(volt=0.0, philag=353.6975389221756/2/pi, freq=1501250733.044971, energy=2e9)
+# Example usage of Frequency Map Analysis (FMA) and plotting the results
+using JuTrack
+
+function testring(rad)
     CENOFSTR01 = MARKER(name="CENOFSTR01")
     CENOFSTR02 = MARKER(name="CENOFSTR02")
     CENOFSTR03 = MARKER(name="CENOFSTR03")
@@ -18,20 +19,13 @@ function alsu(rad, volt)
     DX = DRIFT(len=0.0375, name="DX")
     D12 = DRIFT(len=0.075, name="D12")
     D15 = DRIFT(len=0.225, name="D15")
-    QF1 = KQUAD(len=0.18, k1=13.80301, NumIntSteps=10, rad=rad, name="QF1")
-    QD1 = KQUAD(len=0.14, k1=-13.82396, NumIntSteps=10, rad=rad, name="QD1")
+    QF1 = KQUAD(len=0.18, k1=0.1384045189E+02, NumIntSteps=10, rad=rad, name="QF1") # 13.80301
+    QD1 = KQUAD(len=0.14, k1=-0.1377444068E+02, NumIntSteps=10, rad=rad, name="QD1") # -13.82396
     QF2 = KQUAD(len=0.19, k1=10.19367, NumIntSteps=10, rad=rad, name="QF2")
     QF3 = KQUAD(len=0.115, k1=10.94517, NumIntSteps=10, rad=rad, name="QF3")
     QF4 = KQUAD(len=0.305, k1=15.32064, NumIntSteps=10, rad=rad, name="QF4")
     QF5 = KQUAD(len=0.305, k1=15.8, NumIntSteps=10, rad=rad, name="QF5")
     QF6 = KQUAD(len=0.305, k1=15.68564, NumIntSteps=10, rad=rad, name="QF6")
-    # QF1 = QUAD(len=0.18, k1=13.80301, name="QF1")
-    # QD1 = QUAD(len=0.14, k1=-13.82396, name="QD1")
-    # QF2 = QUAD(len=0.19, k1=10.19367, name="QF2")
-    # QF3 = QUAD(len=0.115, k1=10.94517, name="QF3")
-    # QF4 = QUAD(len=0.305, k1=15.32064, name="QF4")
-    # QF5 = QUAD(len=0.305, k1=15.8, name="QF5")
-    # QF6 = QUAD(len=0.305, k1=15.68564, name="QF6")
     SHH = KSEXT(len=0.075, k2=3.514648, NumIntSteps=10, rad=rad, name="SHH")
     SHH2 = KSEXT(len=0.075, k2=-929.5771999999999, NumIntSteps=10, rad=rad, name="SHH2")
     SD = KSEXT(len=0.28, k2=-1367.68410852, NumIntSteps=10, rad=rad, name="SD")
@@ -51,9 +45,18 @@ function alsu(rad, volt)
         DX, DX, QF5, D12, BEND3, D12, QF4, DX, DX, BEND2, 
         D15, QF3, D12, SF, DX, DX, QF2, D12, SD, DX, DX, BEND1, 
         DX, DX, SHH2, DX, DX, QD1, DX, DX, QF1, D12, SHH, DX]
-    RING = [MAINCAV, HCAV, CENOFSTR01, STR_B..., ARC..., STR_A..., CENOFSTR02, STR_B..., ARC..., STR_A..., CENOFSTR03, 
+    RING = [CENOFSTR01, STR_B..., ARC..., STR_A..., CENOFSTR02, STR_B..., ARC..., STR_A..., CENOFSTR03, 
         STR_B..., ARC..., STR_A..., CENOFSTR04, STR_B..., ARC..., STR_A..., CENOFSTR05, STR_B...,
         ARC..., STR_A..., CENOFSTR06, STR_B..., ARC..., STR_A..., CENOFSTR07, STR_B..., ARC..., STR_A..., 
         CENOFSTR08, STR_B..., ARC..., STR_A..., CENOFSTR09, STR_B..., ARC..., STR_A..., CENOFSTR10, 
         STR_B..., ARC..., STR_A..., CENOFSTR11, STR_B..., ARC..., STR_A..., CENOFSTR12, STR_B..., ARC..., STR_A...]
 end
+
+# create the ring for FMA test
+RING = testring(0)
+
+# get the FMA results
+rows = FMA(RING, 1024)
+
+# plot the FMA results
+plot_fma(rows)

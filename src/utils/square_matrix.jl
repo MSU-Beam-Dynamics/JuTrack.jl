@@ -1,10 +1,15 @@
 # A code for extending the convergence map method based on square matrix proposed by Li Hua Yu, et al. to 6-D space.
 # This extension is based on the 4-D code of Yue Hao.
 # Code created by Jinyu Wan, 03/24/2025.
+# Performance optimizations with parallel processing added.
 using LinearAlgebra
 using FFTW
 using StaticArrays
 using PyCall
+using Distributed
+using Base.Threads
+using SharedArrays
+using ProgressMeter
 # np = pyimport("numpy")
 # using TimerOutputs
 # const to = TimerOutput()
@@ -591,12 +596,22 @@ end
 function itearation_freq(dtheta, theta0, freq, nmap, z_to_w, w_to_z; jacobian=nothing, dist_avoid_res=0.001)
     n1, n2, n3 = size(dtheta[1,:,:,:])
     t = theta0 .+ dtheta
-    w_x = exp.(1.0im .* t[1,:,:,:])
-    w_xc = conj.(w_x)
-    w_y = exp.(1.0im .* t[2,:,:,:])
-    w_yc = conj.(w_y)
-    w_z = exp.(1.0im .* t[3,:,:,:])
-    w_zc = conj.(w_z)
+    
+    # Pre-allocate arrays to reduce memory allocations
+    w_x = similar(t[1,:,:,:], ComplexF64)
+    w_xc = similar(w_x)
+    w_y = similar(w_x)
+    w_yc = similar(w_x)
+    w_z = similar(w_x)
+    w_zc = similar(w_x)
+    
+    # Compute exponentials in-place
+    @. w_x = exp(1.0im * t[1,:,:,:])
+    @. w_xc = conj(w_x)
+    @. w_y = exp(1.0im * t[2,:,:,:])
+    @. w_yc = conj(w_y)
+    @. w_z = exp(1.0im * t[3,:,:,:])
+    @. w_zc = conj(w_z)
 
     if isnothing(jacobian)
         xcur, pxcur, ycur, pycur, zcur, pzcur = w_to_z([w_x, w_xc, w_y, w_yc, w_z, w_zc])
@@ -616,33 +631,44 @@ function itearation_freq(dtheta, theta0, freq, nmap, z_to_w, w_to_z; jacobian=no
         zcur = permutedims(reshape(zcur, n1, n2, n3), (3, 2, 1))
         pzcur = permutedims(reshape(pzcur, n1, n2, n3), (3, 2, 1))
     end
-    # one-turn map
-    # nx, npx, ny, npy, nz, npz = nmap([xcur, pxcur, ycur, pycur, zcur, pzcur]) # not work in Julia
+    
+    # one-turn map - pre-allocate result arrays
+    nx = similar(xcur)
+    npx = similar(xcur)
+    ny = similar(xcur)
+    npy = similar(xcur)
+    nz = similar(xcur)
+    npz = similar(xcur)
+    
+    # Use broadcast with pre-allocated arrays
     Ys = broadcast((a,b,c,d,e,f) -> nmap([a,b,c,d,e,f]), xcur, pxcur, ycur, pycur, zcur, pzcur)
-    nx = getindex.(Ys, 1)
-    npx = getindex.(Ys, 2)
-    ny = getindex.(Ys, 3)
-    npy = getindex.(Ys, 4)
-    nz = getindex.(Ys, 5)
-    npz = getindex.(Ys, 6)
+    nx .= getindex.(Ys, 1)
+    npx .= getindex.(Ys, 2)
+    ny .= getindex.(Ys, 3)
+    npy .= getindex.(Ys, 4)
+    nz .= getindex.(Ys, 5)
+    npz .= getindex.(Ys, 6)
 
-    # w-space
-    # n_wx, n_wxc, n_wy, n_wyc, n_wz, n_wzc = z_to_w([nx, npx, ny, npy, nz, npz]) # not work in Julia
+    # w-space - pre-allocate result arrays
+    n_wx = similar(nx)
+    n_wy = similar(nx)
+    n_wz = similar(nx)
+    
     Ws = broadcast((a,b,c,d,e,f) -> z_to_w([a,b,c,d,e,f]), nx, npx, ny, npy, nz, npz)
-    n_wx = getindex.(Ws, 1)
-    # n_wxc = getindex.(Ws, 2)
-    n_wy = getindex.(Ws, 3)
-    # n_wyc = getindex.(Ws, 4)
-    n_wz = getindex.(Ws, 5)
-    # n_wzc = getindex.(Ws, 6)
+    n_wx .= getindex.(Ws, 1)
+    n_wy .= getindex.(Ws, 3)
+    n_wz .= getindex.(Ws, 5)
 
-    phix = (-1.0im).*log.(n_wx./w_x) .- freq[1]
-    phiy = (-1.0im).*log.(n_wy./w_y) .- freq[2]
-    phiz = (-1.0im).*log.(n_wz./w_z) .- freq[3]
+    # Pre-allocate phase arrays
+    phix = similar(n_wx)
+    phiy = similar(n_wx)
+    phiz = similar(n_wx)
+    
+    @. phix = (-1.0im) * log(n_wx / w_x) - freq[1]
+    @. phiy = (-1.0im) * log(n_wy / w_y) - freq[2]
+    @. phiz = (-1.0im) * log(n_wz / w_z) - freq[3]
 
-    # phix_fft = np.fft.fftn(phix)
-    # phiy_fft = np.fft.fftn(phiy)
-    # phiz_fft = np.fft.fftn(phiz)
+    # Use in-place FFT if available
     phix_fft = fft(phix)
     phiy_fft = fft(phiy)
     phiz_fft = fft(phiz)
@@ -697,7 +723,7 @@ function itearation_freq(dtheta, theta0, freq, nmap, z_to_w, w_to_z; jacobian=no
         
         push!(newfreq_trials, copy(newfreq))
         
-        res_term = exp.(im * freq1list * newfreq[1] + im * freq2list * newfreq[2] + im * freq3list * newfreq[3]) .- 1
+        res_term .= exp.(im * freq1list * newfreq[1] + im * freq2list * newfreq[2] + im * freq3list * newfreq[3]) .- 1
         min_abs_res_term = minimum(abs.(res_term))
         
         push!(resmin_trials, min_abs_res_term)
@@ -713,9 +739,15 @@ function itearation_freq(dtheta, theta0, freq, nmap, z_to_w, w_to_z; jacobian=no
         end
     end
     
-    theta_mx = phix_fft ./ res_term
-    theta_my = phiy_fft ./ res_term
-    theta_mz = phiz_fft ./ res_term
+    # Pre-allocate theta arrays
+    theta_mx = similar(phix_fft)
+    theta_my = similar(phix_fft)
+    theta_mz = similar(phix_fft)
+    
+    @. theta_mx = phix_fft / res_term
+    @. theta_my = phiy_fft / res_term  
+    @. theta_mz = phiz_fft / res_term
+    
     theta_mx[1,1,1] = 0.0+0.0im
     theta_my[1,1,1] = 0.0+0.0im
     theta_mz[1,1,1] = 0.0+0.0im
@@ -954,7 +986,7 @@ function CMscan1(transfer_map, dim, order, tunes,
                 thetas[2, :, :, :] = bb .+ theta2ini .- dt[2, 1, 1, 1]
                 thetas[3, :, :, :] = gg .+ theta3ini .- dt[3, 1, 1, 1]
                 dtdiff = sqrt(sum(abs.(dt .- dtold).^2) / (nalpha * nbeta * ngamma))
-                if isnan(dtdiff )
+                if isnan(dtdiff) || dtdiff > 1e4
                     println("NaN or large value encountered, breaking out of loop.")
                     break
                 end
@@ -1018,146 +1050,378 @@ function twiss_from_6x6(M::AbstractMatrix{<:Real})
     )
 end
 
-# function Heono_test(dim, order, tunes)
-#     hp = TPSVar4D(order)
-#     x, px, y, py = get_variables(hp)
-#     tunex = tunes[1]
-#     tuney = 1.01 - 2.0*tunex
-#     xmu = 2.0*pi*tunex
-#     ymu = 2.0*pi*tuney
-#     cmx = cos(xmu)
-#     smx = sin(xmu)
-#     cmy = cos(ymu)
-#     smy = sin(ymu)
+# Optimized helper function for computing a single grid point
+function compute_grid_point(x_val, y_val, z_val, pxini, pyini, pzini, 
+                           freq_init, tpsMap, ztow, wtoz, wlist, 
+                           wx0z, wy0z, wz0z, Uinv, itertimes, 
+                           nalpha, nbeta, ngamma, aa, bb, gg, use_twiss_transform::Bool)
+    
+    if use_twiss_transform
+        # Use direct Twiss parameter transformation (CMscan1 style)
+        alphax, betax = 0.0, 1.0  # These should be passed as parameters
+        alphay, betay = 0.0, 1.0
+        alphaz, betaz = 0.0, 1.0
+        
+        zxini = x_val/sqrt(betax) - 1.0im * alphax * x_val / sqrt(betax) - 1.0im * pxini * sqrt(betax)
+        zxcini = x_val/sqrt(betax) + 1.0im * alphax * x_val / sqrt(betax) + 1.0im * pxini * sqrt(betax)
+        zyini = y_val/sqrt(betay) - 1.0im * alphay * y_val / sqrt(betay) - 1.0im * pyini * sqrt(betay)
+        zycini = y_val/sqrt(betay) + 1.0im * alphay * y_val / sqrt(betay) + 1.0im * pyini * sqrt(betay)
+        zzini = z_val/sqrt(betaz) - 1.0im * alphaz * z_val / sqrt(betaz) - 1.0im * pzini * sqrt(betaz)
+        zzcini = z_val/sqrt(betaz) + 1.0im * alphaz * z_val / sqrt(betaz) + 1.0im * pzini * sqrt(betaz)
+        zvars = [zxini, zxcini, zyini, zycini, zzini, zzcini]
+    else
+        # Use matrix transformation (CMscan style)
+        xmaps = [x_val, pxini, y_val, pyini, z_val, pzini]
+        zvars = Vector{ComplexF64}(undef, 6)
+        for i in 1:6
+            poly = 0.0im
+            for j in 1:6
+                poly += Uinv[i, j] * xmaps[j]
+            end
+            zvars[i] = poly
+        end
+    end
 
-#     pxm = px - x*x + y*y
-#     pym = py + 2.0*x*y
+    # Evaluate action-angle variables
+    wxini = evaluate(wx0z, zvars)
+    wyini = evaluate(wy0z, zvars)
+    wzini = evaluate(wz0z, zvars)
 
-#     xmap = x * cmx + pxm * smx
-#     pxmap = -x * smx + pxm * cmx
-#     ymap = y * cmy + pym * smy
-#     pymap = -y * smy + pym * cmy
+    # Initial theta values
+    theta1ini = -1.0im * log(wxini)
+    theta2ini = -1.0im * log(wyini)
+    theta3ini = -1.0im * log(wzini)
 
-#     z1map = xmap - 1.0im * pxmap
-#     z1cmap = xmap + 1.0im * pxmap
-#     z2map = ymap - 1.0im * pymap
-#     z2cmap = ymap + 1.0im * pymap
+    # Pre-allocated theta arrays
+    thetas = zeros(ComplexF64, 3, nalpha, nbeta, ngamma)
+    thetas[1, :, :, :] .= theta1ini .+ aa
+    thetas[2, :, :, :] .= theta2ini .+ bb
+    thetas[3, :, :, :] .= theta3ini .+ gg
 
-#     # z1func = numpify(z1map, dim * 2)
-#     # z1cfunc = numpify(z1cmap, dim * 2)
-#     # z2func = numpify(z2map, dim * 2)
-#     # z2cfunc = numpify(z2cmap, dim * 2)
+    dt = zeros(ComplexF64, 3, nalpha, nbeta, ngamma)
+    freqs = copy(freq_init)
 
-#     z1func = evaluate(z1map)
-#     z1cfunc = evaluate(z1cmap)
-#     z2func = evaluate(z2map)
-#     z2cfunc = evaluate(z2cmap)
+    dtdiff_final = 1e4
+    for _ in 1:itertimes
+        dtold = copy(dt)
+        dt, freqs, _, _, _ = itearation_freq(dt, thetas, freqs, 
+                                            tpsMap, ztow, wtoz, jacobian=wlist)
+        thetas[1, :, :, :] = aa .+ theta1ini .- dt[1, 1, 1, 1]
+        thetas[2, :, :, :] = bb .+ theta2ini .- dt[2, 1, 1, 1]
+        thetas[3, :, :, :] = gg .+ theta3ini .- dt[3, 1, 1, 1]
+        dtdiff = sqrt(sum(abs.(dt .- dtold).^2) / (nalpha * nbeta * ngamma))
+        if isnan(dtdiff) || dtdiff > 1e4
+            break
+        end
+        if dtdiff < dtdiff_final
+            dtdiff_final = dtdiff
+        end
+    end
+    
+    return dtdiff_final <= 0.0 ? -30.0 : log10(dtdiff_final)
+end
 
-#     construct_sqr_matrix(hp, [z1map, z1cmap, z2map, z2cmap])
-#     return hp, function(zs)
-#         return [
-#             z1func(zs),
-#             z1cfunc(zs),
-#             z2func(zs),
-#             z2cfunc(zs)
-#         ]
-#     end
-# end
+# Parallelized version of CMscan using multithreading
+function CMscan_parallel(transfer_map, ring, dim, order, tunes, 
+                        x_min, x_max, y_min, y_max, z_min, z_max, 
+                        n_x, n_y, n_z, pxini, pyini, pzini, filename="CMscan_parallel.txt";
+                        use_shared_arrays=true, show_progress=true)
+    
+    x_vals = range(x_min, x_max, length=n_x)
+    y_vals = range(y_min, y_max, length=n_y)
+    z_vals = range(z_min, z_max, length=n_z)
 
-# function crab_cavity_map(dim, order, tunes)
-#     theta_c = 25e-3 
-#     f_cc = 197e6
-#     beta_cc = 1300.0
-#     beta_IP = 0.9
-#     b2 = 0.0
-#     b3 = 50000.0
-#     tune_x = tunes[1]
-#     tune_y = tunes[2]
-#     tune_z = tunes[3]
-#     alpha_c = 1.5e-2
-#     V_rf = 15.8e6
-#     f_rf = 591e6
-#     E = 275e9
-#     h = 7560.0
-#     phi_s = 0.0
+    # Use SharedArray for thread-safe access or regular array if not needed
+    conv_metrix = use_shared_arrays ? SharedArray{Float64}(n_x, n_y, n_z) : zeros(Float64, n_x, n_y, n_z)
 
-#     c = 299792458.0
-#     k_c = 2 * pi * f_cc / c
-#     k_rf = 2 * pi * f_rf / c
-#     e = 1.602176634e-19
-#     gamma = E / (938.272046e6)
-#     beta = sqrt(1.0 - 1.0 / gamma^2)
-#     eta = alpha_c - 1.0 / gamma^2
+    tunex, tuney, tunez = tunes
+    freq_init = [2*pi*tunex, 2*pi*tuney, 2*pi*tunez]
+    hp, tpsMap, Uinv = transfer_map(dim, order, tunes, ring)
 
-#     map = TPSVar6D(order)
-#     x, px, y, py, z, pz = get_variables(map)
-#     twiss = (
-#         horizontal = (0.0, 1.0, 0.0, 0.0),
-#         vertical   = (0.0, 1.0, 0.0, 0.0),
-#         longitudinal = (0.0, 1.0, 0.0, 0.0)
-#     )
+    # Pre-compute all the expensive setup once
+    leftvects = compute_action_angle_polynomials(hp, dim, order)
+    ztow, wtoz, w0z = compute_inverse_maps(leftvects, dim, order)
 
-#     # crabbing kicks
-#     delta_px = -tan(theta_c) * sin(k_c * z) / (k_c * sqrt(beta_cc*beta_IP))
-#     # delta_px += -b2 * x * sin(k_c * z) # b2 = 0
-#     delta_px += b3 * (x^2 - y^2) * sin(k_c * z)
-#     p_x_cc = px + delta_px
+    # Pre-compute Jacobian
+    N = 4 * dim * dim
+    wlist = Vector{PolyEvaluator{ComplexF64,2*dim}}(undef, N)
+    idx = 1
+    
+    for i in 1:dim
+        tps = CTPS(0.0im, 2*dim, order)
+        tps.map .= leftvects[i]
+    
+        for ct in (tps, conjugate(tps))
+            for j in 1:(2*dim)
+                wlist[idx] = PolyEvaluator(derivative(ct, j, 1))
+                idx += 1
+            end
+        end
+    end
 
-#     delta_py = -2.0 * b3 * x * y * sin(k_c * z)
-#     p_y_cc = py + delta_py
+    nalpha, nbeta, ngamma = 16, 16, 16
+    alphas = range(0, step=2π/nalpha, length=nalpha)
+    betas  = range(0, step=2π/nbeta, length=nbeta)
+    gammas = range(0, step=2π/ngamma, length=ngamma)
+    
+    aa = [a for a in alphas, b in betas, g in gammas]
+    bb = [b for a in alphas, b in betas, g in gammas]
+    gg = [g for a in alphas, b in betas, g in gammas]
 
-#     delta_pz = -x * tan(theta_c) * cos(k_c * z) / (sqrt(beta_cc*beta_IP))
-#     # delta_pz += (b2*k_c/2.0) * (x^2 + y^2) * sin(k_c * z) # b2 = 0
-#     delta_pz += (b3*k_c/3.0) * (x^3 - 3.0*x*y^2) * cos(k_c * z)
-#     p_z_cc = pz + delta_pz
+    # Pre-compute polynomial evaluators
+    wx0z = CTPS(0.0im, 2*dim, order)
+    wy0z = CTPS(0.0im, 2*dim, order)
+    wz0z = CTPS(0.0im, 2*dim, order)
+    wx0z.map .= leftvects[1]
+    wy0z.map .= leftvects[2]
+    wz0z.map .= leftvects[3]
+    wx0z_eval = PolyEvaluator(wx0z)
+    wy0z_eval = PolyEvaluator(wy0z)
+    wz0z_eval = PolyEvaluator(wz0z)
 
-#     # transverse map
-#     mu_x = 2.0 * pi * tune_x
-#     x_rot = x*cos(mu_x) + p_x_cc*sin(mu_x)
-#     p_x_rot = -x*sin(mu_x) + p_x_cc*cos(mu_x)
+    itertimes = 10
+    total_points = n_x * n_y * n_z
+    
+    # Create progress meter if requested
+    progress = show_progress ? Progress(total_points, "Computing convergence map...") : nothing
 
-#     mu_y = 2.0 * pi * tune_y
-#     y_rot = y*cos(mu_y) + p_y_cc*sin(mu_y)
-#     p_y_rot = -y*sin(mu_y) + p_y_cc*cos(mu_y)
+    # Create all index combinations for parallel processing
+    indices = [(ix, iy, iz) for ix in 1:n_x, iy in 1:n_y, iz in 1:n_z]
+    
+    # Parallel computation using threads
+    Threads.@threads for idx_tuple in indices
+        ix, iy, iz = idx_tuple
+        x_val = x_vals[ix]
+        y_val = y_vals[iy]
+        z_val = z_vals[iz]
+        
+        result = compute_grid_point(x_val, y_val, z_val, pxini, pyini, pzini,
+                                   freq_init, tpsMap, ztow, wtoz, wlist,
+                                   wx0z_eval, wy0z_eval, wz0z_eval, Uinv, itertimes,
+                                   nalpha, nbeta, ngamma, aa, bb, gg, false)
+        
+        conv_metrix[ix, iy, iz] = result
+        
+        # Update progress (thread-safe)
+        if show_progress && progress !== nothing
+            next!(progress)
+        end
+    end
 
-#     # longitudinal map
-#     mu_z = 2.0 * pi * tune_z
-#     z_drift = z*cos(mu_z) + p_z_cc*sin(mu_z)
-#     p_z_drift = -z*sin(mu_z) + p_z_cc*cos(mu_z)
+    # Save results
+    open(filename, "w") do f
+        for ix in 1:n_x
+            for iy in 1:n_y
+                for iz in 1:n_z
+                    write(f, "$(conv_metrix[ix, iy, iz]) ")
+                end
+                write(f, "\n")
+            end
+            write(f, "\n")
+        end
+    end
+    
+    return Array(conv_metrix)  # Convert SharedArray back to regular array if needed
+end
 
-#     x_map = x_rot
-#     px_map = p_x_rot
-#     y_map = y_rot
-#     py_map = p_y_rot
-#     z_map = z_drift
-#     pz_map = p_z_drift
+# Parallelized version of CMscan1 using multithreading
+function CMscan1_parallel(transfer_map, dim, order, tunes, 
+                         x_min, x_max, y_min, y_max, z_min, z_max, 
+                         n_x, n_y, n_z, pxini, pyini, pzini, filename="conv_metric_parallel.txt";
+                         use_shared_arrays=true, show_progress=true)
+    
+    x_vals = range(x_min, x_max, length=n_x)
+    y_vals = range(y_min, y_max, length=n_y)
+    z_vals = range(z_min, z_max, length=n_z)
 
-#     z1 = x_map - 1.0im * px_map
-#     z1c = x_map + 1.0im * px_map
-#     z2 = y_map - 1.0im * py_map
-#     z2c = y_map + 1.0im * py_map
-#     z3 = z_map - 1.0im * pz_map
-#     z3c = z_map + 1.0im * pz_map
+    conv_metrix = use_shared_arrays ? SharedArray{Float64}(n_x, n_y, n_z) : zeros(Float64, n_x, n_y, n_z)
 
-#     z1mapfunc = evaluate(z1)
-#     z1cmapfunc = evaluate(z1c)
-#     z2mapfunc = evaluate(z2)
-#     z2cmapfunc = evaluate(z2c)
-#     z3mapfunc = evaluate(z3)
-#     z3cmapfunc = evaluate(z3c)
-#     construct_sqr_matrix(map, [z1, z1c, z2, z2c, z3, z3c])
-#     return map, function(zs)
-#         return [
-#             z1mapfunc(zs),
-#             z1cmapfunc(zs),
-#             z2mapfunc(zs),
-#             z2cmapfunc(zs),
-#             z3mapfunc(zs),
-#             z3cmapfunc(zs)
-#         ]
-#     end, twiss
-# end
-# CMscan(crab_cavity_map, 3, 3, [0.26, 0.23, 0.005], 
-#     -0.0002, -0.0002, 0.0001, 0.0001, -0.0001, -0.0001,
-#     1, 1, 1,
-#     0.0, 0.0, 0.0)
+    tunex, tuney, tunez = tunes
+    freq_init = [2*pi*tunex, 2*pi*tuney, 2*pi*tunez]
+    hp, tpsMap, twiss = transfer_map(dim, order, tunes)
+    alphax, betax, gammax, phix = twiss.horizontal
+    alphay, betay, gammay, phiy = twiss.vertical
+    alphaz, betaz, gammaz, phiz = twiss.longitudinal
+
+    # Pre-compute all the expensive setup once
+    leftvects = compute_action_angle_polynomials(hp, dim, order)
+    ztow, wtoz, w0z = compute_inverse_maps(leftvects, dim, order)
+
+    # Pre-compute Jacobian
+    N = 4 * dim * dim
+    wlist = Vector{PolyEvaluator{ComplexF64,2*dim}}(undef, N)
+    idx = 1
+
+    for i in 1:dim
+        tps = CTPS(0.0im, 2*dim, order)
+        tps.map .= leftvects[i]
+
+        for ct in (tps, conjugate(tps))
+            for j in 1:(2*dim)
+                wlist[idx] = PolyEvaluator(derivative(ct, j, 1))
+                idx += 1
+            end
+        end
+    end
+
+    nalpha, nbeta, ngamma = 16, 16, 16
+    alphas = range(0, step=2π/nalpha, length=nalpha)
+    betas  = range(0, step=2π/nbeta, length=nbeta)
+    gammas = range(0, step=2π/ngamma, length=ngamma)
+
+    aa = [a for a in alphas, b in betas, g in gammas]
+    bb = [b for a in alphas, b in betas, g in gammas]
+    gg = [g for a in alphas, b in betas, g in gammas]
+
+    # Pre-compute polynomial evaluators
+    wx0z = CTPS(0.0im, 2*dim, order)
+    wy0z = CTPS(0.0im, 2*dim, order)
+    wz0z = CTPS(0.0im, 2*dim, order)
+    wx0z.map .= leftvects[1]
+    wy0z.map .= leftvects[2]
+    wz0z.map .= leftvects[3]
+    wx0z_eval = PolyEvaluator(wx0z)
+    wy0z_eval = PolyEvaluator(wy0z)
+    wz0z_eval = PolyEvaluator(wz0z)
+
+    itertimes = 10
+    total_points = n_x * n_y * n_z
+    
+    # Create progress meter if requested
+    progress = show_progress ? Progress(total_points, "Computing convergence map...") : nothing
+
+    # Create all index combinations for parallel processing
+    indices = [(ix, iy, iz) for ix in 1:n_x, iy in 1:n_y, iz in 1:n_z]
+    
+    # Modified compute function with Twiss parameters
+    function compute_with_twiss(ix, iy, iz)
+        x_val = x_vals[ix]
+        y_val = y_vals[iy]
+        z_val = z_vals[iz]
+        
+        # Use Twiss transformation
+        zxini = x_val/sqrt(betax) - 1.0im * alphax * x_val / sqrt(betax) - 1.0im * pxini * sqrt(betax)
+        zxcini = x_val/sqrt(betax) + 1.0im * alphax * x_val / sqrt(betax) + 1.0im * pxini * sqrt(betax)
+        zyini = y_val/sqrt(betay) - 1.0im * alphay * y_val / sqrt(betay) - 1.0im * pyini * sqrt(betay)
+        zycini = y_val/sqrt(betay) + 1.0im * alphay * y_val / sqrt(betay) + 1.0im * pyini * sqrt(betay)
+        zzini = z_val/sqrt(betaz) - 1.0im * alphaz * z_val / sqrt(betaz) - 1.0im * pzini * sqrt(betaz)
+        zzcini = z_val/sqrt(betaz) + 1.0im * alphaz * z_val / sqrt(betaz) + 1.0im * pzini * sqrt(betaz)
+        zvars = [zxini, zxcini, zyini, zycini, zzini, zzcini]
+        
+        # Continue with the same computation as before
+        wxini = evaluate(wx0z_eval, zvars)
+        wyini = evaluate(wy0z_eval, zvars)
+        wzini = evaluate(wz0z_eval, zvars)
+
+        theta1ini = -1.0im * log(wxini)
+        theta2ini = -1.0im * log(wyini)
+        theta3ini = -1.0im * log(wzini)
+
+        thetas = zeros(ComplexF64, 3, nalpha, nbeta, ngamma)
+        thetas[1, :, :, :] .= theta1ini .+ aa
+        thetas[2, :, :, :] .= theta2ini .+ bb
+        thetas[3, :, :, :] .= theta3ini .+ gg
+
+        dt = zeros(ComplexF64, 3, nalpha, nbeta, ngamma)
+        freqs = copy(freq_init)
+
+        dtdiff_final = 1e4
+        for _ in 1:itertimes
+            dtold = copy(dt)
+            dt, freqs, _, _, _ = itearation_freq(dt, thetas, freqs, 
+                                                tpsMap, ztow, wtoz, jacobian=wlist)
+            thetas[1, :, :, :] = aa .+ theta1ini .- dt[1, 1, 1, 1]
+            thetas[2, :, :, :] = bb .+ theta2ini .- dt[2, 1, 1, 1]
+            thetas[3, :, :, :] = gg .+ theta3ini .- dt[3, 1, 1, 1]
+            dtdiff = sqrt(sum(abs.(dt .- dtold).^2) / (nalpha * nbeta * ngamma))
+            if isnan(dtdiff) || dtdiff > 1e4
+                break
+            end
+            if dtdiff < dtdiff_final
+                dtdiff_final = dtdiff
+            end
+        end
+        
+        return dtdiff_final <= 0.0 ? -30.0 : log10(dtdiff_final)
+    end
+    
+    # Parallel computation using threads
+    Threads.@threads for idx_tuple in indices
+        ix, iy, iz = idx_tuple
+        result = compute_with_twiss(ix, iy, iz)
+        conv_metrix[ix, iy, iz] = result
+        
+        if show_progress && progress !== nothing
+            next!(progress)
+        end
+    end
+
+    # Save results
+    open(filename, "w") do f
+        for ix in 1:n_x
+            for iy in 1:n_y
+                for iz in 1:n_z
+                    write(f, "$(conv_metrix[ix, iy, iz]) ")
+                end
+                write(f, "\n")
+            end
+            write(f, "\n")
+        end
+    end
+    
+    return Array(conv_metrix)
+end
+
+# Utility function to get the number of available threads
+function get_thread_info()
+    println("Number of threads available: ", Threads.nthreads())
+    println("Thread IDs: ", 1:Threads.nthreads())
+    return Threads.nthreads()
+end
+
+# Benchmarking function to compare serial vs parallel performance
+function benchmark_convergence_map(transfer_map, dim, order, tunes, 
+                                 x_min, x_max, y_min, y_max, z_min, z_max, 
+                                 n_x, n_y, n_z, pxini, pyini, pzini;
+                                 test_parallel=true, test_serial=true)
+    
+    println("=== Convergence Map Performance Benchmark ===")
+    println("Grid size: $(n_x) × $(n_y) × $(n_z) = $(n_x*n_y*n_z) points")
+    println("Available threads: $(Threads.nthreads())")
+    
+    results = Dict{String, Any}()
+    
+    if test_serial
+        println("\n--- Serial Implementation ---")
+        @time begin
+            conv_serial = CMscan1(transfer_map, dim, order, tunes, 
+                                 x_min, x_max, y_min, y_max, z_min, z_max, 
+                                 n_x, n_y, n_z, pxini, pyini, pzini, "conv_serial.txt")
+        end
+        results["serial"] = conv_serial
+    end
+    
+    if test_parallel
+        println("\n--- Parallel Implementation ---")
+        @time begin
+            conv_parallel = CMscan1_parallel(transfer_map, dim, order, tunes, 
+                                           x_min, x_max, y_min, y_max, z_min, z_max, 
+                                           n_x, n_y, n_z, pxini, pyini, pzini, "conv_parallel.txt",
+                                           show_progress=false)
+        end
+        results["parallel"] = conv_parallel
+    end
+    
+    if test_serial && test_parallel
+        # Check if results are approximately equal
+        max_diff = maximum(abs.(results["serial"] - results["parallel"]))
+        println("\nMaximum difference between serial and parallel: ", max_diff)
+        if max_diff < 1e-10
+            println("✓ Results match within numerical precision")
+        else
+            println("⚠ Results differ - check for numerical issues")
+        end
+    end
+    
+    return results
+end

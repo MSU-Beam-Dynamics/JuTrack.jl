@@ -91,11 +91,12 @@ x1_init = -10.0
 x2_init = 10.0
 
 # Run gradient descent
-x1_his, x2_his, g1_his, g2_his, f_his = gradient_descent(x1_init, x2_init, lr=1e-3, max_iter=20)
+x1_his, x2_his, g1_his, g2_his, f_his = gradient_descent(x1_init, x2_init, lr=1e-3, max_iter=200)
 
 # # using Python's plotting library
 # using PyCall
 # @pyimport matplotlib.pyplot as plt
+# Pkg.add("LaTeXStrings")
 # using LaTeXStrings
 # plt.figure(figsize=(8, 6))
 
@@ -128,6 +129,7 @@ x1_his, x2_his, g1_his, g2_his, f_his = gradient_descent(x1_init, x2_init, lr=1e
 # plt.text(-0.15, 1.05, "c", transform=plt.gca().transAxes, fontsize=18, fontweight="bold", fontfamily="Times New Roman")
 
 # plt.tight_layout()
+# plt.savefig("gradient_descent_optimization_SPEAR3.png", dpi=300)
 # plt.show()
 
 

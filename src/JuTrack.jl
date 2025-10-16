@@ -111,6 +111,6 @@ function Duplicated(x::Float64, dx::Base.RefValue{Float64})
 end
 export autodiff, Forward, ForwardWithPrimal, gradient, jacobian, Duplicated, set_runtime_activity, Const, Val, Enzyme, BatchDuplicated
 
-export dynamic_aperture, naff, FMA, computeRDT, ADcomputeRDT
+export dynamic_aperture, computeRDT, ADcomputeRDT, FMA, plot_fma, fma_map_from_segments
 export drift6!, multmv!, addvv!, linearQuadFringeElegantEntrance!, QuadFringePassP!, fastdrift!, strthinkick!
 end
