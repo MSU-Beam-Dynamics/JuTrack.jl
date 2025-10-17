@@ -500,7 +500,7 @@ function pass_P!(ele::SBEND, r_in::Array{Float64,1}, num_particles::Int64, parti
         beti = 1.0 
     end
     if ele.rad == 0
-        BendSymplecticPass_P!(r_in, ele.len, irho, beti, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
+        BendSymplecticPass_P!(r_in, ele.len, beti, irho, ele.PolynomA, ele.PolynomB, ele.MaxOrder, ele.NumIntSteps,
             ele.e1, ele.e2,
             ele.FringeBendEntrance, ele.FringeBendExit,
             ele.fint1, ele.fint2, ele.gap,
