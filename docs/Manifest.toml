@@ -302,7 +302,7 @@ version = "1.2.0"
 deps = ["BenchmarkTools", "Distributions", "Documenter", "Enzyme", "FFTW", "JSON", "LinearAlgebra", "ONNXRunTime", "OpenBLAS_jll", "PackageCompiler", "ProgressMeter", "PyCall", "Random", "Serialization", "SpecialFunctions", "StaticArrays", "StatsBase", "Test"]
 path = "C:\\Users\\WAN\\Desktop\\JuTrack.jl\\docs\\.."
 uuid = "a43d9089-7dde-42d4-b2b6-ab2f8db67ed6"
-version = "1.3.0"
+version = "1.3.1"
 
 [[deps.LLVM]]
 deps = ["CEnum", "LLVMExtra_jll", "Libdl", "Preferences", "Printf", "Unicode"]
