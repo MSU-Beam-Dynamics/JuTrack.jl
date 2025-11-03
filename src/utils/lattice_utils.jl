@@ -8,6 +8,15 @@ end
 function get_len_value(L::DTPSAD{N, T}) where {N, T}
     return L
 end
+
+"""
+    total_length(ring::Vector)
+Calculate the total length of the lattice.
+# Arguments
+- ring::Vector: a vector of beam line elements
+# Return
+- leng::Float64: total length of the lattice
+"""
 function total_length(ring::Vector)
     leng = 0.0
     for i in eachindex(ring)

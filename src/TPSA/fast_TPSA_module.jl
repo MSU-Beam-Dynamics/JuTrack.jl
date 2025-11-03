@@ -12,17 +12,32 @@ function set_tps_dim(n::Integer)
     return n
 end
 
+"""
+    DTPSAD{N,T<:Number}
+Fast first-order TPSA type for automatic differentiation.
+# Arguments
+- `N`: Number of variables.
+- `T<:Number`: Underlying number type.
+"""
 struct DTPSAD{N,T<:Number}
     val::T
     deriv::SVector{N,T}
 end
 
+"""
+    DTPSAD(a::Number)
+Create a DTPSAD number with value `a` and zero derivatives.
+"""
 function DTPSAD(a::Number)
     T = typeof(float(a))
     z = zero(SVector{NVAR(),T})
     return DTPSAD{NVAR(),T}(convert(T, a), z)
 end
 
+"""
+    DTPSAD(a::Number, i::Integer)
+Create a DTPSAD number with value `a` and derivative 1.0 for the i-th variable.
+"""
 function DTPSAD(a::Number, i::Integer)
     T = typeof(float(a))
     z = zero(SVector{NVAR(),T})
@@ -31,6 +46,10 @@ function DTPSAD(a::Number, i::Integer)
     return DTPSAD{NVAR(),T}(convert(T, a), z)
 end
 
+"""
+    DTPSAD(a::DTPSAD{N,T})
+Create a copy of a DTPSAD type.
+"""
 function DTPSAD(a::DTPSAD{N,T}) where {N,T}
     return DTPSAD{N,T}(a.val, a.deriv)
 end

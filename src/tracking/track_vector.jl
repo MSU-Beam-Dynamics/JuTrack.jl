@@ -20,15 +20,15 @@ function array_to_matrix(array::Vector{Float64}, n::Int)
 end
 
 """
-    linepass!(line::Vector, particles::Beam{Float64})
+    linepass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Float64})
 
 Pass the beam through the line element by element.
 
 # Arguments
-- line::Vector: a vector of beam line elements
+- line::Vector{<:AbstractElement{Float64}}: a vector of beam line elements
 - particles::Beam{Float64}: a beam object
 """
-function linepass!(line::Vector, particles::Beam{Float64})
+function linepass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Float64})
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     np = particles.nmacro
@@ -45,19 +45,19 @@ function linepass!(line::Vector, particles::Beam{Float64})
 end
 
 """
-    linepass!(line::Vector, particles::Beam{Float64}, refpts::Vector)
+    linepass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Float64}, refpts::Vector{Int})
 
 Pass particles through the line element by element. Save the particles at the reference points.
 
 # Arguments
-- line::Vector: a vector of beam line elements
+- line::Vector{<:AbstractElement{Float64}}: a vector of beam line elements
 - particles::Beam{Float64}: a beam object
-- refpts::Vector: a vector of reference points
+- refpts::Vector{Int}: a vector of reference points
 
 # Returns
-- saved_particles::Vector: a vector of saved particles
+- saved_particles::Vector: a vector of saved particles at the reference points
 """
-function linepass!(line::Vector, particles::Beam{Float64}, refpts::Vector)
+function linepass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Float64}, refpts::Vector{Int})
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     np = particles.nmacro
@@ -79,18 +79,20 @@ function linepass!(line::Vector, particles::Beam{Float64}, refpts::Vector)
 end
 
 """
-    ADlinepass!(line::Vector, particles::Beam{Float64}, changed_idx::Vector, changed_ele::Vector)
+    ADlinepass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Float64}, 
+    changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractElement{Float64}})
 
 Pass particles through the line element by element. The elements in the `changed_idx` will be replaced by the elements in `changed_ele`.
 This is a convinent function to implement automatic differentiation that avoid directly changing parameters in `line``.
 
 # Arguments
-- line::Vector: a vector of beam line elements
+- line::Vector{<:AbstractElement{Float64}}: a vector of beam line elements
 - particles::Beam{Float64}: a beam object
-- changed_idx::Vector: a vector of indices of the elements to be changed
-- changed_ele::Vector: a vector of elements to replace the elements in `changed_idx`
+- changed_idx::Vector{Int}: a vector of indices of the elements to be changed
+- changed_ele::Vector{<:AbstractElement{Float64}}: a vector of elements to replace the elements in `changed_idx`
 """
-function ADlinepass!(line::Vector, particles::Beam{Float64}, changed_idx::Vector, changed_ele::Vector)
+function ADlinepass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Float64}, 
+    changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractElement{Float64}})
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     np = particles.nmacro
@@ -113,7 +115,8 @@ function ADlinepass!(line::Vector, particles::Beam{Float64}, changed_idx::Vector
     return nothing
 end
 
-function ADlinepass!(line::Vector, id_list::Vector, particles::Beam{Float64}, changed_idx::Vector, changed_ele::Vector)
+function ADlinepass!(line::Vector{<:AbstractElement{Float64}}, id_list::Vector{Int}, particles::Beam{Float64}, 
+    changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractElement{Float64}})
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     np = particles.nmacro
@@ -167,16 +170,16 @@ end
 
 
 """
-    ringpass!(line::Vector, particles::Beam{Float64}, nturn::Int)
+    ringpass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Float64}, nturn::Int)
 
 Pass particles through the ring for `nturn` turns.
 
 # Arguments
-- line::Vector: a vector of beam line elements
+- line::Vector{<:AbstractElement{Float64}}: a vector of beam line elements
 - particles::Beam{Float64}: a beam object
 - nturn::Int: number of turns
 """
-function ringpass!(line::Vector, particles::Beam{Float64}, nturn::Int)
+function ringpass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Float64}, nturn::Int)
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     for i in 1:nturn
@@ -186,17 +189,17 @@ function ringpass!(line::Vector, particles::Beam{Float64}, nturn::Int)
 end
 
 """
-    ringpass!(line::Vector, particles::Beam{Float64}, nturn::Int, save::Bool)
+    ringpass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Float64}, nturn::Int, save::Bool)
 
 Pass particles through the ring for `nturn` turns. Save the particles at each turn.
 
 # Arguments
-- line::Vector: a vector of beam line elements
+- line::Vector{<:AbstractElement{Float64}}: a vector of beam line elements
 - particles::Beam{Float64}: a beam object
 - nturn::Int: number of turns
 - save::Bool: Flag
 """
-function ringpass!(line::Vector, particles::Beam{Float64}, nturn::Int, save::Bool)
+function ringpass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Float64}, nturn::Int, save::Bool)
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     save_beam = []
@@ -240,15 +243,19 @@ function ADringpass!(line::Vector, particles::Beam{Float64}, nturn::Int, changed
 end
 
 """
-    linepass_TPSA!(line::Vector, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}})
+    linepass_TPSA!(line::Vector{<:AbstractElement{Float64}}, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}};
+    E0::Float64=3e9, m0::Float64=m_e) where {T, TPS_Dim, Max_TPS_Degree}
 
-Pass 6-D TPSA coordinates through the line element by element.
+Pass 6-D high-order TPSA coordinates through the line element by element.
 
 # Arguments
-- line::Vector: a vector of beam line elements
-- rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}: a vector of 6-D TPSA coordinates
+- line::Vector{<:AbstractElement{Float64}}: a vector of beam line elements
+- rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}: a vector of 6-D high-order TPSA coordinates
+- E0::Float64=3e9: reference energy in eV
+- m0::Float64=m_e: rest mass in eV/c^2
 """
-function linepass_TPSA!(line::Vector, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; E0::Float64=3e9, m0::Float64=m_e) where {T, TPS_Dim, Max_TPS_Degree}
+function linepass_TPSA!(line::Vector{<:AbstractElement{Float64}}, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; 
+    E0::Float64=3e9, m0::Float64=m_e) where {T, TPS_Dim, Max_TPS_Degree}
     if length(rin) != 6
         error("The length of TPSA must be 6")
     end
@@ -264,18 +271,22 @@ function linepass_TPSA!(line::Vector, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degre
 end
 
 """
-    ADlinepass_TPSA!(line::Vector, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, changed_idx::Vector, changed_ele::Vector)
+    ADlinepass_TPSA!(line::Vector{<:AbstractElement{Float64}}, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, 
+    changed_idx::Vector, changed_ele::Vector; E0::Float64=3e9, m0::Float64=m_e) where {T, TPS_Dim, Max_TPS_Degree}
 
-Pass 6-D TPSA coordinates through the line element by element. The elements in the `changed_idx` will be replaced by the elements in `changed_ele`.
+Pass 6-D high-order TPSA coordinates through the line element by element. The elements in the `changed_idx` will be replaced by the elements in `changed_ele`.
 This is a convinent function to implement automatic differentiation that avoid directly changing parameters in `line``.
 
 # Arguments
 - line::Vector: a vector of beam line elements
-- rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}: a vector of 6-D TPSA coordinates
+- rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}: a vector of 6-D high-order TPSA coordinates
 - changed_idx::Vector: a vector of indices of the elements to be changed
 - changed_ele::Vector: a vector of elements to replace the elements in `changed_idx`
+- E0::Float64=3e9: reference energy in eV
+- m0::Float64=m_e: rest mass in eV/c^2
 """
-function ADlinepass_TPSA!(line::Vector, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, changed_idx::Vector, changed_ele::Vector; E0::Float64=3e9, m0::Float64=m_e) where {T, TPS_Dim, Max_TPS_Degree}
+function ADlinepass_TPSA!(line::Vector{<:AbstractElement{Float64}}, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, 
+    changed_idx::Vector, changed_ele::Vector; E0::Float64=3e9, m0::Float64=m_e) where {T, TPS_Dim, Max_TPS_Degree}
     if length(rin) != 6
         error("The length of TPSA must be 6")
     end
@@ -293,16 +304,20 @@ function ADlinepass_TPSA!(line::Vector, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Deg
 end
 
 """
-    ringpass_TPSA!(line::Vector, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, nturn::Int)
+    ringpass_TPSA!(line::Vector{<:AbstractElement{Float64}}, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, nturn::Int;
+    E0::Float64=3e9, m0::Float64=m_e) where {T, TPS_Dim, Max_TPS_Degree}
 
-Pass 6-D TPSA coordinates through the ring for `nturn` turns.
+Pass 6-D high-order TPSA coordinates through the ring for `nturn` turns.
 
 # Arguments
 - line::Vector: a vector of beam line elements
-- rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}: a vector of 6-D TPSA coordinates
+- rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}: a vector of 6-D high-order TPSA coordinates
 - nturn::Int: number of turns
+- E0::Float64=3e9: reference energy in eV
+- m0::Float64=m_e: rest mass in eV/c^2
 """
-function ringpass_TPSA!(line::Vector, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, nturn::Int; E0::Float64=3e9, m0::Float64=m_e) where {T, TPS_Dim, Max_TPS_Degree}
+function ringpass_TPSA!(line::Vector{<:AbstractElement{Float64}}, rin::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, nturn::Int; 
+    E0::Float64=3e9, m0::Float64=m_e) where {T, TPS_Dim, Max_TPS_Degree}
     if length(rin) != 6
         error("The length of TPSA must be 6")
     end

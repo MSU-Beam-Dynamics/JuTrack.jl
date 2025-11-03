@@ -156,72 +156,6 @@ function det_small_matrix(A::Matrix)
 	return 0.0
 end
 
-# function inv1(A::Matrix{Float64})
-#     nrows, ncols = size(A)
-#     augmented_matrix = [A I]
-
-#     # Perform Gauss-Jordan elimination
-#     for i in 1:nrows
-#         # Pivot must be non-zero. If zero, try to swap with another row.
-#         if augmented_matrix[i, i] == 0
-#             for j in (i+1):nrows
-#                 if augmented_matrix[j, i] != 0
-#                     augmented_matrix[i, :], augmented_matrix[j, :] = augmented_matrix[j, :], augmented_matrix[i, :]
-#                     break
-#                 end
-#             end
-#         end
-
-#         # Make pivot 1 and eliminate all other entries in the column
-#         pivot = augmented_matrix[i, i]
-#         augmented_matrix[i, :] /= pivot
-#         for j in 1:nrows
-#             if i != j
-#                 factor = augmented_matrix[j, i]
-#                 augmented_matrix[j, :] -= factor * augmented_matrix[i, :]
-#             end
-#         end
-#     end
-
-#     invA = augmented_matrix[:, ncols+1:end]
-
-#     return invA
-# end
-
-# function inv1(A::Matrix{DTPSAD{N,T}}) where {N,T}
-#     nrows, ncols = size(A)
-# 	II = Matrix{T}(I, nrows, nrows)
-# 	II = DTPSAD.(II)
-#     augmented_matrix = [A II]
-
-#     # Perform Gauss-Jordan elimination
-#     for i in 1:nrows
-#         # Pivot must be non-zero. If zero, try to swap with another row.
-#         if augmented_matrix[i, i] == 0
-#             for j in (i+1):nrows
-#                 if augmented_matrix[j, i] != 0
-#                     augmented_matrix[i, :], augmented_matrix[j, :] = augmented_matrix[j, :], augmented_matrix[i, :]
-#                     break
-#                 end
-#             end
-#         end
-
-#         # Make pivot 1 and eliminate all other entries in the column
-#         pivot = augmented_matrix[i, i]
-#         augmented_matrix[i, :] /= pivot
-#         for j in 1:nrows
-#             if i != j
-#                 factor = augmented_matrix[j, i]
-#                 augmented_matrix[j, :] -= factor * augmented_matrix[i, :]
-#             end
-#         end
-#     end
-
-#     invA = augmented_matrix[:, ncols+1:end]
-
-#     return invA
-# end
-
 struct EdwardsTengTwiss{T} <: AbstractTwiss 
 	betax::T
 	betay::T
@@ -244,15 +178,11 @@ struct EdwardsTengTwiss{T} <: AbstractTwiss
 end
 
 """
-	EdwardsTengTwiss(betax::Float64,betay::Float64;
-			   alphax::Float64=0.0,alphay::Float64=0.0,
-			   dx::Float64=0.0,dy::Float64=0.0,
-			   dpx::Float64=0.0,dpy::Float64=0.0,
-			   mux::Float64=0.0,muy::Float64=0.0,
-			   R11::Float64=0.0,R12::Float64=0.0,
-			   R21::Float64=0.0,R22::Float64=0.0,
-			   mode::Int=1)=EdwardsTengTwiss(betax,betay,alphax,alphay,(1.0+alphax^2)/betax,(1.0+alphay^2)/betay,
-											dx,dpx,dy,dpy,mux,muy,sin(mux),cos(mux),sin(muy),cos(muy),[R11 R12;R21 R22],mode)
+	EdwardsTengTwiss(betax::Float64, betay::Float64; alphax::Float64=0.0, alphay::Float64=0.0,
+	dx::Float64=0.0, dy::Float64=0.0, dpx::Float64=0.0, dpy::Float64=0.0,
+	mux::Float64=0.0, muy::Float64=0.0,
+	R11::Float64=0.0, R12::Float64=0.0, R21::Float64=0.0, R22::Float64=0.0,
+	mode::Int=1)
 
 Construct a `EdwardsTengTwiss` object with betax and betay. All other parameters are optional.
 
@@ -302,6 +232,39 @@ function EdwardsTengTwiss(betax::Float64, betay::Float64;
 		sinmux, cosmux, sinmuy, cosmuy, R, mode)
 end
 
+"""
+	EdwardsTengTwiss(betax::DTPSAD{N,T}, betay::DTPSAD{N,T}; 
+		alphax::DTPSAD{N,T}=zero(DTPSAD{N,T}),
+		alphay::DTPSAD{N,T}=zero(DTPSAD{N,T}),
+		dx::DTPSAD{N,T}=zero(DTPSAD{N,T}),
+		dy::DTPSAD{N,T}=zero(DTPSAD{N,T}),
+		dpx::DTPSAD{N,T}=zero(DTPSAD{N,T}),
+		dpy::DTPSAD{N,T}=zero(DTPSAD{N,T}),
+		mux::DTPSAD{N,T}=zero(DTPSAD{N,T}),
+		muy::DTPSAD{N,T}=zero(DTPSAD{N,T}),
+		R11::DTPSAD{N,T}=zero(DTPSAD{N,T}),
+		R12::DTPSAD{N,T}=zero(DTPSAD{N,T}),
+		R21::DTPSAD{N,T}=zero(DTPSAD{N,T}),
+		R22::DTPSAD{N,T}=zero(DTPSAD{N,T}),
+		mode::Int=1) where {N, T <: Number}
+Construct a `EdwardsTengTwiss` object with betax and betay in TPSA (DTPSAD type) format. All other parameters are optional.
+# Arguments
+- `betax::DTPSAD{N,T}`: Horizontal beta function.
+- `betay::DTPSAD{N,T}`: Vertical beta function.
+- `alphax::DTPSAD{N,T}=zero(DTPSAD{N,T})`: Horizontal alpha function.
+- `alphay::DTPSAD{N,T}=zero(DTPSAD{N,T})`: Vertical alpha function.
+- `dx::DTPSAD{N,T}=zero(DTPSAD{N,T})`: Horizontal dispersion.
+- `dy::DTPSAD{N,T}=zero(DTPSAD{N,T})`: Vertical dispersion.
+- `dpx::DTPSAD{N,T}=zero(DTPSAD{N,T})`: derivative of horizontal dispersion.
+- `dpy::DTPSAD{N,T}=zero(DTPSAD{N,T})`: derivative of vertical dispersion.
+- `mux::DTPSAD{N,T}=zero(DTPSAD{N,T})`: Horizontal phase advance.
+- `muy::DTPSAD{N,T}=zero(DTPSAD{N,T})`: Vertical phase advance.
+- `R11::DTPSAD{N,T}=zero(DTPSAD{N,T})`: Matrix Element R11.
+- `R12::DTPSAD{N,T}=zero(DTPSAD{N,T})`: Matrix Element R12.
+- `R21::DTPSAD{N,T}=zero(DTPSAD{N,T})`: Matrix Element R21.
+- `R22::DTPSAD{N,T}=zero(DTPSAD{N,T})`: Matrix Element R22.
+- `mode::Int=1`: mode for calculation.
+"""
 function EdwardsTengTwiss(betax::DTPSAD{N,T}, betay::DTPSAD{N,T};
 		alphax::DTPSAD{N,T} = zero(DTPSAD{N,T}),
 		alphay::DTPSAD{N,T} = zero(DTPSAD{N,T}),
@@ -335,9 +298,20 @@ function EdwardsTengTwiss(betax::DTPSAD{N,T}, betay::DTPSAD{N,T};
 end
 
 """
-    orbit, M = find_closed_orbit(line; guess=zeros(6), max_iter=10, tol=1e-8)
-
-    # Calculates the closed orbit for a given lattice using Newton's method.
+    find_closed_orbit(line::Vector{AbstractElement{Float64}}, dp::Float64=0.0; mass::Float64=m_e, energy::Float64=1e9,
+	guess::Vector{Float64}=zeros(Float64, 6), max_iter::Int=20, tol::Float64=1e-8)
+Calculates the closed orbit for a given lattice using Newton's method.
+# Arguments
+- `line::Vector{AbstractElement{Float64}}`: The lattice represented as a vector of elements.
+- `dp::Float64=0.0`: Relative momentum deviation.
+- `mass::Float64=m_e`: Mass of the particle.
+- `energy::Float64=1e9`: Energy of the particle in eV.
+- `guess::Vector{Float64}=zeros(Float64, 6)`: Initial guess for the closed orbit.
+- `max_iter::Int=20`: Maximum number of iterations.
+- `tol::Float64=1e-8`: Tolerance for convergence.
+# Returns
+- `x_closed::Vector{Float64}`: The closed orbit coordinates.
+- `M::Matrix{Float64}`: The one-turn transfer matrix at the closed orbit
 """
 function find_closed_orbit(line::Vector{AbstractElement{Float64}}, dp::Float64=0.0; mass::Float64=m_e, energy::Float64=1e9,
     guess::Vector{Float64}=zeros(Float64, 6), max_iter::Int=20, tol::Float64=1e-8)
@@ -391,6 +365,22 @@ function track_a_turn_numeric(line::Vector{AbstractElement{Float64}}, x_in::Vect
     return M, x_out_base
 end
 
+"""
+	find_closed_orbit(line::Vector{AbstractElement{DTPSAD{N, T}}}, dp::Float64=0.0; mass::Float64=m_e, energy::Float64=1e9,
+	guess::Vector{DTPSAD{N, T}}=zeros(DTPSAD{N, T}, 6), max_iter::Int=20, tol::Float64=1e-8) where {N, T <: Number}
+Calculates the closed orbit for a given lattice using Newton's method in TPSA (DTPSAD type) format.
+# Arguments
+- `line::Vector{AbstractElement{DTPSAD{N, T}}}`: The lattice represented as a vector of elements.
+- `dp::Float64=0.0`: Relative momentum deviation.
+- `mass::Float64=m_e`: Mass of the particle.
+- `energy::Float64=1e9`: Energy of the particle in eV.
+- `guess::Vector{DTPSAD{N, T}}=zeros(DTPSAD{N, T}, 6)`: Initial guess for the closed orbit.
+- `max_iter::Int=20`: Maximum number of iterations.
+- `tol::Float64=1e-8`: Tolerance for convergence.
+# Returns
+- `x_closed::Vector{DTPSAD{N, T}}`: The closed orbit
+- `M::Matrix{DTPSAD{N, T}}`: The one-turn transfer matrix at the closed orbit
+"""
 function find_closed_orbit(line::Vector{AbstractElement{DTPSAD{N, T}}}, dp::Float64=0.0; mass::Float64=m_e, energy::Float64=1e9,
     guess::Vector{DTPSAD{N, T}}=zeros(DTPSAD{N, T}, 6), max_iter::Int=20, tol::Float64=1e-8) where {N, T}
 
@@ -451,6 +441,15 @@ function track_a_turn_numeric(line::Vector{AbstractElement{DTPSAD{N, T}}}, x_in:
     return M, x_out_base
 end
 
+"""
+	symplectic_conjugate_2by2(M::Matrix{T}) where T
+Compute the symplectic conjugate of a 2x2 matrix M.
+# Arguments
+- `M::Matrix{T}`: The input 2x2 matrix.
+
+# Returns
+- `Matrix{T}`: The symplectic conjugate of the input matrix.
+"""
 function symplectic_conjugate_2by2(M::Matrix{T}) where T
 	M_new = Matrix{T}(undef, 2, 2)
 	M_new[1, 1] = M[2, 2]
@@ -503,16 +502,16 @@ function matrixTransform_2by2(M::Matrix{DTPSAD{N,T}}) where {N,T}
 end
 
 """
-	twissPropagate(tin::EdwardsTengTwiss,M::Matrix{Float64})
+	twissPropagate(tin::EdwardsTengTwiss{Float64},M::Matrix{Float64})
 
 Propagate the Twiss parameters through a matrix M.
 
 # Arguments
-- `tin::EdwardsTengTwiss`: Input Twiss parameters.
+- `tin::EdwardsTengTwiss{Float64}`: Input Twiss parameters.
 - `M::Matrix{Float64}`: Transfer matrix.
 
 # Returns
-- `EdwardsTengTwiss`: Output Twiss parameters.
+- `EdwardsTengTwiss{Float64}`: Output Twiss parameters.
 """
 function twissPropagate(tin::EdwardsTengTwiss{Float64},M::Matrix{Float64})
 	A= M[1:2,1:2]
@@ -594,6 +593,10 @@ function twissPropagate(tin::EdwardsTengTwiss{Float64},M::Matrix{Float64})
 	return EdwardsTengTwiss{Float64}(v1[1],v2[1],v1[2],v2[2],v1[3],v2[3],eta[1],eta[2],eta[3],eta[4],new_mux,new_muy,smux,cmux,smuy,cmuy,R,mode)
 end
 
+"""
+	twissPropagate(tin::EdwardsTengTwiss{DTPSAD{N,T}},M::Matrix{DTPSAD{N,T}}) where {N,T}
+Propagate the Twiss parameters through a matrix M in TPSA (DTPSAD type) format.
+"""
 function twissPropagate(tin::EdwardsTengTwiss{DTPSAD{N,T}},M::Matrix{DTPSAD{N,T}}) where {N,T}
 	A= M[1:2,1:2]
 	B= M[1:2,3:4]
@@ -672,15 +675,17 @@ function twissPropagate(tin::EdwardsTengTwiss{DTPSAD{N,T}},M::Matrix{DTPSAD{N,T}
 end
 
 """
-	findm66(seq, dp::Float64, order::Int)
+	findm66(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int; E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
 
-Find the 6x6 transfer matrix of a sequence using TPSA.
+Find the 6x6 transfer matrix.
 
 # Arguments
-- `seq`: Sequence of elements.
-- `dp::Float64`: Momentum deviation.
-- `order::Int`: Order of the map.
-
+- `seq::Vector{<:AbstractElement{Float64}}`: Sequence of elements.
+- `dp::Float64`: Relative momentum deviation.
+- `order::Int`: Order of the TPSA. If `order == 0`, a fast numerical method is used.
+- `E0::Float64=3e9`: Reference energy in eV.
+- `m0::Float64=m_e`: Particle mass.
+- `orb::Vector{Float64}=zeros(6)`: Initial orbit.		
 # Returns
 - `Matrix{Float64}`: 6x6 transfer matrix.
 """
@@ -710,6 +715,20 @@ function findm66(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::In
 	end
 	return map
 end
+
+"""
+	findm66(seq::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp::Float64, order::Int; E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6)) where {N, T}
+Find the 6x6 transfer matrix for a DTPSAD lattice.
+# Arguments
+- `seq::Vector{<:AbstractElement{DTPSAD{N, T}}}`: Sequence of elements.
+- `dp::Float64`: Relative momentum deviation.
+- `order::Int`: Only `order == 0` is supported.
+- `E0::Float64=3e9`: Reference energy in eV.
+- `m0::Float64=m_e`: Particle mass.
+- `orb::Vector{Float64}=zeros(6)`: Initial orbit.
+# Returns
+- `Matrix{Float64}`: 6x6 transfer matrix.
+"""
 function findm66(seq::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp::Float64, order::Int; 
 		E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6)) where {N, T}
 	if dp == 0.0 && orb[6] != 0.0
@@ -724,23 +743,8 @@ function findm66(seq::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp::Float64, orde
 		println(stderr, "findm66: order > 0 is not supported for AbstractTPSAElement. Zero matrix will be returned.")
 		return map
 	end
-	# x = CTPS(orb[1], 1, 6, order)
-	# px = CTPS(orb[2], 2, 6, order)
-	# y = CTPS(orb[3], 3, 6, order)
-	# py = CTPS(orb[4], 4, 6, order)
-	# z = CTPS(orb[5], 5, 6, order)
-	# delta = CTPS(dp, 6, 6, order)
-	# rin = [x, px, y, py, z, delta]
-	# # no radiation, cavity off
-	# linepass_TPSA!(seq, rin, E0=E0, m0=m0)
-
-	# for i in 1:6
-	# 	for j in 1:6
-	# 		map[i, j] = rin[i].map[j + 1]
-	# 	end
-	# end
-	# return map
 end
+
 function ADfindm66(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractElement{Float64}}; 
 	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
 	map = zeros(Float64, 6, 6)
@@ -807,6 +811,21 @@ function ADfindm66_refpts(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, 
 	return map_list
 end
 
+"""
+	findm66_refpts(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, refpts::Vector{Int}; 
+	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
+Find the 6x6 transfer matrix at specified reference points using high-order TPSA.
+# Arguments
+- `seq::Vector{<:AbstractElement{Float64}}`: Sequence of elements.
+- `dp::Float64`: Relative momentum deviation.
+- `order::Int`: Order of the TPSA. 
+- `refpts::Vector{Int}`: Indices of reference points.
+- `E0::Float64=3e9`: Reference energy in eV.
+- `m0::Float64=m_e`: Particle mass.
+- `orb::Vector{Float64}=zeros(6)`: Initial orbit.		
+# Returns
+- `Mat_list::Array{Float64,3}`: 6x6 transfer matrices at each reference point.
+"""
 function findm66_refpts(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, refpts::Vector{Int}; E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
 	if dp == 0.0 && orb[6] != 0.0
 		dp = orb[6]
@@ -848,16 +867,16 @@ end
 
 
 """
-	fastfindm66(LATTICE, dp=0.0)
-
+	fastfindm66(LATTICE::Vector{<:AbstractElement{Float64}}, dp=0.0; E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
 Find the 6x6 transfer matrix of a lattice using numerical differentiation.
-
 # Arguments
 - `LATTICE`: Beam line sequence.
 - `dp::Float64=0.0`: Momentum deviation.
-
+- `E0::Float64=3e9`: Reference energy in eV.
+- `m0::Float64=m_e`: Particle mass.
+- `orb::Vector{Float64}=zeros(6)`: Initial orbit.
 # Returns
-- `Matrix{Float64}`: 6x6 transfer matrix.
+- `M66`: 6x6 transfer matrix.
 """
 function fastfindm66(LATTICE::Vector{<:AbstractElement{Float64}}, dp=0.0; E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
 	if dp == 0.0 && orb[6] != 0.0
@@ -894,7 +913,20 @@ function fastfindm66(LATTICE::Vector{<:AbstractElement{Float64}}, dp=0.0; E0::Fl
     return M66
 end
 
-function fastfindm66(LATTICE::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp=0.0; 
+"""
+	fastfindm66(LATTICE::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp::Float64=0.0; 
+	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{DTPSAD{N, T}}=zeros(6)) where {N, T}
+Find the 6x6 transfer matrix of a lattice using numerical differentiation for DTPSAD elements.
+# Arguments
+- `LATTICE`: Beam line sequence.
+- `dp::Float64=0.0`: Momentum deviation.
+- `E0::Float64=3e9`: Reference energy in eV.
+- `m0::Float64=m_e`: Particle mass.
+- `orb::Vector{DTPSAD{N, T}}=zeros(6)`: Initial orbit.
+# Returns
+- `M66`: 6x6 transfer matrix.
+"""
+function fastfindm66(LATTICE::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp::Float64=0.0; 
 	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{DTPSAD{N, T}}=zeros(6)) where {N, T}
 	if dp == 0.0 && orb[6] != 0.0
 		dp = orb[6]
@@ -932,17 +964,18 @@ function fastfindm66(LATTICE::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp=0.0;
 end
 
 """
-	fastfindm66_refpts(LATTICE, dp=0.0, refpts::Vector{Int})
-
-Find the 6x6 transfer matrix of a lattice at specified locations using numerical differentiation.
-
+	fastfindm66_refpts(LATTICE::Vector{<:AbstractElement{Float64}}, dp::Float64, refpts::Vector{Int}; 
+	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
+Find the 6x6 transfer matrix at specified reference points using numerical differentiation.
 # Arguments
 - `LATTICE`: Beam line sequence.
-- `dp::Float64=0.0`: Momentum deviation.
-- `refpts::Vector{Int}`: Indices of elements where the transfer matrix is calculated.
-
+- `dp::Float64`: Momentum deviation.
+- `refpts::Vector{Int}`: Indices of reference points.
+- `E0::Float64=3e9`: Reference energy in eV.
+- `m0::Float64=m_e`: Particle mass.
+- `orb::Vector{Float64}=zeros(6)`: Initial orbit.
 # Returns
-- `M66_refpts`: 6x6 transfer matrix at specified locations.
+- `M66_refpts`: 6x6 transfer matrices at each reference point.
 """
 function fastfindm66_refpts(LATTICE::Vector{<:AbstractElement{Float64}}, dp::Float64, refpts::Vector{Int}; 
 	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
@@ -990,6 +1023,20 @@ function fastfindm66_refpts(LATTICE::Vector{<:AbstractElement{Float64}}, dp::Flo
     return M66_refpts
 end
 
+"""
+	fastfindm66_refpts(LATTICE::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp::Float64, refpts::Vector{Int}; 
+	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6)) where {N, T}
+Find the 6x6 transfer matrix at specified reference points using numerical differentiation for DTPSAD elements.
+# Arguments
+- `LATTICE`: Beam line sequence.
+- `dp::Float64`: Momentum deviation.
+- `refpts::Vector{Int}`: Indices of reference points.
+- `E0::Float64=3e9`: Reference energy in eV.
+- `m0::Float64=m_e`: Particle mass.
+- `orb::Vector{Float64}=zeros(6)`: Initial orbit.
+# Returns
+- `M66_refpts`: 6x6 transfer matrices at each reference point.
+"""
 function fastfindm66_refpts(LATTICE::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp::Float64, refpts::Vector{Int}; 
 	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6)) where {N, T}
 	if dp == 0.0 && orb[6] != 0.0
@@ -1120,17 +1167,14 @@ function ADfastfindm66_refpts(LATTICE, dp::Float64, refpts::Vector{Int}, changed
 end
 
 """
-	twissline(tin::EdwardsTengTwiss,seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, endindex::Int)
-
-Propagate the Twiss parameters through a sequence of elements.
-
+	twissline(tin::EdwardsTengTwiss{Float64},seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, endindex::Int)
+Propagate the Twiss parameters through a sequence of elements up to a specified index.
 # Arguments
 - `tin::EdwardsTengTwiss`: Input Twiss parameters.
 - `seq::Vector`: Sequence of elements.
 - `dp::Float64`: Momentum deviation.
 - `order::Int`: Order of the map. 0 for finite difference, others for TPSA.
 - `endindex::Int`: Index of the last element in the sequence.
-
 # Returns
 - `EdwardsTengTwiss`: Output Twiss parameters.
 """
@@ -1150,11 +1194,20 @@ function twissline(tin::EdwardsTengTwiss{Float64},seq::Vector{<:AbstractElement{
 		M = findm66(used_seq, dp, order, E0=E0, m0=m0, orb=orb)
 	end
 	ret = twissPropagate(ret, M)
-	# ss = sum([mag.len for mag in used_seq])
-	# names = [mag.name for mag in used_seq]
 	return ret
 end
 
+"""	twissline(tin::EdwardsTengTwiss{DTPSAD{N,T}},seq::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp::Float64, order::Int, endindex::Int) where {N, T}
+Propagate the Twiss parameters through a sequence of DTPSAD elements up to a specified index
+# Arguments
+- `tin::EdwardsTengTwiss`: Input Twiss parameters.
+- `seq::Vector`: Sequence of elements.
+- `dp::Float64`: Momentum deviation.
+- `order::Int`: Order of the map. Only 0 is supported for DTPSAD elements.
+- `endindex::Int`: Index of the last element in the sequence.
+# Returns
+- `EdwardsTengTwiss`: Output Twiss parameters.
+"""
 function twissline(tin::EdwardsTengTwiss{DTPSAD{N,T}},seq::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp::Float64, order::Int, endindex::Int; 
 	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6)) where {N, T}
 	if dp == 0.0 && orb[6] != 0.0
@@ -1171,16 +1224,12 @@ function twissline(tin::EdwardsTengTwiss{DTPSAD{N,T}},seq::Vector{<:AbstractElem
 		error("Order > 0 is not supported for AbstractTPSAElement.")
 	end
 	ret = twissPropagate(ret, M)
-	# ss = sum([mag.len for mag in used_seq])
-	# names = [mag.name for mag in used_seq]
 	return ret
 end
 
 """
-	twissline(tin::EdwardsTengTwiss,seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, refpts::Vector{Int})
-
+	twissline(tin::EdwardsTengTwiss{Float64},seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, refpts::Vector{Int})
 Propagate the Twiss parameters through a sequence of elements. Save the results at specified locations.
-
 # Arguments
 - `tin::EdwardsTengTwiss`: Input Twiss parameters.
 - `seq::Vector`: Sequence of elements.
@@ -1217,6 +1266,20 @@ function twissline(tin::EdwardsTengTwiss{Float64},seq::Vector{<:AbstractElement{
 	return ret_vector
 end
 
+"""
+	twissline(tin::EdwardsTengTwiss{DTPSAD{N,T}},seq::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp::Float64, order::Int, refpts::Vector{Int}) where {N, T}
+Propagate the Twiss parameters through a sequence of DTPSAD elements up to a specified index
+
+# Arguments
+- `tin::EdwardsTengTwiss`: Input Twiss parameters.
+- `seq::Vector`: Sequence of elements.
+- `dp::Float64`: Momentum deviation.
+- `order::Int`: Order of the map. Only 0 is supported for DTPSAD elements.
+- `refpts::Vector{Int}`: Indices of elements where the Twiss parameters are calculated.
+
+# Returns
+- `EdwardsTengTwiss`: Output Twiss parameters.
+"""
 function twissline(tin::EdwardsTengTwiss{DTPSAD{N,T}},seq::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp::Float64, order::Int, refpts::Vector{Int}; 
 	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6)) where {N, T}
 	if dp == 0.0 && orb[6] != 0.0
@@ -1247,7 +1310,7 @@ end
 	ADtwissline(tin::EdwardsTengTwiss,seq::Vector, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector, changed_ele::Vector)
 
 Propagate the Twiss parameters through a sequence of elements. Save the results at specified locations.
-This function is used for automatic differentiation. 
+This function is used for automatic differentiation with Enzyme to avoid access issues.
 
 # Arguments
 - `tin::EdwardsTengTwiss`: Input Twiss parameters.
@@ -1306,7 +1369,7 @@ end
 
 
 """
-	periodicEdwardsTengTwiss(seq::Vector{<:AbstractElement{Float64}}, dp, order::Int)
+	periodicEdwardsTengTwiss(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int)
 
 Calculate the Twiss parameters for a periodic lattice.
 
@@ -1371,6 +1434,16 @@ function periodicEdwardsTengTwiss(seq::Vector{<:AbstractElement{Float64}}, dp::F
 	return EdwardsTengTwiss{Float64}(betax,betay,alfx,alfy,gamx,gamy,eta[1],eta[2],eta[3],eta[4],0.0,0.0,smux,cmux,smuy,cmuy,R,1)
 end
 
+"""
+	periodicEdwardsTengTwiss(seq::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp::Float64, order::Int) where {N, T}
+Calculate the Twiss parameters for a periodic lattice with DTPSAD elements.
+# Arguments
+- `seq::Vector{<:AbstractElement{DTPSAD{N, T}}}`: Sequence of elements.
+- `dp::Float64`: Momentum deviation.
+- `order::Int`: Order of the map. Only 0 is supported for DTPSAD elements.
+# Returns
+- `EdwardsTengTwiss`: Output Twiss parameters.
+"""
 function periodicEdwardsTengTwiss(seq::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp::Float64, order::Int; 
 	E0::Float64=3e9, m0::Float64=m_e) where {N, T}
 	orb, _ = find_closed_orbit(seq, dp, mass=m0, energy=E0)
@@ -1491,7 +1564,8 @@ function ADperiodicEdwardsTengTwiss(seq::Vector{<:AbstractElement{Float64}}, dp:
 end
 
 """
-	twissring(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int)
+	twissring(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int;
+	E0::Float64=3e9, m0::Float64=m_e)
 
 Calculate the periodic Twiss parameters along the ring.
 
@@ -1499,6 +1573,8 @@ Calculate the periodic Twiss parameters along the ring.
 - `seq::Vector`: Sequence of elements.
 - `dp::Float64`: Momentum deviation.
 - `order::Int`: Order of the map. 0 for finite difference, others for TPSA.
+- `E0::Float64`: Beam energy in eV. Default is 3 GeV.
+- `m0::Float64`: Particle rest mass in eV/c². Default is electron mass.
 
 # Returns
 - `twis`: Twiss parameters along the ring.
@@ -1511,6 +1587,21 @@ function twissring(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::
 	return twis
 end
 
+"""
+	twissring(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, refpts::Vector{Int};
+	E0::Float64=3e9, m0::Float64=m_e)
+Calculate the periodic Twiss parameters along the ring at specified reference points.
+# Arguments
+- `seq::Vector`: Sequence of elements.
+- `dp::Float64`: Momentum deviation.
+- `order::Int`: Order of the map. 0 for finite difference, others for TPSA.
+- `refpts::Vector{Int}`: Reference points along the ring.
+- `E0::Float64`: Beam energy in eV. Default is 3 GeV.
+- `m0::Float64`: Particle rest mass in eV/c². Default is electron mass.
+
+# Returns
+- `twis`: Twiss parameters along the ring.
+"""
 function twissring(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, refpts::Vector{Int}; 
 	E0::Float64=3e9, m0::Float64=m_e)
 	twi0 = periodicEdwardsTengTwiss(seq, dp, order, E0=E0, m0=m0)
@@ -1519,6 +1610,20 @@ function twissring(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::
 	return twis
 end
 
+"""
+	twissring(seq::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp::Float64, order::Int;
+	E0::Float64=3e9, m0::Float64=m_e) where {N, T}
+Calculate the periodic Twiss parameters along the ring with DTPSAD elements.
+# Arguments
+- `seq::Vector`: Sequence of elements.
+- `dp::Float64`: Momentum deviation.
+- `order::Int`: Order of the map. 0 for finite difference, others for TPSA.
+- `E0::Float64`: Beam energy in eV. Default is 3 GeV.
+- `m0::Float64`: Particle rest mass in eV/c². Default is electron mass.
+
+# Returns
+- `twis`: Twiss parameters along the ring.
+"""
 function twissring(seq::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp::Float64, order::Int; 
 	E0::Float64=3e9, m0::Float64=m_e) where {N, T}
 	twi0 = periodicEdwardsTengTwiss(seq, dp, order, E0=E0, m0=m0)
@@ -1527,6 +1632,22 @@ function twissring(seq::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp::Float64, or
 	twis = twissline(twi0, seq, dp, order, refpts, E0=E0, m0=m0)
 	return twis
 end
+
+"""
+	twissring(seq::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp::Float64, order::Int, refpts::Vector{Int};
+	E0::Float64=3e9, m0::Float64=m_e) where {N, T}
+Calculate the periodic Twiss parameters along the ring with DTPSAD elements at specified reference points.
+# Arguments
+- `seq::Vector`: Sequence of elements.
+- `dp::Float64`: Momentum deviation.
+- `order::Int`: Order of the map. 0 for finite difference, others for TPSA.
+- `refpts::Vector{Int}`: Reference points along the ring.
+- `E0::Float64`: Beam energy in eV. Default is 3 GeV.
+- `m0::Float64`: Particle rest mass in eV/c². Default is electron mass.
+
+# Returns
+- `twis`: Twiss parameters along the ring.
+"""
 function twissring(seq::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp::Float64, order::Int, refpts::Vector{Int}; 
 	E0::Float64=3e9, m0::Float64=m_e) where {N, T}
 	twi0 = periodicEdwardsTengTwiss(seq, dp, order, E0=E0, m0=m0)

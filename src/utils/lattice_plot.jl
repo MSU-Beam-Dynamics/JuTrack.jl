@@ -207,9 +207,10 @@ end
 """
 plot_lattice(lattice, scale=0.25, axis=true)
 Function wrapper to plot a lattice using matplotlib in Python.
-lattice: A list of elements in the lattice.
-scale: Scale factor for the plotted elements.
-axis: If true, show the axis; otherwise, hide it.
+# Arguments
+- lattice: A list of elements in the lattice.
+- scale: Scale factor for the plotted elements.
+- axis: If true, show the axis; otherwise, hide it.
 """
 function plot_lattice(lattice, scale=0.25, axis=true)
     if lattice isa AbstractVector{<:AbstractElement{DTPSAD{NVAR, T}}} where {NVAR, T}

@@ -1,4 +1,3 @@
-# """
 # This script demonstrates how to use a machine learning-based space charge model (transverse space charge only) 
 # to track particles through a beamline and calculate emittance growth.
 # The beam is assumed a coasting beam within a 13mm x 13mm perfectly conducting pipe (where the training data was generated).
@@ -21,7 +20,7 @@
 # - Pytorch
 # - numpy 
 # - scipy
-# """
+
 using JuTrack
 using Downloads
 using ProgressMeter

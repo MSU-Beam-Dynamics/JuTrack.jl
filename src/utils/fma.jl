@@ -210,7 +210,26 @@ function fma_map_from_segments(seg1::NamedTuple{(:x,:xp,:y,:yp)},
     return out
 end
 
-
+"""
+    FMA(RING, nturns; 
+    xmin=-3e-3+1e-6, xmax=3e-3+1e-6, ymin=1e-6, ymax=3e-3+1e-6,
+    nx=61, ny=31,
+    na=21, ns=31, amax=3e-3+1e-6, 
+    energy=2e9, sampling_method="grid", normalize_coordinates=false)
+Perform Frequency Map Analysis (FMA) on a given ring lattice.
+# Arguments
+- RING::Vector{<:AbstractElement{Float64}}: a ring lattice
+- nturns::Int: number of turns to track
+- xmin, xmax, ymin, ymax::Float64: bounds for grid sampling
+- nx, ny::Int: number of points in x and y for grid sampling
+- na, ns::Int: number of angles and steps for radial sampling
+- amax::Float64: maximum amplitude for radial sampling
+- energy::Float64: beam energy [eV]
+- sampling_method::String: "grid" or "radial"
+- normalize_coordinates::Bool: whether to normalize coordinates using Twiss parameters
+# Returns
+- rows::Vector{NamedTuple}: FMA results for each particle
+"""
 function FMA(RING, nturns; 
     xmin=-3e-3+1e-6, xmax=3e-3+1e-6, ymin=1e-6, ymax=3e-3+1e-6,
     nx=61, ny=31,
@@ -322,6 +341,23 @@ function plot_resonance_line_extended(n, m, k, color, style, alpha, linewidth)
     end
 end
 
+"""
+    plot_fma(rows; 
+    figsize=(10,4), s=10, 
+    x_min=-0.003, x_max=0.003, y_min=0.0, y_max=0.003,
+    resonance_lines=true, resonance_orders=[1,2,3,4],
+    filepath="fma_plot.png")
+Plot Frequency Map Analysis (FMA) results. 
+The plot function requires PyCall and Matplotlib installed in the associated Python environment.
+# Arguments
+- rows::Vector{NamedTuple}: FMA results from `FMA` function
+- figsize::Tuple{Int,Int}: figure size
+- s::Int: marker size
+- x_min, x_max, y_min, y_max::Float64: axis limits
+- resonance_lines::Bool: whether to plot resonance lines
+- resonance_orders::Vector{Int}: resonance orders to plot
+- filepath::String: output file path for saving the plot
+"""
 function plot_fma(rows; 
                     figsize=(10,4), s=10, 
                     x_min=-0.003, x_max=0.003, y_min=0.0, y_max=0.003,

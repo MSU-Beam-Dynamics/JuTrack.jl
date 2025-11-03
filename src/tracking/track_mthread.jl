@@ -1,13 +1,14 @@
 """
-    plinepass!(line::Vector, particles::Beam{Float64})
+    plinepass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Float64})
 
-Pass particles through the line element by element by implementing multi-threading. The number of threads is determined by the environment variable `JULIA_NUM_THREADS`.
+Pass particles through the line element by element by implementing multi-threading. 
+The number of threads is determined by the environment variable `JULIA_NUM_THREADS`.
 
 # Arguments
-- line::Vector: a vector of beam line elements
+- line::Vector{<:AbstractElement{Float64}}: a vector of beam line elements
 - particles::Beam{Float64}: a beam object
 """
-function plinepass!(line::Vector, particles::Beam{Float64})
+function plinepass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Float64})
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     np = particles.nmacro
@@ -23,7 +24,8 @@ function plinepass!(line::Vector, particles::Beam{Float64})
     return nothing
 end
 
-function ADplinepass!(line::Vector, particles::Beam{Float64}, changed_idx::Vector, changed_ele::Vector)
+function ADplinepass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Float64}, 
+    changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractElement{Float64}})
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     np = particles.nmacro
@@ -44,7 +46,8 @@ function ADplinepass!(line::Vector, particles::Beam{Float64}, changed_idx::Vecto
     particles.r = rout
     return nothing
 end
-function ADpringpass!(line::Vector, particles::Beam{Float64}, nturn::Int, changed_idx::Vector, changed_ele::Vector)
+function ADpringpass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Float64}, nturn::Int, 
+    changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractElement{Float64}})
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     for i in 1:nturn
@@ -54,17 +57,18 @@ function ADpringpass!(line::Vector, particles::Beam{Float64}, nturn::Int, change
 end
 
 """
-    pringpass!(line::Vector, particles::Beam{Float64}, nturn::Int)
+    pringpass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Float64}, nturn::Int)
 
-Pass particles through the ring by implementing multi-threading. The number of threads is determined by the environment variable `JULIA_NUM_THREADS`.
+Pass particles through the ring by implementing multi-threading. 
+The number of threads is determined by the environment variable `JULIA_NUM_THREADS`.
 
 # Arguments
-- line::Vector: a vector of beam line elements
+- line::Vector{<:AbstractElement{Float64}}: a vector of beam line elements
 - particles::Beam{Float64}: a beam object
 - nturn::Int: number of turns
 """
-function pringpass!(line::Vector, particles::Beam{Float64}, nturn::Int)
-    # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
+function pringpass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Float64}, nturn::Int)
+    # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares
     # Check if the particle is lost by checking the lost_flag
     for i in 1:nturn
         plinepass!(line, particles)    
@@ -72,7 +76,7 @@ function pringpass!(line::Vector, particles::Beam{Float64}, nturn::Int)
     return nothing
 end
 
-function pringpass!(line::Vector, particles::Beam{Float64}, nturn::Int, save::Bool)
+function pringpass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Float64}, nturn::Int, save::Bool)
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     save_beam = []

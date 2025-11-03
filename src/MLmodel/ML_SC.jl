@@ -7,7 +7,6 @@ using StatsBase
 using StatsBase: Weights
 using PyCall
 np = pyimport("numpy")
-# RegularGridInterpolator = pyimport("scipy.interpolate").RegularGridInterpolator
 RectBivariateSpline = pyimport("scipy.interpolate").RectBivariateSpline
 function space_charge_ML!(r_in, K, num_particles, le, lost_flags, model, x_mean, x_std, y_mean, y_std, xedges, yedges, xaxis, delta)
     x = r_in[1:6:end]

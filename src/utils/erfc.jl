@@ -1,10 +1,9 @@
 module PureErrorFunctions
 
 export erfcx, erf, erfinv
-using ..TPSAadStatic  # Note the .. to access parent module
+using ..TPSAadStatic  # the .. to access parent module
 using ..TPSAadStatic: DTPSAD
 
-# ---------------- Common helpers ----------------
 @inline invsqrtpi(::Type{T}) where {T<:AbstractFloat} = one(T) / sqrt(T(pi))
 const SQRTPI = sqrt(pi)
 const INV_SQRTPI = 1 / SQRTPI
@@ -73,9 +72,15 @@ const Q_dp = (2.56852019228982242e+00,
 
 @inline toT(T, tpl) = ntuple(i -> T(tpl[i]), length(tpl))
 
-# =========================================================
-# Part A) Real erfcx (Cody/NETLIB branching; Float32/64)
-# =========================================================
+# Real erfcx (Cody/NETLIB branching; Float32/64)
+""" 
+    erfcx(x::T) where {T<:AbstractFloat}
+Compute the scaled complementary error function erfcx(x) = exp(x^2) * erfc(x)
+# Arguments
+- x::T: input value
+# Returns
+- erfcx(x)::T: scaled complementary error function value
+"""
 function erfcx(x::T) where {T<:AbstractFloat}
     C = consts(T)
     A = toT(T, A_dp); B = toT(T, B_dp)
@@ -232,11 +237,9 @@ function erfcx(x::DTPSAD{N, T}) where {N, T<:AbstractFloat}
         return (ey2 + ey2) - res
     end
 end
-# =========================================================
-# Part B) Complex erfcx via Faddeeva w(z)
-#          w(z) = exp(-z^2) erfc(-i z),  erfcx(z) = w(i z)
-# =========================================================
 
+# Complex erfcx via Faddeeva w(z)
+#          w(z) = exp(-z^2) erfc(-i z),  erfcx(z) = w(i z)
 # (1) Power series for erf(z) (entire) — used only inside w(z) for small |z|
 function _erf_series(z::Complex{T}; tol=eps(T)*4, maxiter::Int=800) where {T<:Real}
     z2 = z*z
@@ -331,10 +334,8 @@ function _wofz(z::DTPSAD{N, T}) where {N, T<:Complex{<:Real}}
 end
 erfcx(z::DTPSAD{N, T}) where {N, T<:Complex{<:Real}} = _wofz(1.0im*z)
 
-# =========================================================
-# Part C) erf (via erfcx identity) for Real & Complex
+# erf (via erfcx identity) for Real & Complex
 #          erf(z) = 1 - exp(-z^2) * erfcx(z)
-# =========================================================
 @inline erf(x::Real) = begin
     T = float(x)
     one(T) - exp(-T*T) * erfcx(T)
@@ -349,9 +350,7 @@ end
     one(z) - exp(-z*z) * erfcx(z)
 end
 
-# =========================================================
-# Part D) erfinv for Real (Winitzki seed + Halley refinement)
-# =========================================================
+# erfinv for Real (Winitzki seed + Halley refinement)
 @inline function _winitzki_erfinv(ax::T) where {T<:AbstractFloat}
     a = T(0.147)
     l = log1p(-ax*ax)            # log(1 - x^2) with accuracy near 0

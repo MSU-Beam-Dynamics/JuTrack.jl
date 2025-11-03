@@ -1,4 +1,20 @@
-function dynamic_aperture(RING, nturns, amp_max, amp_step, angle_steps, E, dp)
+"""
+    dynamic_aperture(RING, nturns, amp_max, amp_step, angle_steps, E, dp)
+Calculate the dynamic aperture of a given lattice.
+# Arguments
+- RING::Vector{<:AbstractElement{Float64}}: a ring lattice
+- nturns::Int: number of turns to track
+- amp_max::Float64: maximum amplitude [m]
+- amp_step::Float64: step size of amplitude scan [m]
+- angle_steps::Int: number of lines. 11, 13, 19, 21, 37 etc.
+- E::Float64: beam energy [eV]
+- dp::Float64: momentum spread
+# Returns
+- DA::Array{Float64,2}: boundary points of dynamic aperture
+- survived_particles::Array{Float64,2}: survived particles in x and y [m]
+"""
+function dynamic_aperture(RING{<:AbstractElement{Float64}}, nturns::Int, amp_max::Float64, amp_step::Float64, 
+    angle_steps::Int, E::Float64, dp::Float64)
     # DA calculation
     # RING: lattice
     # nturns: number of turns

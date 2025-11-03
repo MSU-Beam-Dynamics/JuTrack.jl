@@ -149,6 +149,13 @@ end
     DrivenTerms
 
 Structure to store the driving terms for the resonance driving terms calculation.
+# Arguments
+- `h21000::Vector{Float64}`: Driving term h21000.
+- `h30000::Vector{Float64}`: Driving term h30000.
+- `h10110::Vector{Float64}`: Driving term h10110.
+...
+- `h00310::Vector{Float64}`: Driving term h00310.
+- `h00400::Vector{Float64}`: Driving term h00400.
 """
 struct DrivingTerms
     h21000::Vector{Float64}
@@ -195,6 +202,17 @@ struct ElementData
     s::Float64
 end
 
+"""
+    DrivingTermsTPSAD{N}
+Structure to store the driving terms for the resonance driving terms calculation with DTPSAD.
+# Arguments
+- `h21000::Vector{DTPSAD{N, Float64}}`: Driving term h21000.
+- `h30000::Vector{DTPSAD{N, Float64}}`: Driving term h30000.
+- `h10110::Vector{DTPSAD{N, Float64}}`: Driving term h10110.
+...
+- `h00310::Vector{DTPSAD{N, Float64}}`: Driving term h00310.
+- `h00400::Vector{DTPSAD{N, Float64}}`: Driving term h00400.
+"""
 struct DrivingTermsTPSAD{N}
     h21000::Vector{DTPSAD{N, Float64}}
     h30000::Vector{DTPSAD{N, Float64}}
@@ -248,6 +266,28 @@ struct RDTflags
     TuneShifts::Bool
 end
 
+"""
+    computeDrivingTerms(s::Vector{Float64}, betax::Vector{Float64}, betay::Vector{Float64}, 
+    phix::Vector{Float64}, phiy::Vector{Float64}, etax::Vector{Float64}, Lista2L::Vector{Float64}, Listb2L::Vector{Float64}, 
+    Listb3L::Vector{Float64}, Listb4L::Vector{Float64}, tune::Vector{Float64}, flags::RDTflags, nPeriods::Int)
+Compute the resonance driving terms for a given lattice.
+# Arguments
+- `s::Vector{Float64}`: Vector of s positions.
+- `betax::Vector{Float64}`: Vector of beta functions in x.
+- `betay::Vector{Float64}`: Vector of beta functions in y.
+- `phix::Vector{Float64}`: Vector of phase advances in x.
+- `phiy::Vector{Float64}`: Vector of phase advances in y.
+- `etax::Vector{Float64}`: Vector of eta functions in x.
+- `Lista2L::Vector{Float64}`: Vector of a2L values.
+- `Listb2L::Vector{Float64}`: Vector of b2L values.
+- `Listb3L::Vector{Float64}`: Vector of b3L values.
+- `Listb4L::Vector{Float64}`: Vector of b4L values.
+- `tune::Vector{Float64}`: Vector of tune values.
+- `flags::RDTflags`: Flags for the driving terms calculation.
+- `nPeriods::Int`: Number of periods in the lattice.
+# Returns
+- `DrivingTerms`: Structure containing the computed driving terms.
+"""
 function computeDrivingTerms(s::Vector{Float64}, betax::Vector{Float64}, betay::Vector{Float64}, 
     phix::Vector{Float64}, phiy::Vector{Float64}, etax::Vector{Float64}, Lista2L::Vector{Float64}, Listb2L::Vector{Float64}, 
     Listb3L::Vector{Float64}, Listb4L::Vector{Float64}, tune::Vector{Float64}, flags::RDTflags, nPeriods::Int)
@@ -429,6 +469,16 @@ function computeDrivingTerms(s::Vector{Float64}, betax::Vector{Float64}, betay::
                   [abs(h00400), real(h00400), imag(h00400)], dnux_dJx, dnux_dJy, dnuy_dJy)
 end
 
+"""
+    computeDrivingTerms(s::Vector{DTPSAD{N, T}}, betax::Vector{DTPSAD{N, Float64}}, betay::Vector{DTPSAD{N, Float64}}, 
+    phix::Vector{DTPSAD{N, Float64}}, phiy::Vector{DTPSAD{N, Float64}}, etax::Vector{DTPSAD{N, Float64}}, Lista2L::Vector{DTPSAD{N, Float64}}, Listb2L::Vector{DTPSAD{N, Float64}}, 
+    Listb3L::Vector{DTPSAD{N, Float64}}, Listb4L::Vector{DTPSAD{N, Float64}}, tune::Vector{DTPSAD{N, Float64}}, flags::RDTflags, nPeriods::Int)
+Compute the resonance driving terms for a given lattice using DTPSAD.
+# Arguments
+- The same as the previous function but with DTPSAD types.
+# Returns
+- `DrivingTermsTPSAD{N}`: Structure containing the computed driving terms.
+"""
 function computeDrivingTerms(s::Vector{DTPSAD{N, T}}, betax::Vector{DTPSAD{N, Float64}}, betay::Vector{DTPSAD{N, Float64}}, 
     phix::Vector{DTPSAD{N, Float64}}, phiy::Vector{DTPSAD{N, Float64}}, etax::Vector{DTPSAD{N, Float64}}, Lista2L::Vector{DTPSAD{N, Float64}}, Listb2L::Vector{DTPSAD{N, Float64}}, 
     Listb3L::Vector{DTPSAD{N, Float64}}, Listb4L::Vector{DTPSAD{N, Float64}}, tune::Vector{DTPSAD{N, Float64}}, flags::RDTflags, nPeriods::Int) where {N, T} 
@@ -633,21 +683,21 @@ function juliaRDT(s::Vector{DTPSAD{N, T}}, betax::Vector{DTPSAD{N, T}}, betay::V
 end
 
 """
-    computeRDT(ring, index; chromatic=false, coupling=false, geometric1=false, geometric2=false, tuneshifts=false)
-
-Compute Hamiltonian resonance driving terms (RDTs).
-
+    computeRDT(ring::Vector{<:AbstractElement{Float64}}, index::Vector{Int}; 
+    chromatic=false, coupling=false, geometric1=false, geometric2=false, tuneshifts=false, E0=3e9, m0=m_e)
+Compute Hamiltonian resonance driving terms (RDTs)
 # Arguments
-- `ring::Array`: lattice sequence
-- `index::Int`: index of the element to compute the RDTs
-- `chromatic::Bool=false`: flag to compute chromatic RDTs
-- `coupling::Bool=false`: flag to compute coupling RDTs
-- `geometric1::Bool=false`: flag to compute geometric RDTs
-- `geometric2::Bool=false`: flag to compute geometric RDTs
-- `tuneshifts::Bool=false`: flag to compute tune shifts
-
+- `ring::Vector{<:AbstractElement{Float64}}`: Lattice sequence
+- `index::Vector{Int}`: Index of the element to compute the RDTs
+- `chromatic::Bool`: Whether to compute chromatic RDTs (default: false)
+- `coupling::Bool`: Whether to compute coupling RDTs (default: false)
+- `geometric1::Bool`: Whether to compute geometric RDTs of first order (default: false)
+- `geometric2::Bool`: Whether to compute geometric RDTs of second order (default: false)
+- `tuneshifts::Bool`: Whether to compute tune shifts (default: false)
+- `E0::Float64`: Beam energy in eV (default: 3e9)
+- `m0`: Particle rest mass (default: m_e)
 # Returns
-- `d::DrivingTerms`: structure of driving terms
+- `Vector{DrivingTerms}`: Vector containing the computed driving terms for each specified index
 """
 function computeRDT(ring::Vector{<:AbstractElement{Float64}}, index::Vector{Int}; 
     chromatic=false, coupling=false, geometric1=false, geometric2=false, tuneshifts=false, E0=3e9, m0=m_e)
@@ -723,6 +773,23 @@ function computeRDT(ring::Vector{<:AbstractElement{Float64}}, index::Vector{Int}
     return dlist, s1
 end
 
+"""
+    computeRDT(ring::Vector{<:AbstractElement{DTPSAD{N, T}}}, index::Vector{Int}; 
+    chromatic=false, coupling=false, geometric1=false, geometric2=false, tuneshifts=false, E0=3e9, m0=m_e) where {N, T}
+Compute Hamiltonian resonance driving terms (RDTs)
+# Arguments
+- `ring::Vector{<:AbstractElement{DTPSAD{N, T}}}`: Lattice sequence
+- `index::Vector{Int}`: Index of the element to compute the RDTs
+- `chromatic::Bool`: Whether to compute chromatic RDTs (default: false)
+- `coupling::Bool`: Whether to compute coupling RDTs (default: false)
+- `geometric1::Bool`: Whether to compute geometric RDTs of first order (default: false)
+- `geometric2::Bool`: Whether to compute geometric RDTs of second order (default: false)
+- `tuneshifts::Bool`: Whether to compute tune shifts (default: false)
+- `E0::Float64`: Beam energy in eV (default: 3e9)
+- `m0`: Particle rest mass (default: m_e)
+# Returns
+- `Vector{DrivingTermsTPSAD{NVAR()}}`: Vector containing the computed driving terms for each specified index
+"""
 function computeRDT(ring::Vector{<:AbstractElement{DTPSAD{N, T}}}, index::Vector{Int}; 
     chromatic=false, coupling=false, geometric1=false, geometric2=false, tuneshifts=false, E0=3e9, m0=m_e) where {N, T}
     # Compute Hamiltonian resonance driving terms (RDTs)
@@ -943,7 +1010,7 @@ end
     ADcomputeRDT(ring, index, changed_ids, changed_elems; chromatic=true, coupling=true, geometric1=true, geometric2=true, tuneshifts=true)
 
 Compute Hamiltonian resonance driving terms (RDTs).
-This function is used for auto-differentiation.
+This function is used for auto-differentiation with Enzyme to avoid issues with mutable structs.
 
 # Arguments
 - `ring::Array`: lattice sequence

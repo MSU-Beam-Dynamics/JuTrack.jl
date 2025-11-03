@@ -1572,9 +1572,21 @@ mutable struct StrongThinGaussianBeam{T} <: AbstractStrongBeamBeam{T}
 end
 
 """
-    StrongGaussianBeam(charge::Float64, mass::Float64, atomnum::Float64, np::Int, energy::Float64, op::AbstractOptics4D, bs::Vector{Float64}, nz::Int)
+    StrongGaussianBeam(charge::Float64, mass::Float64, atomnum::Float64, np::Int, energy::Float64, 
+    op::AbstractOptics4D, bs::Vector{Float64}, nz::Int)
 
 Construct a strong beam-beam element with Gaussian distribution.
+# Arguments
+- `charge::Float64`: charge of the particle
+- `mass::Float64`: mass of the particle
+- `atomnum::Float64`: atomic number of the particle
+- `np::Int`: number of particles in the beam
+- `energy::Float64`: total energy of the beam
+- `op::AbstractOptics4D`: optics at the interaction point
+- `bs::Vector{Float64}`: beam size at the interaction point
+- `nz::Int`: number of slices in z direction
+# Returns
+- `StrongGaussianBeam`: strong beam-beam element with Gaussian distribution
 """
 mutable struct StrongGaussianBeam{T} <: AbstractStrongBeamBeam{T}  # Strong Beam with transverse Gaussian distribution
     # particle::ParticleType
@@ -1689,6 +1701,12 @@ end
     LongitudinalWake(times::AbstractVector, wakefields::AbstractVector, wakefield::Function)
 
 Create longitudinal wake element.
+# Arguments
+- `times::AbstractVector`: time points
+- `wakefields::AbstractVector`: wakefield values at the time points
+- `fliphalf::Float64=-1.0`: flip the wakefield for positrons if needed
+# Returns
+- `LongitudinalWake`: the created longitudinal wake element
 """
 function LongitudinalWake(times::AbstractVector, wakefields::AbstractVector, fliphalf::Float64=-1.0)
     wakefield = function (t::Float64)

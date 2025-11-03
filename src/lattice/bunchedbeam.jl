@@ -107,21 +107,19 @@ function get_emittance!(beam::Beam)
     return nothing
 end
 
-function initilize_6DGaussiandist!(beam::Beam, optics::AbstractOptics4D, lmap::AbstractLongitudinalMap, cutoff::Float64=5.0)
+"""
+    initilize_6DGaussiandist!(beam::Beam, optics::AbstractOptics4D, lmap::AbstractLongitudinalMap)
+Initialize 6D Gaussian distribution for the beam.
+Example:
+```julia
+initilize_6DGaussiandist!(beam, optics, lmap)
+```
+"""
+function initilize_6DGaussiandist!(beam::Beam, optics::AbstractOptics4D, lmap::AbstractLongitudinalMap)
     # 6D Gaussian distribution
     # Random.seed!(123)
     temp = randn_approx(beam.nmacro, 6)
     beam.r .= temp
-    # cutoff the distribution
-    # for c in 1:beam.nmacro
-    #     for i in 1:6
-    #         if beam.r[c, i] > cutoff
-    #             beam.r[c, i] = cutoff
-    #         elseif beam.r[c, i] < -cutoff
-    #             beam.r[c, i] = -cutoff
-    #         end
-    #     end
-    # end
 
     get_centroid!(beam)
 
@@ -253,6 +251,10 @@ function twiss_2d(x, px)
     return beta, alpha, epsilon
 end
 
+"""
+    twiss_beam(beam::Beam)
+Calculate twiss parameters of the beam.
+"""
 function twiss_beam(beam::Beam)
     # Calculate twiss parameters
     beta_x, alpha_x, emit_x = twiss_2d(beam.r[:, 1], beam.r[:, 2])

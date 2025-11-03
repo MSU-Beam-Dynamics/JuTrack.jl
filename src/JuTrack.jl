@@ -1,7 +1,6 @@
 module JuTrack
 using PyCall
 using Enzyme
-# Enzyme.API.runtimeActivity!(true) # this is temporarily used
 const CoordLimit = 1.0
 const AngleLimit = 1.0
 const m_e = 0.51099895069e6
