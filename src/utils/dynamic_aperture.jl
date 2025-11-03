@@ -13,7 +13,7 @@ Calculate the dynamic aperture of a given lattice.
 - DA::Array{Float64,2}: boundary points of dynamic aperture
 - survived_particles::Array{Float64,2}: survived particles in x and y [m]
 """
-function dynamic_aperture(RING{<:AbstractElement{Float64}}, nturns::Int, amp_max::Float64, amp_step::Float64, 
+function dynamic_aperture(RING::Vector{<:AbstractElement{Float64}}, nturns::Int, amp_max::Float64, amp_step::Float64, 
     angle_steps::Int, E::Float64, dp::Float64)
     # DA calculation
     # RING: lattice
