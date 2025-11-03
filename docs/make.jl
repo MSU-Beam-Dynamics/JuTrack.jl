@@ -5,6 +5,7 @@ makedocs(
     sitename = "JuTrack.jl",
     modules = [JuTrack],
     format = Documenter.HTML(),
+    warnonly = [:missing_docs, :cross_references], 
     pages = [
         "Home" => "index.md",
         "API" => "api.md"

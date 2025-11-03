@@ -1,0 +1,38 @@
+name: Docs
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+
+permissions:
+  contents: write     # Allows Documenter to push to gh-pages
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.10'
+
+      - name: Cache artifacts
+        uses: actions/cache@v4
+        with:
+          path: ~/.julia/artifacts
+          key: ${{ runner.os }}-julia-artifacts-${{ hashFiles('**/Project.toml') }}
+          restore-keys: ${{ runner.os }}-julia-artifacts-
+
+      - name: Instantiate docs environment
+        run: |
+          julia --project=docs -e "using Pkg; Pkg.develop(path=pwd()); Pkg.instantiate()"
+
+      - name: Build and deploy docs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          julia --project=docs docs/make.jl
