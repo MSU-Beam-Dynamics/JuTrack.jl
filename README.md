@@ -1,5 +1,7 @@
 # JuTrack
 
+[![Docs](https://github.com/MSU-Beam-Dynamics/JuTrack.jl/actions/workflows/Docs.yml/badge.svg)](https://github.com/MSU-Beam-Dynamics/JuTrack.jl/actions/workflows/Docs.yml)
+
 A Julia-based package that enables advanced auto differentiation (AD) for symplectic 6-D particle tracking in particle accelerators.
 A mannual can be found at [here](docs/JuTrack_manual.pdf).
 

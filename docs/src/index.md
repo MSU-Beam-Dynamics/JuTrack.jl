@@ -1,7 +1,7 @@
 # JuTrack
 
 A Julia-based package that enables advanced auto differentiation (AD) for symplectic 6-D particle tracking in particle accelerators.
-A mannual can be found at [here](docs/JuTrack_manual.pdf).
+A mannual can be found at docs.
 
 # Citation
 ```
