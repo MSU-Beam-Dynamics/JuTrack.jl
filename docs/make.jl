@@ -1,3 +1,6 @@
+using Pkg
+Pkg.develop(path=joinpath(@__DIR__, ".."))
+Pkg.instantiate()
 using Documenter
 using JuTrack
 
