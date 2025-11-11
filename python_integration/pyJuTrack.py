@@ -921,7 +921,11 @@ def Gradient(func, x, return_value=False):
         result = _jl.Gradient(func, x_julia, return_value)
     else:
         # It's a Python function - wrap it
-        # Julia will pass DTPSAD objects as individual arguments
+        # Detect if function expects a single array or individual arguments
+        import inspect
+        sig = inspect.signature(func)
+        num_params = len(sig.parameters)
+        
         global _function_counter
         func_id = f"_pyfunc_{_function_counter}"
         _function_counter += 1
@@ -930,9 +934,19 @@ def Gradient(func, x, return_value=False):
         _jl.seval(f'global _python_callbacks["{func_id}"] = nothing')
         _jl._python_callbacks[func_id] = func
         
-        # Create Julia wrapper that passes DTPSAD args directly to Python
-        # Python function will receive Julia DTPSAD objects
-        julia_code = f"""
+        if num_params == 1:
+            # Function expects single array argument: objective(x)
+            julia_code = f"""
+function {func_id}(args...)
+    py_func = _python_callbacks["{func_id}"]
+    # Pass as array
+    result = py_func([args...])
+    return result
+end
+"""
+        else:
+            # Function expects individual arguments: objective(x1, x2, ...)
+            julia_code = f"""
 function {func_id}(args...)
     py_func = _python_callbacks["{func_id}"]
     # Pass DTPSAD objects directly as individual arguments
@@ -955,8 +969,8 @@ def Jacobian(func, x, return_value=False):
     Calculate Jacobian matrix using TPSA.
     
     Args:
-        func: Python callable function(x1, x2, ...) -> tuple/list of results
-              Function should accept individual scalar arguments, not an array
+        func: Python callable function(x) -> tuple OR function(x1, x2, ...) -> tuple
+              Returns tuple/list of results
         x: Point to evaluate Jacobian (list or array)
         return_value: If True, return (jacobian, function_values), else just jacobian
     
@@ -964,12 +978,16 @@ def Jacobian(func, x, return_value=False):
         If return_value=False: Jacobian matrix (numpy array)
         If return_value=True: (Jacobian matrix, list of function values)
     
-    Example:
-        >>> def my_func(x1, x2, x3):
-        ...     # Function returns tuple of outputs
-        ...     return (x1**2 + x2, x2*x3, x1 + x2 + x3)
-        >>> jac = jt.Jacobian(my_func, [1.0, 2.0, 3.0])
-        >>> jac, vals = jt.Jacobian(my_func, [1.0, 2.0, 3.0], return_value=True)
+    Examples:
+        >>> # Style 1: Individual arguments
+        >>> def my_func(x1, x2):
+        ...     return (x1*x1 + x2, x2*x1)
+        >>> jac = jt.Jacobian(my_func, [1.0, 2.0])
+        
+        >>> # Style 2: Array argument
+        >>> def my_func(x):
+        ...     return (x[0]*x[0] + x[1], x[1]*x[0])
+        >>> jac = jt.Jacobian(my_func, [1.0, 2.0])
     """
     global _function_counter
     
@@ -978,36 +996,48 @@ def Jacobian(func, x, return_value=False):
     else:
         x_julia = x
     
-    # Store Python function in Julia's global dictionary
-    func_id = f"_pyfunc_{_function_counter}"
-    _function_counter += 1
-    
-    # Store the function in Julia's _python_callbacks dictionary
-    _jl._python_callbacks[func_id] = func
-    
-    # Create Julia wrapper that accepts varargs (individual DTPSAD arguments)
-    # Julia's Jacobian will call: func(DTPSAD{3,Float64}, DTPSAD{3,Float64}, ...)
-    # The Python function will compute with these DTPSAD values and return DTPSAD results
-    julia_code = f"""
+    # Check if func is already a Julia function
+    if hasattr(func, '_jl_callmethod'):
+        # It's a Julia function, use directly
+        result = _jl.Jacobian(func, x_julia, return_value)
+    else:
+        # It's a Python function - detect signature
+        import inspect
+        sig = inspect.signature(func)
+        num_params = len(sig.parameters)
+        
+        # Store Python function in Julia's global dictionary
+        func_id = f"_pyfunc_{_function_counter}"
+        _function_counter += 1
+        
+        # Store the function in Julia's _python_callbacks dictionary
+        _jl._python_callbacks[func_id] = func
+        
+        if num_params == 1:
+            # Function expects single array: func(x)
+            julia_code = f"""
 function {func_id}(args...)
-    # Get the stored Python function from global dict
     py_func = _python_callbacks["{func_id}"]
-    # Call with individual arguments (Julia will pass DTPSAD values)
-    # The Python function receives Julia DTPSAD objects, computes, returns tuple of DTPSAD
-    result_py = py_func(args...)
-    # result_py is a Python tuple containing Julia DTPSAD objects
-    # Extract each element - they should already be Julia DTPSAD values
-    # Python uses 0-based indexing
+    result_py = py_func([args...])
     n = pylen(result_py)
     result_vec = [pyconvert(Any, result_py[i-1]) for i in 1:n]
     return tuple(result_vec...)
 end
 """
-    _jl.seval(julia_code)
-    julia_func = getattr(_jl, func_id)
-    
-    # Call Julia's Jacobian with Primal parameter
-    result = _jl.Jacobian(julia_func, x_julia, return_value)
+        else:
+            # Function expects individual arguments: func(x1, x2, ...)
+            julia_code = f"""
+function {func_id}(args...)
+    py_func = _python_callbacks["{func_id}"]
+    result_py = py_func(args...)
+    n = pylen(result_py)
+    result_vec = [pyconvert(Any, result_py[i-1]) for i in 1:n]
+    return tuple(result_vec...)
+end
+"""
+        _jl.seval(julia_code)
+        julia_func = getattr(_jl, func_id)
+        result = _jl.Jacobian(julia_func, x_julia, return_value)
     
     if return_value:
         # Julia returns (Jacobian_matrix, [val1, val2, ...])
