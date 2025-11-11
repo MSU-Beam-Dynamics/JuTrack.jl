@@ -1,0 +1,17 @@
+# Include documentation and examples
+include README.md
+include LICENSE
+include setup.py
+include pyproject.toml
+
+# Include demo scripts
+include demo_*.py
+include getting_started.py
+recursive-include examples *.py
+
+# Exclude build artifacts
+global-exclude __pycache__
+global-exclude *.py[co]
+global-exclude .DS_Store
+global-exclude *.so
+global-exclude *.dylib

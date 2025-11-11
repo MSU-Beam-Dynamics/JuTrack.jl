@@ -35,7 +35,7 @@ except ImportError:
 # from matplotlib.lines import Line2D
 # from matplotlib.transforms import Affine2D
 
-def plot_lattice(lattice, width=0.25, axis=True):
+def plot_lattice(lattice, width=0.25, axis=True, savepath=None):
     fig, ax = plt.subplots(figsize=(8, 8))
     pos   = np.array([0.0, 0.0])   # beam start
     theta = 0.0                    # heading (rad)
@@ -160,7 +160,7 @@ def plot_lattice(lattice, width=0.25, axis=True):
                 pos = end
 
 
-        elif et == 'RFCA':
+        elif et == 'RFCA' or et == 'CRABCAVITY':
             cav = Rectangle((0, -width/4), L, width/2,
                             edgecolor='black', facecolor='red',
                             hatch='//', transform=trans)
@@ -199,6 +199,8 @@ def plot_lattice(lattice, width=0.25, axis=True):
     ax.xaxis.set_ticks_position('bottom')
     ax.yaxis.set_ticks_position('left')
     plt.tight_layout()
+    if savepath:
+        plt.savefig(savepath)
     plt.show()
 
 """
@@ -212,11 +214,11 @@ Function wrapper to plot a lattice using matplotlib in Python.
 - scale: Scale factor for the plotted elements.
 - axis: If true, show the axis; otherwise, hide it.
 """
-function plot_lattice(lattice, scale=0.25, axis=true)
+function plot_lattice(lattice, scale=0.25, axis=true, savepath=nothing)
     if lattice isa AbstractVector{<:AbstractElement{DTPSAD{NVAR, T}}} where {NVAR, T}
         lattice = TPSAD2Number(lattice)
     end
     py_lattice = [elem_to_py(e) for e in lattice]
-    py"plot_lattice"(py_lattice, scale, axis)
+    py"plot_lattice"(py_lattice, scale, axis, savepath)
 end
 

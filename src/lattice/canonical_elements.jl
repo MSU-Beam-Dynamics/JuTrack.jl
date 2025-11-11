@@ -1665,17 +1665,18 @@ end
 A longitudinal RLC wake element.
 """
 mutable struct LongitudinalRLCWake{T} <: AbstractElement{T}
+    name::String
     freq::T
     Rshunt::T
     Q0::T
     # constructor with all parameters
-    LongitudinalRLCWake(freq::T, Rshunt::T, Q0::T) where T = new{T}(freq, Rshunt, Q0)
+    LongitudinalRLCWake(name::String, freq::T, Rshunt::T, Q0::T) where T = new{T}(name, freq, Rshunt, Q0)
 end
-function LongitudinalRLCWake(;freq::T=1.0e9, Rshunt::T=1.0e6, Q0::T=1.0) where {T}
+function LongitudinalRLCWake(;name::String="RLCWake", freq::T=1.0e9, Rshunt::T=1.0e6, Q0::T=1.0) where {T}
     if freq isa DTPSAD || Rshunt isa DTPSAD || Q0 isa DTPSAD
-        return LongitudinalRLCWake(DTPSAD(freq), DTPSAD(Rshunt), DTPSAD(Q0))
+        return LongitudinalRLCWake(name, DTPSAD(freq), DTPSAD(Rshunt), DTPSAD(Q0))
     end
-    return LongitudinalRLCWake(freq, Rshunt, Q0)
+    return LongitudinalRLCWake(name, freq, Rshunt, Q0)
 end
 
 function wakefieldfunc_RLCWake(rlcwake::LongitudinalRLCWake, t::T) where {T}
@@ -1690,12 +1691,13 @@ function wakefieldfunc_RLCWake(rlcwake::LongitudinalRLCWake, t::T) where {T}
 end
 
 mutable struct LongitudinalWake{T} <: AbstractElement{T}
+    name::String
     times::AbstractVector{T}
     wakefields::AbstractVector{T}
     wakefield::Function
     # constructor with all parameters
-    LongitudinalWake(times::AbstractVector{T}, wakefields::AbstractVector{T}, wakefield::Function) where {T} =
-        new{T}(times, wakefields, wakefield)
+    LongitudinalWake(name::String, times::AbstractVector{T}, wakefields::AbstractVector{T}, wakefield::Function) where {T} =
+        new{T}(name, times, wakefields, wakefield)
 end
 """
     LongitudinalWake(times::AbstractVector, wakefields::AbstractVector, wakefield::Function)
@@ -1708,10 +1710,10 @@ Create longitudinal wake element.
 # Returns
 - `LongitudinalWake`: the created longitudinal wake element
 """
-function LongitudinalWake(times::AbstractVector, wakefields::AbstractVector, fliphalf::Float64=-1.0)
+function LongitudinalWake(times::AbstractVector, wakefields::AbstractVector, fliphalf::Float64=-1.0; name::String="LongitudinalWake")
     wakefield = function (t::Float64)
         t>times[1]*fliphalf && return 0.0
         return linear_interpolate(t*fliphalf, times, wakefields)
     end
-    return LongitudinalWake(times, wakefields, wakefield)
+    return LongitudinalWake(name, times, wakefields, wakefield)
 end
