@@ -45,27 +45,27 @@ def _initialize_julia():
     python_exe = sys.executable.replace('\\', '/')
     jl.seval(f'ENV["PYTHON"] = "{python_exe}"')
     
-    # Build PyCall with current Python (silently)
-    with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-        try:
-            jl.seval('import Pkg; Pkg.build("PyCall")')
-        except:
-            pass  # PyCall might already be built correctly
-        
-        try:
-            juliacall.Pkg.instantiate()
-        except Exception as e:
-            try:
-                juliacall.Pkg.resolve()
-            except:
-                import warnings
-                warnings.warn(
-                    "Could not resolve package dependencies. "
-                    "If you encounter errors, try running Julia and executing: "
-                    "using Pkg; Pkg.resolve(); Pkg.instantiate()",
-                    RuntimeWarning
-                )
+    # Build PyCall with current Python and resolve dependencies (silently)
+    # Automatically handle version mismatches without user intervention
+    try:
+        jl.seval('import Pkg; Pkg.build("PyCall")')
+    except:
+        pass  # PyCall might already be built correctly
     
+    # Automatically fix version mismatches by updating the manifest
+    # This resolves the StyledStrings issue when switching between Julia versions
+    try:
+        jl.seval('import Pkg; Pkg.resolve()')
+        jl.seval('import Pkg; Pkg.instantiate()')
+    except:
+        # If resolve/instantiate fail, try more aggressive approach
+        try:
+            # Update packages to be compatible with current Julia version
+            jl.seval('import Pkg; Pkg.update()')
+        except:
+            pass  # Continue even if this fails
+    
+    # Load JuTrack (suppress all warnings and output)
     with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
         jl.seval('''
         import Logging
@@ -75,6 +75,31 @@ def _initialize_julia():
         
         try:
             jl.seval('using JuTrack')
+        except Exception as first_error:
+            # If JuTrack fails to load, try to fix automatically
+            jl.seval('Logging.global_logger(old_logger)')
+            
+            # Attempt automatic fix: update all packages for current Julia version
+            try:
+                jl.seval('import Pkg; Pkg.update(); Pkg.resolve(); Pkg.instantiate()')
+                # Try loading JuTrack again after fix
+                jl.seval('Logging.global_logger(Logging.NullLogger())')
+                jl.seval('using JuTrack')
+            except Exception as second_error:
+                # If still fails, it's a more serious issue
+                jl.seval('Logging.global_logger(old_logger)')
+                print("\n" + "="*70, file=sys.stderr)
+                print("ERROR: Failed to load JuTrack after attempting automatic fix", file=sys.stderr)
+                print("="*70, file=sys.stderr)
+                print("\nOriginal error:", str(first_error)[:200], file=sys.stderr)
+                print("\nAutomatic package update was attempted but failed.", file=sys.stderr)
+                print("Please check your Julia installation and JuTrack dependencies.", file=sys.stderr)
+                print("="*70 + "\n", file=sys.stderr)
+                raise
+        except:
+            # Catch any other exception and re-raise
+            jl.seval('Logging.global_logger(old_logger)')
+            raise
         finally:
             jl.seval('Logging.global_logger(old_logger)')
     
