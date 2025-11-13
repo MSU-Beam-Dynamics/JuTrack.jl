@@ -1,10 +1,10 @@
 """
 pyJuTrack - Comprehensive Python Wrapper for JuTrack.jl
 
-This module provides a complete Pythonic interface to JuTrack.jl particle tracking library.
+This module provides a Python interface to JuTrack.jl particle tracking library.
 All type conversions between Python and Julia are handled automatically.
 
-Author: Generated for JuTrack.jl integration
+Author: Jinyu Wan
 Version: 1.0.0
 """
 
@@ -15,13 +15,10 @@ import numpy as np
 from typing import List, Union, Optional, Tuple, Any
 import warnings
 
-# ==============================================================================
-# JULIA INITIALIZATION
-# ==============================================================================
 
 _julia_initialized = False
 _jl = None
-_python_functions = {}  # Store Python functions for Julia callbacks
+_python_functions = {}
 
 def _initialize_julia():
     """Initialize the Julia runtime and load JuTrack.jl"""
@@ -48,16 +45,27 @@ def _initialize_julia():
     python_exe = sys.executable.replace('\\', '/')
     jl.seval(f'ENV["PYTHON"] = "{python_exe}"')
     
-    # Build PyCall with current Python and install dependencies (silently)
+    # Build PyCall with current Python (silently)
     with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
         try:
             jl.seval('import Pkg; Pkg.build("PyCall")')
         except:
             pass  # PyCall might already be built correctly
         
-        juliacall.Pkg.instantiate()
+        try:
+            juliacall.Pkg.instantiate()
+        except Exception as e:
+            try:
+                juliacall.Pkg.resolve()
+            except:
+                import warnings
+                warnings.warn(
+                    "Could not resolve package dependencies. "
+                    "If you encounter errors, try running Julia and executing: "
+                    "using Pkg; Pkg.resolve(); Pkg.instantiate()",
+                    RuntimeWarning
+                )
     
-    # Load JuTrack (suppress extension loading warnings)
     with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
         jl.seval('''
         import Logging
@@ -72,17 +80,12 @@ def _initialize_julia():
     
     _julia_initialized = True
     
-    # Register callback function for Python->Julia communication
     jl.seval('import PyCall')
     jl.seval('global _python_callbacks = Dict{String, Any}()')
     
     return jl
 
 _jl = _initialize_julia()
-
-# ==============================================================================
-# HELPER FUNCTIONS
-# ==============================================================================
 
 def _convert_kwargs_to_julia(kwargs):
     """
@@ -192,10 +195,6 @@ def _to_numpy_array(julia_array):
     """Convert Julia array to NumPy array"""
     return np.array(julia_array)
 
-# ==============================================================================
-# CORE CLASSES
-# ==============================================================================
-
 class Lattice:
     """
     Python wrapper for a Julia lattice vector.
@@ -236,7 +235,6 @@ class Lattice:
                             f"All elements in a lattice must have the same parametric type."
                         )
                 
-                # Create appropriate lattice type
                 if is_dtpsad:
                     # DTPSAD-parametric lattice
                     self._jl_lattice = _jl.seval(f"AbstractElement{{DTPSAD{{NVAR(), Float64}}}}[]")
@@ -320,7 +318,7 @@ class Beam:
         Create a beam from particle coordinates matrix.
         
         Args:
-            r: Particle coordinate matrix (n_particles × 6)
+            r: Particle coordinate matrix (n_particles * 6)
                Can be NumPy array, or Julia matrix (Float64 or DTPSAD from jt.zeros)
             energy: Beam energy in eV (default: 1e9)
             **kwargs: Additional keyword arguments:
@@ -344,18 +342,13 @@ class Beam:
             >>> particles = jt.zeros(jt.DTPSAD, 5000, 6)
             >>> beam = jt.Beam(particles, energy=10e9, np=int(1.72e11*3))
         """
-        # Convert kwargs to Julia types
         kwargs = _convert_kwargs_to_julia(kwargs)
         
-        # Check if r is already a Julia object (e.g., from jt.zeros)
         if hasattr(r, '_jl_callmethod'):
-            # It's already a Julia matrix, use directly
             r_julia = r
         else:
-            # It's a NumPy array, convert to Julia Float64 matrix
             r_julia = _to_julia_matrix(r)
         
-        # Call Julia: Beam(r; energy=energy, **kwargs)
         self._jl_beam = _jl.Beam(r_julia, energy=energy, **kwargs)
     
     @property
@@ -382,14 +375,27 @@ class Beam:
         """Number of macro particles"""
         return int(self._jl_beam.nmacro)
     
+    @property
+    def lost_flag(self) -> np.ndarray:
+        """
+        Lost particle flags as boolean NumPy array.
+        
+        Returns:
+            Boolean array where True indicates a lost particle
+        
+        Example:
+            >>> beam = jt.Beam(particles, energy=3e9)
+            >>> jt.linepass(ring, beam)
+            >>> lost = beam.lost_flag
+            >>> n_lost = np.sum(lost)
+            >>> print(f"Lost {n_lost} particles")
+        """
+        return _to_numpy_array(self._jl_beam.lost_flag)
+    
     def __repr__(self):
         particles = self.get_particles()
         return f"Beam(n_particles={particles.shape[0]}, energy={self.energy:.2e}eV)"
 
-
-# ==============================================================================
-# LATTICE ELEMENTS - Basic
-# ==============================================================================
 
 def DRIFT(name: str, length: float, **kwargs):
     """Create a drift space"""
@@ -400,10 +406,6 @@ def MARKER(name: str, **kwargs):
     """Create a marker element"""
     kwargs = _convert_kwargs_to_julia(kwargs)
     return _jl.MARKER(name=name, **kwargs)
-
-# ==============================================================================
-# LATTICE ELEMENTS - Magnets
-# ==============================================================================
 
 def QUAD(name: str, length: float, k1: float, **kwargs):
     """Create a quadrupole (thick lens)"""
@@ -460,10 +462,6 @@ def thinMULTIPOLE(name: str, **kwargs):
     kwargs = _convert_kwargs_to_julia(kwargs)
     return _jl.thinMULTIPOLE(name=name, **kwargs)
 
-# ==============================================================================
-# LATTICE ELEMENTS - Correctors
-# ==============================================================================
-
 def CORRECTOR(name: str, length: float = 0.0, **kwargs):
     """Create a corrector element"""
     kwargs = _convert_kwargs_to_julia(kwargs)
@@ -478,10 +476,6 @@ def VKICKER(name: str, length: float = 0.0, **kwargs):
     """Create a vertical kicker"""
     kwargs = _convert_kwargs_to_julia(kwargs)
     return _jl.VKICKER(name=name, len=length, **kwargs)
-
-# ==============================================================================
-# LATTICE ELEMENTS - RF and Special
-# ==============================================================================
 
 def RFCA(name: str, length: float, volt: float, freq: float, **kwargs):
     """Create an RF cavity"""
@@ -519,10 +513,6 @@ def LongitudinalRLCWake(name: str = "RLCWake", **kwargs):
     """
     kwargs = _convert_kwargs_to_julia(kwargs)
     return _jl.LongitudinalRLCWake(name=name, **kwargs)
-
-# ==============================================================================
-# LATTICE ELEMENTS - Space Charge
-# ==============================================================================
 
 def SPACECHARGE(name: str, **kwargs):
     """Create a space charge element"""
@@ -564,11 +554,6 @@ def RBEND_SC(name: str, length: float, angle: float, **kwargs):
     kwargs = _convert_kwargs_to_julia(kwargs)
     return _jl.RBEND_SC(name=name, len=length, angle=angle, **kwargs)
 
-# ==============================================================================
-# ELEMENT TYPES (for findelem by type)
-# ==============================================================================
-
-# Access Julia element types for findelem(ring, element_type)
 class ElementTypes:
     """Julia element type constants for use with findelem"""
     DRIFT = _jl.DRIFT
@@ -591,12 +576,7 @@ class ElementTypes:
     thinMULTIPOLE = _jl.thinMULTIPOLE
     SPACECHARGE = _jl.SPACECHARGE
 
-# Create a singleton instance for easy access
 element_types = ElementTypes()
-
-# ==============================================================================
-# LATTICE ELEMENTS - Transformations
-# ==============================================================================
 
 def TRANSLATION(name: str, dx: float = 0.0, dy: float = 0.0, dz: float = 0.0, **kwargs):
     """Create a translation element"""
@@ -608,18 +588,27 @@ def YROTATION(name: str, angle: float, **kwargs):
     kwargs = _convert_kwargs_to_julia(kwargs)
     return _jl.YROTATION(name=name, angle=angle, **kwargs)
 
-# ==============================================================================
-# TRACKING FUNCTIONS
-# ==============================================================================
-
-def linepass(lattice: Union[Lattice, List], beam: Beam, lost_flags=None):
+def linepass(lattice: Union[Lattice, List], beam: Beam, refpts=None):
     """
     Track particles through a beamline once.
     
     Args:
         lattice: Lattice object or list of elements
         beam: Beam object
-        lost_flags: Optional array to track lost particles
+        refpts: Optional list of element indices (0-based) where to save particle coordinates.
+                If None, no coordinates are saved (normal linepass).
+                If provided, returns list of particle coordinate arrays at those positions.
+    
+    Returns:
+        None if refpts is None, otherwise List[np.ndarray] of particle coordinates at each refpt
+    
+    Example:
+        >>> # Normal tracking without saving
+        >>> jt.linepass(ring, beam)
+        
+        >>> # Track and save at specific positions
+        >>> saved = jt.linepass(ring, beam, refpts=[0, 5, 10])
+        >>> print(saved[0].shape)  # (n_particles, 6)
     """
     if isinstance(lattice, Lattice):
         jl_lattice = lattice.julia_object
@@ -628,9 +617,19 @@ def linepass(lattice: Union[Lattice, List], beam: Beam, lost_flags=None):
     else:
         jl_lattice = lattice
     
-    if lost_flags is not None:
-        _jl.linepass_b(jl_lattice, beam.julia_object, lost_flags)
+    if refpts is not None:
+        # Convert Python 0-based indices to Julia 1-based indices
+        refpts_1based = [i + 1 for i in refpts]
+        julia_refpts = _to_julia_int_vector(refpts_1based)
+        
+        # Call Julia linepass! with refpts - returns saved particle arrays
+        saved_particles = _jl.linepass_b(jl_lattice, beam.julia_object, julia_refpts)
+        
+        # Convert each saved particle matrix to NumPy array
+        result = [_to_numpy_array(particles) for particles in saved_particles]
+        return result
     else:
+        # Normal linepass without saving
         _jl.linepass_b(jl_lattice, beam.julia_object)
 
 def ringpass(lattice: Union[Lattice, List], beam: Beam, num_turns: int):
@@ -682,10 +681,6 @@ def pringpass(lattice: Union[Lattice, List], beam: Beam, num_turns: int, nthread
 def check_lost(beam: Beam) -> np.ndarray:
     """Check which particles are lost"""
     return _to_numpy_array(_jl.check_lost(beam.julia_object))
-
-# ==============================================================================
-# TPSA (Truncated Power Series Algebra)
-# ==============================================================================
 
 def set_tps_dim(dim: int):
     """Set TPSA dimension"""
@@ -759,7 +754,7 @@ def to_dtpsad_matrix(arr):
     differentiation.
     
     Args:
-        arr: NumPy array or nested Python list (n×m shape)
+        arr: NumPy array or nested Python list (n*m shape)
     
     Returns:
         Julia Matrix{DTPSAD{NVAR(),Float64}}
@@ -872,12 +867,9 @@ def convert_to_DTPSAD(value):
     Returns:
         DTPSAD version of the value
     """
-    # Check if it's already a Julia DTPSAD object
     if hasattr(value, '_jl_callmethod'):
-        # It's already a Julia object, likely DTPSAD
         return value
     else:
-        # It's a Python number, convert to DTPSAD constant
         return _jl.DTPSAD(float(value))
 
 def TPSAD2Number(obj):
@@ -915,12 +907,9 @@ def Gradient(func, x, return_value=False):
     else:
         x_julia = x
     
-    # Check if func is already a Julia function
     if hasattr(func, '_jl_callmethod'):
-        # It's a Julia function, use directly
         result = _jl.Gradient(func, x_julia, return_value)
     else:
-        # It's a Python function - wrap it
         # Detect if function expects a single array or individual arguments
         import inspect
         sig = inspect.signature(func)
@@ -1051,10 +1040,6 @@ def get_python_function(func_id):
     """Internal: Get stored Python function by ID"""
     return _python_objective_functions[func_id]
 
-# ==============================================================================
-# TWISS PARAMETERS AND OPTICS
-# ==============================================================================
-
 def twissring(lattice, dp=0.0, refpts=None, **kwargs):
     """
     Calculate Twiss parameters around a ring.
@@ -1141,10 +1126,6 @@ def ADperiodicEdwardsTengTwiss(lattice, dp, order, changed_idx=None, changed_ele
     else:
         return _jl.ADperiodicEdwardsTengTwiss(jl_lattice, dp, order, **kwargs)
 
-# ==============================================================================
-# TRANSFER MATRICES
-# ==============================================================================
-
 def findm66(lattice, dp=0.0, order=1, **kwargs):
     """Find 6x6 transfer matrix
     
@@ -1194,10 +1175,6 @@ def findm66_refpts(lattice, refpts, dp=0.0, order=1, **kwargs):
     
     return _jl.findm66_refpts(jl_lattice, dp, order, julia_refpts, **kwargs)
 
-# ==============================================================================
-# CLOSED ORBIT
-# ==============================================================================
-
 def find_closed_orbit(lattice, dp=0.0, **kwargs):
     """Find closed orbit"""
     if isinstance(lattice, Lattice):
@@ -1227,10 +1204,6 @@ def find_closed_orbit_6d(lattice, **kwargs):
     
     result = _jl.find_closed_orbit_6d(jl_lattice, **kwargs)
     return _to_numpy_array(result)
-
-# ==============================================================================
-# LATTICE UTILITIES
-# ==============================================================================
 
 def total_length(lattice) -> float:
     """Calculate total length of lattice"""
@@ -1284,10 +1257,6 @@ def buildlatt(elements: List) -> Lattice:
     """Build a lattice from list of elements"""
     return Lattice(elements)
 
-# ==============================================================================
-# SERIALIZATION
-# ==============================================================================
-
 def load_lattice(filename: str):
     """Load lattice from .jls file"""
     filename = filename.replace('\\', '/')
@@ -1313,10 +1282,6 @@ def save_lattice(lattice, filename: str):
     _jl.seval(f'using Serialization; serialize("{filename}", Main._temp_lattice_tosave)')
     # Clean up
     _jl.seval('global _temp_lattice_tosave = nothing')
-
-# ==============================================================================
-# BEAM INITIALIZATION
-# ==============================================================================
 
 def initilize_6DGaussiandist(beam: Beam, **kwargs):
     """Initialize 6D Gaussian distribution"""
@@ -1361,10 +1326,6 @@ def get_2nd_moment(beam: Beam) -> np.ndarray:
     # Function modifies beam in place, return the moment2nd matrix
     return _to_numpy_array(beam.julia_object.moment2nd)
 
-# ==============================================================================
-# DYNAMIC APERTURE AND FMA
-# ==============================================================================
-
 def dynamic_aperture(lattice, **kwargs):
     """Calculate dynamic aperture"""
     if isinstance(lattice, Lattice):
@@ -1389,7 +1350,7 @@ def plot_fma(rows, **kwargs):
     
     Creates a two-panel plot:
     - Left panel: Initial particle positions (x, y) colored by diffusion
-    - Right panel: Tune diagram (νx, νy) with resonance lines
+    - Right panel: Tune diagram (nux, nuy) with resonance lines
     
     Args:
         rows: FMA results from FMA() function (list of NamedTuples)
@@ -1436,10 +1397,6 @@ def plot_lattice(lattice, scale=0.25, axis=True, savepath=None):
     
     return _jl.plot_lattice(jl_lattice, scale, axis, savepath)
 
-# ==============================================================================
-# RESONANCE DRIVING TERMS
-# ==============================================================================
-
 def computeRDT(lattice, indices=None, **kwargs):
     """
     Compute Resonance Driving Terms.
@@ -1478,7 +1435,6 @@ def computeRDT(lattice, indices=None, **kwargs):
         if len(indices) == 0:
             indices = [1]  # Default to first element
     
-    # Convert Python list to Julia Vector{Int64}
     if isinstance(indices, (list, np.ndarray)):
         indices = _to_julia_int_vector(indices)
     
@@ -1512,10 +1468,6 @@ def ADcomputeRDT(lattice, index, changed_ids, changed_elems, **kwargs):
     
     return _jl.ADcomputeRDT(jl_lattice, index, changed_ids, changed_elems, **kwargs)
 
-# ==============================================================================
-# TUNE AND CHROMATICITY
-# ==============================================================================
-
 def gettune(lattice, dp=0.0, **kwargs) -> Tuple[float, float]:
     """Get betatron tunes (nux, nuy)"""
     if isinstance(lattice, Lattice):
@@ -1535,10 +1487,6 @@ def getchrom(lattice, dp=0.0, **kwargs) -> Tuple[float, float]:
 
     result = _jl.getchrom(jl_lattice, dp=dp, **kwargs)
     return (float(result[0]), float(result[1]))
-
-# ==============================================================================
-# RADIATION
-# ==============================================================================
 
 def rad_on():
     """Turn on radiation"""
@@ -1566,10 +1514,6 @@ def integral_U0(lattice, **kwargs) -> float:
     
     return float(_jl.integral_U0(jl_lattice, **kwargs))
 
-# ==============================================================================
-# CONSTANTS
-# ==============================================================================
-
 # Physical constants
 m_e = float(_jl.m_e)  # Electron mass (eV)
 m_p = float(_jl.m_p)  # Proton mass (eV)
@@ -1577,15 +1521,11 @@ m_goldion = float(_jl.m_goldion)  # Gold ion mass (eV)
 charge_e = float(_jl.charge_e)  # Elementary charge (C)
 speed_of_light = float(_jl.speed_of_light)  # Speed of light (m/s)
 epsilon_0 = float(_jl.epsilon_0)  # Permittivity of free space
-CGAMMA = float(_jl.CGAMMA)  # Gamma constant
+CGAMMA = float(_jl.CGAMMA)  
 
 # Coordinate limits
 CoordLimit = float(_jl.CoordLimit)
 AngleLimit = float(_jl.AngleLimit)
-
-# ==============================================================================
-# UTILITY FUNCTIONS
-# ==============================================================================
 
 def randn_approx(n: int, m: int) -> np.ndarray:
     """Generate N×M matrix of approximately normal random numbers
@@ -1613,10 +1553,7 @@ def array_to_matrix(array: np.ndarray):
     """Convert array to Julia matrix"""
     return _jl.array_to_matrix(_to_julia_matrix(array))
 
-# ==============================================================================
 # ADVANCED: Direct Julia Access
-# ==============================================================================
-
 def get_julia_module():
     """Get direct access to Julia Main module (for advanced use only)"""
     return _jl
@@ -1659,10 +1596,7 @@ def seval(code: str):
     """Evaluate Julia code string (for advanced use)"""
     return _jl.seval(code)
 
-# ==============================================================================
 # MODULE METADATA
-# ==============================================================================
-
 __version__ = "1.0.0"
 __author__ = "JuTrack.jl Integration"
 
