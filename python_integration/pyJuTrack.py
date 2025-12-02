@@ -908,7 +908,30 @@ def zeros(dtype, n: int, m: int):
     else:
         # Generic case - pass dtype as string
         return _jl.seval(f'zeros({dtype}, {n}, {m})')
-
+    
+def conj(x):
+    """
+    Conjugate function that works with both Python numbers and Julia DTPSAD objects.
+    
+    This allows Python syntax like conj(x) to work with DTPSAD values.
+    
+    Args:
+        x: Input (Python number or Julia DTPSAD)
+    
+    Returns:
+        Conjugate of x (same type as input)
+    
+    Examples:
+        >>> x1 = jt.DTPSAD(2.0, 1)
+        >>> y = jt.conj(x1)  # Works!
+    """
+    if hasattr(x, '_jl_callmethod'):
+        # It's a Julia object, use Julia's conj function
+        return _jl.conj(x)
+    else:
+        # Python number, use Python's complex conjugate
+        return np.conj(x)
+    
 def NVAR():
     """
     Get current TPSA dimension (number of variables).
