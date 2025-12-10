@@ -1,5 +1,8 @@
 # Example usage of Frequency Map Analysis (FMA) and plotting the results
+using Pkg
+Pkg.activate("."); Pkg.instantiate() # change "." to your path of JuTrack.jl
 using JuTrack
+include("../src/utils/fma.jl")
 
 function testring(rad)
     CENOFSTR01 = MARKER(name="CENOFSTR01")

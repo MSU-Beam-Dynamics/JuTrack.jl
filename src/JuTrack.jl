@@ -19,15 +19,15 @@ const __HBAR_C = 1.97326980400e2
 const Cq = 55.0/(32.0*sqrt(3.0)) * __HBAR_C / m_e * 1.0e-9  # m (quantum constant)
 use_exact_Hamiltonian = 1 # use exact pz
 use_exact_beti = 0 # use delta p/p0 as the sixth coordinate. Change it to 1 to use delta E/p0 
-const _jlplotlib_available = let ok
-    try
-        pyimport("matplotlib.pyplot")
-        ok = true
-    catch
-        ok = false
-    end
-    ok
-end
+# const _jlplotlib_available = let ok
+#     try
+#         pyimport("matplotlib.pyplot")
+#         ok = true
+#     catch
+#         ok = false
+#     end
+#     ok
+# end
 # include("TPSA/TPSA.jl")
 include("TPSA/fast_TPSA_module.jl")
 include("TPSA/TPSA.jl")
@@ -73,12 +73,12 @@ include("lattice/bunchedbeam.jl")
 include("utils/lattice_utils.jl")
 include("utils/matrix.jl")
 include("utils/dynamic_aperture.jl")
-include("utils/fma.jl")
-if _jlplotlib_available
-    include("utils/lattice_plot.jl")
-else
-    @warn "Matplotlib is not available. Lattice plotting functions will not work."
-end
+# include("utils/fma.jl")
+# if _jlplotlib_available
+#     include("utils/lattice_plot.jl")
+# else
+#     @warn "Matplotlib is not available. Lattice plotting functions will not work."
+# end
 # include("utils/lattice_plot.jl")
 
 export Beam
@@ -104,7 +104,7 @@ export find_closed_orbit, fastfindm66, fastfindm66_refpts, ADfastfindm66_refpts,
 export linepass!, pass!, ringpass!, linepass_TPSA!, pass_TPSA!, ringpass_TPSA!, check_lost
 export plinepass!, pringpass!, pass_P!, ADlinepass!, ADlinepass_TPSA!, ADringpass!, ADpringpass!, ADplinepass!
 export matrix_to_array, array_to_matrix
-export plot_lattice
+# export plot_lattice
 export total_length, spos, findelem, insert_space_charge, array_optics, get_len, symplectic
 export find_closed_orbit_6d, find_closed_orbit_4d, tracking_U0, integral_U0, rad_on!, rad_off!, fast_closed_orbit_4d, fast_closed_orbit_6d
 export gettune, getchrom
@@ -118,6 +118,6 @@ function Duplicated(x::Float64, dx::Base.RefValue{Float64})
 end
 export autodiff, Forward, ForwardWithPrimal, gradient, jacobian, Duplicated, set_runtime_activity, Const, Val, Enzyme, BatchDuplicated
 
-export dynamic_aperture, computeRDT, ADcomputeRDT, FMA, plot_fma, fma_map_from_segments
+export dynamic_aperture, computeRDT, ADcomputeRDT
 export drift6!, multmv!, addvv!, linearQuadFringeElegantEntrance!, QuadFringePassP!, fastdrift!, strthinkick!
 end

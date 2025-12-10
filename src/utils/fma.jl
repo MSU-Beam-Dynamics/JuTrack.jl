@@ -1,5 +1,6 @@
 using FFTW
 using PyCall
+using Statistics
 
 function dominant_frequency_phase_complex(x::AbstractVector{<:Real}, p::AbstractVector{<:Real})
     N = length(x)

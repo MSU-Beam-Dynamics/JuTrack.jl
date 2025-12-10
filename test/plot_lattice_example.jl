@@ -4,6 +4,8 @@
 using Pkg
 Pkg.activate("."); Pkg.instantiate() # change "." to your path of JuTrack.jl
 using JuTrack
+include("../src/utils/lattice_plot.jl")
+
 D1 = DRIFT(len=0.2)
 Q1 = QUAD(len=0.1, k1=29.6)
 Q2 = QUAD(len=0.3, k1=-29.6)

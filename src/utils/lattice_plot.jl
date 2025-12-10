@@ -20,7 +20,7 @@ function elem_to_py(e::AbstractElement)
     return PyDict(jd)
 end
 
-function __init__()
+# Initialize Python plotting code
 py"""
 import numpy as np
 try:
@@ -204,7 +204,6 @@ def plot_lattice(lattice, width=0.25, axis=True, savepath=None):
     plt.show()
 
 """
-end
 
 """
 plot_lattice(lattice, scale=0.25, axis=true)
