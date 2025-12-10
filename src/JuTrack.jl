@@ -1,24 +1,33 @@
 module JuTrack
-
-const _pycall_forced_off = lowercase(get(ENV, "PYJUTRACK_DISABLE_PYCALL", "0")) in ("1", "true", "yes", "on")
-const _pycall_available = Ref(false)
-const _jlplotlib_available = Ref(false)
-
+using PyCall
 using Enzyme
 const CoordLimit = 1.0
 const AngleLimit = 1.0
-const m_e = 0.51099895069e6
-const m_p = 938.27208816e6
-const m_goldion = 931.49410242e6 # charge 79, atomic number 197
-const CGAMMA =	8.846273768691263e-5
-const __RE = 2.8179403205e-15 # classical electron radius
+const m_e = 0.51099895069e6  # eV (electron rest mass energy)
+const m_p = 938.27208816e6  # eV (proton rest mass energy)
+const m_goldion = 931.49410242e6 # eV, charge 79, atomic number 197
+const CGAMMA = 8.846273768691263e-5  # m/eV^3 (radiation constant)
+const __RE = 2.8179403205e-15  # m (classical electron radius)
 const RAD_CONST_E = 2.0/3.0*__RE
 const RAD_CONST_P = RAD_CONST_E * m_e/m_p 
-const epsilon_0 = 8.854187817e-12
-const speed_of_light = 2.99792458e8 # m/s
-const charge_e = 1.602176634e-19 # C
+const epsilon_0 = 8.854187817e-12  # F/m (permittivity of free space)
+const speed_of_light = 2.99792458e8  # m/s
+const charge_e = 1.602176634e-19  # C (elementary charge)
+# Additional constants for equilibrium emittance calculations
+const __E0 = 0.51099895069e-3  # GeV (electron rest mass energy in GeV)
+const __HBAR_C = 1.97326980400e2  
+const Cq = 55.0/(32.0*sqrt(3.0)) * __HBAR_C / m_e * 1.0e-9  # m (quantum constant)
 use_exact_Hamiltonian = 1 # use exact pz
 use_exact_beti = 0 # use delta p/p0 as the sixth coordinate. Change it to 1 to use delta E/p0 
+const _jlplotlib_available = let ok
+    try
+        pyimport("matplotlib.pyplot")
+        ok = true
+    catch
+        ok = false
+    end
+    ok
+end
 # include("TPSA/TPSA.jl")
 include("TPSA/fast_TPSA_module.jl")
 include("TPSA/TPSA.jl")
@@ -43,11 +52,13 @@ include("tracking/quad.jl")
 include("tracking/space_charge.jl")
 include("tracking/refobt.jl")
 include("tracking/bendlinear.jl")
+include("tracking/wiggler.jl")
 
 include("tracking/solenoid.jl")
 include("tracking/track_vector.jl")
 include("lattice/EdwardsTengTwiss.jl")
 include("lattice/ResonanceDrivingTerms.jl")
+include("lattice/ringparams.jl")
 
 include("tracking/fringe.jl")
 
@@ -62,45 +73,17 @@ include("lattice/bunchedbeam.jl")
 include("utils/lattice_utils.jl")
 include("utils/matrix.jl")
 include("utils/dynamic_aperture.jl")
-
-@eval begin
-    function FMA(args...; kwargs...)
-        error("FMA requires PyCall. Install PyCall or unset PYJUTRACK_DISABLE_PYCALL to enable this feature.")
-    end
-
-    function plot_fma(args...; kwargs...)
-        error("plot_fma requires PyCall/Matplotlib. Install PyCall or unset PYJUTRACK_DISABLE_PYCALL to enable plotting.")
-    end
-
-    function fma_map_from_segments(args...; kwargs...)
-        error("fma_map_from_segments requires PyCall. Install PyCall or unset PYJUTRACK_DISABLE_PYCALL to enable this feature.")
-    end
-
-    function plot_lattice(args...; kwargs...)
-        error("plot_lattice requires PyCall + Matplotlib. Install PyCall or unset PYJUTRACK_DISABLE_PYCALL to enable plotting.")
-    end
+include("utils/fma.jl")
+if _jlplotlib_available
+    include("utils/lattice_plot.jl")
+else
+    @warn "Matplotlib is not available. Lattice plotting functions will not work."
 end
-
-function _register_pycall_features!(pyimport_fn::Function)
-    _pycall_available[] = true
-    _jlplotlib_available[] = try
-        pyimport_fn("matplotlib.pyplot")
-        true
-    catch
-        false
-    end
-
-    include("utils/fma.jl")
-
-    if _jlplotlib_available[]
-        include("utils/lattice_plot.jl")
-    else
-        @warn "Matplotlib is not available. Lattice plotting functions will not work."
-    end
-end
+# include("utils/lattice_plot.jl")
 
 export Beam
 export m_e, m_p, m_goldion, charge_e, speed_of_light, epsilon_0, CGAMMA, CoordLimit, AngleLimit, use_exact_Hamiltonian, use_exact_drift, use_exact_beti
+export __E0, __HBAR_C, Cq, __RE
 export qr_eigen, diag1, randn_approx
 # export Lattice, add!, buildlattice
 export CRABCAVITY,CRABCAVITY_K2, easyCRABCAVITY, AccelCavity, LorentzBoost, InvLorentzBoost, StrongGaussianBeam, 
@@ -113,7 +96,7 @@ export initilize_zslice!, twiss_2d, twiss_beam, Gauss3_Dist
 
 export CTPS, cst, findindex, PolyMap, getindexmap, reassign!, assign!
 export AbstractElement, DRIFT, KQUAD, KSEXT, KOCT, SBEND, RBEND, RFCA, SOLENOID, MARKER, CORRECTOR, HKICKER, VKICKER, thinMULTIPOLE
-export QUAD, LBEND, ESBEND, ERBEND, buildlatt
+export QUAD, LBEND, ESBEND, ERBEND, WIGGLER, buildlatt
 export TRANSLATION, YROTATION
 export SPACECHARGE, QUAD_SC, DRIFT_SC, KQUAD_SC, KSEXT_SC, KOCT_SC, SBEND_SC, RBEND_SC, calculate_K
 export EdwardsTengTwiss, AbstractTwiss, twissPropagate, findm66, periodicEdwardsTengTwiss, twissline, ADtwissline, twissring, ADfindm66, ADtwissring, ADperiodicEdwardsTengTwiss
@@ -125,6 +108,7 @@ export plot_lattice
 export total_length, spos, findelem, insert_space_charge, array_optics, get_len, symplectic
 export find_closed_orbit_6d, find_closed_orbit_4d, tracking_U0, integral_U0, rad_on!, rad_off!, fast_closed_orbit_4d, fast_closed_orbit_6d
 export gettune, getchrom
+export ElementRadiation, WigglerRadiation, ElossRadiation, ringpara
 # export CMscan, TPSVar6D, TPSVar4D, twiss_from_6x6, get_variables, evaluate, construct_sqr_matrix
 export ADfindm66_refpts
 
