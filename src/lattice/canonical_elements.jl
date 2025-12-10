@@ -1379,6 +1379,65 @@ function QUAD_SC(;name::String = "Quad", len = 0.0, k1 = 0.0, rad::Int64 = 0,
     return QUAD_SC(name, len, k1, rad, T1, T2, R1, R2, RApertures, EApertures, a, b,
                     Nl, Nm, Nsteps, "QUAD_SC")
 end
+
+
+"""
+    WIGGLER(;name::String = "WIGGLER", len::Float64 = 0.0, lw::Float64 = 0.0, Bmax::Float64 = 0.0, 
+            Nsteps::Int64 = 10, By::Array{Int} = [1;1;0;1;1;0], Bx::Array{Int} = Int[], energy::Float64 = 1e9,
+            R1::Array{Float64,2} = zeros(6,6), R2::Array{Float64,2} = zeros(6,6), 
+            T1::Array{Float64,1} = zeros(6), T2::Array{Float64,1} = zeros(6))
+A wiggler element.
+- arameters:
+    - len: total length of the wiggler (m)
+    - lw: period length of the wiggler (m)
+    - Bmax: Peak magnetic field (T)
+    - Nsteps: number of integration steps
+    - By: wiggler harmonics for horizontal wigglers. Default [1;1;0;1;1;0]
+    - Bx: wiggler harmonics for vertical wigglers. Default []
+    - energy: reference energy (eV)
+Example:
+```julia
+wiggler = WIGGLER(name="W1", len=1.0, lw=0.1, Bmax=1.0)
+```
+"""
+mutable struct WIGGLER{T} <: AbstractElement{T}
+    name::String 
+    len::T 
+    lw::T 
+    Bmax::T 
+    Nsteps::Int64 
+    By::Array{Int,1}
+    Bx::Array{Int,1}
+    energy::T
+    NHharm::Int64
+    NVharm::Int64
+    rad::Int64
+    R1::Array{T,2}
+    R2::Array{T,2}
+    T1::Array{T,1}
+    T2::Array{T,1}
+    eletype::String 
+
+    # constructor with all parameters
+    WIGGLER(name::String, len::T, lw::T, Bmax::T, Nsteps::Int64, By::Array{Int,1}, Bx::Array{Int,1},
+    energy::T, NHharm::Int64, NVharm::Int64, rad::Int64, R1::Array{T,2}, R2::Array{T,2}, T1::Array{T,1}, T2::Array{T,1}, eletype::String) where T = 
+        new{T}(name, len, lw, Bmax, Nsteps, By, Bx, energy, NHharm, NVharm, rad, R1, R2, T1, T2, eletype)
+end
+function WIGGLER(;name::String = "WIGGLER", len = 0.0, lw = 0.0, Bmax = 0.0, 
+    Nsteps::Int64 = 10, By = [1;1;0;1;1;0], Bx = Int[], energy = 1e9, rad::Int64 = 0,
+    R1 = zeros(6,6), R2 = zeros(6,6), T1 = zeros(6), T2 = zeros(6))
+
+    NHharm = length(By) ÷ 6
+    NVharm = length(Bx) ÷ 6
+    if len isa DTPSAD || lw isa DTPSAD || Bmax isa DTPSAD || By isa DTPSAD || Bx isa DTPSAD || energy isa DTPSAD ||
+        R1[1,1] isa DTPSAD || R2[1,1] isa DTPSAD || T1[1] isa DTPSAD || T2[1] isa DTPSAD
+        return WIGGLER(name, DTPSAD(len), DTPSAD(lw), DTPSAD(Bmax), Nsteps, By, Bx,
+            DTPSAD(energy), NHharm, NVharm, rad, DTPSAD.(R1), DTPSAD.(R2), DTPSAD.(T1), DTPSAD.(T2), "WIGGLER")
+    end
+    return WIGGLER(name, len, lw, Bmax, Nsteps, By, Bx,
+        energy, NHharm, NVharm, rad, R1, R2, T1, T2, "WIGGLER")
+end
+
 ###########################################
 """
     CRABCAVITY(;name::String = "CRABCAVITY", len::Float64 = 0.0, volt::Float64 = 0.0, freq::Float64 = 0.0, 

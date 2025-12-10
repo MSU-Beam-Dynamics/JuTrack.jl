@@ -734,7 +734,7 @@ function findm66(seq::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp::Float64, orde
 	if dp == 0.0 && orb[6] != 0.0
 		dp = orb[6]
 	end
-	map = zeros(Float64, 6, 6)
+	map = zeros(DTPSAD{N, T}, 6, 6)
 	if order == 0
 		map .= fastfindm66(seq, dp, E0=E0, m0=m0, orb=orb)
 		return map
@@ -927,7 +927,7 @@ Find the 6x6 transfer matrix of a lattice using numerical differentiation for DT
 - `M66`: 6x6 transfer matrix.
 """
 function fastfindm66(LATTICE::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp::Float64=0.0; 
-	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{DTPSAD{N, T}}=zeros(6)) where {N, T}
+	E0::Float64=3e9, m0::Float64=m_e, orb::Vector=zeros(6)) where {N, T}
 	if dp == 0.0 && orb[6] != 0.0
 		dp = orb[6]
 	end

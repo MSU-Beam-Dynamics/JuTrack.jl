@@ -234,8 +234,9 @@ function rad_off!(ring)
     end
 end
 
-function tracking_U0(ring, energy, mass)
-    beam = Beam(energy=energy, mass=mass)
+function tracking_U0(ring::Vector{AbstractElement{T}}, energy, mass) where {T}
+    rin = zeros(T, 1, 6)
+    beam = Beam(rin, energy=energy, mass=mass)
     linepass!(ring, beam)   
     U0 = -beam.r[6] * energy
     return U0
@@ -426,6 +427,10 @@ function fast_closed_orbit_4d(ring::Vector; x0=zeros(4), energy::Float64=3.5e9,
     return x
 end
 
+import Base: mod
+function mod(x::DTPSAD{N, T}, y::Float64) where {N, T}
+    return x - floor(x / y) * y
+end
 function getchrom(RING; dp=0.0, order=0, energy=1e9, mass=m_e)
     M66 = findm66(RING,dp, order, E0=energy, m0=mass)
     M44 = M66[1:4, 1:4]
