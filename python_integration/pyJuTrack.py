@@ -8,17 +8,65 @@ Author: Jinyu Wan
 Version: 1.0.0
 """
 
-import juliacall
 import os
 import sys
-import numpy as np
-from typing import List, Union, Optional, Tuple, Any
 import warnings
+from typing import List, Union, Optional, Tuple, Any
+
+import numpy as np
+
+os.environ.setdefault("PYTHON_JULIACALL_HANDLE_SIGNALS", "yes")
+os.environ.setdefault("PYJUTRACK_DISABLE_PYCALL", "1")
+
+import juliacall
 
 
 _julia_initialized = False
 _jl = None
 _python_functions = {}
+
+
+def _pycall_disabled() -> bool:
+    return os.environ.get("PYJUTRACK_DISABLE_PYCALL", "1").strip().lower() in ("1", "true", "yes", "on")
+
+
+def _ensure_conda_pycall_ready(julia_handle):
+    """Ensure Conda.jl and PyCall.jl are built for the active Python interpreter."""
+    if _pycall_disabled():
+        return
+
+    # Make PyCall reuse the currently running Python interpreter instead of
+    # trying to bootstrap its own Conda-based Python (which often fails on HPC).
+    julia_handle.ENV["PYTHON"] = sys.executable
+
+    try:
+        julia_handle.seval(
+            """
+            import Pkg
+
+            function _pyjutrack_build(pkg::String)
+                path = Base.find_package(pkg)
+                path === nothing && return
+
+                deps_file = joinpath(dirname(dirname(path)), "deps", "deps.jl")
+                if !isfile(deps_file)
+                    @info "pyJuTrack: building $(pkg) for the current environment"
+                    Pkg.build(pkg)
+                end
+            end
+
+            _pyjutrack_build("Conda")
+            _pyjutrack_build("PyCall")
+            nothing
+            """
+        )
+    except Exception as exc:  # pragma: no cover - best-effort setup step
+        warnings.warn(
+            "pyJuTrack could not auto-configure Conda/PyCall. "
+            "Please run `Pkg.build(\"Conda\")` and `Pkg.build(\"PyCall\")` manually.",
+            RuntimeWarning,
+        )
+        raise
 
 def _initialize_julia():
     """Initialize the Julia runtime and load JuTrack.jl"""
@@ -39,18 +87,10 @@ def _initialize_julia():
     # Import Julia Main module
     from juliacall import Main as jl
     _jl = jl
-    
-    # Configure PyCall to use the current Python interpreter
-    # (JuTrack uses PyCall internally for plotting and ML features)
-    python_exe = sys.executable.replace('\\', '/')
-    jl.seval(f'ENV["PYTHON"] = "{python_exe}"')
-    
-    # Build PyCall with current Python and resolve dependencies (silently)
-    # Automatically handle version mismatches without user intervention
-    try:
-        jl.seval('import Pkg; Pkg.build("PyCall")')
-    except:
-        pass  # PyCall might already be built correctly
+
+    # Ensure Julia-side PyCall can see the same Python interpreter and has its
+    # Conda deps built before JuTrack (which depends on PyCall) is loaded.
+    _ensure_conda_pycall_ready(jl)
     
     # Automatically fix version mismatches by updating the manifest
     # This resolves the StyledStrings issue when switching between Julia versions
@@ -105,8 +145,21 @@ def _initialize_julia():
     
     _julia_initialized = True
     
-    jl.seval('import PyCall')
-    jl.seval('global _python_callbacks = Dict{String, Any}()')
+    # Try to import PyCall if available (optional - only needed for some plotting features)
+    # If it fails, pyJuTrack will still work for tracking and optimization
+    try:
+        jl.seval('import PyCall')
+        jl.seval('global _python_callbacks = Dict{String, Any}()')
+    except:
+        # PyCall not available - this is OK, core functionality will still work
+        # Users can still use pyJuTrack for tracking, optimization, etc.
+        warnings.warn(
+            "PyCall could not be loaded. Some advanced plotting features may not work. "
+            "Core pyJuTrack functionality (tracking, optimization, etc.) is unaffected.",
+            UserWarning
+        )
+        # Create empty callback dict anyway for compatibility
+        jl.seval('global _python_callbacks = Dict{String, Any}()')
     
     return jl
 
@@ -855,7 +908,30 @@ def zeros(dtype, n: int, m: int):
     else:
         # Generic case - pass dtype as string
         return _jl.seval(f'zeros({dtype}, {n}, {m})')
-
+    
+def conj(x):
+    """
+    Conjugate function that works with both Python numbers and Julia DTPSAD objects.
+    
+    This allows Python syntax like conj(x) to work with DTPSAD values.
+    
+    Args:
+        x: Input (Python number or Julia DTPSAD)
+    
+    Returns:
+        Conjugate of x (same type as input)
+    
+    Examples:
+        >>> x1 = jt.DTPSAD(2.0, 1)
+        >>> y = jt.conj(x1)  # Works!
+    """
+    if hasattr(x, '_jl_callmethod'):
+        # It's a Julia object, use Julia's conj function
+        return _jl.conj(x)
+    else:
+        # Python number, use Python's complex conjugate
+        return np.conj(x)
+    
 def NVAR():
     """
     Get current TPSA dimension (number of variables).
@@ -1394,8 +1470,19 @@ def plot_fma(rows, **kwargs):
     
     Note:
         Requires PyCall and matplotlib installed in Julia environment.
+        If PyCall is not available, this function will raise an error.
     """
-    return _jl.plot_fma(rows, **kwargs)
+    try:
+        return _jl.plot_fma(rows, **kwargs)
+    except Exception as e:
+        if 'PyCall' in str(e) or 'matplotlib' in str(e):
+            raise RuntimeError(
+                "plot_fma requires PyCall and matplotlib in Julia environment. "
+                "These dependencies are optional and not available on this system. "
+                "Consider exporting FMA data and plotting with Python's matplotlib directly."
+            ) from e
+        else:
+            raise
 
 def plot_lattice(lattice, scale=0.25, axis=True, savepath=None):
     """
@@ -1414,13 +1501,25 @@ def plot_lattice(lattice, scale=0.25, axis=True, savepath=None):
     
     Note:
         Requires PyCall and matplotlib installed in Julia environment.
+        If PyCall is not available, this function will raise an error.
     """
     if isinstance(lattice, Lattice):
         jl_lattice = lattice.julia_object
     else:
         jl_lattice = lattice
     
-    return _jl.plot_lattice(jl_lattice, scale, axis, savepath)
+    try:
+        return _jl.plot_lattice(jl_lattice, scale, axis, savepath)
+    except Exception as e:
+        if 'PyCall' in str(e) or 'matplotlib' in str(e):
+            raise RuntimeError(
+                "plot_lattice requires PyCall and matplotlib in Julia environment. "
+                "These dependencies are optional and not available on this system. "
+                "Consider using other lattice visualization tools."
+            ) from e
+        else:
+            raise
+
 
 def computeRDT(lattice, indices=None, **kwargs):
     """

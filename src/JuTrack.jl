@@ -1,5 +1,9 @@
 module JuTrack
-using PyCall
+
+const _pycall_forced_off = lowercase(get(ENV, "PYJUTRACK_DISABLE_PYCALL", "0")) in ("1", "true", "yes", "on")
+const _pycall_available = Ref(false)
+const _jlplotlib_available = Ref(false)
+
 using Enzyme
 const CoordLimit = 1.0
 const AngleLimit = 1.0
@@ -15,15 +19,6 @@ const speed_of_light = 2.99792458e8 # m/s
 const charge_e = 1.602176634e-19 # C
 use_exact_Hamiltonian = 1 # use exact pz
 use_exact_beti = 0 # use delta p/p0 as the sixth coordinate. Change it to 1 to use delta E/p0 
-const _jlplotlib_available = let ok
-    try
-        pyimport("matplotlib.pyplot")
-        ok = true
-    catch
-        ok = false
-    end
-    ok
-end
 # include("TPSA/TPSA.jl")
 include("TPSA/fast_TPSA_module.jl")
 include("TPSA/TPSA.jl")
@@ -67,13 +62,42 @@ include("lattice/bunchedbeam.jl")
 include("utils/lattice_utils.jl")
 include("utils/matrix.jl")
 include("utils/dynamic_aperture.jl")
-include("utils/fma.jl")
-if _jlplotlib_available
-    include("utils/lattice_plot.jl")
-else
-    @warn "Matplotlib is not available. Lattice plotting functions will not work."
+
+@eval begin
+    function FMA(args...; kwargs...)
+        error("FMA requires PyCall. Install PyCall or unset PYJUTRACK_DISABLE_PYCALL to enable this feature.")
+    end
+
+    function plot_fma(args...; kwargs...)
+        error("plot_fma requires PyCall/Matplotlib. Install PyCall or unset PYJUTRACK_DISABLE_PYCALL to enable plotting.")
+    end
+
+    function fma_map_from_segments(args...; kwargs...)
+        error("fma_map_from_segments requires PyCall. Install PyCall or unset PYJUTRACK_DISABLE_PYCALL to enable this feature.")
+    end
+
+    function plot_lattice(args...; kwargs...)
+        error("plot_lattice requires PyCall + Matplotlib. Install PyCall or unset PYJUTRACK_DISABLE_PYCALL to enable plotting.")
+    end
 end
-# include("utils/lattice_plot.jl")
+
+function _register_pycall_features!(pyimport_fn::Function)
+    _pycall_available[] = true
+    _jlplotlib_available[] = try
+        pyimport_fn("matplotlib.pyplot")
+        true
+    catch
+        false
+    end
+
+    include("utils/fma.jl")
+
+    if _jlplotlib_available[]
+        include("utils/lattice_plot.jl")
+    else
+        @warn "Matplotlib is not available. Lattice plotting functions will not work."
+    end
+end
 
 export Beam
 export m_e, m_p, m_goldion, charge_e, speed_of_light, epsilon_0, CGAMMA, CoordLimit, AngleLimit, use_exact_Hamiltonian, use_exact_drift, use_exact_beti

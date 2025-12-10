@@ -41,8 +41,8 @@ julia --project=. -e "using Pkg; Pkg.instantiate()"
 Activate the JuTrack environment we just created in the Julia code (change below path to your JuTrack directory accordingly):
 ```
 using Pkg
-Pkg.activate("/path/to/JuTrack.jl") # use the correct Julia environment
-Pkg.instantiate()                   # check if all dependencies are correctly installed
+Pkg.activate("/path/to/JuTrack.jl") # Use the correct Julia environment
+Pkg.instantiate()                   # Optional. check if all dependencies are correctly installed
 ```
 
 Import JuTrack in Julia:
@@ -201,3 +201,9 @@ julia --sysimage=precompile/JuTrack_sysimage.so your_code.jl
 # Known issues
 * JuTrack is actively under development. If you encounter any issues, please open an issue on GitHub or email wan@frib.msu.edu.
 * Please ensure using the same OS and Julia verion when using a precompiled sysimage.
+* For Julia version conflicts, please delete `Manifest.toml` file and run
+```
+using Pkg
+Pkg.activate("path_to_JuTrack.jl")
+Pkg.resolve()
+```
