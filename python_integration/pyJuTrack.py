@@ -1638,6 +1638,113 @@ def integral_U0(lattice, **kwargs) -> float:
     
     return float(_jl.integral_U0(jl_lattice, **kwargs))
 
+def ringpara(lattice, energy: float = 3e9, Vrf: float = 0.0, harm: int = 1,
+             freq_rf: float = 0.0, dp: float = 0.0, print_summary: bool = False):
+    """
+    Calculate and optionally print ring parameters including equilibrium emittance,
+    damping times, energy spread, and RF-dependent parameters.
+    
+    This function computes radiation integrals from dipoles, quadrupoles, and wigglers,
+    then calculates equilibrium beam parameters based on synchrotron radiation theory.
+    
+    Args:
+        lattice: Lattice object or list of elements
+        energy: Beam energy in eV (default: 3e9)
+        Vrf: RF voltage per cell [V] (default: 0.0)
+        harm: Harmonic number (default: 1)
+        freq_rf: RF frequency in Hz (default: 0.0)
+        dp: Momentum deviation (default: 0.0)
+        print_summary: If True, print parameter summary (default: True)
+    
+    Returns:
+        Dictionary with all calculated parameters including:
+        - Basic parameters: energy, gamma, beta, circumference, etc.
+        - Tunes: nux, nuy, chromx, chromy
+        - Radiation integrals: I1, I2, I3, I4, I5, I6, Iv
+        - Damping: Jx, Jy, Je, damping times and rates
+        - Equilibrium: emittance, energy spread, U0
+        - RF parameters: phi_s, nus, delta_max, bunchlength (if Vrf > 0)
+    
+    Examples:
+        >>> # Print summary
+        >>> jt.ringpara(ring, energy=3e9, Vrf=3.2e6, harm=372, freq_rf=476e6)
+        
+        >>> # Get parameters as dictionary
+        >>> params = jt.ringpara(ring, energy=3e9, Vrf=3e6, harm=372,
+        ...                      freq_rf=476e6, print_summary=False)
+        >>> print(f"Natural emittance: {params['emittx']*1e9} nm⋅rad")
+    
+    Reference:
+        Based on AT's ringpara function. See also:
+        - H. Wiedemann, "Particle Accelerator Physics"
+        - M. Sands, "The Physics of Electron Storage Rings"
+    """
+    if isinstance(lattice, Lattice):
+        jl_lattice = lattice.julia_object
+    else:
+        jl_lattice = lattice
+    
+    # Call Julia function and get results as NamedTuple
+    jl_results = _jl.ringpara(jl_lattice, energy=energy, Vrf=Vrf, harm=harm,
+                              freq_rf=freq_rf, dp=dp, print_summary=print_summary)
+    
+    # Convert Julia NamedTuple to Python dictionary
+    # Access NamedTuple fields using property access
+    results = {
+        'E0': jl_results.E0,
+        'E0_GeV': jl_results.E0_GeV,
+        'gamma': jl_results.gamma,
+        'beta': jl_results.beta,
+        'R': jl_results.R,
+        'circumference': jl_results.circumference,
+        'T0': jl_results.T0,
+        'frev': jl_results.frev,
+        'alphac': jl_results.alphac,
+        'etac': jl_results.etac,
+        'nux': jl_results.nux,
+        'nuy': jl_results.nuy,
+        'chromx': jl_results.chromx,
+        'chromy': jl_results.chromy,
+        'I1': jl_results.I1,
+        'I2': jl_results.I2,
+        'I3': jl_results.I3,
+        'I4': jl_results.I4,
+        'I5': jl_results.I5,
+        'I6': jl_results.I6,
+        'Iv': jl_results.Iv,
+        'Jx': jl_results.Jx,
+        'Jy': jl_results.Jy,
+        'Je': jl_results.Je,
+        'U0': jl_results.U0,
+        'sigma_E': jl_results.sigma_E,
+        'emittx': jl_results.emittx,
+        'emitty_d': jl_results.emitty_d,
+        'emitty_lim': jl_results.emitty_lim,
+        'dampingtime_x': jl_results.dampingtime_x,
+        'dampingtime_y': jl_results.dampingtime_y,
+        'dampingtime_E': jl_results.dampingtime_E,
+        'dampingalpha_x': jl_results.dampingalpha_x,
+        'dampingalpha_y': jl_results.dampingalpha_y,
+        'dampingalpha_E': jl_results.dampingalpha_E,
+        'Vrf': jl_results.Vrf,
+        'harm': jl_results.harm,
+        'freq_rf': jl_results.freq_rf,
+    }
+    
+    # Add RF-dependent parameters (may be NaN)
+    try:
+        results['phi_s'] = float(jl_results.phi_s)
+        results['nus'] = float(jl_results.nus)
+        results['delta_max'] = float(jl_results.delta_max)
+        results['bunchlength'] = float(jl_results.bunchlength)
+    except:
+        results['phi_s'] = float('nan')
+        results['nus'] = float('nan')
+        results['delta_max'] = float('nan')
+        results['bunchlength'] = float('nan')
+    
+    return results
+
 # Physical constants
 m_e = float(_jl.m_e)  # Electron mass (eV)
 m_p = float(_jl.m_p)  # Proton mass (eV)
@@ -1645,7 +1752,10 @@ m_goldion = float(_jl.m_goldion)  # Gold ion mass (eV)
 charge_e = float(_jl.charge_e)  # Elementary charge (C)
 speed_of_light = float(_jl.speed_of_light)  # Speed of light (m/s)
 epsilon_0 = float(_jl.epsilon_0)  # Permittivity of free space
-CGAMMA = float(_jl.CGAMMA)  
+CGAMMA = float(_jl.CGAMMA)
+__E0 = float(_jl.__E0)  # Electron rest mass energy (GeV)
+__HBAR_C = float(_jl.__HBAR_C)  # ħc in MeV⋅fm
+Cq = float(_jl.Cq)  # Quantum constant (m)  
 
 # Coordinate limits
 CoordLimit = float(_jl.CoordLimit)
@@ -1793,11 +1903,12 @@ __all__ = [
     'gettune', 'getchrom',
     
     # Radiation
-    'rad_on', 'rad_off', 'tracking_U0', 'integral_U0',
+    'rad_on', 'rad_off', 'tracking_U0', 'integral_U0', 'ringpara',
     
     # Constants
     'm_e', 'm_p', 'm_goldion', 'charge_e', 'speed_of_light',
-    'epsilon_0', 'CGAMMA', 'CoordLimit', 'AngleLimit',
+    'epsilon_0', 'CGAMMA', '__E0', '__HBAR_C', 'Cq',
+    'CoordLimit', 'AngleLimit',
     
     # Utilities
     'randn_approx', 'symplectic', 'matrix_to_array', 'array_to_matrix',
