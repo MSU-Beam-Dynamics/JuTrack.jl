@@ -1,5 +1,4 @@
 module JuTrack
-using PyCall
 using Enzyme
 const CoordLimit = 1.0
 const AngleLimit = 1.0
