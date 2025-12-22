@@ -563,7 +563,11 @@ function twissPropagate(tin::EdwardsTengTwiss{Float64},M::Matrix{Float64})
 			end
 	else
 		#throw(AssertionError("Mode should be integer 1 or 2."))
+		X = ones(2,2) * NaN
+		Y = ones(2,2) * NaN
+		R = ones(2,2) * NaN
 		println(stderr,"Invalid mode for EdwardsTengTwiss.")
+		mode=0
 		# return EdwardsTengTwiss(;betax=1.0,betay=1.0,mode=0)
 		# error("Invalid mode.")
 	end
@@ -646,7 +650,11 @@ function twissPropagate(tin::EdwardsTengTwiss{DTPSAD{N,T}},M::Matrix{DTPSAD{N,T}
 				mode=2
 			end
 	else
-		error("Invalid mode for EdwardsTengTwiss.")
+		X = ones(DTPSAD{N,T}, 2,2) * NaN
+		Y = ones(DTPSAD{N,T}, 2,2) * NaN
+		R = ones(DTPSAD{N,T}, 2,2) * NaN
+		mode=0
+		println(stderr,"Invalid mode for EdwardsTengTwiss.")
 	end
 
 	Nx=matrixTransform_2by2(X)

@@ -5,7 +5,7 @@
 using LinearAlgebra
 using FFTW
 using StaticArrays
-using PyCall
+# using PyCall
 using Distributed
 using Base.Threads
 using SharedArrays

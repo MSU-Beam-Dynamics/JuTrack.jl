@@ -437,8 +437,8 @@ function getchrom(RING; dp=0.0, order=0, energy=1e9, mass=m_e)
     cos_mu_x = (M44[1,1]+M44[2,2])/2
     cos_mu_y = (M44[3,3]+M44[4,4])/2
 
-    sin_mu_x = sign(M44[1,2])*sqrt(-M44[1,2]*M44[2,1]-(M44[1,1]-M44[2,2])^2/4)
-    sin_mu_y = sign(M44[3,4])*sqrt(-M44[3,4]*M44[4,3]-(M44[3,3]-M44[4,4])^2/4)
+    sin_mu_x = sign(M44[1,2])*sqrt(abs(-M44[1,2]*M44[2,1]-(M44[1,1]-M44[2,2])^2/4))
+    sin_mu_y = sign(M44[3,4])*sqrt(abs(-M44[3,4]*M44[4,3]-(M44[3,3]-M44[4,4])^2/4))
     tune = mod.(atan.([sin_mu_x, sin_mu_y], [cos_mu_x, cos_mu_y]) / (2π), 1.0)
 
     M66_dp = findm66(RING,dp+1e-8, order, E0=energy, m0=mass)
@@ -446,8 +446,8 @@ function getchrom(RING; dp=0.0, order=0, energy=1e9, mass=m_e)
     cos_mu_x_dp = (M44_dp[1,1]+M44_dp[2,2])/2
     cos_mu_y_dp = (M44_dp[3,3]+M44_dp[4,4])/2
 
-    sin_mu_x_dp = sign(M44_dp[1,2])*sqrt(-M44_dp[1,2]*M44_dp[2,1]-(M44_dp[1,1]-M44_dp[2,2])^2/4)
-    sin_mu_y_dp = sign(M44_dp[3,4])*sqrt(-M44_dp[3,4]*M44_dp[4,3]-(M44_dp[3,3]-M44_dp[4,4])^2/4)
+    sin_mu_x_dp = sign(M44_dp[1,2])*sqrt(abs(-M44_dp[1,2]*M44_dp[2,1]-(M44_dp[1,1]-M44_dp[2,2])^2/4))
+    sin_mu_y_dp = sign(M44_dp[3,4])*sqrt(abs(-M44_dp[3,4]*M44_dp[4,3]-(M44_dp[3,3]-M44_dp[4,4])^2/4))
     tune_dp = mod.(atan.([sin_mu_x_dp, sin_mu_y_dp], [cos_mu_x_dp, cos_mu_y_dp]) / (2π), 1.0)
 
     chrom = (tune_dp .- tune) ./ 1e-8
@@ -460,8 +460,8 @@ function gettune(RING; dp=0.0, order=0, energy=1e9, mass=m_e)
     cos_mu_x = (M44[1,1]+M44[2,2])/2
     cos_mu_y = (M44[3,3]+M44[4,4])/2
 
-    sin_mu_x = sign(M44[1,2])*sqrt(-M44[1,2]*M44[2,1]-(M44[1,1]-M44[2,2])^2/4)
-    sin_mu_y = sign(M44[3,4])*sqrt(-M44[3,4]*M44[4,3]-(M44[3,3]-M44[4,4])^2/4)
+    sin_mu_x = sign(M44[1,2])*sqrt(abs(-M44[1,2]*M44[2,1]-(M44[1,1]-M44[2,2])^2/4))
+    sin_mu_y = sign(M44[3,4])*sqrt(abs(-M44[3,4]*M44[4,3]-(M44[3,3]-M44[4,4])^2/4))
     tune = mod.(atan.([sin_mu_x, sin_mu_y], [cos_mu_x, cos_mu_y]) / (2π), 1.0)
 
     return tune
