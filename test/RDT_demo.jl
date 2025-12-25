@@ -17,10 +17,10 @@ SFM_index = findelem(RING, :name, "SFM") # 0.21m, 15 /m^-3
 idx_marker       = findelem(RING, MARKER)
 
 for i in 1:length(SDM_index)
-    RING[SDM_index[i]].PolynomB[3] = -100.0 
+    RING[SDM_index[i]].k2 = -100.0 
 end
 for i in 1:length(SFM_index)
-    RING[SFM_index[i]].PolynomB[3] = 100.0 
+    RING[SFM_index[i]].k2 = 100.0 
 end
 
 function obj(dlist)
@@ -41,11 +41,9 @@ end
 
 function f(x1, x2)
     for i in 1:length(SDM_index)
-        RING[SDM_index[i]].PolynomB[3] = x1
         RING[SDM_index[i]].k2 = x1
     end
     for i in 1:length(SFM_index)
-        RING[SFM_index[i]].PolynomB[3] = x2
         RING[SFM_index[i]].k2 = x2
     end
 
@@ -143,10 +141,10 @@ x1_his, x2_his, g1_his, g2_his, f_his = gradient_descent(x1_init, x2_init, lr=1e
 # SFM_index = findelem(RING, :name, "SFM") # 0.21m, 15 /m^-3
 
 # for i in 1:length(SDM_index)
-#     RING[SDM_index[i]].PolynomB[3] = -100.0 
+#     RING[SDM_index[i]].k2 = -100.0 
 # end
 # for i in 1:length(SFM_index)
-#     RING[SFM_index[i]].PolynomB[3] = 100.0 
+#     RING[SFM_index[i]].k2 = 100.0 
 # end
 
 # function obj(dlist)

@@ -15,7 +15,6 @@ function twiss_test(xx::DTPSAD{N, T}) where {N, T}
     changed_idx = findelem(SSRF, :name, "QL1")
     for i in 1:length(changed_idx)
         SSRF[changed_idx[i]].k1 = xx
-        SSRF[changed_idx[i]].PolynomB[2] = xx
     end
     twi0 = periodicEdwardsTengTwiss(SSRF, 0.0, 0)
     return twi0.betax

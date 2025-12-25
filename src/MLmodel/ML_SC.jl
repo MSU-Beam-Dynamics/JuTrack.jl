@@ -69,9 +69,11 @@ end
 mutable struct KQUAD_SC_ML <: AbstractElement{Float64}
     name::String
     len::Float64
+    k0::Float64
     k1::Float64
+    k2::Float64
+    k3::Float64
     PolynomA::Array{Float64,1}
-    PolynomB::Array{Float64,1}
     MaxOrder::Int64
     NumIntSteps::Int64
     rad::Int64
@@ -93,9 +95,8 @@ mutable struct KQUAD_SC_ML <: AbstractElement{Float64}
     Nsteps::Int64
     eletype::String
 
-    function KQUAD_SC_ML(;name::String = "Quad", len::Float64 = 0.0, k1::Float64 = 0.0, 
-                    PolynomA::Array{Float64,1} = zeros(Float64, 4), 
-                    PolynomB::Array{Float64,1} = zeros(Float64, 4), MaxOrder::Int64=1, 
+    function KQUAD_SC_ML(;name::String = "Quad", len::Float64 = 0.0, k0::Float64 = 0.0, k1::Float64 = 0.0, k2::Float64 = 0.0, k3::Float64 = 0.0,
+                    PolynomA::Array{Float64,1} = zeros(Float64, 4), MaxOrder::Int64=1, 
                     NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
                     FringeQuadExit::Int64 = 0, FringeIntM0::Array{Float64,1} = zeros(Float64, 5), 
                     FringeIntP0::Array{Float64,1} = zeros(Float64, 5), T1::Array{Float64,1} = zeros(Float64, 6), 
@@ -103,10 +104,8 @@ mutable struct KQUAD_SC_ML <: AbstractElement{Float64}
                     R2::Array{Float64,2} = zeros(Float64, 6, 6), RApertures::Array{Float64,1} = zeros(Float64, 6), 
                     EApertures::Array{Float64,1} = zeros(Float64, 6), KickAngle::Array{Float64,1} = zeros(Float64, 2),
                     a::Float64 = 1.0, b::Float64 = 1.0, Nl::Int64 = 10, Nm::Int64 = 10, Nsteps::Int64=1)
-        if k1 != 0.0 && PolynomB[2] == 0.0
-            PolynomB[2] = k1
-        end
-        new(name, len, k1, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit, 
+
+        new(name, len, k0, k1, k2, k3, PolynomA, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit, 
             FringeIntM0, FringeIntP0, T1, T2, R1, R2, RApertures, EApertures, KickAngle, a, b, Nl, Nm, Nsteps, "KQUAD_SC")
     end
 end
@@ -347,22 +346,15 @@ function pass!(ele::KQUAD_SC_ML, r_in::Array{Float64,1}, num_particles::Int64, p
     K = calculate_K(particles, particles.current)
     PolynomB = zeros(4)
     E0 = particles.energy
-    if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
-        PolynomB[2] = ele.k1
-        StrMPoleSymplectic4Pass_SC!(r_in,  ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps, model, x_mean, x_std, y_mean, y_std, xedges, yedges, xaxis, delta)
-    else
-        PolynomB[1] = ele.PolynomB[1]
-        PolynomB[2] = ele.PolynomB[2] 
-        PolynomB[3] = ele.PolynomB[3] / 2.0
-        PolynomB[4] = ele.PolynomB[4] / 6.0
-        StrMPoleSymplectic4Pass_SC!(r_in,  ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps, model, x_mean, x_std, y_mean, y_std, xedges, yedges, xaxis, delta)
-    end
+
+    PolynomB[1] = ele.k0
+    PolynomB[2] = ele.k1
+    PolynomB[3] = ele.k2 / 2.0
+    PolynomB[4] = ele.k3 / 6.0
+    StrMPoleSymplectic4Pass_SC!(r_in,  ele.len, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, 
+                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
+                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps, model, x_mean, x_std, y_mean, y_std, xedges, yedges, xaxis, delta)
     return nothing
 end
 

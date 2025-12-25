@@ -228,45 +228,27 @@ function pass!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, particl
     else
         beti = 1.0 
     end
-    if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
-        PolynomB[2] = ele.k1
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
-        else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
-        end
+
+    PolynomB[1] = ele.k0
+    PolynomB[2] = ele.k1 
+    PolynomB[3] = ele.k2 / 2.0
+    PolynomB[4] = ele.k3 / 6.0
+    if ele.rad == 0
+        StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, 
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
     else
-        PolynomB[1] = ele.PolynomB[1]
-        PolynomB[2] = ele.PolynomB[2] 
-        PolynomB[3] = ele.PolynomB[3] / 2.0
-        PolynomB[4] = ele.PolynomB[4] / 6.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+        if particles.mass == m_e
+            rad_const = RAD_CONST_E * particles.gamma^3
+        elseif particles.mass == m_p
+            rad_const = RAD_CONST_P * particles.gamma^3
         else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
+            rad_const = 0.0
+            println("SR is not implemented for this particle mass.")
         end
+        StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, 
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
     end
     return nothing
 end
@@ -285,43 +267,25 @@ function pass!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, particl
     else
         beti = 1.0 
     end
-    if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
-        PolynomB[3] = ele.k2 / 2.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass!(r_in, ele.len, beti,ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
-        else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
-        end
+
+    PolynomB[1] = ele.k0
+    PolynomB[2] = ele.k1 
+    PolynomB[3] = ele.k2 / 2.0
+    PolynomB[4] = ele.k3 / 6.0
+    if ele.rad == 0
+        StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
     else
-        PolynomB[1] = ele.PolynomB[1]
-        PolynomB[2] = ele.PolynomB[2] 
-        PolynomB[3] = ele.PolynomB[3] / 2.0
-        PolynomB[4] = ele.PolynomB[4] / 6.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+        if particles.mass == m_e
+            rad_const = RAD_CONST_E * particles.gamma^3
+        elseif particles.mass == m_p
+            rad_const = RAD_CONST_P * particles.gamma^3
         else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
+            rad_const = 0.0
+            println("SR is not implemented for this particle mass.")
         end
+        StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
     end
     return nothing
 end
@@ -340,43 +304,25 @@ function pass!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, particle
     else
         beti = 1.0 
     end
-    if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
-        PolynomB[4] = ele.k3 / 6.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
-        else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass!(r_in, ele.len, beti, particles.mass, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
-        end
+
+    PolynomB[1] = ele.k0
+    PolynomB[2] = ele.k1 
+    PolynomB[3] = ele.k2 / 2.0
+    PolynomB[4] = ele.k3 / 6.0
+    if ele.rad == 0
+        StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
     else
-        PolynomB[1] = ele.PolynomB[1]
-        PolynomB[2] = ele.PolynomB[2] 
-        PolynomB[3] = ele.PolynomB[3] / 2.0
-        PolynomB[4] = ele.PolynomB[4] / 6.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+        if particles.mass == m_e
+            rad_const = RAD_CONST_E * particles.gamma^3
+        elseif particles.mass == m_p
+            rad_const = RAD_CONST_P * particles.gamma^3
         else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
+            rad_const = 0.0
+            println("SR is not implemented for this particle mass.")
         end
+        StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
     end
     return nothing
 end
@@ -566,45 +512,27 @@ function pass_P!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, parti
     else
         beti = 1.0 
     end
-    if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
-        PolynomB[2] = ele.k1
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
-        else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
-        end
+
+    PolynomB[1] = ele.k0
+    PolynomB[2] = ele.k1
+    PolynomB[3] = ele.k2 / 2.0
+    PolynomB[4] = ele.k3 / 6.0
+    if ele.rad == 0
+        StrMPoleSymplectic4Pass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, 
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
     else
-        PolynomB[1] = ele.PolynomB[1]
-        PolynomB[2] = ele.PolynomB[2] 
-        PolynomB[3] = ele.PolynomB[3] / 2.0
-        PolynomB[4] = ele.PolynomB[4] / 6.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+        if particles.mass == m_e
+            rad_const = RAD_CONST_E * particles.gamma^3
+        elseif particles.mass == m_p
+            rad_const = RAD_CONST_P * particles.gamma^3
         else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
+            rad_const = 0.0
+            println("SR is not implemented for this particle mass.")
         end
+        StrMPoleSymplectic4RadPass_P!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, 
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
     end
     return nothing
 end
@@ -623,47 +551,27 @@ function pass_P!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, parti
     else
         beti = 1.0 
     end
-    if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
-        PolynomB[3] = ele.k2 / 2.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
-        else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
-        end
+
+    PolynomB[1] = ele.k0
+    PolynomB[2] = ele.k1
+    PolynomB[3] = ele.k2 / 2.0
+    PolynomB[4] = ele.k3 / 6.0
+    if ele.rad == 0
+        StrMPoleSymplectic4Pass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, 
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
     else
-        PolynomB[1] = ele.PolynomB[1]
-        PolynomB[2] = ele.PolynomB[2]
-        PolynomB[3] = ele.PolynomB[3] / 2.0
-        PolynomB[4] = ele.PolynomB[4] / 6.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+        if particles.mass == m_e
+            rad_const = RAD_CONST_E * particles.gamma^3
+        elseif particles.mass == m_p
+            rad_const = RAD_CONST_P * particles.gamma^3
         else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
+            rad_const = 0.0
+            println("SR is not implemented for this particle mass.")
         end
+        StrMPoleSymplectic4RadPass_P!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, 
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
     end
     return nothing
 end
@@ -682,45 +590,25 @@ function pass_P!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, partic
     else
         beti = 1.0 
     end
-    if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
-        PolynomB[4] = ele.k3 / 6.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
-        else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
-        end
+
+    PolynomB[1] = ele.k0
+    PolynomB[2] = ele.k1 
+    PolynomB[3] = ele.k2 / 2.0
+    PolynomB[4] = ele.k3 / 6.0
+    if ele.rad == 0
+        StrMPoleSymplectic4Pass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
     else
-        PolynomB[1] = ele.PolynomB[1]
-        PolynomB[2] = ele.PolynomB[2] 
-        PolynomB[3] = ele.PolynomB[3] / 2.0
-        PolynomB[4] = ele.PolynomB[4] / 6.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+        if particles.mass == m_e
+            rad_const = RAD_CONST_E * particles.gamma^3
+        elseif particles.mass == m_p
+            rad_const = RAD_CONST_P * particles.gamma^3
         else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass_P!(r_in, ele.len, rad_const, beti,ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
+            rad_const = 0.0
+            println("SR is not implemented for this particle mass.")
         end
+        StrMPoleSymplectic4RadPass_P!(r_in, ele.len, rad_const, beti,ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
     end
     return nothing
 end
@@ -957,51 +845,29 @@ function pass!(ele::KQUAD_SC, r_in::Array{Float64,1}, num_particles::Int64, part
     else
         beti = 1.0 
     end
-    if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
-        PolynomB[2] = ele.k1
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass_SC!(r_in,  ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
-        else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass_SC!(r_in,  ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
-        end
+
+    PolynomB[1] = ele.k0
+    PolynomB[2] = ele.k1 
+    PolynomB[3] = ele.k2 / 2.0
+    PolynomB[4] = ele.k3 / 6.0
+    if ele.rad == 0
+        StrMPoleSymplectic4Pass_SC!(r_in,  ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
+                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
+                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
     else
-        PolynomB[1] = ele.PolynomB[1]
-        PolynomB[2] = ele.PolynomB[2] 
-        PolynomB[3] = ele.PolynomB[3] / 2.0
-        PolynomB[4] = ele.PolynomB[4] / 6.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass_SC!(r_in,  ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
+        if particles.mass == m_e
+            rad_const = RAD_CONST_E * particles.gamma^3
+        elseif particles.mass == m_p
+            rad_const = RAD_CONST_P * particles.gamma^3
         else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass_SC!(r_in,  ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
+            rad_const = 0.0
+            println("SR is not implemented for this particle mass.")
         end
+        StrMPoleSymplectic4RadPass_SC!(r_in,  ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
+                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
+                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
     end
     return nothing
 end
@@ -1019,52 +885,31 @@ function pass!(ele::KSEXT_SC, r_in::Array{Float64,1}, num_particles::Int64, part
     else
         beti = 1.0 
     end
-    if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
-        PolynomB[3] = ele.k2 / 2.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass_SC!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
-        else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass_SC!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
-        end
+
+    PolynomB[1] = ele.k0
+    PolynomB[2] = ele.k1 
+    PolynomB[3] = ele.k2 / 2.0
+    PolynomB[4] = ele.k3 / 6.0
+    if ele.rad == 0
+        StrMPoleSymplectic4Pass_SC!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
+                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
+                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
     else
-        PolynomB[1] = ele.PolynomB[1]
-        PolynomB[2] = ele.PolynomB[2] 
-        PolynomB[3] = ele.PolynomB[3] / 2.0
-        PolynomB[4] = ele.PolynomB[4] / 6.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass_SC!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
+        if particles.mass == m_e
+            rad_const = RAD_CONST_E * particles.gamma^3
+        elseif particles.mass == m_p
+            rad_const = RAD_CONST_P * particles.gamma^3
         else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass_SC!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
+            rad_const = 0.0
+            println("SR is not implemented for this particle mass.")
         end
+        StrMPoleSymplectic4RadPass_SC!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
+                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
+                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
     end
+    
     return nothing
 end
 
@@ -1081,51 +926,29 @@ function pass!(ele::KOCT_SC, r_in::Array{Float64,1}, num_particles::Int64, parti
     else
         beti = 1.0 
     end
-    if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
-        PolynomB[4] = ele.k3 / 6.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass_SC!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
-        else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass_SC!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
-        end
+
+    PolynomB[1] = ele.k0
+    PolynomB[2] = ele.k1 
+    PolynomB[3] = ele.k2 / 2.0
+    PolynomB[4] = ele.k3 / 6.0
+    if ele.rad == 0
+        StrMPoleSymplectic4Pass_SC!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
+                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
+                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
     else
-        PolynomB[1] = ele.PolynomB[1]
-        PolynomB[2] = ele.PolynomB[2] 
-        PolynomB[3] = ele.PolynomB[3] / 2.0
-        PolynomB[4] = ele.PolynomB[4] / 6.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass_SC!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
+        if particles.mass == m_e
+            rad_const = RAD_CONST_E * particles.gamma^3
+        elseif particles.mass == m_p
+            rad_const = RAD_CONST_P * particles.gamma^3
         else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass_SC!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit,
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
+            rad_const = 0.0
+            println("SR is not implemented for this particle mass.")
         end
+        StrMPoleSymplectic4RadPass_SC!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit,
+                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
+                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
     end
     return nothing
 end
@@ -1360,51 +1183,29 @@ function pass!(ele::KQUAD_SC{DTPSAD{N, T}}, r_in::Array{DTPSAD{N, T},1}, num_par
     else
         beti = 1.0 
     end
-    if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
-        PolynomB[2] = ele.k1
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass_SC!(r_in,  ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
-        else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass_SC!(r_in,  ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
-        end
+
+    PolynomB[1] = ele.k0
+    PolynomB[2] = ele.k1 
+    PolynomB[3] = ele.k2 / 2.0
+    PolynomB[4] = ele.k3 / 6.0
+    if ele.rad == 0
+        StrMPoleSymplectic4Pass_SC!(r_in,  ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
+                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
+                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
     else
-        PolynomB[1] = ele.PolynomB[1]
-        PolynomB[2] = ele.PolynomB[2] 
-        PolynomB[3] = ele.PolynomB[3] / 2.0
-        PolynomB[4] = ele.PolynomB[4] / 6.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass_SC!(r_in,  ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
+        if particles.mass == m_e
+            rad_const = RAD_CONST_E * particles.gamma^3
+        elseif particles.mass == m_p
+            rad_const = RAD_CONST_P * particles.gamma^3
         else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass_SC!(r_in,  ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
+            rad_const = 0.0
+            println("SR is not implemented for this particle mass.")
         end
+        StrMPoleSymplectic4RadPass_SC!(r_in,  ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
+                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
+                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
     end
     return nothing
 end
@@ -1422,51 +1223,29 @@ function pass!(ele::KSEXT_SC{DTPSAD{N, T}}, r_in::Array{DTPSAD{N, T},1}, num_par
     else
         beti = 1.0 
     end
-    if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
-        PolynomB[3] = ele.k2 / 2.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass_SC!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
-        else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass_SC!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
-        end
+
+    PolynomB[1] = ele.k0
+    PolynomB[2] = ele.k1 
+    PolynomB[3] = ele.k2 / 2.0
+    PolynomB[4] = ele.k3 / 6.0
+    if ele.rad == 0
+        StrMPoleSymplectic4Pass_SC!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
+                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
+                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
     else
-        PolynomB[1] = ele.PolynomB[1]
-        PolynomB[2] = ele.PolynomB[2] 
-        PolynomB[3] = ele.PolynomB[3] / 2.0
-        PolynomB[4] = ele.PolynomB[4] / 6.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass_SC!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
+        if particles.mass == m_e
+            rad_const = RAD_CONST_E * particles.gamma^3
+        elseif particles.mass == m_p
+            rad_const = RAD_CONST_P * particles.gamma^3
         else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass_SC!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
+            rad_const = 0.0
+            println("SR is not implemented for this particle mass.")
         end
+        StrMPoleSymplectic4RadPass_SC!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
+                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
+                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
     end
     return nothing
 end
@@ -1484,51 +1263,29 @@ function pass!(ele::KOCT_SC{DTPSAD{N, T}}, r_in::Array{DTPSAD{N, T},1}, num_part
     else
         beti = 1.0 
     end
-    if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
-        PolynomB[4] = ele.k3 / 6.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass_SC!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
-        else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass_SC!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
-        end
+
+    PolynomB[1] = ele.k0
+    PolynomB[2] = ele.k1 
+    PolynomB[3] = ele.k2 / 2.0
+    PolynomB[4] = ele.k3 / 6.0
+    if ele.rad == 0
+        StrMPoleSymplectic4Pass_SC!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
+                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
+                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
     else
-        PolynomB[1] = ele.PolynomB[1]
-        PolynomB[2] = ele.PolynomB[2] 
-        PolynomB[3] = ele.PolynomB[3] / 2.0
-        PolynomB[4] = ele.PolynomB[4] / 6.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass_SC!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
+        if particles.mass == m_e
+            rad_const = RAD_CONST_E * particles.gamma^3
+        elseif particles.mass == m_p
+            rad_const = RAD_CONST_P * particles.gamma^3
         else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass_SC!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit,
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
+            rad_const = 0.0
+            println("SR is not implemented for this particle mass.")
         end
+        StrMPoleSymplectic4RadPass_SC!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit,
+                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
+                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
     end
     return nothing
 end
@@ -1759,53 +1516,30 @@ function pass_P!(ele::KQUAD_SC, r_in::Array{Float64,1}, num_particles::Int64, pa
     else
         beti = 1.0 
     end
-    if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
-        PolynomB[2] = ele.k1
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass_P_SC!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
-        else
-            rad_const = 0.0
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass_P_SC!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
-        end
+
+    PolynomB[1] = ele.k0
+    PolynomB[2] = ele.k1 
+    PolynomB[3] = ele.k2 / 2.0
+    PolynomB[4] = ele.k3 / 6.0
+    if ele.rad == 0
+        StrMPoleSymplectic4Pass_P_SC!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
+                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
+                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
     else
-        PolynomB[1] = ele.PolynomB[1]
-        PolynomB[2] = ele.PolynomB[2] 
-        PolynomB[3] = ele.PolynomB[3] / 2.0
-        PolynomB[4] = ele.PolynomB[4] / 6.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass_P_SC!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
+        rad_const = 0.0
+        if particles.mass == m_e
+            rad_const = RAD_CONST_E * particles.gamma^3
+        elseif particles.mass == m_p
+            rad_const = RAD_CONST_P * particles.gamma^3
         else
             rad_const = 0.0
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass_P_SC!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit,
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
+            println("SR is not implemented for this particle mass.")
         end
+        StrMPoleSymplectic4RadPass_P_SC!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit,
+                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
+                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
     end
     return nothing
 end
@@ -1823,44 +1557,21 @@ function pass_P!(ele::KSEXT_SC, r_in::Array{Float64,1}, num_particles::Int64, pa
     else
         beti = 1.0 
     end
-    if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
-        PolynomB[3] = ele.k2 / 2.0
-        if ele.rad == 0
-                StrMPoleSymplectic4Pass_P_SC!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
-        else
-            rad_const = 0.0
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass_P_SC!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps,
-                ele.FringeQuadEntrance, ele.FringeQuadExit,
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
+
+    PolynomB[1] = ele.k0
+    PolynomB[2] = ele.k1
+    PolynomB[3] = ele.k2 / 2.0
+    PolynomB[4] = ele.k3 / 6.0
+    if ele.rad == 0
+            StrMPoleSymplectic4Pass_P_SC!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+                ele.FringeQuadEntrance, ele.FringeQuadExit, 
+                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
                 ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
-        end
     else
-        PolynomB[1] = ele.PolynomB[1]
-        PolynomB[2] = ele.PolynomB[2]
-        PolynomB[3] = ele.PolynomB[3] / 2.0
-        PolynomB[4] = ele.PolynomB[4] / 6.0
-        if ele.rad == 0
-                StrMPoleSymplectic4Pass_P_SC!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                    ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                    ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
-                    ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
-        else
-            StrMPoleSymplectic4RadPass_P_SC!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps,
-                ele.FringeQuadEntrance, ele.FringeQuadExit,
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
-                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
-        end
+        StrMPoleSymplectic4RadPass_P_SC!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps,
+            ele.FringeQuadEntrance, ele.FringeQuadExit,
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
+            ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
     end
     return nothing
 end
@@ -1878,53 +1589,30 @@ function pass_P!(ele::KOCT_SC, r_in::Array{Float64,1}, num_particles::Int64, par
     else
         beti = 1.0 
     end
-    if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
-        PolynomB[4] = ele.k3 / 6.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass_P_SC!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
-                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
-        else
-            rad_const = 0.0
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass_P_SC!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps,
-                ele.FringeQuadEntrance, ele.FringeQuadExit,
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
-                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
-        end
+
+    PolynomB[1] = ele.k0
+    PolynomB[2] = ele.k1
+    PolynomB[3] = ele.k2 / 2.0
+    PolynomB[4] = ele.k3 / 6.0
+    if ele.rad == 0
+        StrMPoleSymplectic4Pass_P_SC!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, 
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
+            ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
     else
-        PolynomB[1] = ele.PolynomB[1]
-        PolynomB[2] = ele.PolynomB[2] 
-        PolynomB[3] = ele.PolynomB[3] / 2.0
-        PolynomB[4] = ele.PolynomB[4] / 6.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass_P_SC!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
-                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
+        rad_const = 0.0
+        if particles.mass == m_e
+            rad_const = RAD_CONST_E * particles.gamma^3
+        elseif particles.mass == m_p
+            rad_const = RAD_CONST_P * particles.gamma^3
         else
             rad_const = 0.0
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass_P_SC!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps,
-                ele.FringeQuadEntrance, ele.FringeQuadExit,
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
-                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
+            println("SR is not implemented for this particle mass.")
         end
+        StrMPoleSymplectic4RadPass_P_SC!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps,
+            ele.FringeQuadEntrance, ele.FringeQuadExit,
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
+            ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
     end
     return nothing
 end
@@ -2185,47 +1873,27 @@ function pass_TPSA!(ele::KQUAD, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; 
     end
     rad_const = 0.0
     PolynomB = zeros(4)
-    if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
-        PolynomB[2] = ele.k1
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
-        else
-            if m0 == m_e
-                rad_const = RAD_CONST_E * gamma^3
-            elseif m0 == m_p
-                rad_const = RAD_CONST_P * gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass(r_in, ele.len,rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0)
-        end
+
+    PolynomB[1] = ele.k0
+    PolynomB[2] = ele.k1
+    PolynomB[3] = ele.k2 / 2.0
+    PolynomB[4] = ele.k3 / 6.0
+    if ele.rad == 0
+        StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, 
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
     else
-        PolynomB[1] = ele.PolynomB[1]
-        PolynomB[2] = ele.PolynomB[2] 
-        PolynomB[3] = ele.PolynomB[3] / 2.0
-        PolynomB[4] = ele.PolynomB[4] / 6.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
+        if m0 == m_e
+            rad_const = RAD_CONST_E * gamma^3
+        elseif m0 == m_p
+            rad_const = RAD_CONST_P * gamma^3
         else
-            if m0 == m_e
-                rad_const = RAD_CONST_E * gamma^3
-            elseif m0 == m_p
-                rad_const = RAD_CONST_P * gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0)
+            rad_const = 0.0
+            println("SR is not implemented for this particle mass.")
         end
+        StrMPoleSymplectic4RadPass(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, 
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0)
     end
     return nothing
 end
@@ -2244,47 +1912,26 @@ function pass_TPSA!(ele::KSEXT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; 
     PolynomB = zeros(4)
     rad_const = 0.0
 
-    if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
-        PolynomB[3] = ele.k2 / 2.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit,
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
-        else
-            if m0 == m_e
-                rad_const = RAD_CONST_E * gamma^3
-            elseif m0 == m_p
-                rad_const = RAD_CONST_P * gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0)
-        end
+    PolynomB[1] = ele.k0
+    PolynomB[2] = ele.k1 
+    PolynomB[3] = ele.k2 / 2.0
+    PolynomB[4] = ele.k3 / 6.0
+    if ele.rad == 0
+        StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, 
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
     else
-        PolynomB[1] = ele.PolynomB[1]
-        PolynomB[2] = ele.PolynomB[2] 
-        PolynomB[3] = ele.PolynomB[3] / 2.0
-        PolynomB[4] = ele.PolynomB[4] / 6.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
+        if m0 == m_e
+            rad_const = RAD_CONST_E * gamma^3
+        elseif m0 == m_p
+            rad_const = RAD_CONST_P * gamma^3
         else
-            if m0 == m_e
-                rad_const = RAD_CONST_E * gamma^3
-            elseif m0 == m_p
-                rad_const = RAD_CONST_P * gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0)
+            rad_const = 0.0
+            println("SR is not implemented for this particle mass.")
         end
+        StrMPoleSymplectic4RadPass(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, 
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0)
     end
     return nothing 
 end
@@ -2302,47 +1949,27 @@ function pass_TPSA!(ele::KOCT, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; E
     end
     rad_const = 0.0
     PolynomB = zeros(4)
-    if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
-        PolynomB[4] = ele.k3 / 6.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
-        else
-            if m0 == m_e
-                rad_const = RAD_CONST_E * gamma^3
-            elseif m0 == m_p
-                rad_const = RAD_CONST_P * gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0)
-        end
+
+    PolynomB[1] = ele.k0
+    PolynomB[2] = ele.k1 
+    PolynomB[3] = ele.k2 / 2.0
+    PolynomB[4] = ele.k3 / 6.0
+    if ele.rad == 0
+        StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, 
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
     else
-        PolynomB[1] = ele.PolynomB[1]
-        PolynomB[2] = ele.PolynomB[2] 
-        PolynomB[3] = ele.PolynomB[3] / 2.0
-        PolynomB[4] = ele.PolynomB[4] / 6.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle)
+        if m0 == m_e
+            rad_const = RAD_CONST_E * gamma^3
+        elseif m0 == m_p
+            rad_const = RAD_CONST_P * gamma^3
         else
-            if m0 == m_e
-                rad_const = RAD_CONST_E * gamma^3
-            elseif m0 == m_p
-                rad_const = RAD_CONST_P * gamma^3
-            else
-                rad_const = 0.0
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0)
+            rad_const = 0.0
+            println("SR is not implemented for this particle mass.")
         end
+        StrMPoleSymplectic4RadPass(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, 
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0)
     end
     return nothing
 end

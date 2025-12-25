@@ -14,7 +14,11 @@ E0 = 17.846262619763e9  # Beam energy in eV
 jt.set_tps_dim(7) # 7 variables for the 7 quadrupoles we'll tune
 
 # Load the ESR main lattice
-ESR_crab = jt.load_lattice("src/demo/ESR/esr_main.jls")
+# ESR_crab = jt.load_lattice("src/demo/ESR/esr_main.jls")
+from juliacall import Main as jl
+# RING is defined in esr_main.jl
+jl.seval('include("src/demo/ESR/esr-main.jl")')
+ESR_crab = jt.Lattice(jl.RING)
 print(f"Loaded ESR lattice with {len(ESR_crab)} elements")
 print(f"Total length: {ESR_crab.total_length():.3f} m")
 

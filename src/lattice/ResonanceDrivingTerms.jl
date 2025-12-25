@@ -42,12 +42,15 @@ function avedata(ring::Vector{<:AbstractElement{Float64}}, dpp::Float64; E0::Flo
     for i in eachindex(long)
         if :PolynomB in fieldnames(typeof(ring[long[i]])) && ring[long[i]].PolynomB[2] != 0
             push!(foc, i)
+        # sometimes PolynomB is not defined for some elements but k1 is defined
+        elseif :k1 in fieldnames(typeof(ring[long[i]])) && ring[long[i]].k1 != 0
+            push!(foc, i)
         end
     end
 
     if length(foc) > 0
         K = zeros(size(L))
-        K[foc] = [ring[long[foc[i]]].PolynomB[2] for i in eachindex(foc)]
+        K[foc] = [get_k1(ring[long[foc[i]]]) for i in eachindex(foc)]
         K2 = [K -K]
 
         avebeta[long[foc], :] = betafoc(beta1[foc, :], alpha0[foc, :], alpha1[foc, :], K2[foc, :], L2[foc, :])
@@ -100,12 +103,15 @@ function avedata(ring::Vector{<:AbstractElement{DTPSAD{N, T}}}, dpp::Float64; E0
     for i in eachindex(long)
         if :PolynomB in fieldnames(typeof(ring[long[i]])) && ring[long[i]].PolynomB[2] != 0
             push!(foc, i)
+        # sometimes PolynomB is not defined for some elements but k1 is defined
+        elseif :k1 in fieldnames(typeof(ring[long[i]])) && ring[long[i]].k1 != 0
+            push!(foc, i)
         end
     end
 
     if length(foc) > 0
         K = zeros(DTPSAD{NVAR(), Float64}, size(L))
-        K[foc] = [ring[long[foc[i]]].PolynomB[2] for i in eachindex(foc)]
+        K[foc] = [get_k1(ring[long[foc[i]]]) for i in eachindex(foc)]
         K2 = [K -K]
 
         avebeta[long[foc], :] = betafoc(beta1[foc, :], alpha0[foc, :], alpha1[foc, :], K2[foc, :], L2[foc, :])
@@ -682,6 +688,34 @@ function juliaRDT(s::Vector{DTPSAD{N, T}}, betax::Vector{DTPSAD{N, T}}, betay::V
     return d
 end
 
+function get_k1(elem::AbstractElement{T}) where T
+    if hasproperty(elem, :k1)
+        return elem.k1
+    elseif hasproperty(elem, :PolynomB)
+        return elem.PolynomB[2]
+    else
+        return T(0.0)
+    end
+end
+function get_k2(elem::AbstractElement{T}) where T
+    if hasproperty(elem, :k2)
+        return elem.k2
+    elseif hasproperty(elem, :PolynomB)
+        return elem.PolynomB[3]
+    else
+        return T(0.0)
+    end
+end
+function get_k3(elem::AbstractElement{T}) where T
+    if hasproperty(elem, :k3)
+        return elem.k3
+    elseif hasproperty(elem, :PolynomB)
+        return elem.PolynomB[4]
+    else
+        return T(0.0)
+    end
+end
+
 """
     computeRDT(ring::Vector{<:AbstractElement{Float64}}, index::Vector{Int}; 
     chromatic=false, coupling=false, geometric1=false, geometric2=false, tuneshifts=false, E0=3e9, m0=m_e)
@@ -733,9 +767,9 @@ function computeRDT(ring::Vector{<:AbstractElement{Float64}}, index::Vector{Int}
     phiy = AVEMU[indDQSO, 2]
 
     PolyA2 = [ring[indDQSO[i]].PolynomA[2] for i in eachindex(indDQSO)]
-    PolyB2 = [ring[indDQSO[i]].PolynomB[2] for i in eachindex(indDQSO)]
-    PolyB3 = [ring[indDQSO[i]].PolynomB[3] for i in eachindex(indDQSO)] ./ 2 # AT style
-    PolyB4 = [ring[indDQSO[i]].PolynomB[4] for i in eachindex(indDQSO)] ./ 6 # AT style
+    PolyB2 = [get_k1(ring[indDQSO[i]]) for i in eachindex(indDQSO)]
+    PolyB3 = [get_k2(ring[indDQSO[i]]) for i in eachindex(indDQSO)] ./ 2 # AT style
+    PolyB4 = [get_k3(ring[indDQSO[i]]) for i in eachindex(indDQSO)] ./ 6 # AT style
     len_list = [ring[indDQSO[i]].len for i in eachindex(indDQSO)]
     a2L = PolyA2 .* len_list
     b2L = PolyB2 .* len_list
@@ -824,9 +858,9 @@ function computeRDT(ring::Vector{<:AbstractElement{DTPSAD{N, T}}}, index::Vector
     phiy = AVEMU[indDQSO, 2]
 
     PolyA2 = [ring[indDQSO[i]].PolynomA[2] for i in eachindex(indDQSO)]
-    PolyB2 = [ring[indDQSO[i]].PolynomB[2] for i in eachindex(indDQSO)]
-    PolyB3 = [ring[indDQSO[i]].PolynomB[3] for i in eachindex(indDQSO)] ./ 2 # AT style
-    PolyB4 = [ring[indDQSO[i]].PolynomB[4] for i in eachindex(indDQSO)] ./ 6 # AT style
+    PolyB2 = [get_k1(ring[indDQSO[i]]) for i in eachindex(indDQSO)]
+    PolyB3 = [get_k2(ring[indDQSO[i]]) for i in eachindex(indDQSO)] ./ 2 # AT style
+    PolyB4 = [get_k3(ring[indDQSO[i]]) for i in eachindex(indDQSO)] ./ 6 # AT style
     len_list = [ring[indDQSO[i]].len for i in eachindex(indDQSO)]
     a2L = PolyA2 .* len_list
     b2L = PolyB2 .* len_list
@@ -945,7 +979,8 @@ function ADavedata(ring, dpp, changed_ids, changed_elems; E0=3e9, m0=m_e)
     for i in eachindex(long)
         if ring[long[i]] isa KQUAD || ring[long[i]] isa KSEXT || ring[long[i]] isa KOCT || 
             ring[long[i]] isa SBEND || ring[long[i]] isa QUAD || ring[long[i]] isa thinMULTIPOLE
-            if get_polynom(ring[long[i]], 2, 2) != 0
+            # if get_polynom(ring[long[i]], 2, 2) != 0
+            if get_k1(ring[long[i]]) != 0
                 nfoc += 1
             end
         end
@@ -955,7 +990,7 @@ function ADavedata(ring, dpp, changed_ids, changed_elems; E0=3e9, m0=m_e)
     for i in eachindex(long)
         if ring[long[i]] isa KQUAD || ring[long[i]] isa KSEXT || ring[long[i]] isa KOCT || 
             ring[long[i]] isa SBEND || ring[long[i]] isa QUAD || ring[long[i]] isa thinMULTIPOLE
-            if get_polynom(ring[long[i]], 2, 2) != 0
+            if get_k1(ring[long[i]]) != 0
                 nfoc += 1
                 foc[nfoc] = i
             end
@@ -968,13 +1003,13 @@ function ADavedata(ring, dpp, changed_ids, changed_elems; E0=3e9, m0=m_e)
             if long[foc[i]] in changed_ids
                 for j in eachindex(changed_ids)
                     if long[foc[i]] == changed_ids[j]
-                        K[foc[i]] = changed_elems[j].PolynomB[2]
+                        K[foc[i]] = get_k1(changed_elems[j])
                     end
                     break
                 end
                 ###### K[foc[i]] = changed_elems[findfirst(x -> x == long[foc[i]], changed_ids)].PolynomB[2]
             else
-                K[foc[i]] = get_polynom(ring[long[foc[i]]], 2, 2) 
+                K[foc[i]] = get_k1(ring[long[foc[i]]])
             end
         end
         K2 = [K -K]
@@ -1075,17 +1110,17 @@ function ADcomputeRDT(ring, index, changed_ids, changed_elems; chromatic=true, c
             for j in eachindex(changed_ids)
                 if indDQSO[i] == changed_ids[j]
                     PolyA2 = get_polynom(changed_elems[j], 1, 2)
-                    PolyB2 = get_polynom(changed_elems[j], 2, 2)
-                    PolyB3 = get_polynom(changed_elems[j], 2, 3) / 2.0
-                    PolyB4 = get_polynom(changed_elems[j], 2, 4) / 6.0
+                    PolyB2 = get_k1(changed_elems[j])
+                    PolyB3 = get_k2(changed_elems[j]) / 2.0
+                    PolyB4 = get_k3(changed_elems[j]) / 6.0
                     len_list = changed_elems[j].len
                 end
             end
         else
             PolyA2 = get_polynom(ring[indDQSO[i]], 1, 2)
-            PolyB2 = get_polynom(ring[indDQSO[i]], 2, 2)
-            PolyB3 = get_polynom(ring[indDQSO[i]], 2, 3) / 2.0
-            PolyB4 = get_polynom(ring[indDQSO[i]], 2, 4) / 6.0
+            PolyB2 = get_k1(ring[indDQSO[i]])
+            PolyB3 = get_k2(ring[indDQSO[i]]) / 2.0
+            PolyB4 = get_k3(ring[indDQSO[i]]) / 6.0
             len_list = get_len(ring[indDQSO[i]])
         end
         a2L[i] = PolyA2 * len_list

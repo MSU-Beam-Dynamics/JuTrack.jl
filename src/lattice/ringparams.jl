@@ -249,10 +249,6 @@ function getfoc(elem::AbstractElement{T}) where T
         end
     elseif hasproperty(elem, :k1)
         K = elem.k1
-        
-        if K != 0.0
-            @warn "PolynomB[2] is missing. Using k1"
-        end
     end
     
     return K

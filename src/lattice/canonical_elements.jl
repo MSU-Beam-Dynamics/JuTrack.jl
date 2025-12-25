@@ -136,7 +136,7 @@ end
 
 """
     KQUAD(;name::String = "Quad", len::Float64 = 0.0, k1::Float64 = 0.0, 
-        PolynomA::Array{Float64,1} = zeros(Float64, 4), PolynomB::Array{Float64,1} = zeros(Float64, 4), 
+        PolynomA::Array{Float64,1} = zeros(Float64, 4), 
         MaxOrder::Int64=1, NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
         FringeQuadExit::Int64 = 0, T1::Array{Float64,1} = zeros(Float64, 6), 
         T2::Array{Float64,1} = zeros(Float64, 6), R1::Array{Float64,2} = zeros(Float64, 6, 6), 
@@ -153,9 +153,12 @@ quad = KQUAD(name="Q1", len=0.5, k1=0.5)
 mutable struct KQUAD{T} <: AbstractElement{T}
     name::String
     len::T
+    k0::T
     k1::T
+    k2::T
+    k3::T
     PolynomA::Array{T,1}
-    PolynomB::Array{T,1}
+    # PolynomB::Array{T,1}
     MaxOrder::Int64
     NumIntSteps::Int64
     rad::Int64
@@ -171,51 +174,37 @@ mutable struct KQUAD{T} <: AbstractElement{T}
     eletype::String
 
     # constructor with all parameters
-    KQUAD(name::String, len::T, k1::T, PolynomA::Array{T,1}, 
-        PolynomB::Array{T,1}, MaxOrder::Int64, NumIntSteps::Int64, rad::Int64, 
+    KQUAD(name::String, len::T, k0::T, k1::T, k2::T, k3::T, PolynomA::Array{T,1}, 
+        MaxOrder::Int64, NumIntSteps::Int64, rad::Int64, 
         FringeQuadEntrance::Int64, FringeQuadExit::Int64, T1::Array{T,1}, 
         T2::Array{T,1}, R1::Array{T,2}, R2::Array{T,2}, 
         RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{T,1}, eletype::String) where T =
-        new{T}(name, len, k1, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
+        new{T}(name, len, k0, k1, k2, k3, PolynomA, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
             T1, T2, R1, R2, RApertures, EApertures, KickAngle, eletype)
 end
-function KQUAD(;name::String = "Quad", len = 0.0, k1 = 0.0, 
+function KQUAD(;name::String = "Quad", len = 0.0, k0 = 0.0, k1 = 0.0, k2 = 0.0, k3 = 0.0,
                 PolynomA = zeros(4), 
-                PolynomB = zeros(4), MaxOrder::Int64=1, 
+                MaxOrder::Int64=1, 
                 NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
                 FringeQuadExit::Int64 = 0, T1 = zeros(6), 
                 T2 = zeros(6), R1 = zeros(6, 6), 
                 R2 = zeros(6, 6), RApertures = zeros(6), 
                 EApertures = zeros(6), KickAngle = zeros(2))
     
-    if len isa DTPSAD || PolynomA[1] isa DTPSAD || PolynomB[1] isa DTPSAD || k1 isa DTPSAD ||
+    if len isa DTPSAD || PolynomA[1] isa DTPSAD || k0 isa DTPSAD || k1 isa DTPSAD || k2 isa DTPSAD || k3 isa DTPSAD ||
         T1[1] isa DTPSAD || T2[1] isa DTPSAD || R1[1,1] isa DTPSAD || R2[1,1] isa DTPSAD || KickAngle[1] isa DTPSAD
-        if k1 != 0.0 && PolynomB[2] == 0.0
-            PolynomB_T = [DTPSAD(PolynomB[1]), DTPSAD(k1), DTPSAD(PolynomB[3]), DTPSAD(PolynomB[4])]
-            return KQUAD(name, DTPSAD(len), DTPSAD(k1), 
-                DTPSAD.(PolynomA), PolynomB_T, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
-                DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2), RApertures, EApertures, DTPSAD.(KickAngle), "KQUAD")
-        else
-            return KQUAD(name, DTPSAD(len), DTPSAD(k1), 
-                DTPSAD.(PolynomA), DTPSAD.(PolynomB), MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
-                DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2), RApertures, EApertures, DTPSAD.(KickAngle), "KQUAD")
-        end
+        return KQUAD(name, DTPSAD(len), DTPSAD(k0), DTPSAD(k1), DTPSAD(k2), DTPSAD(k3), 
+            DTPSAD.(PolynomA), MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
+            DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2), RApertures, EApertures, DTPSAD.(KickAngle), "KQUAD")
     end
-
-    if k1 != 0.0 && PolynomB[2] == 0.0
-        PolynomB_T = [PolynomB[1], k1, PolynomB[3], PolynomB[4]]
-        return KQUAD(name, len, k1, 
-            PolynomA, PolynomB_T, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
-            T1, T2, R1, R2, RApertures, EApertures, KickAngle, "KQUAD")
-    end
-    return KQUAD(name, len, k1, 
-        PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
+    return KQUAD(name, len, k0, k1, k2, k3, 
+        PolynomA, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
         T1, T2, R1, R2, RApertures, EApertures, KickAngle, "KQUAD")
 end
 
 """
-    KQUAD_SC(;name::String = "Quad", len::Float64 = 0.0, k1::Float64 = 0.0, 
-        PolynomA::Array{Float64,1} = zeros(Float64, 4), PolynomB::Array{Float64,1} = zeros(Float64, 4), 
+    KQUAD_SC(;name::String = "Quad", len::Float64 = 0.0, k0::Float64 = 0.0, k1::Float64 = 0.0, k2::Float64 = 0.0, k3::Float64 = 0.0,
+        PolynomA::Array{Float64,1} = zeros(Float64, 4), 
         MaxOrder::Int64=1, NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
         FringeQuadExit::Int64 = 0, T1::Array{Float64,1} = zeros(Float64, 6), 
         T2::Array{Float64,1} = zeros(Float64, 6), R1::Array{Float64,2} = zeros(Float64, 6, 6), 
@@ -232,9 +221,11 @@ quad = KQUAD_SC(name="Q1_SC", len=0.5, k1=0.5, a=13e-3, b=13e-3, Nl=15, Nm=15)
 mutable struct KQUAD_SC{T} <: AbstractElement{T}
     name::String
     len::T
+    k0::T
     k1::T
+    k2::T
+    k3::T
     PolynomA::Array{T,1}
-    PolynomB::Array{T,1}
     MaxOrder::Int64
     NumIntSteps::Int64
     rad::Int64
@@ -255,55 +246,42 @@ mutable struct KQUAD_SC{T} <: AbstractElement{T}
     eletype::String
 
     # constructor with all parameters
-    KQUAD_SC(name::String, len::T, k1::T, PolynomA::Array{T,1}, 
-        PolynomB::Array{T,1}, MaxOrder::Int64, NumIntSteps::Int64, rad::Int64, 
+    KQUAD_SC(name::String, len::T, k0::T, k1::T, k2::T, k3::T, PolynomA::Array{T,1}, 
+        MaxOrder::Int64, NumIntSteps::Int64, rad::Int64, 
         FringeQuadEntrance::Int64, FringeQuadExit::Int64, T1::Array{T,1}, 
         T2::Array{T,1}, R1::Array{T,2}, R2::Array{T,2}, 
         RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{T,1},
         a::T, b::T, Nl::Int64, Nm::Int64, Nsteps::Int64, eletype::String) where T =
-        new{T}(name, len, k1, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance,
+        new{T}(name, len, k0, k1, k2, k3, PolynomA, MaxOrder, NumIntSteps, rad, FringeQuadEntrance,
             FringeQuadExit, T1, T2, R1, R2, RApertures, EApertures, KickAngle,
             a, b, Nl, Nm, Nsteps, eletype)
 end
 
-function KQUAD_SC(;name::String = "Quad", len = 0.0, k1 = 0.0, 
-                PolynomA = zeros(4), 
-                PolynomB = zeros(4), MaxOrder::Int64=1, 
+function KQUAD_SC(;name::String = "Quad", len = 0.0, k0 = 0.0, k1 = 0.0, k2 = 0.0, k3 = 0.0, 
+                PolynomA = zeros(4), MaxOrder::Int64=1, 
                 NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
                 FringeQuadExit::Int64 = 0, T1 = zeros(6), 
                 T2 = zeros(6), R1 = zeros(6, 6), 
                 R2 = zeros(6, 6), RApertures = zeros(6), 
                 EApertures = zeros(6), KickAngle = zeros(2),
                 a::Float64 = 1.0, b::Float64 = 1.0, Nl::Int64 = 10, Nm::Int64 = 10, Nsteps::Int64=1)
-    if len isa DTPSAD || PolynomA[1] isa DTPSAD || PolynomB[1] isa DTPSAD || k1 isa DTPSAD ||
+    if len isa DTPSAD || PolynomA[1] isa DTPSAD || k0 isa DTPSAD || k1 isa DTPSAD || k2 isa DTPSAD || k3 isa DTPSAD ||
         T1[1] isa DTPSAD || T2[1] isa DTPSAD || R1[1,1] isa DTPSAD || R2[1,1] isa DTPSAD || KickAngle[1] isa DTPSAD ||
         a isa DTPSAD || b isa DTPSAD
-        if k1 != 0.0 && PolynomB[2] == 0.0
-            PolynomB_T = [DTPSAD(PolynomB[1]), DTPSAD(k1), DTPSAD(PolynomB[3]), DTPSAD(PolynomB[4])]
-            return KQUAD_SC(name, DTPSAD(len), DTPSAD(k1), 
-                DTPSAD.(PolynomA), PolynomB_T, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
-                DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2), RApertures, EApertures, 
-                DTPSAD.(KickAngle), DTPSAD(a), DTPSAD(b), Nl, Nm, Nsteps, "KQUAD_SC")
-        end
-        return KQUAD_SC(name, DTPSAD(len), DTPSAD(k1), 
-            DTPSAD.(PolynomA), DTPSAD.(PolynomB), MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
+        return KQUAD_SC(name, DTPSAD(len), DTPSAD(k0), DTPSAD(k1), DTPSAD(k2), DTPSAD(k3),
+            DTPSAD.(PolynomA), MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
             DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2), RApertures, EApertures, 
             DTPSAD.(KickAngle), DTPSAD(a), DTPSAD(b), Nl, Nm, Nsteps, "KQUAD_SC")
     end
-    if k1 != 0.0 && PolynomB[2] == 0.0
-        PolynomB_T = [PolynomB[1], k1, PolynomB[3], PolynomB[4]]
-        return KQUAD_SC(name, len, k1, 
-            PolynomA, PolynomB_T, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
-            T1, T2, R1, R2, RApertures, EApertures, KickAngle, a, b, Nl, Nm, Nsteps, "KQUAD_SC")
-    end
-    return KQUAD_SC(name, len, k1, 
-        PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
+
+    return KQUAD_SC(name, len, k0, k1, k2, k3,
+        PolynomA, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
         T1, T2, R1, R2, RApertures, EApertures, KickAngle, a, b, Nl, Nm, Nsteps, "KQUAD_SC")
 end
 
 """
-    KSEXT(;name::String = "Sext", len::Float64 = 0.0, k2::Float64 = 0.0, 
-        PolynomA::Array{Float64,1} = zeros(Float64, 4), PolynomB::Array{Float64,1} = zeros(Float64, 4), 
+    KSEXT(;name::String = "Sext", len::Float64 = 0.0, k0::Float64 = 0.0, k1::Float64 = 0.0, k2::Float64 = 0.0, k3::Float64 = 0.0, 
+        PolynomA::Array{Float64,1} = zeros(Float64, 4), 
         MaxOrder::Int64=2, NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
         FringeQuadExit::Int64 = 0, T1::Array{Float64,1} = zeros(Float64, 6), 
         T2::Array{Float64,1} = zeros(Float64, 6), R1::Array{Float64,2} = zeros(Float64, 6, 6), 
@@ -319,9 +297,11 @@ sext = KSEXT(name="S1", len=0.5, k2=0.5)
 mutable struct KSEXT{T} <: AbstractElement{T}
     name::String
     len::T
+    k0::T
+    k1::T
     k2::T
+    k3::T
     PolynomA::Array{T,1}
-    PolynomB::Array{T,1}
     MaxOrder::Int64
     NumIntSteps::Int64
     rad::Int64
@@ -336,50 +316,38 @@ mutable struct KSEXT{T} <: AbstractElement{T}
     KickAngle::Array{T,1}
     eletype::String
     # constructor with all parameters
-    KSEXT(name::String, len::T, k2::T, PolynomA::Array{T,1}, 
-        PolynomB::Array{T,1}, MaxOrder::Int64, NumIntSteps::Int64, rad::Int64, 
+    KSEXT(name::String, len::T, k0::T, k1::T, k2::T, k3::T, PolynomA::Array{T,1}, 
+        MaxOrder::Int64, NumIntSteps::Int64, rad::Int64, 
         FringeQuadEntrance::Int64, FringeQuadExit::Int64, T1::Array{T,1}, 
         T2::Array{T,1}, R1::Array{T,2}, R2::Array{T,2}, 
         RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{T,1}, eletype::String) where T= 
-        new{T}(name, len, k2, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance,
+        new{T}(name, len, k0, k1, k2, k3, PolynomA, MaxOrder, NumIntSteps, rad, FringeQuadEntrance,
             FringeQuadExit, T1, T2, R1, R2, RApertures, EApertures, KickAngle, eletype)
 end
-function KSEXT(;name::String = "Sext", len = 0.0, k2 = 0.0, 
+function KSEXT(;name::String = "Sext", len = 0.0, k0 = 0.0, k1 = 0.0, k2 = 0.0, k3 = 0.0, 
                 PolynomA = zeros(4), 
-                PolynomB = zeros(4), MaxOrder::Int64=2, 
+                MaxOrder::Int64=2, 
                 NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
                 FringeQuadExit::Int64 = 0, T1 = zeros(6), 
                 T2 = zeros(6), R1 = zeros(6, 6), 
                 R2 = zeros(6, 6), RApertures = zeros(6), 
                 EApertures = zeros(6), KickAngle = zeros(2))
 
-    if len isa DTPSAD || PolynomA[1] isa DTPSAD || PolynomB[1] isa DTPSAD || k2 isa DTPSAD ||
+    if len isa DTPSAD || PolynomA[1] isa DTPSAD || k0 isa DTPSAD || k1 isa DTPSAD || k2 isa DTPSAD || k3 isa DTPSAD ||
         T1[1] isa DTPSAD || T2[1] isa DTPSAD || R1[1,1] isa DTPSAD || R2[1,1] isa DTPSAD || KickAngle[1] isa DTPSAD
-        if k2 != 0.0 && PolynomB[3] == 0.0
-            PolynomB_T = [DTPSAD(PolynomB[1]), DTPSAD(PolynomB[2]), DTPSAD(k2), DTPSAD(PolynomB[4])]
-            return KSEXT(name, DTPSAD(len), DTPSAD(k2), 
-                DTPSAD.(PolynomA), PolynomB_T, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
+        return KSEXT(name, DTPSAD(len), DTPSAD(k0), DTPSAD(k1), DTPSAD(k2), DTPSAD(k3),
+                DTPSAD.(PolynomA), MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
                 DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2), RApertures, EApertures, DTPSAD.(KickAngle), "KSEXT")
-        else
-            return KSEXT(name, DTPSAD(len), DTPSAD(k2), 
-                DTPSAD.(PolynomA), DTPSAD.(PolynomB), MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
-                DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2), RApertures, EApertures, DTPSAD.(KickAngle), "KSEXT")
-        end
     end
-    if k2 != 0.0 && PolynomB[3] == 0.0
-        PolynomB_T = [PolynomB[1], PolynomB[2], k2, PolynomB[4]]
-        return KSEXT(name, len, k2, 
-            PolynomA, PolynomB_T, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
-            T1, T2, R1, R2, RApertures, EApertures, KickAngle, "KSEXT")
-    end
-    return KSEXT(name, len, k2, 
-        PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
+
+    return KSEXT(name, len, k0, k1, k2, k3, 
+        PolynomA, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
         T1, T2, R1, R2, RApertures, EApertures, KickAngle, "KSEXT")
 end
 
 """
-    KSEXT_SC(;name::String = "Sext", len::Float64 = 0.0, k2::Float64 = 0.0, 
-        PolynomA::Array{Float64,1} = zeros(Float64, 4), PolynomB::Array{Float64,1} = zeros(Float64, 4), 
+    KSEXT_SC(;name::String = "Sext", len::Float64 = 0.0, k0::Float64 = 0.0, k1::Float64 = 0.0, k2::Float64 = 0.0, k3::Float64 = 0.0, 
+        PolynomA::Array{Float64,1} = zeros(Float64, 4), 
         MaxOrder::Int64=2, NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
         FringeQuadExit::Int64 = 0, T1::Array{Float64,1} = zeros(Float64, 6), 
         T2::Array{Float64,1} = zeros(Float64, 6), R1::Array{Float64,2} = zeros(Float64, 6, 6), 
@@ -396,9 +364,11 @@ sext = KSEXT_SC(name="S1_SC", len=0.5, k2=0.5, a=13e-3, b=13e-3, Nl=15, Nm=15)
 mutable struct KSEXT_SC{T} <: AbstractElement{T}
     name::String
     len::T
+    k0::T
+    k1::T
     k2::T
+    k3::T
     PolynomA::Array{T,1}
-    PolynomB::Array{T,1}
     MaxOrder::Int64
     NumIntSteps::Int64
     rad::Int64
@@ -419,53 +389,40 @@ mutable struct KSEXT_SC{T} <: AbstractElement{T}
     eletype::String
 
     # constructor with all parameters
-    KSEXT_SC(name::String, len::T, k2::T, PolynomA::Array{T,1}, 
-        PolynomB::Array{T,1}, MaxOrder::Int64, NumIntSteps::Int64, rad::Int64, 
+    KSEXT_SC(name::String, len::T, k0::T, k1::T, k2::T, k3::T, PolynomA::Array{T,1}, 
+        MaxOrder::Int64, NumIntSteps::Int64, rad::Int64, 
         FringeQuadEntrance::Int64, FringeQuadExit::Int64, T1::Array{T,1}, 
         T2::Array{T,1}, R1::Array{T,2}, R2::Array{T,2}, 
         RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{T,1}, 
         a::T, b::T, Nl::Int64, Nm::Int64, Nsteps::Int64, eletype::String) where T = 
-        new{T}(name, len, k2, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance,
+        new{T}(name, len, k0, k1, k2, k3, PolynomA, MaxOrder, NumIntSteps, rad, FringeQuadEntrance,
             FringeQuadExit, T1, T2, R1, R2, RApertures, EApertures, KickAngle,
             a, b, Nl, Nm, Nsteps, eletype)
 end
-function KSEXT_SC(;name::String = "Sext", len = 0.0, k2 = 0.0, 
-                PolynomA = zeros(4), 
-                PolynomB = zeros(4), MaxOrder::Int64=2, 
+function KSEXT_SC(;name::String = "Sext", len = 0.0, k0 = 0.0, k1 = 0.0, k2 = 0.0, k3 = 0.0, 
+                PolynomA = zeros(4), MaxOrder::Int64=2, 
                 NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
                 FringeQuadExit::Int64 = 0, T1 = zeros(6), 
                 T2 = zeros(6), R1 = zeros(6, 6), 
                 R2 = zeros(6, 6), RApertures = zeros(6),
                 EApertures = zeros(6), KickAngle = zeros(2),
                 a::Float64 = 1.0, b::Float64 = 1.0, Nl::Int64 = 10, Nm::Int64 = 10, Nsteps::Int64=1)
-    if len isa DTPSAD || PolynomA[1] isa DTPSAD || PolynomB[1] isa DTPSAD || k2 isa DTPSAD ||
+    if len isa DTPSAD || PolynomA[1] isa DTPSAD || k0 isa DTPSAD || k1 isa DTPSAD || k2 isa DTPSAD || k3 isa DTPSAD ||
         T1[1] isa DTPSAD || T2[1] isa DTPSAD || R1[1,1] isa DTPSAD || R2[1,1] isa DTPSAD || KickAngle[1] isa DTPSAD ||
         a isa DTPSAD || b isa DTPSAD
-        if k2 != 0.0 && PolynomB[3] == 0.0
-            PolynomB_T = [DTPSAD(PolynomB[1]), DTPSAD(PolynomB[2]), DTPSAD(k2), DTPSAD(PolynomB[4])]
-            return KSEXT_SC(name, DTPSAD(len), DTPSAD(k2), 
-                DTPSAD.(PolynomA), PolynomB_T, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
-                DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2), RApertures, EApertures, 
-                DTPSAD.(KickAngle), DTPSAD(a), DTPSAD(b), Nl, Nm, Nsteps, "KSEXT_SC")
-        end
-        return KSEXT_SC(name, DTPSAD(len), DTPSAD(k2), 
-            DTPSAD.(PolynomA), DTPSAD.(PolynomB), MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
+        return KSEXT_SC(name, DTPSAD(len), DTPSAD(k0), DTPSAD(k1), DTPSAD(k2), DTPSAD(k3),
+            DTPSAD.(PolynomA), MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
             DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2), RApertures, EApertures, 
             DTPSAD.(KickAngle), DTPSAD(a), DTPSAD(b), Nl, Nm, Nsteps, "KSEXT_SC")
     end
-    if k2 != 0.0 && PolynomB[3] == 0.0
-        PolynomB_T = [PolynomB[1], PolynomB[2], k2, PolynomB[4]]
-        return KSEXT_SC(name, len, k2, 
-            PolynomA, PolynomB_T, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
-            T1, T2, R1, R2, RApertures, EApertures, KickAngle, a, b, Nl, Nm, Nsteps, "KSEXT_SC")
-    end
-    return KSEXT_SC(name, len, k2, 
-        PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
+
+    return KSEXT_SC(name, len, k0, k1, k2, k3,
+        PolynomA, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
         T1, T2, R1, R2, RApertures, EApertures, KickAngle, a, b, Nl, Nm, Nsteps, "KSEXT_SC")
 end
 """
-    KOCT(;name::String = "OCT", len::Float64 = 0.0, k3::Float64 = 0.0, 
-        PolynomA::Array{Float64,1} = zeros(Float64, 4), PolynomB::Array{Float64,1} = zeros(Float64, 4), 
+    KOCT(;name::String = "OCT", len::Float64 = 0.0, k0::Float64 = 0.0, k1::Float64 = 0.0, k2::Float64 = 0.0, k3::Float64 = 0.0, 
+        PolynomA::Array{Float64,1} = zeros(Float64, 4),  
         MaxOrder::Int64=3, NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
         FringeQuadExit::Int64 = 0, T1::Array{Float64,1} = zeros(Float64, 6), 
         T2::Array{Float64,1} = zeros(Float64, 6), R1::Array{Float64,2} = zeros(Float64, 6, 6), 
@@ -481,9 +438,11 @@ oct = KOCT(name="O1", len=0.5, k3=0.5)
 mutable struct KOCT{T} <: AbstractElement{T}
     name::String
     len::T
+    k0::T
+    k1::T
+    k2::T
     k3::T
     PolynomA::Array{T,1}
-    PolynomB::Array{T,1}
     MaxOrder::Int64
     NumIntSteps::Int64
     rad::Int64
@@ -499,49 +458,38 @@ mutable struct KOCT{T} <: AbstractElement{T}
     eletype::String
 
     # constructor with all parameters
-    KOCT(name::String, len::T, k3::T, PolynomA::Array{T,1}, 
-        PolynomB::Array{T,1}, MaxOrder::Int64, NumIntSteps::Int64, rad::Int64, 
+    KOCT(name::String, len::T, k0::T, k1::T, k2::T, k3::T, PolynomA::Array{T,1}, 
+        MaxOrder::Int64, NumIntSteps::Int64, rad::Int64, 
         FringeQuadEntrance::Int64, FringeQuadExit::Int64, T1::Array{T,1}, 
         T2::Array{T,1}, R1::Array{T,2}, R2::Array{T,2}, 
         RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{T,1}, eletype::String) where T = 
-        new{T}(name, len, k3, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance,
+        new{T}(name, len, k0, k1, k2, k3, PolynomA, MaxOrder, NumIntSteps, rad, FringeQuadEntrance,
             FringeQuadExit, T1, T2, R1, R2, RApertures, EApertures, KickAngle, eletype)
 end
-function KOCT(;name::String = "OCT", len=0.0, k3=0.0, 
+function KOCT(;name::String = "OCT", len=0.0, k0=0.0, k1=0.0, k2=0.0, k3=0.0, 
                 PolynomA=zeros(4), 
-                PolynomB=zeros(4), MaxOrder::Int64=3, 
+                MaxOrder::Int64=3, 
                 NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
                 FringeQuadExit::Int64 = 0, T1 = zeros(6), 
                 T2 = zeros(6), R1 = zeros(6, 6), 
                 R2 = zeros(6, 6), RApertures = zeros(6), 
                 EApertures = zeros(6), KickAngle = zeros(2))
-    if len isa DTPSAD || PolynomA[1] isa DTPSAD || PolynomB[1] isa DTPSAD || k3 isa DTPSAD ||
+    if len isa DTPSAD || PolynomA[1] isa DTPSAD || k0 isa DTPSAD || k1 isa DTPSAD || k2 isa DTPSAD || k3 isa DTPSAD ||
         T1[1] isa DTPSAD || T2[1] isa DTPSAD || R1[1,1] isa DTPSAD || R2[1,1] isa DTPSAD || KickAngle[1] isa DTPSAD
-        if k3 != 0.0 && PolynomB[4] == 0
-            PolynomB_T = [DTPSAD(PolynomB[1]), DTPSAD(PolynomB[2]), DTPSAD(PolynomB[3]), DTPSAD(k3)]
-            return KOCT(name, DTPSAD(len), DTPSAD(k3), 
-                DTPSAD.(PolynomA), PolynomB_T, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
+
+        return KOCT(name, DTPSAD(len), DTPSAD(k0), DTPSAD(k1), DTPSAD(k2), DTPSAD(k3), 
+                DTPSAD.(PolynomA), MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
                 DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2), RApertures, EApertures, DTPSAD.(KickAngle), "KOCT")
-        else
-            return KOCT(name, DTPSAD(len), DTPSAD(k3), 
-                DTPSAD.(PolynomA), DTPSAD.(PolynomB), MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
-                DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2), RApertures, EApertures, DTPSAD.(KickAngle), "KOCT")
-        end
     end
-    if k3 != 0.0 && PolynomB[4] == 0
-        PolynomB_T = [PolynomB[1], PolynomB[2], PolynomB[3], k3]
-        return KOCT(name, len, k3, 
-            PolynomA, PolynomB_T, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
-            T1, T2, R1, R2, RApertures, EApertures, KickAngle, "KOCT")
-    end
-    return KOCT(name, len, k3, 
-        PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
+    
+    return KOCT(name, len, k0, k1, k2, k3, 
+        PolynomA, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
         T1, T2, R1, R2, RApertures, EApertures, KickAngle, "KOCT")
 end
 
 """
-    KOCT_SC(;name::String = "OCT", len::Float64 = 0.0, k3::Float64 = 0.0, 
-        PolynomA::Array{Float64,1} = zeros(Float64, 4), PolynomB::Array{Float64,1} = zeros(Float64, 4), 
+    KOCT_SC(;name::String = "OCT", len::Float64 = 0.0, k0::Float64 = 0.0, k1::Float64 = 0.0, k2::Float64 = 0.0, k3::Float64 = 0.0, 
+        PolynomA::Array{Float64,1} = zeros(Float64, 4),  
         MaxOrder::Int64=3, NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
         FringeQuadExit::Int64 = 0, T1::Array{Float64,1} = zeros(Float64, 6), 
         T2::Array{Float64,1} = zeros(Float64, 6), R1::Array{Float64,2} = zeros(Float64, 6, 6), 
@@ -558,9 +506,11 @@ oct = KOCT_SC(name="O1_SC", len=0.5, k3=0.5, a=13e-3, b=13e-3, Nl=15, Nm=15)
 mutable struct KOCT_SC{T} <: AbstractElement{T}
     name::String
     len::T
+    k0::T
+    k1::T
+    k2::T
     k3::T
     PolynomA::Array{T,1}
-    PolynomB::Array{T,1}
     MaxOrder::Int64
     NumIntSteps::Int64
     rad::Int64
@@ -581,47 +531,35 @@ mutable struct KOCT_SC{T} <: AbstractElement{T}
     eletype::String
 
     # constructor with all parameters
-    KOCT_SC(name::String, len::T, k3::T, PolynomA::Array{T,1}, 
-        PolynomB::Array{T,1}, MaxOrder::Int64, NumIntSteps::Int64, rad::Int64, 
+    KOCT_SC(name::String, len::T, k0::T, k1::T, k2::T, k3::T, PolynomA::Array{T,1}, 
+        MaxOrder::Int64, NumIntSteps::Int64, rad::Int64, 
         FringeQuadEntrance::Int64, FringeQuadExit::Int64, T1::Array{T,1}, 
         T2::Array{T,1}, R1::Array{T,2}, R2::Array{T,2}, 
         RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{T,1}, 
         a::T, b::T, Nl::Int64, Nm::Int64, Nsteps::Int64, eletype::String) where T = 
-        new{T}(name, len, k3, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance,
+        new{T}(name, len, k0, k1, k2, k3, PolynomA, MaxOrder, NumIntSteps, rad, FringeQuadEntrance,
             FringeQuadExit, T1, T2, R1, R2, RApertures, EApertures, KickAngle, a, b, Nl, Nm, Nsteps, eletype)
 end
-function KOCT_SC(;name::String = "OCT", len = 0.0, k3 = 0.0, 
+function KOCT_SC(;name::String = "OCT", len = 0.0, k0 = 0.0, k1 = 0.0, k2 = 0.0, k3 = 0.0, 
                 PolynomA = zeros(4), 
-                PolynomB = zeros(4), MaxOrder::Int64=3, 
+                MaxOrder::Int64=3, 
                 NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
                 FringeQuadExit::Int64 = 0, T1 = zeros(6), 
                 T2 = zeros(6), R1 = zeros(6, 6), 
                 R2 = zeros(6, 6), RApertures = zeros(6),
                 EApertures = zeros(6), KickAngle = zeros(2),
                 a::Float64 = 1.0, b::Float64 = 1.0, Nl::Int64 = 10, Nm::Int64 = 10, Nsteps::Int64=1)
-    if len isa DTPSAD || PolynomA[1] isa DTPSAD || PolynomB[1] isa DTPSAD || k3 isa DTPSAD ||
+    if len isa DTPSAD || PolynomA[1] isa DTPSAD || k0 isa DTPSAD || k1 isa DTPSAD || k2 isa DTPSAD || k3 isa DTPSAD ||
         T1[1] isa DTPSAD || T2[1] isa DTPSAD || R1[1,1] isa DTPSAD || R2[1,1] isa DTPSAD || KickAngle[1] isa DTPSAD ||
         a isa DTPSAD || b isa DTPSAD
-        if k3 != 0.0 && PolynomB[4] == 0
-            PolynomB_T = [DTPSAD(PolynomB[1]), DTPSAD(PolynomB[2]), DTPSAD(PolynomB[3]), DTPSAD(k3)]
-            return KOCT_SC(name, DTPSAD(len), DTPSAD(k3), 
-                DTPSAD.(PolynomA), PolynomB_T, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
-                DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2), RApertures, EApertures, 
-                DTPSAD.(KickAngle), DTPSAD(a), DTPSAD(b), Nl, Nm, Nsteps, "KOCT_SC")
-        end
-        return KOCT_SC(name, DTPSAD(len), DTPSAD(k3), 
-            DTPSAD.(PolynomA), DTPSAD.(PolynomB), MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
+        return KOCT_SC(name, DTPSAD(len), DTPSAD(k0), DTPSAD(k1), DTPSAD(k2), DTPSAD(k3), 
+            DTPSAD.(PolynomA), MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
             DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2), RApertures, EApertures, 
             DTPSAD.(KickAngle), DTPSAD(a), DTPSAD(b), Nl, Nm, Nsteps, "KOCT_SC")
     end
-    if k3 != 0.0 && PolynomB[4] == 0.0
-        PolynomB_T = [PolynomB[1], PolynomB[2], PolynomB[3], k3]
-        return KOCT_SC(name, len, k3, 
-            PolynomA, PolynomB_T, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
-            T1, T2, R1, R2, RApertures, EApertures, KickAngle, a, b, Nl, Nm, Nsteps, "KOCT_SC")
-    end
-    return KOCT_SC(name, len, k3, 
-        PolynomA, PolynomB, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
+
+    return KOCT_SC(name, len, k0, k1, k2, k3, 
+        PolynomA, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
         T1, T2, R1, R2, RApertures, EApertures, KickAngle, a, b, Nl, Nm, Nsteps, "KOCT_SC")
 end
 

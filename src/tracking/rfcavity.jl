@@ -185,7 +185,7 @@ function pass_TPSA!(ele::RFCA, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}; E
     if E0 == 0.0
         println("Warning: beam energy is not defined")
     end
-    println("Beam energy is assumed ", E0, " eV in the RF cavity", ", mass is ", m0, " eV")
+    # println("Beam energy is assumed ", E0, " eV in the RF cavity", ", mass is ", m0, " eV")
     T0=1.0/ele.freq      # Does not matter since nturns == 0
     nv = ele.volt / ele.energy
     gamma = (E0 + m0) / m0

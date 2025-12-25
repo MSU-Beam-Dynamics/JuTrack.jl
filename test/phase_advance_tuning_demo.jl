@@ -9,7 +9,9 @@ set_tps_dim(7)  # 7 variables for the TPSA
 E0 = 17.846262619763e9
 
 # Load the ESR main lattice 
-ESR_crab = deserialize("src/demo/ESR/esr_main.jls")
+# ESR_crab = deserialize("src/demo/ESR/esr_main.jls")
+include("../src/demo/ESR/esr-main.jl")
+ESR_crab = RING
 ESR_crab = Number2TPSAD(ESR_crab) # Convert to TPSA format
 
 function Q_perturb(ESR_crab)

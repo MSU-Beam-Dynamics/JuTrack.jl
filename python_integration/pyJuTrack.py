@@ -1436,90 +1436,399 @@ def dynamic_aperture(lattice, **kwargs):
     
     return _jl.dynamic_aperture(jl_lattice, **kwargs)
 
-def FMA(lattice, num_turns: int, **kwargs):
-    """Frequency Map Analysis"""
-    if isinstance(lattice, Lattice):
-        jl_lattice = lattice.julia_object
+# def FMA(lattice, num_turns: int, **kwargs):
+#     """Frequency Map Analysis"""
+#     if isinstance(lattice, Lattice):
+#         jl_lattice = lattice.julia_object
+#     else:
+#         jl_lattice = lattice
+
+#     return _jl.FMA(jl_lattice, num_turns, **kwargs)
+
+# def plot_fma(rows, **kwargs):
+#     """
+#     Plot Frequency Map Analysis results.
+    
+#     Creates a two-panel plot:
+#     - Left panel: Initial particle positions (x, y) colored by diffusion
+#     - Right panel: Tune diagram (nux, nuy) with resonance lines
+    
+#     Args:
+#         rows: FMA results from FMA() function (list of NamedTuples)
+#         **kwargs: Optional plotting parameters
+#             - figsize: Tuple (width, height) in inches, default (10, 4)
+#             - s: Marker size, default 10
+#             - x_min, x_max: X-axis limits for initial conditions plot
+#             - y_min, y_max: Y-axis limits for initial conditions plot
+#             - resonance_lines: Bool, whether to plot resonance lines, default True
+#             - resonance_orders: List of resonance orders to plot, default [1,2,3,4]
+#             - filepath: String, output file path, default "fma_plot.png"
+    
+#     Example:
+#         >>> rows = jt.FMA(ring, 256)
+#         >>> jt.plot_fma(rows, figsize=(12, 5), resonance_orders=[1, 2, 3])
+    
+#     Note:
+#         Requires PyCall and matplotlib installed in Julia environment.
+#         If PyCall is not available, this function will raise an error.
+#     """
+#     try:
+#         return _jl.plot_fma(rows, **kwargs)
+#     except Exception as e:
+#         if 'PyCall' in str(e) or 'matplotlib' in str(e):
+#             raise RuntimeError(
+#                 "plot_fma requires PyCall and matplotlib in Julia environment. "
+#                 "These dependencies are optional and not available on this system. "
+#                 "Consider exporting FMA data and plotting with Python's matplotlib directly."
+#             ) from e
+#         else:
+#             raise
+
+def elem_to_dict(elem):
+    """
+    Convert a JuTrack element to a Python dictionary.
+    """
+    result = {
+        "type": str(elem.eletype),
+        "length": float(elem.len)
+    }
+
+    # Check for angle (bending magnets)
+    if hasattr(elem, 'angle'):
+        result["angle"] = float(elem.angle)
+        e1 = float(elem.e1) if hasattr(elem, 'e1') else 0.0
+        e2 = float(elem.e2) if hasattr(elem, 'e2') else 0.0
+
+        # Determine if it's an RBEND
+        if abs(e1 - result["angle"] / 2.0) < 1e-10 and abs(e2 - result["angle"] / 2.0) < 1e-10:
+            result["type"] = "RBEND"
+
+        result["e1"] = e1
+        result["e2"] = e2
+
+    # Check for k1 (quadrupole strength)
+    if hasattr(elem, 'k1'):
+        result["k1"] = float(elem.k1)
+
+    return result
+
+
+def plot_lattice(
+    lattice,
+    width=0.25,
+    axis=True,
+    savepath=None,
+    figsize=(8, 8),
+    layout="curved",      # "curved" (default) or "straight"
+    show=True,            # if False, do not call plt.show()
+):
+    """
+    Plot a particle accelerator lattice using matplotlib.
+
+    Parameters
+    ----------
+    lattice : list
+        List of lattice elements (JuTrack objects or dicts)
+    width : float
+        Width of the plotted elements
+    axis : bool
+        Show axis labels and ticks
+    savepath : str or None
+        Path to save the figure
+    figsize : tuple
+        Figure size in inches
+    layout : {"curved","straight"}
+        - "curved": bending magnets bend the plot (original behavior)
+        - "straight": treat bending magnets as straight elements (no bend in layout)
+    show : bool
+        If True, call plt.show().
+
+    Returns
+    -------
+    fig, ax, handles
+        fig/ax are matplotlib handles; handles is a registry of artists and geometry
+    """
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Rectangle, Wedge, Arc
+    from matplotlib.lines import Line2D
+    from matplotlib.transforms import Affine2D
+    layout = str(layout).lower().strip()
+    if layout not in ("curved", "straight"):
+        raise ValueError(f"layout must be 'curved' or 'straight', got: {layout!r}")
+
+    # Convert lattice elements to dictionaries if needed
+    lattice_dicts = [elem if isinstance(elem, dict) else elem_to_dict(elem) for elem in lattice]
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    # Registry of artists + per-element metadata (useful for later modification)
+    handles = {
+        "patches": [],
+        "lines": [],
+        "elements": [],  # list of dicts: {i, type, L, start, end, theta0, theta1, patch(es), line(s)}
+    }
+
+    pos = np.array([0.0, 0.0], dtype=float)  # beam start position
+    theta = 0.0  # heading angle (radians)
+
+    def _add_line(xy0, xy1, **kwargs):
+        (ln,) = ax.plot([xy0[0], xy1[0]], [xy0[1], xy1[1]], **kwargs)
+        handles["lines"].append(ln)
+        return ln
+
+    def _add_beam_line(trans, L):
+        beam = Line2D([0, L], [0, 0], transform=trans, color="black", linewidth=1)
+        ax.add_line(beam)
+        handles["lines"].append(beam)
+        return beam
+
+    def _advance_straight(L):
+        nonlocal pos
+        pos = pos + L * np.array([np.cos(theta), np.sin(theta)])
+
+    for i, elem in enumerate(lattice_dicts):
+        L = float(elem.get("length", 0.0) or 0.0)
+        et = str(elem.get("type", "")).upper()
+
+        start_pos = pos.copy()
+        theta0 = float(theta)
+
+        # Transformation for “straight” drawing at current heading/location
+        trans = Affine2D().rotate(theta).translate(*pos) + ax.transData
+
+        # --- Quads ---
+        if et in ("KQUAD", "QUAD"):
+            color = "lightblue"
+            k1 = float(elem.get("k1", 0.0) or 0.0)
+            if k1 >= 0:
+                patch = Rectangle((0, 0), L, width, edgecolor="black", facecolor=color, transform=trans)
+            else:
+                patch = Rectangle((0, -width), L, width, edgecolor="black", facecolor=color, transform=trans)
+            ax.add_patch(patch)
+            handles["patches"].append(patch)
+
+            beam = _add_beam_line(trans, L)
+            _advance_straight(L)
+
+            handles["elements"].append({
+                "i": i, "type": et, "L": L,
+                "start": start_pos, "end": pos.copy(),
+                "theta0": theta0, "theta1": float(theta),
+                "patches": [patch], "lines": [beam],
+            })
+            continue
+
+        # --- Sext ---
+        if et in ("KSEXT", "SEXT"):
+            patch = Rectangle((0, -width * 0.7 / 2), L, width * 0.7,
+                              edgecolor="black", facecolor="blue", transform=trans)
+            ax.add_patch(patch)
+            handles["patches"].append(patch)
+
+            beam = _add_beam_line(trans, L)
+            _advance_straight(L)
+
+            handles["elements"].append({
+                "i": i, "type": et, "L": L,
+                "start": start_pos, "end": pos.copy(),
+                "theta0": theta0, "theta1": float(theta),
+                "patches": [patch], "lines": [beam],
+            })
+            continue
+
+        # --- Oct ---
+        if et in ("KOCT", "OCT"):
+            patch = Rectangle((0, -width * 0.4 / 2), L, width * 0.4,
+                              edgecolor="black", facecolor="green", transform=trans)
+            ax.add_patch(patch)
+            handles["patches"].append(patch)
+
+            beam = _add_beam_line(trans, L)
+            _advance_straight(L)
+
+            handles["elements"].append({
+                "i": i, "type": et, "L": L,
+                "start": start_pos, "end": pos.copy(),
+                "theta0": theta0, "theta1": float(theta),
+                "patches": [patch], "lines": [beam],
+            })
+            continue
+
+        # --- RF ---
+        if et in ("RFCA", "RFCAVITY", "CRABCAVITY"):
+            patch = Rectangle((0, -width / 4), L, width / 2,
+                              edgecolor="black", facecolor="red", hatch="//", transform=trans)
+            ax.add_patch(patch)
+            handles["patches"].append(patch)
+
+            beam = _add_beam_line(trans, L)
+            _advance_straight(L)
+
+            handles["elements"].append({
+                "i": i, "type": et, "L": L,
+                "start": start_pos, "end": pos.copy(),
+                "theta0": theta0, "theta1": float(theta),
+                "patches": [patch], "lines": [beam],
+            })
+            continue
+
+        # --- Special ---
+        if et == "SPECIAL":
+            patch = Rectangle((0, -width / 2), L, width * 5,
+                              edgecolor="black", facecolor="purple", transform=trans)
+            ax.add_patch(patch)
+            handles["patches"].append(patch)
+
+            _advance_straight(L)
+
+            handles["elements"].append({
+                "i": i, "type": et, "L": L,
+                "start": start_pos, "end": pos.copy(),
+                "theta0": theta0, "theta1": float(theta),
+                "patches": [patch], "lines": [],
+            })
+            continue
+
+        # --- Bends: curved vs straight ---
+        if et in ("RBEND", "SBEND", "ESBEND", "LBEND"):
+            phi = float(elem.get("angle", 0.0) or 0.0)
+            e1 = float(elem.get("e1", 0.0) or 0.0)
+            e2 = float(elem.get("e2", 0.0) or 0.0)
+
+            if layout == "straight" or phi == 0.0:
+                # Treat as straight: draw as an orange rectangle along the beam axis, no arc, no theta change
+                patch = Rectangle((0, -width / 2), L, width,
+                                  edgecolor="black", facecolor="orange", transform=trans)
+                ax.add_patch(patch)
+                handles["patches"].append(patch)
+
+                beam = _add_beam_line(trans, L)
+                _advance_straight(L)
+
+                handles["elements"].append({
+                    "i": i, "type": et, "L": L,
+                    "angle": phi, "e1": e1, "e2": e2,
+                    "start": start_pos, "end": pos.copy(),
+                    "theta0": theta0, "theta1": float(theta),
+                    "patches": [patch], "lines": [beam],
+                    "layout": "straight",
+                })
+                continue
+
+            # --- curved layout (original behaviors) ---
+            created_patches = []
+            created_lines = []
+
+            if et == "RBEND":
+                # Rectangular bend body (oriented at mid-face)
+                theta_face = theta + phi / 2.0
+                body_trans = Affine2D().rotate(theta_face).translate(*pos) + ax.transData
+                body = Rectangle((0, -width / 2), L, width,
+                                 edgecolor="black", facecolor="orange", transform=body_trans)
+                ax.add_patch(body)
+                handles["patches"].append(body)
+                created_patches.append(body)
+
+                # Reference arc (beam trajectory)
+                R = L / (2.0 * np.sin(phi / 2.0))
+                center = pos + R * np.array([-np.sin(theta), np.cos(theta)])
+
+                start_deg = np.degrees(theta) - 90.0
+                end_deg = start_deg + np.degrees(phi)
+                if start_deg > end_deg:
+                    start_deg, end_deg = end_deg, start_deg
+
+                beam_arc = Arc(center, 2 * R, 2 * R,
+                               theta1=start_deg, theta2=end_deg,
+                               edgecolor="black", linewidth=1)
+                ax.add_patch(beam_arc)
+                handles["patches"].append(beam_arc)
+                created_patches.append(beam_arc)
+
+                # Update pose
+                theta += phi
+                pos = center + R * np.array([np.sin(theta), -np.cos(theta)])
+
+            else:
+                # Sector bend wedge + arc
+                R = L / phi
+                center = pos + R * np.array([-np.sin(theta), np.cos(theta)])
+
+                start_deg = np.degrees(theta) - 90.0 + np.degrees(e1)
+                end_deg = np.degrees(theta) - 90.0 + np.degrees(phi - e2)
+                if start_deg > end_deg:
+                    start_deg, end_deg = end_deg, start_deg
+
+                wedge = Wedge(center, R + width / 2, start_deg, end_deg,
+                              width=width, edgecolor="black", facecolor="orange")
+                ax.add_patch(wedge)
+                handles["patches"].append(wedge)
+                created_patches.append(wedge)
+
+                arc = Arc(center, 2 * R, 2 * R,
+                          theta1=start_deg, theta2=end_deg,
+                          edgecolor="black", linewidth=1)
+                ax.add_patch(arc)
+                handles["patches"].append(arc)
+                created_patches.append(arc)
+
+                theta += phi
+                pos = center + R * np.array([np.sin(theta), -np.cos(theta)])
+
+            handles["elements"].append({
+                "i": i, "type": et, "L": L,
+                "angle": phi, "e1": e1, "e2": e2,
+                "start": start_pos, "end": pos.copy(),
+                "theta0": theta0, "theta1": float(theta),
+                "patches": created_patches, "lines": created_lines,
+                "layout": "curved",
+            })
+            continue
+
+        # --- Drifts / markers / unknown: draw straight line in current heading ---
+        end = pos + L * np.array([np.cos(theta), np.sin(theta)])
+        ln = _add_line(pos, end, color="black", linewidth=1)
+        pos = end
+
+        if et not in ("DRIFT", "MARKER", "MONITOR", "WATCHER", ""):
+            print(f"Warning: Unrecognized element type '{et}'. Plotted as drift.")
+
+        handles["elements"].append({
+            "i": i, "type": et, "L": L,
+            "start": start_pos, "end": pos.copy(),
+            "theta0": theta0, "theta1": float(theta),
+            "patches": [], "lines": [ln],
+        })
+
+    # Plot appearance
+    ax.set_aspect("equal")
+
+    if axis:
+        ax.set_xlabel("[m]")
+        ax.set_ylabel("[m]")
+
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+    if not axis:
+        ax.spines["left"].set_visible(False)
+        ax.spines["bottom"].set_visible(False)
+        ax.xaxis.set_ticks([])
+        ax.yaxis.set_ticks([])
     else:
-        jl_lattice = lattice
+        ax.xaxis.set_ticks_position("bottom")
+        ax.yaxis.set_ticks_position("left")
 
-    return _jl.FMA(jl_lattice, num_turns, **kwargs)
+    plt.tight_layout()
 
-def plot_fma(rows, **kwargs):
-    """
-    Plot Frequency Map Analysis results.
-    
-    Creates a two-panel plot:
-    - Left panel: Initial particle positions (x, y) colored by diffusion
-    - Right panel: Tune diagram (nux, nuy) with resonance lines
-    
-    Args:
-        rows: FMA results from FMA() function (list of NamedTuples)
-        **kwargs: Optional plotting parameters
-            - figsize: Tuple (width, height) in inches, default (10, 4)
-            - s: Marker size, default 10
-            - x_min, x_max: X-axis limits for initial conditions plot
-            - y_min, y_max: Y-axis limits for initial conditions plot
-            - resonance_lines: Bool, whether to plot resonance lines, default True
-            - resonance_orders: List of resonance orders to plot, default [1,2,3,4]
-            - filepath: String, output file path, default "fma_plot.png"
-    
-    Example:
-        >>> rows = jt.FMA(ring, 256)
-        >>> jt.plot_fma(rows, figsize=(12, 5), resonance_orders=[1, 2, 3])
-    
-    Note:
-        Requires PyCall and matplotlib installed in Julia environment.
-        If PyCall is not available, this function will raise an error.
-    """
-    try:
-        return _jl.plot_fma(rows, **kwargs)
-    except Exception as e:
-        if 'PyCall' in str(e) or 'matplotlib' in str(e):
-            raise RuntimeError(
-                "plot_fma requires PyCall and matplotlib in Julia environment. "
-                "These dependencies are optional and not available on this system. "
-                "Consider exporting FMA data and plotting with Python's matplotlib directly."
-            ) from e
-        else:
-            raise
+    if savepath:
+        plt.savefig(savepath, dpi=300, bbox_inches="tight")
 
-def plot_lattice(lattice, scale=0.25, axis=True, savepath=None):
-    """
-    Plot lattice layout showing element positions and types.
-    
-    Visualizes the beamline layout with different colors for different element types.
-    
-    Args:
-        lattice: Lattice object or list of elements
-        scale: Float, vertical scale factor for element heights, default 0.25
-        axis: Bool, whether to show axis, default True
-    
-    Example:
-        >>> line = jt.Lattice([drift1, quad1, drift2, bend1])
-        >>> jt.plot_lattice(line, scale=0.3, axis=True)
-    
-    Note:
-        Requires PyCall and matplotlib installed in Julia environment.
-        If PyCall is not available, this function will raise an error.
-    """
-    if isinstance(lattice, Lattice):
-        jl_lattice = lattice.julia_object
-    else:
-        jl_lattice = lattice
-    
-    try:
-        return _jl.plot_lattice(jl_lattice, scale, axis, savepath)
-    except Exception as e:
-        if 'PyCall' in str(e) or 'matplotlib' in str(e):
-            raise RuntimeError(
-                "plot_lattice requires PyCall and matplotlib in Julia environment. "
-                "These dependencies are optional and not available on this system. "
-                "Consider using other lattice visualization tools."
-            ) from e
-        else:
-            raise
+    if show:
+        plt.show()
 
+    return fig, ax, handles
 
 def computeRDT(lattice, indices=None, **kwargs):
     """

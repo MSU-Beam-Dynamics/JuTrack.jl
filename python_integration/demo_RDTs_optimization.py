@@ -40,12 +40,10 @@ def objective(x):
     for i in sdm_idx:
         elem = ring_tpsa[i-1]
         elem.k2 = x1
-        elem.PolynomB[2] = x1
     
     for i in sfm_idx:
         elem = ring_tpsa[i-1]
         elem.k2 = x2
-        elem.PolynomB[2] = x2
     
     dlist, tune = jt.computeRDT(ring_tpsa, idx_marker, E0=3e9, m0=jt.m_e)
     

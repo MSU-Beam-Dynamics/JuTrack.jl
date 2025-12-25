@@ -1072,45 +1072,26 @@ function pass!(ele::KQUAD{DTPSAD{N, T}}, r_in::Vector{DTPSAD{N, T}}, num_particl
     E0 = particles.energy
     rad_const = DTPSAD(0.0)
 
-    if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
-        PolynomB[2] = ele.k1
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass!(r_in, ele.len, 1.0, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
-        else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = DTPSAD(0.0)
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, 1.0, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
-        end
+    PolynomB[1] = ele.k0
+    PolynomB[2] = ele.k1
+    PolynomB[3] = ele.k2 / 2.0
+    PolynomB[4] = ele.k3 / 6.0
+    if ele.rad == 0
+        StrMPoleSymplectic4Pass!(r_in, ele.len, 1.0, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, 
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
     else
-        PolynomB[1] = ele.PolynomB[1]
-        PolynomB[2] = ele.PolynomB[2] 
-        PolynomB[3] = ele.PolynomB[3] / 2.0
-        PolynomB[4] = ele.PolynomB[4] / 6.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass!(r_in, ele.len, 1.0, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+        if particles.mass == m_e
+            rad_const = RAD_CONST_E * particles.gamma^3
+        elseif particles.mass == m_p
+            rad_const = RAD_CONST_P * particles.gamma^3
         else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = DTPSAD(0.0)
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, 1.0, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, 
-                ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
+            rad_const = DTPSAD(0.0)
+            println("SR is not implemented for this particle mass.")
         end
+        StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, 1.0, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, 
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
     end
     return nothing
 end
@@ -1121,43 +1102,24 @@ function pass!(ele::KSEXT{DTPSAD{N, T}}, r_in::Vector{DTPSAD{N, T}}, num_particl
     PolynomB = zeros(DTPSAD{N, T}, 4)
     E0 = particles.energy
 
-    if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
-        PolynomB[3] = ele.k2 / 2.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass!(r_in, ele.len, 1.0,ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
-        else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = DTPSAD(0.0)
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, 1.0, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
-        end
+    PolynomB[1] = ele.k0
+    PolynomB[2] = ele.k1 
+    PolynomB[3] = ele.k2 / 2.0
+    PolynomB[4] = ele.k3 / 6.0
+    if ele.rad == 0
+        StrMPoleSymplectic4Pass!(r_in, ele.len, 1.0, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
     else
-        PolynomB[1] = ele.PolynomB[1]
-        PolynomB[2] = ele.PolynomB[2] 
-        PolynomB[3] = ele.PolynomB[3] / 2.0
-        PolynomB[4] = ele.PolynomB[4] / 6.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass!(r_in, ele.len, 1.0, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+        if particles.mass == m_e
+            rad_const = RAD_CONST_E * particles.gamma^3
+        elseif particles.mass == m_p
+            rad_const = RAD_CONST_P * particles.gamma^3
         else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = DTPSAD(0.0)
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, 1.0, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
+            rad_const = DTPSAD(0.0)
+            println("SR is not implemented for this particle mass.")
         end
+        StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, 1.0, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
     end
     return nothing
 end
@@ -1169,43 +1131,24 @@ function pass!(ele::KOCT{DTPSAD{N, T}}, r_in::Vector{DTPSAD{N, T}}, num_particle
     PolynomB = zeros(DTPSAD{N, T}, 4)
     E0 = particles.energy
 
-    if ele.PolynomB[1] == 0.0 && ele.PolynomB[2] == 0.0 && ele.PolynomB[3] == 0.0 && ele.PolynomB[4] == 0.0
-        PolynomB[4] = ele.k3 / 6.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass!(r_in, ele.len, 1.0, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
-        else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = DTPSAD(0.0)
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass!(r_in, ele.len, 1.0, particles.mass, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
-        end
+    PolynomB[1] = ele.k0
+    PolynomB[2] = ele.k1 
+    PolynomB[3] = ele.k2 / 2.0
+    PolynomB[4] = ele.k3 / 6.0
+    if ele.rad == 0
+        StrMPoleSymplectic4Pass!(r_in, ele.len, 1.0, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
     else
-        PolynomB[1] = ele.PolynomB[1]
-        PolynomB[2] = ele.PolynomB[2] 
-        PolynomB[3] = ele.PolynomB[3] / 2.0
-        PolynomB[4] = ele.PolynomB[4] / 6.0
-        if ele.rad == 0
-            StrMPoleSymplectic4Pass!(r_in, ele.len, 1.0, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+        if particles.mass == m_e
+            rad_const = RAD_CONST_E * particles.gamma^3
+        elseif particles.mass == m_p
+            rad_const = RAD_CONST_P * particles.gamma^3
         else
-            if particles.mass == m_e
-                rad_const = RAD_CONST_E * particles.gamma^3
-            elseif particles.mass == m_p
-                rad_const = RAD_CONST_P * particles.gamma^3
-            else
-                rad_const = DTPSAD(0.0)
-                println("SR is not implemented for this particle mass.")
-            end
-            StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, 1.0, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-                ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
+            rad_const = DTPSAD(0.0)
+            println("SR is not implemented for this particle mass.")
         end
+        StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, 1.0, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
+            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
     end
     return nothing
 end
