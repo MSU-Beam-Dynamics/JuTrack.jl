@@ -5,7 +5,7 @@
 using LinearAlgebra
 using FFTW
 using StaticArrays
-# using PyCall
+using PyCall
 using Distributed
 using Base.Threads
 using SharedArrays
@@ -614,7 +614,14 @@ function itearation_freq(dtheta, theta0, freq, nmap, z_to_w, w_to_z; jacobian=no
     @. w_zc = conj(w_z)
 
     if isnothing(jacobian)
-        xcur, pxcur, ycur, pycur, zcur, pzcur = w_to_z([w_x, w_xc, w_y, w_yc, w_z, w_zc])
+        # Use broadcast to apply w_to_z element-wise across the 3D grid
+        Zs = broadcast((a,b,c,d,e,f) -> w_to_z([a,b,c,d,e,f]), w_x, w_xc, w_y, w_yc, w_z, w_zc)
+        xcur = getindex.(Zs, 1)
+        pxcur = getindex.(Zs, 2)
+        ycur = getindex.(Zs, 3)
+        pycur = getindex.(Zs, 4)
+        zcur = getindex.(Zs, 5)
+        pzcur = getindex.(Zs, 6)
     else
         flat_wvals = [vec(permutedims(arr, (3, 2, 1))) for arr in (w_x, w_xc, w_y, w_yc, w_z, w_zc)]
         zapprox = numerical_inverse_6D_fast(z_to_w, w_to_z, jacobian, flat_wvals)
