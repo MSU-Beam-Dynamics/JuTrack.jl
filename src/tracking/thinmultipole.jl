@@ -22,7 +22,7 @@ function strthinkick1!(r::AbstractVector{Float64}, A, B, L, max_order)
     r[4] += L * ImSum
     return nothing
 end
-function ThinMPolePass!(r::Array{Float64,1}, le::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function ThinMPolePass!(r::Matrix{Float64}, le::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     # bax::Float64, bay::Float64,
     max_order::Int, 
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
@@ -42,7 +42,7 @@ function ThinMPolePass!(r::Array{Float64,1}, le::Float64, A::Array{Float64,1}, B
         if lost_flags[c] == 1
             continue
         end
-        r6 = @view r[(c-1)*6+1:c*6]
+        r6 = @view r[c, :]
         if !isnan(r6[1])
             # Misalignment at entrance
             if !iszero(T1)
@@ -75,7 +75,7 @@ function ThinMPolePass!(r::Array{Float64,1}, le::Float64, A::Array{Float64,1}, B
     return nothing
 end
 
-function pass!(ele::thinMULTIPOLE, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass!(ele::thinMULTIPOLE, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: KQUAD
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -84,7 +84,7 @@ function pass!(ele::thinMULTIPOLE, r_in::Array{Float64,1}, num_particles::Int64,
     return nothing
 end
 
-function ThinMPolePass_P!(r::Array{Float64,1}, le::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function ThinMPolePass_P!(r::Matrix{Float64}, le::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     # bax::Float64, bay::Float64,
     max_order::Int, 
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
@@ -102,7 +102,7 @@ function ThinMPolePass_P!(r::Array{Float64,1}, le::Float64, A::Array{Float64,1},
         if lost_flags[c] == 1
             continue
         end
-        r6 = @view r[(c-1)*6+1:c*6]
+        r6 = @view r[c, :]
         if !isnan(r6[1])
             # Misalignment at entrance
             if !iszero(T1)
@@ -136,7 +136,7 @@ function ThinMPolePass_P!(r::Array{Float64,1}, le::Float64, A::Array{Float64,1},
     return nothing
 end
 
-function pass_P!(ele::thinMULTIPOLE, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass_P!(ele::thinMULTIPOLE, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: KQUAD
     # r_in: 6-by-num_particles array
     # num_particles: number of particles

@@ -85,7 +85,7 @@ function bend6!(r::AbstractVector{Float64}, L::Float64, b_angle::Float64, grd::F
     r[5]+= M34*M43*x*xpr/2.0
 end
 
-function BendLinearPass!(r::Array{Float64,1}, le::Float64, grd::Float64, ba::Float64, bye::Float64,
+function BendLinearPass!(r::Matrix{Float64}, le::Float64, grd::Float64, ba::Float64, bye::Float64,
     entrance_angle::Float64, exit_angle::Float64,
     fint1::Float64, fint2::Float64, gap::Float64, T1::Array{Float64,1}, T2::Array{Float64,1}, 
     R1::Array{Float64,2}, R2::Array{Float64,2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, 
@@ -98,7 +98,7 @@ function BendLinearPass!(r::Array{Float64,1}, le::Float64, grd::Float64, ba::Flo
         if isone(lost_flags[c])
             continue
         end
-        r6 = @view r[(c-1)*6+1:c*6]
+        r6 = @view r[c, :]
         # Misalignment at entrance
         if !iszero(T1)
             addvv!(r6, T1)
@@ -128,7 +128,7 @@ function BendLinearPass!(r::Array{Float64,1}, le::Float64, grd::Float64, ba::Flo
     return nothing
 end
 
-function BendLinearPass_P!(r::Array{Float64,1}, le::Float64, grd::Float64, ba::Float64, bye::Float64,
+function BendLinearPass_P!(r::Matrix{Float64}, le::Float64, grd::Float64, ba::Float64, bye::Float64,
     entrance_angle::Float64, exit_angle::Float64,
     fint1::Float64, fint2::Float64, gap::Float64, T1::Array{Float64,1}, T2::Array{Float64,1}, 
     R1::Array{Float64,2}, R2::Array{Float64,2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, 
@@ -141,7 +141,7 @@ function BendLinearPass_P!(r::Array{Float64,1}, le::Float64, grd::Float64, ba::F
         if isone(lost_flags[c])
             continue
         end
-        r6 = @view r[(c-1)*6+1:c*6]
+        r6 = @view r[c, :]
         # Misalignment at entrance
         if !iszero(T1)
             addvv!(r6, T1)
@@ -171,7 +171,7 @@ end
 
 
 
-function pass!(ele::LBEND, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass!(ele::LBEND, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: LBEND
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -185,7 +185,7 @@ function pass!(ele::LBEND, r_in::Array{Float64,1}, num_particles::Int64, particl
     return nothing
 end
 
-function pass_P!(ele::LBEND, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass_P!(ele::LBEND, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: LBEND
     # r_in: 6-by-num_particles array
     # num_particles: number of particles

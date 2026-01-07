@@ -31,7 +31,7 @@ function LongiWakefieldPass!(r, num_macro, rlcwake, inzindex, eN_b2E, nbins, zhi
 
     zsep = zhist_edges[2]-zhist_edges[1]
     @inbounds for i in 1:num_macro
-        r6 = @view r[(i-1)*6+1:i*6]
+        r6 = @view r[i, :]
         zloc=r6[5]
         zindex=inzindex[i]
         wake1=wakeatedge[zindex]
@@ -67,7 +67,7 @@ function LongiWakefieldPass_P!(r, num_macro, rlcwake, inzindex, eN_b2E, nbins, z
 
     zsep = zhist_edges[2]-zhist_edges[1]
     @inbounds Threads.@threads for i in 1:num_macro
-        r6 = @view r[(i-1)*6+1:i*6]
+        r6 = @view r[i, :]
         zloc=r6[5]
         zindex=inzindex[i]
         wake1=wakeatedge[zindex]
@@ -99,7 +99,7 @@ function pass!(lm::LongitudinalRFMap, r, np, beam)
         if beam.lost_flag[c] == 1
             continue
         end
-        r6 = @view r[(c-1)*6+1:c*6]
+        r6 = @view r[c, :]
         if !isnan(r6[1])
             r6[5] -= (2π * lm.RF.h * eta / lm.RF.k) * r6[6]
         end
@@ -113,7 +113,7 @@ function pass_P!(lm::LongitudinalRFMap, r, np, beam)
         if beam.lost_flag[c] == 1
             continue
         end
-        r6 = @view r[(c-1)*6+1:c*6]
+        r6 = @view r[c, :]
         if !isnan(r6[1])
             r6[5] -= (2π * lm.RF.h * eta / lm.RF.k) * r6[6]
         end

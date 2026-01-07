@@ -12,15 +12,9 @@ function plinepass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Fl
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     np = particles.nmacro
-    particles6 = matrix_to_array(particles.r)
-    if length(particles6) != np*6
-        error("The number of particles does not match the length of the particle array")
-    end
     for i in eachindex(line)
-        pass_P!(line[i], particles6, np, particles)        
+        pass_P!(line[i], particles.r, np, particles)        
     end
-    rout = array_to_matrix(particles6, np)
-    particles.r = rout
     return nothing
 end
 
@@ -29,21 +23,15 @@ function ADplinepass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     np = particles.nmacro
-    particles6 = matrix_to_array(particles.r)
-    # if length(particles6) != np*6
-    #     error("The number of particles does not match the length of the particle array")
-    # end
     count = 1
     for i in eachindex(line)
         if i in changed_idx
-            pass_P!(changed_ele[count], particles6, np, particles)
+            pass_P!(changed_ele[count], particles.r, np, particles)
             count += 1
         else
-            pass_P!(line[i], particles6, np, particles)        
+            pass_P!(line[i], particles.r, np, particles)        
         end
     end
-    rout = array_to_matrix(particles6, np)
-    particles.r = rout
     return nothing
 end
 function ADpringpass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Float64}, nturn::Int, 

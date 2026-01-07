@@ -163,7 +163,7 @@ function track_sbb!(rin, num_macro, temp1, temp2, temp3, temp4, temp5, sgb::Stro
     @inbounds for i in 1:sgb.nzslice
         slicelumi=0.0
         @inbounds for j in 1:num_macro
-            r6 = @view rin[(j-1)*6+1:j*6]
+            r6 = @view rin[j, :]
             # temp1: collision zlocation, temp2: beamsize x, temp3: beamsize y, temp4: beta x, temp5: beta y
             temp1[j] = (r6[5] .+ sgb.zslice_center[i])./2.0
             temp4[j] = sgb.optics.optics_x.beta .+ sgb.optics.optics_x.gamma .* temp1[j] .* temp1[j] .- 2.0 .* sgb.optics.optics_x.alpha .* temp1[j]
@@ -200,7 +200,7 @@ function track_sbb_P!(rin, num_macro, temp1, temp2, temp3, temp4, temp5, sgb::St
         # local_sums = zeros(Float64, Threads.nthreads())
         Threads.@threads for j in 1:num_macro
             fieldvec = zeros(3)
-            r6 = @view rin[(j-1)*6+1:j*6]
+            r6 = @view rin[j, :]
             # temp1: collision zlocation, temp2: beamsize x, temp3: beamsize y, temp4: beta x, temp5: beta y
             temp1[j] = (r6[5] .+ sgb.zslice_center[i])./2.0
             temp4[j] = sgb.optics.optics_x.beta .+ sgb.optics.optics_x.gamma .* temp1[j] .* temp1[j] .- 2.0 .* sgb.optics.optics_x.alpha .* temp1[j]
@@ -229,20 +229,20 @@ function track_sbb_P!(rin, num_macro, temp1, temp2, temp3, temp4, temp5, sgb::St
 end
 
 
-function pass!(sgb::StrongGaussianBeam, r_in::Array{Float64,1}, num_macro::Int, wb::Beam{Float64})
+function pass!(sgb::StrongGaussianBeam, r_in::Matrix{Float64}, num_macro::Int, wb::Beam{Float64})
     factor=wb.classrad0/wb.gamma*wb.charge*sgb.charge
     lumi=track_sbb!(r_in, num_macro, wb.temp1, wb.temp2, wb.temp3, wb.temp4, wb.temp5, sgb, factor)
     lumi *= wb.np / wb.nmacro
     return nothing
 end
 
-function pass_lumi!(sgb::StrongGaussianBeam, r_in::Array{Float64,1}, num_macro::Int, wb::Beam{Float64})
+function pass_lumi!(sgb::StrongGaussianBeam, r_in::Matrix{Float64}, num_macro::Int, wb::Beam{Float64})
     factor=wb.classrad0/wb.gamma*wb.charge*sgb.charge
     lumi=track_sbb!(r_in, num_macro, wb.temp1, wb.temp2, wb.temp3, wb.temp4, wb.temp5, sgb, factor)
     lumi *= wb.np / wb.nmacro
 end
 
-function pass_P!(sgb::StrongGaussianBeam, r_in::Array{Float64,1}, num_macro::Int, wb::Beam{Float64})
+function pass_P!(sgb::StrongGaussianBeam, r_in::Matrix{Float64}, num_macro::Int, wb::Beam{Float64})
     error("Strong beam-beam using parallel computing is not implemented yet.")
 
     factor=wb.classrad0/wb.gamma*wb.charge*sgb.charge
@@ -251,7 +251,7 @@ function pass_P!(sgb::StrongGaussianBeam, r_in::Array{Float64,1}, num_macro::Int
     return nothing
 end
 
-function pass_lumi_P!(sgb::StrongGaussianBeam, r_in::Array{Float64,1}, num_macro::Int, wb::Beam{Float64})
+function pass_lumi_P!(sgb::StrongGaussianBeam, r_in::Matrix{Float64}, num_macro::Int, wb::Beam{Float64})
     error("Strong beam-beam using parallel computing is not implemented yet.")
     factor=wb.classrad0/wb.gamma*wb.charge*sgb.charge
     lumi=track_sbb_P!(r_in, num_macro, wb.temp1, wb.temp2, wb.temp3, wb.temp4, wb.temp5, sgb, factor)

@@ -337,7 +337,7 @@ function bend_edge!(r6::SubArray, rhoinv::DTPSAD{N, T}, theta::DTPSAD{N, T}, bet
     return nothing
 end
 
-function ExactSectorBend!(r::Array{DTPSAD{N, T},1}, le::DTPSAD{N, T}, beti::Float64, angle::DTPSAD{N, T}, A::Array{DTPSAD{N, T},1}, B::Array{DTPSAD{N, T},1},
+function ExactSectorBend!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti::Float64, angle::DTPSAD{N, T}, A::Array{DTPSAD{N, T},1}, B::Array{DTPSAD{N, T},1},
     max_order::Int, num_int_steps::Int, entrance_angle::DTPSAD{N, T}, exit_angle::DTPSAD{N, T}, FringeBendEntrance::Int, FringeBendExit::Int,
     FringeQuadEntrance::Int, FringeQuadExit::Int, gk::DTPSAD{N, T},
     T1::Array{DTPSAD{N, T},1}, T2::Array{DTPSAD{N, T},1},
@@ -369,7 +369,7 @@ function ExactSectorBend!(r::Array{DTPSAD{N, T},1}, le::DTPSAD{N, T}, beti::Floa
         if isone(lost_flags[c])
             continue
         end
-        r6 = @view r[(c-1)*6+1:c*6]
+        r6 = @view r[c, :]
         # Misalignment at entrance
         # Use `all(iszero, ...)` to test if arrays are all zero.
         if !all(iszero, T1)
@@ -438,7 +438,7 @@ function ExactSectorBend!(r::Array{DTPSAD{N, T},1}, le::DTPSAD{N, T}, beti::Floa
     return nothing
 end
 
-function ExactSectorBend_rad!(r::Array{DTPSAD{N, T},1}, le::DTPSAD{N, T}, rad_const::DTPSAD{N, T}, beti::Float64, angle::DTPSAD{N, T}, A::Array{DTPSAD{N, T},1}, B::Array{DTPSAD{N, T},1}, 
+function ExactSectorBend_rad!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, rad_const::DTPSAD{N, T}, beti::Float64, angle::DTPSAD{N, T}, A::Array{DTPSAD{N, T},1}, B::Array{DTPSAD{N, T},1}, 
     max_order::Int, num_int_steps::Int, entrance_angle::DTPSAD{N, T}, exit_angle::DTPSAD{N, T}, FringeBendEntrance::Int, FringeBendExit::Int,
     FringeQuadEntrance::Int, FringeQuadExit::Int, gk::DTPSAD{N, T},
     T1::Array{DTPSAD{N, T},1}, T2::Array{DTPSAD{N, T},1}, 
@@ -470,7 +470,7 @@ function ExactSectorBend_rad!(r::Array{DTPSAD{N, T},1}, le::DTPSAD{N, T}, rad_co
         if isone(lost_flags[c])
             continue
         end
-        r6 = @view r[(c-1)*6+1:c*6]
+        r6 = @view r[c, :]
         # Misalignment at entrance
         if !all(iszero, T1)
             addvv!(r6, T1)
@@ -586,13 +586,13 @@ function drift6!(r::SubArray, le::DTPSAD{N, T}) where {N, T <: Number}
     return nothing
 end 
 
-function pass!(ele::DRIFT{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, npart::Int, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
+function pass!(ele::DRIFT{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::Int, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     @inbounds for c in 1:npart
         lost_flag = particles.lost_flag[c]
         if lost_flag == 1
             continue
         end
-        r6 = @view rin[(c-1)*6+1:c*6]  
+        r6 = @view rin[c, :]  
         if !all(iszero, ele.T1)
             addvv!(r6, ele.T1)
         end
@@ -612,13 +612,13 @@ function pass!(ele::DRIFT{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, npart::Int, 
     return nothing
 end
 
-function pass!(ele::QUAD{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, npart::Int, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
+function pass!(ele::QUAD{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::Int, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     @inbounds for c in 1:npart
         lost_flag = particles.lost_flag[c]
         if lost_flag == 1
             continue
         end
-        r6 = @view rin[(c-1)*6+1:c*6]  
+        r6 = @view rin[c, :]  
         p_norm = 1.0 / (1.0 + r6[6])
         
         if !all(iszero, ele.T1)
@@ -678,13 +678,13 @@ function pass!(ele::QUAD{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, npart::Int, p
     return nothing
 end
 
-function pass!(ele::CORRECTOR{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, npart::Int, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
+function pass!(ele::CORRECTOR{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::Int, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     @inbounds for c in 1:npart
         lost_flag = particles.lost_flag[c]
         if lost_flag == 1
             continue
         end
-        r6 = @view rin[(c-1)*6+1:c*6]  
+        r6 = @view rin[c, :]  
         if !all(iszero, ele.T1)
             addvv!(r6, ele.T1)
         end
@@ -715,17 +715,17 @@ function pass!(ele::CORRECTOR{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, npart::I
     return nothing
 end
 
-function pass!(ele::MARKER{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, npart::Int, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
+function pass!(ele::MARKER{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::Int, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     return nothing
 end
 
-function pass!(ele::SOLENOID{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, npart::Int, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
+function pass!(ele::SOLENOID{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::Int, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     @inbounds for c in 1:npart
         lost_flag = particles.lost_flag[c]
         if lost_flag == 1
             continue
         end
-        r6 = @view rin[(c-1)*6+1:c*6]  
+        r6 = @view rin[c, :]  
 
         if !all(iszero, ele.T1)
             addvv!(r6, ele.T1)
@@ -887,7 +887,7 @@ function strthinkickrad!(r::SubArray, A::Vector{DTPSAD{N, T}}, B::Vector{DTPSAD{
     return nothing
 end
 
-function StrMPoleSymplectic4Pass!(r::Vector{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti::Float64, A::Array{DTPSAD{N, T},1}, B::Array{DTPSAD{N, T},1},
+function StrMPoleSymplectic4Pass!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti::Float64, A::Array{DTPSAD{N, T},1}, B::Array{DTPSAD{N, T},1},
     max_order::Int, num_int_step::Int,
     FringeQuadEntrance::Int, FringeQuadExit::Int, # (no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like)
     T1::Array{DTPSAD{N, T},1}, T2::Array{DTPSAD{N, T},1}, R1::Array{DTPSAD{N, T},2}, R2::Array{DTPSAD{N, T},2},
@@ -914,7 +914,7 @@ function StrMPoleSymplectic4Pass!(r::Vector{DTPSAD{N, T}}, le::DTPSAD{N, T}, bet
         if lost_flags[c] == 1
             continue
         end
-        r6 = @view r[(c-1)*6+1:c*6]
+        r6 = @view r[c, :]
         # Misalignment at entrance
         if !all(iszero, T1)
             addvv!(r6, T1)
@@ -976,7 +976,7 @@ function StrMPoleSymplectic4Pass!(r::Vector{DTPSAD{N, T}}, le::DTPSAD{N, T}, bet
     return nothing
 end
 
-function StrMPoleSymplectic4RadPass!(r::Vector{DTPSAD{N, T}}, le::DTPSAD{N, T}, rad_const::DTPSAD{N, T}, beti::Float64, A::Array{DTPSAD{N, T},1}, B::Array{DTPSAD{N, T},1},
+function StrMPoleSymplectic4RadPass!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, rad_const::DTPSAD{N, T}, beti::Float64, A::Array{DTPSAD{N, T},1}, B::Array{DTPSAD{N, T},1},
     max_order::Int, num_int_step::Int,
     FringeQuadEntrance::Int, FringeQuadExit::Int, # (no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like)
     T1::Array{DTPSAD{N, T},1}, T2::Array{DTPSAD{N, T},1}, R1::Array{DTPSAD{N, T},2}, R2::Array{DTPSAD{N, T},2},
@@ -1003,7 +1003,7 @@ function StrMPoleSymplectic4RadPass!(r::Vector{DTPSAD{N, T}}, le::DTPSAD{N, T}, 
         if lost_flags[c] == 1
             continue
         end
-        r6 = @view r[(c-1)*6+1:c*6]
+        r6 = @view r[c, :]
         # Misalignment at entrance
         if !all(iszero, T1)
             addvv!(r6, T1)
@@ -1066,7 +1066,7 @@ function StrMPoleSymplectic4RadPass!(r::Vector{DTPSAD{N, T}}, le::DTPSAD{N, T}, 
     return nothing
 end
 
-function pass!(ele::KQUAD{DTPSAD{N, T}}, r_in::Vector{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
+function pass!(ele::KQUAD{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     lost_flags = particles.lost_flag
     PolynomB = zeros(DTPSAD{N, T}, 4)
     E0 = particles.energy
@@ -1096,7 +1096,7 @@ function pass!(ele::KQUAD{DTPSAD{N, T}}, r_in::Vector{DTPSAD{N, T}}, num_particl
     return nothing
 end
 
-function pass!(ele::KSEXT{DTPSAD{N, T}}, r_in::Vector{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
+function pass!(ele::KSEXT{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     rad_const = DTPSAD(0.0)
     lost_flags = particles.lost_flag
     PolynomB = zeros(DTPSAD{N, T}, 4)
@@ -1124,7 +1124,7 @@ function pass!(ele::KSEXT{DTPSAD{N, T}}, r_in::Vector{DTPSAD{N, T}}, num_particl
     return nothing
 end
 
-function pass!(ele::KOCT{DTPSAD{N, T}}, r_in::Vector{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
+function pass!(ele::KOCT{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     rad_const = DTPSAD(0.0)
 
     lost_flags = particles.lost_flag
@@ -1153,7 +1153,7 @@ function pass!(ele::KOCT{DTPSAD{N, T}}, r_in::Vector{DTPSAD{N, T}}, num_particle
     return nothing
 end
 
-function BendSymplecticPass!(r::Vector{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti::Float64, irho::DTPSAD{N, T}, A::Array{DTPSAD{N, T},1}, B::Array{DTPSAD{N, T},1}, 
+function BendSymplecticPass!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti::Float64, irho::DTPSAD{N, T}, A::Array{DTPSAD{N, T},1}, B::Array{DTPSAD{N, T},1}, 
     max_order::Int, num_int_steps::Int, entrance_angle::DTPSAD{N, T}, exit_angle::DTPSAD{N, T}, FringeBendEntrance::Int, FringeBendExit::Int,
     fint1::DTPSAD{N, T}, fint2::DTPSAD{N, T}, gap::DTPSAD{N, T}, FringeQuadEntrance::Int, FringeQuadExit::Int,
     fringeIntM0::Array{DTPSAD{N, T},1}, fringeIntP0::Array{DTPSAD{N, T},1}, T1::Array{DTPSAD{N, T},1}, T2::Array{DTPSAD{N, T},1}, 
@@ -1190,7 +1190,7 @@ function BendSymplecticPass!(r::Vector{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti::Fl
         if isone(lost_flags[c])
             continue
         end
-        r6 = @view r[(c-1)*6+1:c*6]
+        r6 = @view r[c, :]
         # Misalignment at entrance
         if !all(iszero, T1)
             addvv!(r6, T1)
@@ -1251,7 +1251,7 @@ function BendSymplecticPass!(r::Vector{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti::Fl
     return nothing
 end
 
-function BendSymplecticPassRad!(r::Vector{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti::Float64, irho::DTPSAD{N, T}, A::Array{DTPSAD{N, T},1}, B::Array{DTPSAD{N, T},1}, 
+function BendSymplecticPassRad!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti::Float64, irho::DTPSAD{N, T}, A::Array{DTPSAD{N, T},1}, B::Array{DTPSAD{N, T},1}, 
     max_order::Int, num_int_steps::Int, entrance_angle::DTPSAD{N, T}, exit_angle::DTPSAD{N, T}, FringeBendEntrance::Int, FringeBendExit::Int,
     fint1::DTPSAD{N, T}, fint2::DTPSAD{N, T}, gap::DTPSAD{N, T}, FringeQuadEntrance::Int, FringeQuadExit::Int,
     fringeIntM0::Array{DTPSAD{N, T},1}, fringeIntP0::Array{DTPSAD{N, T},1}, T1::Array{DTPSAD{N, T},1}, T2::Array{DTPSAD{N, T},1}, 
@@ -1288,7 +1288,7 @@ function BendSymplecticPassRad!(r::Vector{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti:
         if isone(lost_flags[c])
             continue
         end
-        r6 = @view r[(c-1)*6+1:c*6]
+        r6 = @view r[c, :]
         # Misalignment at entrance
         if !all(iszero, T1)
             addvv!(r6, T1)
@@ -1349,7 +1349,7 @@ function BendSymplecticPassRad!(r::Vector{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti:
     return nothing
 end
 
-function pass!(ele::SBEND{DTPSAD{N, T}}, r_in::Vector{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
+function pass!(ele::SBEND{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     lost_flags = particles.lost_flag
     irho = ele.angle / ele.len
     E0 = particles.energy
@@ -1375,7 +1375,7 @@ function pass!(ele::SBEND{DTPSAD{N, T}}, r_in::Vector{DTPSAD{N, T}}, num_particl
     return nothing
 end
 
-function pass!(ele::ESBEND{DTPSAD{N, T}}, r_in::Array{DTPSAD{N, T},1}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
+function pass!(ele::ESBEND{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     lost_flags = particles.lost_flag
     E0 = particles.energy
     rad_const = DTPSAD(0.0)
@@ -1407,7 +1407,7 @@ function pass!(ele::ESBEND{DTPSAD{N, T}}, r_in::Array{DTPSAD{N, T},1}, num_parti
     return nothing
 end
 
-function pass!(ele::RFCA{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, npart::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
+function pass!(ele::RFCA{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     if ele.energy == 0
         println("Energy is not defined for RFCA ", ele.name)
     end
@@ -1417,7 +1417,7 @@ function pass!(ele::RFCA{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, npart::Int64,
             if particles.lost_flag[c] == 1
                 continue
             end
-            r6 = @view rin[(c-1)*6+1:c*6]
+            r6 = @view rin[c, :]
             r6[6] += -nv * sin(2 * pi * ele.freq * ((r6[5] - ele.lag) / speed_of_light - 
                 (ele.h / ele.freq - particles.T0) * 0.0) - ele.philag) / particles.beta^2
             if check_lost_GTPSA(r6)
@@ -1430,7 +1430,7 @@ function pass!(ele::RFCA{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, npart::Int64,
             if particles.lost_flag[c] == 1
                 continue
             end
-            r6 = @view rin[(c-1)*6+1:c*6]
+            r6 = @view rin[c, :]
             drift6!(r6, halflength)
             r6[6] += -nv * sin(2 * pi * ele.freq * ((r6[5] - ele.lag) / speed_of_light - 
                 (ele.h / ele.freq - particles.T0) * 0.0) - ele.philag) / particles.beta^2
@@ -1443,13 +1443,13 @@ function pass!(ele::RFCA{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, npart::Int64,
     return nothing
 end
 
-function pass!(cavity::CRABCAVITY{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, npart::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
+function pass!(cavity::CRABCAVITY{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     beta = particles.beta
     @inbounds for c in 1:npart
         if isone(particles.lost_flag[c])
             continue
         end
-        r6 = @view rin[(c-1)*6+1:c*6]
+        r6 = @view rin[c, :]
         ang = cavity.k * r6[5] + cavity.phi
         if cavity.len == 0.0
             # r6[2] += (cavity.volt/beta2E) * sin(ang)
@@ -1470,13 +1470,13 @@ function pass!(cavity::CRABCAVITY{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, npar
     return nothing
 end
 
-function pass!(cavity::CRABCAVITY_K2{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, npart::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
+function pass!(cavity::CRABCAVITY_K2{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     beta = particles.beta
     @inbounds for c in 1:npart
         if isone(particles.lost_flag[c])
             continue
         end
-        r6 = @view rin[(c-1)*6+1:c*6]
+        r6 = @view rin[c, :]
         ang = cavity.k * r6[5] + cavity.phi
         if cavity.len == 0.0
             # r6[2] += (cavity.volt/beta2E) * sin(ang)
@@ -1505,7 +1505,7 @@ function pass!(cavity::CRABCAVITY_K2{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, n
     return nothing
 end
 
-function pass!(ele::thinMULTIPOLE{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, npart::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
+function pass!(ele::thinMULTIPOLE{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
 
     # no bending
@@ -1522,7 +1522,7 @@ function pass!(ele::thinMULTIPOLE{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, npar
         if particles.lost_flag[c] == 1
             continue
         end
-        r6 = @view rin[(c-1)*6+1:c*6]
+        r6 = @view rin[c, :]
         # Misalignment at entrance
         if !all(iszero, ele.T1)
             addvv!(r6, ele.T1)
@@ -1553,12 +1553,12 @@ function pass!(ele::thinMULTIPOLE{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, npar
     return nothing
 end
 
-function pass!(elem::TRANSLATION{DTPSAD{N, T}}, r_in::Vector{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
+function pass!(elem::TRANSLATION{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     @inbounds for c in 1:num_particles
         if isone(particles.lost_flag[c])
             continue
         end
-        r6 = @view r_in[(c-1)*6+1:c*6]
+        r6 = @view r_in[c, :]
         if use_exact_beti == 1
             pz = sqrt(1.0 + 2.0 * r6[6] / particles.beta + r6[6]^2 - r6[2]^2 - r6[4]^2)
             r6[1] -= elem.dx + elem.ds * r6[2] / pz
@@ -1577,7 +1577,7 @@ function pass!(elem::TRANSLATION{DTPSAD{N, T}}, r_in::Vector{DTPSAD{N, T}}, num_
     return nothing
 end
 
-function pass!(elem::YROTATION{DTPSAD{N, T}}, r_in::Vector{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
+function pass!(elem::YROTATION{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     angle = -elem.angle
     if angle == 0.0
         return nothing
@@ -1594,7 +1594,7 @@ function pass!(elem::YROTATION{DTPSAD{N, T}}, r_in::Vector{DTPSAD{N, T}}, num_pa
         if isone(particles.lost_flag[c])
             continue
         end
-        r6 = @view r_in[(c-1)*6+1:c*6]
+        r6 = @view r_in[c, :]
         x, px, y, py, t, pt = r6[1], r6[2], r6[3], r6[4], r6[5], r6[6]
         pz = sqrt(1.0 + 2.0 * pt / beta + pt^2 - px^2 - py^2)
         ptt = 1.0 - ta*px/pz
@@ -1610,7 +1610,7 @@ function pass!(elem::YROTATION{DTPSAD{N, T}}, r_in::Vector{DTPSAD{N, T}}, num_pa
     return nothing
 end
 
-function pass!(elem::LongitudinalRLCWake{DTPSAD{N, T}}, r_in::Vector{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
+function pass!(elem::LongitudinalRLCWake{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     histogram1DinZ!(particles, particles.znbin, particles.inzindex, particles.zhist, particles.zhist_edges)
     eN_b2E=particles.np*1.6021766208e-19*particles.charge^2/particles.energy/particles.beta/particles.beta/particles.atomnum
     zhist_center = zeros(DTPSAD{NVAR(), Float64}, particles.znbin)
@@ -1641,7 +1641,7 @@ function pass!(elem::LongitudinalRLCWake{DTPSAD{N, T}}, r_in::Vector{DTPSAD{N, T
         if isone(particles.lost_flag[c])
             continue
         end
-        r6 = @view r_in[(c-1)*6+1:c*6]
+        r6 = @view r_in[c, :]
         zloc=r6[5]
         zindex=particles.inzindex[c]
         wake1=wakeatedge[zindex]
@@ -1703,7 +1703,7 @@ function Bassetti_Erskine!(res::Vector{DTPSAD{N, T}}, x::DTPSAD{N, T}, y::DTPSAD
         return nothing
     end
 end
-function track_sbb!(rin::Vector{DTPSAD{N, T}}, num_macro::Int64, temp1::Vector{DTPSAD{N, T}}, temp2::Vector{DTPSAD{N, T}}, 
+function track_sbb!(rin::Matrix{DTPSAD{N, T}}, num_macro::Int64, temp1::Vector{DTPSAD{N, T}}, temp2::Vector{DTPSAD{N, T}}, 
     temp3::Vector{DTPSAD{N, T}}, temp4::Vector{DTPSAD{N, T}}, temp5::Vector{DTPSAD{N, T}}, sgb::StrongGaussianBeam, factor::DTPSAD{N, T}) where {N, T <: Number}
     #factor=wb.particle.classrad0/wb.gamma*wb.particle.charge*sgb.particle.charge
     
@@ -1713,7 +1713,7 @@ function track_sbb!(rin::Vector{DTPSAD{N, T}}, num_macro::Int64, temp1::Vector{D
     @inbounds for i in 1:sgb.nzslice
         slicelumi=DTPSAD{N, T}(0.0)
         @inbounds for j in 1:num_macro
-            r6 = @view rin[(j-1)*6+1:j*6]
+            r6 = @view rin[j, :]
             # temp1: collision zlocation, temp2: beamsize x, temp3: beamsize y, temp4: beta x, temp5: beta y
             temp1[j] = (r6[5] .+ sgb.zslice_center[i])./2.0
             temp4[j] = sgb.optics.optics_x.beta .+ sgb.optics.optics_x.gamma .* temp1[j] .* temp1[j] .- 2.0 .* sgb.optics.optics_x.alpha .* temp1[j]
@@ -1739,7 +1739,7 @@ function track_sbb!(rin::Vector{DTPSAD{N, T}}, num_macro::Int64, temp1::Vector{D
     return lumi
 
 end
-function pass!(sgb::StrongGaussianBeam{DTPSAD{N, T}}, r_in::Vector{DTPSAD{N, T}}, num_macro::Int, wb::Beam{DTPSAD{N, T}}) where {N, T <: Number}
+function pass!(sgb::StrongGaussianBeam{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_macro::Int, wb::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     factor=wb.classrad0/wb.gamma*wb.charge*sgb.charge
     lumi=track_sbb!(r_in, num_macro, wb.temp1, wb.temp2, wb.temp3, wb.temp4, wb.temp5, sgb, factor)
     lumi *= wb.np / wb.nmacro
@@ -1748,16 +1748,9 @@ end
 
 function linepass!(line::Vector{<:AbstractElement{DTPSAD{N, T}}}, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     np = particles.nmacro
-    particles6 = matrix_to_array(particles.r)
-    if length(particles6) != np * 6
-        error("The number of particles does not match the length of the particle array")
-    end
     for ele in line
-        pass!(ele, particles6, np, particles)
-        # pass!(ele, particles.r, np, particles)
+        pass!(ele, particles.r, np, particles)
     end
-    rout = array_to_matrix(particles6, np)
-    particles.r = rout
     return nothing
 end
 
@@ -1765,20 +1758,13 @@ function linepass!(line::Vector{<:AbstractElement{DTPSAD{N, T}}}, particles::Bea
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     np = particles.nmacro
-    particles6 = matrix_to_array(particles.r)
-    if length(particles6) != np * 6
-        error("The number of particles does not match the length of the particle array")
-    end
     saved_particles = []
     for i in eachindex(line)
-        # ele = line[i]
-        pass!(line[i], particles6, np, particles)        
+        pass!(line[i], particles.r, np, particles)        
         if i in refpts
-            push!(saved_particles, copy(array_to_matrix(particles6, np)))
+            push!(saved_particles, copy(particles.r))
         end
     end
-    rout = array_to_matrix(particles6, np)
-    particles.r = rout
     return saved_particles
 end
 
@@ -1788,32 +1774,6 @@ function ringpass!(line::Vector{<:AbstractElement{DTPSAD{N, T}}}, particles::Bea
     end
     return nothing
 end
-function matrix_to_array(r::Matrix{DTPSAD{N, T}}) where {N, T <: Number}
-    np = size(r, 1)
-    if size(r, 2) != 6
-        error("Input matrix must have 6 columns")
-    end
-    arr = zeros(DTPSAD{N, T}, np * 6)
-    for i in 1:np
-        for j in 1:6
-            arr[(i-1)*6 + j] = r[i, j]
-        end
-    end
-    return arr
-end
-function array_to_matrix(r::Vector{DTPSAD{N, T}}, np::Int) where {N, T <: Number}
-    if length(r) != np * 6
-        error("Input vector length must match the number of particles times 6")
-    end
-    mat = zeros(DTPSAD{N, T}, np, 6)
-    for i in 1:np
-        for j in 1:6
-            mat[i, j] = r[(i-1)*6 + j]
-        end
-    end
-    return mat
-end
-
 # Conversion functions for AbstractElement{Float64} ↔ AbstractElement{DTPSAD{N, T}}
 
 function _strip(param::DTPSAD{N, T}) where {N, T}

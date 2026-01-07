@@ -1,4 +1,4 @@
-function QuadLinearPass!(r::Array{Float64,1}, le::Float64, k1::Float64, beti::Float64,
+function QuadLinearPass!(r::Matrix{Float64}, le::Float64, k1::Float64, beti::Float64,
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
     RApertures::Array{Float64,1}, EApertures::Array{Float64,1},
     num_particles::Int, lost_flags::Array{Int64,1})
@@ -9,7 +9,7 @@ function QuadLinearPass!(r::Array{Float64,1}, le::Float64, k1::Float64, beti::Fl
         if lost_flags[c] == 1
             continue
         end
-        r6 = @view r[(c-1)*6+1:c*6]
+        r6 = @view r[c, :]
         if !isnan(r6[1])
             p_norm = 1.0 / (1.0 + r6[6])
 
@@ -74,7 +74,7 @@ function QuadLinearPass!(r::Array{Float64,1}, le::Float64, k1::Float64, beti::Fl
     return nothing
 end
 
-function pass!(ele::QUAD, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass!(ele::QUAD, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: KQUAD
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -89,7 +89,7 @@ function pass!(ele::QUAD, r_in::Array{Float64,1}, num_particles::Int64, particle
     return nothing
 end
 
-function QuadLinearPass_P!(r::Array{Float64,1}, le::Float64, k1::Float64, beti::Float64,
+function QuadLinearPass_P!(r::Matrix{Float64}, le::Float64, k1::Float64, beti::Float64,
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
     RApertures::Array{Float64,1}, EApertures::Array{Float64,1},
     num_particles::Int, lost_flags::Array{Int64,1})
@@ -100,7 +100,7 @@ function QuadLinearPass_P!(r::Array{Float64,1}, le::Float64, k1::Float64, beti::
         if lost_flags[c] == 1
             continue
         end
-        r6 = @view r[(c-1)*6+1:c*6]
+        r6 = @view r[c, :]
         if !isnan(r6[1])
             p_norm = 1.0 / (1.0 + r6[6])
 
@@ -165,7 +165,7 @@ function QuadLinearPass_P!(r::Array{Float64,1}, le::Float64, k1::Float64, beti::
     return nothing
 end
 
-function pass_P!(ele::QUAD, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass_P!(ele::QUAD, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: KQUAD
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -265,7 +265,7 @@ end
 ######################################
 # space-charge
 ######################################
-function QuadLinearPass_SC!(r::Array{Float64,1}, le::Float64, k1::Float64, beti::Float64, 
+function QuadLinearPass_SC!(r::Matrix{Float64}, le::Float64, k1::Float64, beti::Float64, 
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
     RApertures::Array{Float64,1}, EApertures::Array{Float64,1},
     num_particles::Int, lost_flags::Array{Int64,1}, a::Float64, b::Float64, Nl::Int, Nm::Int, K::Float64, Nsteps::Int)
@@ -278,7 +278,7 @@ function QuadLinearPass_SC!(r::Array{Float64,1}, le::Float64, k1::Float64, beti:
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
             p_norm = 1.0 / (1.0 + r6[6])
 
             if step == 1
@@ -340,7 +340,7 @@ function QuadLinearPass_SC!(r::Array{Float64,1}, le::Float64, k1::Float64, beti:
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
             p_norm = 1.0 / (1.0 + r6[6])
     
             if iszero(k1)
@@ -398,7 +398,7 @@ function QuadLinearPass_SC!(r::Array{Float64,1}, le::Float64, k1::Float64, beti:
     return nothing
 end
 
-function pass!(ele::QUAD_SC, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass!(ele::QUAD_SC, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: KQUAD
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -414,7 +414,7 @@ function pass!(ele::QUAD_SC, r_in::Array{Float64,1}, num_particles::Int64, parti
     return nothing
 end
 
-function QuadLinearPass_SC!(r::Array{DTPSAD{N, T},1}, le::DTPSAD{N, T}, k1::DTPSAD{N, T}, beti::Float64, 
+function QuadLinearPass_SC!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, k1::DTPSAD{N, T}, beti::Float64, 
     T1::Array{DTPSAD{N, T},1}, T2::Array{DTPSAD{N, T},1}, R1::Array{DTPSAD{N, T},2}, R2::Array{DTPSAD{N, T},2}, 
     RApertures::Array{Float64,1}, EApertures::Array{Float64,1},
     num_particles::Int, lost_flags::Array{Int64,1}, a::DTPSAD{N, T}, b::DTPSAD{N, T}, Nl::Int, Nm::Int, K::DTPSAD{N, T}, Nsteps::Int) where {N, T}
@@ -427,7 +427,7 @@ function QuadLinearPass_SC!(r::Array{DTPSAD{N, T},1}, le::DTPSAD{N, T}, k1::DTPS
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
             p_norm = 1.0 / (1.0 + r6[6])
 
             if step == 1
@@ -489,7 +489,7 @@ function QuadLinearPass_SC!(r::Array{DTPSAD{N, T},1}, le::DTPSAD{N, T}, k1::DTPS
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
             p_norm = 1.0 / (1.0 + r6[6])
     
             if iszero(k1)
@@ -547,7 +547,7 @@ function QuadLinearPass_SC!(r::Array{DTPSAD{N, T},1}, le::DTPSAD{N, T}, k1::DTPS
     return nothing
 end
 
-function pass!(ele::QUAD_SC{DTPSAD{N, T}}, r_in::Array{DTPSAD{N, T},1}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T}
+function pass!(ele::QUAD_SC{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T}
     # ele: KQUAD
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -563,7 +563,7 @@ function pass!(ele::QUAD_SC{DTPSAD{N, T}}, r_in::Array{DTPSAD{N, T},1}, num_part
     return nothing
 end
 
-function QuadLinearPass_SC_P!(r::Array{Float64,1}, le::Float64, k1::Float64, beti::Float64,
+function QuadLinearPass_SC_P!(r::Matrix{Float64}, le::Float64, k1::Float64, beti::Float64,
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
     RApertures::Array{Float64,1}, EApertures::Array{Float64,1},
     num_particles::Int, lost_flags::Array{Int64,1}, a::Float64, b::Float64, Nl::Int, Nm::Int, K::Float64, Nsteps::Int)
@@ -576,7 +576,7 @@ function QuadLinearPass_SC_P!(r::Array{Float64,1}, le::Float64, k1::Float64, bet
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
             p_norm = 1.0 / (1.0 + r6[6])
 
             if step == 1
@@ -638,7 +638,7 @@ function QuadLinearPass_SC_P!(r::Array{Float64,1}, le::Float64, k1::Float64, bet
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
             p_norm = 1.0 / (1.0 + r6[6])
     
             if iszero(k1)
@@ -696,7 +696,7 @@ function QuadLinearPass_SC_P!(r::Array{Float64,1}, le::Float64, k1::Float64, bet
     return nothing
 end
 
-function pass_P!(ele::QUAD_SC, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass_P!(ele::QUAD_SC, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: KQUAD
     # r_in: 6-by-num_particles array
     # num_particles: number of particles

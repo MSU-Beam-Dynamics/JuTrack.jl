@@ -1,24 +1,3 @@
-function matrix_to_array(matrix::Matrix{Float64})
-    particles = zeros(Float64, size(matrix, 1)*6)
-    for i in 1:size(matrix, 1)
-        for j in 1:6
-            particles[(i-1)*6+j] = matrix[i, j]
-        end
-    end
-
-    return particles
-end
-
-function array_to_matrix(array::Vector{Float64}, n::Int)
-    particles = zeros(Float64, n, 6)
-    for i in 1:n
-        for j in 1:6
-            particles[i, j] = array[(i-1)*6+j]
-        end
-    end
-    return particles
-end
-
 """
     linepass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Float64})
 
@@ -32,15 +11,9 @@ function linepass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Flo
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     np = particles.nmacro
-    particles6 = matrix_to_array(particles.r)
-    if length(particles6) != np*6
-        error("The number of particles does not match the length of the particle array")
-    end
     for i in eachindex(line)
-        pass!(line[i], particles6, np, particles)        
+        pass!(line[i], particles.r, np, particles)        
     end
-    rout = array_to_matrix(particles6, np)
-    particles.r = rout
     return nothing
 end
 
@@ -61,20 +34,13 @@ function linepass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Flo
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     np = particles.nmacro
-    particles6 = matrix_to_array(particles.r)
-    if length(particles6) != np*6
-        error("The number of particles does not match the length of the particle array")
-    end
     saved_particles = []
     for i in eachindex(line)
-        # ele = line[i]
-        pass!(line[i], particles6, np, particles)        
+        pass!(line[i], particles.r, np, particles)        
         if i in refpts
-            push!(saved_particles, copy(array_to_matrix(particles6, np)))
+            push!(saved_particles, copy(particles.r))
         end
     end
-    rout = array_to_matrix(particles6, np)
-    particles.r = rout
     return saved_particles
 end
 
@@ -96,22 +62,15 @@ function ADlinepass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{F
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     np = particles.nmacro
-    particles6 = matrix_to_array(particles.r)
-    if length(particles6) != np*6
-        error("The number of particles does not match the length of the particle array")
-    end
     count = 1
     for i in eachindex(line)
-        # ele = line[i]
         if i in changed_idx
-            pass!(changed_ele[count], particles6, np, particles)
+            pass!(changed_ele[count], particles.r, np, particles)
             count += 1
         else
-            pass!(line[i], particles6, np, particles)        
+            pass!(line[i], particles.r, np, particles)        
         end
     end
-    rout = array_to_matrix(particles6, np)
-    particles.r = rout
     return nothing
 end
 
@@ -120,23 +79,17 @@ function ADlinepass!(line::Vector{<:AbstractElement{Float64}}, id_list::Vector{I
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     np = particles.nmacro
-    particles6 = matrix_to_array(particles.r)
-    if length(particles6) != np*6
-        error("The number of particles does not match the length of the particle array")
-    end
     count = 1
     for i in eachindex(line)
         if i in id_list
             if i in changed_idx
-                pass!(changed_ele[count], particles6, np, particles)
+                pass!(changed_ele[count], particles.r, np, particles)
                 count += 1
             else
-                pass!(line[i], particles6, np, particles)        
+                pass!(line[i], particles.r, np, particles)        
             end
         end
     end
-    rout = array_to_matrix(particles6, np)
-    particles.r = rout
     return nothing
 end
 
@@ -144,27 +97,19 @@ function ADlinepass!(line::Vector, particles::Beam{Float64}, refpts::Vector, cha
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     np = particles.nmacro
-    particles6 = matrix_to_array(particles.r)
-    if length(particles6) != np*6
-        error("The number of particles does not match the length of the particle array")
-    end
     count = 1
     saved_particles = []
     for i in eachindex(line)
-        # ele = line[i]
         if i in changed_idx
-            pass!(changed_ele[count], particles6, np, particles)
+            pass!(changed_ele[count], particles.r, np, particles)
             count += 1
         else
-            pass!(line[i], particles6, np, particles)        
+            pass!(line[i], particles.r, np, particles)        
         end
         if i in refpts
-            push!(saved_particles, copy(array_to_matrix(particles6, np)))
+            push!(saved_particles, copy(particles.r))
         end
-
     end
-    rout = array_to_matrix(particles6, np)
-    particles.r = rout
     return saved_particles
 end
 

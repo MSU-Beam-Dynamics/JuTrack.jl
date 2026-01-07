@@ -58,7 +58,7 @@ function bndthinkickrad!(r::AbstractVector{Float64}, A::Array{Float64,1}, B::Arr
     return nothing
 end
 
-function BendSymplecticPassRad!(r::Array{Float64,1}, le::Float64, beti::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function BendSymplecticPassRad!(r::Matrix{Float64}, le::Float64, beti::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_steps::Int, entrance_angle::Float64, exit_angle::Float64, FringeBendEntrance::Int, FringeBendExit::Int,
     fint1::Float64, fint2::Float64, gap::Float64, FringeQuadEntrance::Int, FringeQuadExit::Int,
     fringeIntM0::Array{Float64,1}, fringeIntP0::Array{Float64,1}, T1::Array{Float64,1}, T2::Array{Float64,1}, 
@@ -95,7 +95,7 @@ function BendSymplecticPassRad!(r::Array{Float64,1}, le::Float64, beti::Float64,
         if isone(lost_flags[c])
             continue
         end
-        r6 = @view r[(c-1)*6+1:c*6]
+        r6 = @view r[c, :]
         # Misalignment at entrance
         if !iszero(T1)
             addvv!(r6, T1)
@@ -156,7 +156,7 @@ function BendSymplecticPassRad!(r::Array{Float64,1}, le::Float64, beti::Float64,
     return nothing
 end
 
-function BendSymplecticPass!(r::Array{Float64,1}, le::Float64, beti::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function BendSymplecticPass!(r::Matrix{Float64}, le::Float64, beti::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_steps::Int, entrance_angle::Float64, exit_angle::Float64, FringeBendEntrance::Int, FringeBendExit::Int,
     fint1::Float64, fint2::Float64, gap::Float64, FringeQuadEntrance::Int, FringeQuadExit::Int,
     fringeIntM0::Array{Float64,1}, fringeIntP0::Array{Float64,1}, T1::Array{Float64,1}, T2::Array{Float64,1}, 
@@ -193,7 +193,7 @@ function BendSymplecticPass!(r::Array{Float64,1}, le::Float64, beti::Float64, ir
         if isone(lost_flags[c])
             continue
         end
-        r6 = @view r[(c-1)*6+1:c*6]
+        r6 = @view r[c, :]
         # Misalignment at entrance
         if !iszero(T1)
             addvv!(r6, T1)
@@ -255,7 +255,7 @@ function BendSymplecticPass!(r::Array{Float64,1}, le::Float64, beti::Float64, ir
 end
 
 
-function pass!(ele::SBEND, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass!(ele::SBEND, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: SBEND
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -292,7 +292,7 @@ end
 
 ######################
 # multi-threading
-function BendSymplecticPassRad_P!(r::Array{Float64,1}, le::Float64, beti::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function BendSymplecticPassRad_P!(r::Matrix{Float64}, le::Float64, beti::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_steps::Int, entrance_angle::Float64, exit_angle::Float64, FringeBendEntrance::Int, FringeBendExit::Int,
     fint1::Float64, fint2::Float64, gap::Float64, FringeQuadEntrance::Int, FringeQuadExit::Int,
     fringeIntM0::Array{Float64,1}, fringeIntP0::Array{Float64,1}, T1::Array{Float64,1}, T2::Array{Float64,1}, 
@@ -328,7 +328,7 @@ function BendSymplecticPassRad_P!(r::Array{Float64,1}, le::Float64, beti::Float6
         if isone(lost_flags[c])
             continue
         end
-        r6 = @view r[(c-1)*6+1:c*6]
+        r6 = @view r[c, :]
         # Misalignment at entrance
         if !iszero(T1)
             addvv!(r6, T1)
@@ -389,7 +389,7 @@ function BendSymplecticPassRad_P!(r::Array{Float64,1}, le::Float64, beti::Float6
     return nothing
 end
 
-function BendSymplecticPass_P!(r::Array{Float64,1}, le::Float64, beti::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function BendSymplecticPass_P!(r::Matrix{Float64}, le::Float64, beti::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_steps::Int, entrance_angle::Float64, exit_angle::Float64, FringeBendEntrance::Int, FringeBendExit::Int,
     fint1::Float64, fint2::Float64, gap::Float64, FringeQuadEntrance::Int, FringeQuadExit::Int,
     fringeIntM0::Array{Float64,1}, fringeIntP0::Array{Float64,1}, T1::Array{Float64,1}, T2::Array{Float64,1}, 
@@ -425,7 +425,7 @@ function BendSymplecticPass_P!(r::Array{Float64,1}, le::Float64, beti::Float64, 
         if isone(lost_flags[c])
             continue
         end
-        r6 = @view r[(c-1)*6+1:c*6]
+        r6 = @view r[c, :]
         # Misalignment at entrance
         if !iszero(T1)
             addvv!(r6, T1)
@@ -487,7 +487,7 @@ function BendSymplecticPass_P!(r::Array{Float64,1}, le::Float64, beti::Float64, 
 end
 
 
-function pass_P!(ele::SBEND, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass_P!(ele::SBEND, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: SBEND
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -771,7 +771,7 @@ function bend_edge!(r6::AbstractVector{Float64}, rhoinv::Float64, theta::Float64
     return nothing
 end
 
-function ExactSectorBend!(r::Array{Float64,1}, le::Float64, beti::Float64, angle::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function ExactSectorBend!(r::Matrix{Float64}, le::Float64, beti::Float64, angle::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_steps::Int, entrance_angle::Float64, exit_angle::Float64, FringeBendEntrance::Int, FringeBendExit::Int,
     FringeQuadEntrance::Int, FringeQuadExit::Int, gk::Float64,
     T1::Array{Float64,1}, T2::Array{Float64,1}, 
@@ -803,7 +803,7 @@ function ExactSectorBend!(r::Array{Float64,1}, le::Float64, beti::Float64, angle
         if isone(lost_flags[c])
             continue
         end
-        r6 = @view r[(c-1)*6+1:c*6]
+        r6 = @view r[c, :]
         # Misalignment at entrance
         if !iszero(T1)
             addvv!(r6, T1)
@@ -871,7 +871,7 @@ function ExactSectorBend!(r::Array{Float64,1}, le::Float64, beti::Float64, angle
     return nothing
 end
 
-function ExactSectorBend_rad!(r::Array{Float64,1}, le::Float64, rad_const::Float64, beti::Float64, angle::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function ExactSectorBend_rad!(r::Matrix{Float64}, le::Float64, rad_const::Float64, beti::Float64, angle::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_steps::Int, entrance_angle::Float64, exit_angle::Float64, FringeBendEntrance::Int, FringeBendExit::Int,
     FringeQuadEntrance::Int, FringeQuadExit::Int, gk::Float64,
     T1::Array{Float64,1}, T2::Array{Float64,1}, 
@@ -903,7 +903,7 @@ function ExactSectorBend_rad!(r::Array{Float64,1}, le::Float64, rad_const::Float
         if isone(lost_flags[c])
             continue
         end
-        r6 = @view r[(c-1)*6+1:c*6]
+        r6 = @view r[c, :]
         # Misalignment at entrance
         if !iszero(T1)
             addvv!(r6, T1)
@@ -971,7 +971,7 @@ function ExactSectorBend_rad!(r::Array{Float64,1}, le::Float64, rad_const::Float
     return nothing
 end
 
-function ExactSectorBend_rad_P!(r::Array{Float64,1}, le::Float64, rad_const::Float64, beti::Float64, angle::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function ExactSectorBend_rad_P!(r::Matrix{Float64}, le::Float64, rad_const::Float64, beti::Float64, angle::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_steps::Int, entrance_angle::Float64, exit_angle::Float64, FringeBendEntrance::Int, FringeBendExit::Int,
     FringeQuadEntrance::Int, FringeQuadExit::Int, gk::Float64,
     T1::Array{Float64,1}, T2::Array{Float64,1}, 
@@ -1003,7 +1003,7 @@ function ExactSectorBend_rad_P!(r::Array{Float64,1}, le::Float64, rad_const::Flo
         if isone(lost_flags[c])
             continue
         end
-        r6 = @view r[(c-1)*6+1:c*6]
+        r6 = @view r[c, :]
         # Misalignment at entrance
         if !iszero(T1)
             addvv!(r6, T1)
@@ -1071,7 +1071,7 @@ function ExactSectorBend_rad_P!(r::Array{Float64,1}, le::Float64, rad_const::Flo
     return nothing
 end
 
-function ExactSectorBend_P!(r::Array{Float64,1}, le::Float64, beti::Float64, angle::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function ExactSectorBend_P!(r::Matrix{Float64}, le::Float64, beti::Float64, angle::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_steps::Int, entrance_angle::Float64, exit_angle::Float64, FringeBendEntrance::Int, FringeBendExit::Int,
     FringeQuadEntrance::Int, FringeQuadExit::Int, gk::Float64,
     T1::Array{Float64,1}, T2::Array{Float64,1}, 
@@ -1103,7 +1103,7 @@ function ExactSectorBend_P!(r::Array{Float64,1}, le::Float64, beti::Float64, ang
         if isone(lost_flags[c])
             continue
         end
-        r6 = @view r[(c-1)*6+1:c*6]
+        r6 = @view r[c, :]
         # Misalignment at entrance
         if !iszero(T1)
             addvv!(r6, T1)
@@ -1171,7 +1171,7 @@ function ExactSectorBend_P!(r::Array{Float64,1}, le::Float64, beti::Float64, ang
     return nothing
 end
 
-function pass!(ele::ESBEND, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass!(ele::ESBEND, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: ESBEND
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -1211,7 +1211,7 @@ function pass!(ele::ESBEND, r_in::Array{Float64,1}, num_particles::Int64, partic
     return nothing
 end
 
-function pass_P!(ele::ESBEND, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass_P!(ele::ESBEND, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: ESBEND
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -1715,7 +1715,7 @@ end
 ####################################################
 # Space charge
 ####################################################
-function BendSymplecticPassRad_SC!(r::Array{Float64,1}, le::Float64, beti::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function BendSymplecticPassRad_SC!(r::Matrix{Float64}, le::Float64, beti::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_steps::Int, entrance_angle::Float64, exit_angle::Float64, FringeBendEntrance::Int, FringeBendExit::Int,
     fint1::Float64, fint2::Float64, gap::Float64, FringeQuadEntrance::Int, FringeQuadExit::Int,
     fringeIntM0::Array{Float64,1}, fringeIntP0::Array{Float64,1}, T1::Array{Float64,1}, T2::Array{Float64,1}, 
@@ -1755,7 +1755,7 @@ function BendSymplecticPassRad_SC!(r::Array{Float64,1}, le::Float64, beti::Float
             if isone(lost_flags[c])
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
             if !isnan(r6[1])
                 # Misalignment at entrance
                 if !iszero(T1)
@@ -1801,7 +1801,7 @@ function BendSymplecticPassRad_SC!(r::Array{Float64,1}, le::Float64, beti::Float
             if isone(lost_flags[c])
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
             if !isnan(r6[1])
                 # Misalignment at entrance
                 if !iszero(T1)
@@ -1870,7 +1870,7 @@ function BendSymplecticPassRad_SC!(r::Array{Float64,1}, le::Float64, beti::Float
     return nothing
 end
 
-function BendSymplecticPassRad_SC!(r::Vector{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti::Float64, irho::DTPSAD{N, T}, A::Vector{DTPSAD{N, T}}, B::Vector{DTPSAD{N, T}}, 
+function BendSymplecticPassRad_SC!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti::Float64, irho::DTPSAD{N, T}, A::Vector{DTPSAD{N, T}}, B::Vector{DTPSAD{N, T}}, 
     max_order::Int, num_int_steps::Int, entrance_angle::DTPSAD{N, T}, exit_angle::DTPSAD{N, T}, FringeBendEntrance::Int, FringeBendExit::Int,
     fint1::DTPSAD{N, T}, fint2::DTPSAD{N, T}, gap::DTPSAD{N, T}, FringeQuadEntrance::Int, FringeQuadExit::Int,
     fringeIntM0::Vector{DTPSAD{N, T}}, fringeIntP0::Vector{DTPSAD{N, T}}, T1::Vector{DTPSAD{N, T}}, T2::Vector{DTPSAD{N, T}},
@@ -1910,7 +1910,7 @@ function BendSymplecticPassRad_SC!(r::Vector{DTPSAD{N, T}}, le::DTPSAD{N, T}, be
             if isone(lost_flags[c])
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
             if !isnan(r6[1])
                 # Misalignment at entrance
                 if !iszero(T1)
@@ -1956,7 +1956,7 @@ function BendSymplecticPassRad_SC!(r::Vector{DTPSAD{N, T}}, le::DTPSAD{N, T}, be
             if isone(lost_flags[c])
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
             if !isnan(r6[1])
                 # Misalignment at entrance
                 if !iszero(T1)
@@ -2025,7 +2025,7 @@ function BendSymplecticPassRad_SC!(r::Vector{DTPSAD{N, T}}, le::DTPSAD{N, T}, be
     return nothing
 end
 
-function BendSymplecticPass_SC!(r::Array{Float64,1}, le::Float64, beti::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function BendSymplecticPass_SC!(r::Matrix{Float64}, le::Float64, beti::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_steps::Int, entrance_angle::Float64, exit_angle::Float64, FringeBendEntrance::Int, FringeBendExit::Int,
     fint1::Float64, fint2::Float64, gap::Float64, FringeQuadEntrance::Int, FringeQuadExit::Int,
     fringeIntM0::Array{Float64,1}, fringeIntP0::Array{Float64,1}, T1::Array{Float64,1}, T2::Array{Float64,1}, 
@@ -2067,7 +2067,7 @@ function BendSymplecticPass_SC!(r::Array{Float64,1}, le::Float64, beti::Float64,
             if isone(lost_flags[c])
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
             if !isnan(r6[1])
                 
                 if step == 1
@@ -2115,7 +2115,7 @@ function BendSymplecticPass_SC!(r::Array{Float64,1}, le::Float64, beti::Float64,
             if isone(lost_flags[c])
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
 
             # Integrator
             for m in 1:num_int_steps
@@ -2161,7 +2161,7 @@ function BendSymplecticPass_SC!(r::Array{Float64,1}, le::Float64, beti::Float64,
     return nothing
 end
 
-function BendSymplecticPass_SC!(r::Array{DTPSAD{N, T},1}, le::DTPSAD{N, T}, beti::Float64, irho::DTPSAD{N, T}, A::Array{DTPSAD{N, T},1}, B::Array{DTPSAD{N, T},1}, 
+function BendSymplecticPass_SC!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti::Float64, irho::DTPSAD{N, T}, A::Array{DTPSAD{N, T},1}, B::Array{DTPSAD{N, T},1}, 
     max_order::Int, num_int_steps::Int, entrance_angle::DTPSAD{N, T}, exit_angle::DTPSAD{N, T}, FringeBendEntrance::Int, FringeBendExit::Int,
     fint1::DTPSAD{N, T}, fint2::DTPSAD{N, T}, gap::DTPSAD{N, T}, FringeQuadEntrance::Int, FringeQuadExit::Int,
     fringeIntM0::Array{DTPSAD{N, T},1}, fringeIntP0::Array{DTPSAD{N, T},1}, T1::Array{DTPSAD{N, T},1}, T2::Array{DTPSAD{N, T},1}, 
@@ -2203,7 +2203,7 @@ function BendSymplecticPass_SC!(r::Array{DTPSAD{N, T},1}, le::DTPSAD{N, T}, beti
             if isone(lost_flags[c])
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
             if !isnan(r6[1])
                 
                 if step == 1
@@ -2251,7 +2251,7 @@ function BendSymplecticPass_SC!(r::Array{DTPSAD{N, T},1}, le::DTPSAD{N, T}, beti
             if isone(lost_flags[c])
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
 
             # Integrator
             for m in 1:num_int_steps
@@ -2298,7 +2298,7 @@ function BendSymplecticPass_SC!(r::Array{DTPSAD{N, T},1}, le::DTPSAD{N, T}, beti
 end
 
 
-function pass!(ele::SBEND_SC, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass!(ele::SBEND_SC, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: SBEND_SC
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -2334,7 +2334,7 @@ function pass!(ele::SBEND_SC, r_in::Array{Float64,1}, num_particles::Int64, part
     return nothing
 end
 
-function pass!(ele::SBEND_SC{DTPSAD{N, T}}, r_in::Array{DTPSAD{N, T},1}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T}
+function pass!(ele::SBEND_SC{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T}
     # ele: SBEND_SC
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -2372,7 +2372,7 @@ end
 
 ######################
 # multi-threading
-function BendSymplecticPassRad_P_SC!(r::Array{Float64,1}, le::Float64, beti::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function BendSymplecticPassRad_P_SC!(r::Matrix{Float64}, le::Float64, beti::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_steps::Int, entrance_angle::Float64, exit_angle::Float64, FringeBendEntrance::Int, FringeBendExit::Int,
     fint1::Float64, fint2::Float64, gap::Float64, FringeQuadEntrance::Int, FringeQuadExit::Int,
     fringeIntM0::Array{Float64,1}, fringeIntP0::Array{Float64,1}, T1::Array{Float64,1}, T2::Array{Float64,1}, 
@@ -2412,7 +2412,7 @@ function BendSymplecticPassRad_P_SC!(r::Array{Float64,1}, le::Float64, beti::Flo
             if isone(lost_flags[c])
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
             if !isnan(r6[1])
                 # Misalignment at entrance
                 if !iszero(T1)
@@ -2458,7 +2458,7 @@ function BendSymplecticPassRad_P_SC!(r::Array{Float64,1}, le::Float64, beti::Flo
             if isone(lost_flags[c])
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
             if !isnan(r6[1])
                 # Misalignment at entrance
                 if !iszero(T1)
@@ -2527,7 +2527,7 @@ function BendSymplecticPassRad_P_SC!(r::Array{Float64,1}, le::Float64, beti::Flo
     return nothing
 end
 
-function BendSymplecticPass_P_SC!(r::Array{Float64,1}, le::Float64, beti::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function BendSymplecticPass_P_SC!(r::Matrix{Float64}, le::Float64, beti::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_steps::Int, entrance_angle::Float64, exit_angle::Float64, FringeBendEntrance::Int, FringeBendExit::Int,
     fint1::Float64, fint2::Float64, gap::Float64, FringeQuadEntrance::Int, FringeQuadExit::Int,
     fringeIntM0::Array{Float64,1}, fringeIntP0::Array{Float64,1}, T1::Array{Float64,1}, T2::Array{Float64,1}, 
@@ -2569,7 +2569,7 @@ function BendSymplecticPass_P_SC!(r::Array{Float64,1}, le::Float64, beti::Float6
             if isone(lost_flags[c])
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
             if !isnan(r6[1])
                 
                 if step == 1
@@ -2617,7 +2617,7 @@ function BendSymplecticPass_P_SC!(r::Array{Float64,1}, le::Float64, beti::Float6
             if isone(lost_flags[c])
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
 
             # Integrator
             for m in 1:num_int_steps
@@ -2663,7 +2663,7 @@ function BendSymplecticPass_P_SC!(r::Array{Float64,1}, le::Float64, beti::Float6
     return nothing
 end
 
-function pass_P!(ele::SBEND_SC, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass_P!(ele::SBEND_SC, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: SBEND_SC
     # r_in: 6-by-num_particles array
     # num_particles: number of particles

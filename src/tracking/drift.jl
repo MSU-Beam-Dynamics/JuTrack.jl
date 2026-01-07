@@ -65,7 +65,7 @@ function drift6!(r::AbstractVector{Float64}, le::Float64, beti::Float64)
     return nothing
 end 
 
-function DriftPass!(r_in::Array{Float64,1}, le::Float64, beti::Float64, T1::Array{Float64,1}, T2::Array{Float64,1}, 
+function DriftPass!(r_in::Matrix{Float64}, le::Float64, beti::Float64, T1::Array{Float64,1}, T2::Array{Float64,1}, 
     R1::Array{Float64,2}, R2::Array{Float64, 2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, 
     num_particles::Int, lost_flags::Array{Int64,1})
     # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
@@ -73,7 +73,7 @@ function DriftPass!(r_in::Array{Float64,1}, le::Float64, beti::Float64, T1::Arra
         if isone(lost_flags[c])
             continue
         end
-        r6 = @view r_in[(c-1)*6+1:c*6]
+        r6 = @view r_in[c, :]
         if !isnan(r6[1])
             # Misalignment at entrance
             if !iszero(T1)
@@ -101,17 +101,17 @@ function DriftPass!(r_in::Array{Float64,1}, le::Float64, beti::Float64, T1::Arra
 end
 
 """
-    pass!(ele::DRIFT, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+    pass!(ele::DRIFT, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
 
 This is a function to track particles through a drift element.
 
 # Arguments
 - ele::DRIFT: a drift element
-- r_in::Array{Float64,1}: 6-by-num_particles array
+- r_in::Matrix{Float64}: num_particles-by-6 matrix
 - num_particles::Int64: number of particles
 - particles::Beam{Float64}: beam object
 """
-function pass!(ele::DRIFT, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass!(ele::DRIFT, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     lost_flags = particles.lost_flag
     if use_exact_beti == 1
         beti = 1.0 / particles.beta
@@ -122,20 +122,20 @@ function pass!(ele::DRIFT, r_in::Array{Float64,1}, num_particles::Int64, particl
     return nothing
 end
 
-function pass!(ele::MARKER, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass!(ele::MARKER, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     return nothing
 end
 
 ################################################################################
 # multi-threading
-function DriftPass_P!(r_in::Array{Float64,1}, le::Float64, beti::Float64, T1::Array{Float64,1}, T2::Array{Float64,1}, 
+function DriftPass_P!(r_in::Matrix{Float64}, le::Float64, beti::Float64, T1::Array{Float64,1}, T2::Array{Float64,1}, 
     R1::Array{Float64,2}, R2::Array{Float64, 2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, 
     num_particles::Int, lost_flags::Array{Int64,1})
     Threads.@threads for c in 1:num_particles
         if lost_flags[c] == 1
             continue
         end
-        r6 = @view r_in[(c-1)*6+1:c*6]
+        r6 = @view r_in[c, :]
         if !isnan(r6[1])
             # Misalignment at entrance
             if !iszero(T1)
@@ -162,7 +162,7 @@ function DriftPass_P!(r_in::Array{Float64,1}, le::Float64, beti::Float64, T1::Ar
     return nothing
 end
 
-function pass_P!(ele::DRIFT, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass_P!(ele::DRIFT, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: EDRIFT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -176,14 +176,14 @@ function pass_P!(ele::DRIFT, r_in::Array{Float64,1}, num_particles::Int64, parti
     return nothing
 end
 
-function pass_P!(ele::MARKER, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass_P!(ele::MARKER, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     return nothing
 end
 
 ##################################
 # Space charge
 ####################################
-function DriftPass_SC!(r_in::Array{Float64,1}, le::Float64, beti::Float64, T1::Array{Float64,1}, T2::Array{Float64,1}, 
+function DriftPass_SC!(r_in::Matrix{Float64}, le::Float64, beti::Float64, T1::Array{Float64,1}, T2::Array{Float64,1}, 
     R1::Array{Float64,2}, R2::Array{Float64, 2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, 
     num_particles::Int, lost_flags::Array{Int64,1}, a, b, Nl, Nm, K)
     # Ref [Qiang, Ji. "Differentiable self-consistent space-charge simulation for accelerator design." Physical Review Accelerators and Beams 26.2 (2023): 024601.]
@@ -193,7 +193,7 @@ function DriftPass_SC!(r_in::Array{Float64,1}, le::Float64, beti::Float64, T1::A
         if isone(lost_flags[c])
             continue
         end
-        r6 = @view r_in[(c-1)*6+1:c*6]
+        r6 = @view r_in[c, :]
         if !isnan(r6[1])
             # Misalignment at entrance
             if !iszero(T1)
@@ -222,7 +222,7 @@ function DriftPass_SC!(r_in::Array{Float64,1}, le::Float64, beti::Float64, T1::A
         if isone(lost_flags[c])
             continue
         end
-        r6 = @view r_in[(c-1)*6+1:c*6]
+        r6 = @view r_in[c, :]
         if !isnan(r6[1])
             # Misalignment at entrance
             if !iszero(T1)
@@ -248,7 +248,7 @@ function DriftPass_SC!(r_in::Array{Float64,1}, le::Float64, beti::Float64, T1::A
     return nothing
 end
 
-function DriftPass_SC!(r_in::Array{DTPSAD{N, T},1}, le::DTPSAD{N, T}, beti::Float64, T1::Array{DTPSAD{N, T},1}, T2::Array{DTPSAD{N, T},1}, 
+function DriftPass_SC!(r_in::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti::Float64, T1::Array{DTPSAD{N, T},1}, T2::Array{DTPSAD{N, T},1}, 
     R1::Array{DTPSAD{N, T},2}, R2::Array{DTPSAD{N, T}, 2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, 
     num_particles::Int, lost_flags::Array{Int64,1}, a::DTPSAD{N, T}, b::DTPSAD{N, T}, Nl::Int64, Nm::Int64, K::DTPSAD{N, T}) where {N, T}
     # Ref [Qiang, Ji. "Differentiable self-consistent space-charge simulation for accelerator design." Physical Review Accelerators and Beams 26.2 (2023): 024601.]
@@ -258,7 +258,7 @@ function DriftPass_SC!(r_in::Array{DTPSAD{N, T},1}, le::DTPSAD{N, T}, beti::Floa
         if isone(lost_flags[c])
             continue
         end
-        r6 = @view r_in[(c-1)*6+1:c*6]
+        r6 = @view r_in[c, :]
         if !isnan(r6[1])
             # Misalignment at entrance
             if !iszero(T1)
@@ -287,7 +287,7 @@ function DriftPass_SC!(r_in::Array{DTPSAD{N, T},1}, le::DTPSAD{N, T}, beti::Floa
         if isone(lost_flags[c])
             continue
         end
-        r6 = @view r_in[(c-1)*6+1:c*6]
+        r6 = @view r_in[c, :]
         if !isnan(r6[1])
             # Misalignment at entrance
             if !iszero(T1)
@@ -313,7 +313,7 @@ function DriftPass_SC!(r_in::Array{DTPSAD{N, T},1}, le::DTPSAD{N, T}, beti::Floa
     return nothing
 end
 
-function pass!(ele::DRIFT_SC{Float64}, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass!(ele::DRIFT_SC{Float64}, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: EDRIFT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -332,7 +332,7 @@ function pass!(ele::DRIFT_SC{Float64}, r_in::Array{Float64,1}, num_particles::In
     return nothing
 end
 
-function pass!(ele::DRIFT_SC{DTPSAD{N, T}}, r_in::Array{DTPSAD{N, T},1}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T}
+function pass!(ele::DRIFT_SC{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T}
     # ele: EDRIFT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -354,7 +354,7 @@ end
 
 ################################################################################
 # multi-threading
-function DriftPass_SC_P!(r_in::Array{Float64,1}, le::Float64, beti::Float64, T1::Array{Float64,1}, T2::Array{Float64,1}, 
+function DriftPass_SC_P!(r_in::Matrix{Float64}, le::Float64, beti::Float64, T1::Array{Float64,1}, T2::Array{Float64,1}, 
     R1::Array{Float64,2}, R2::Array{Float64, 2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, 
     num_particles::Int, lost_flags::Array{Int64,1}, a, b, Nl, Nm, K)
 
@@ -363,7 +363,7 @@ function DriftPass_SC_P!(r_in::Array{Float64,1}, le::Float64, beti::Float64, T1:
         if isone(lost_flags[c])
             continue
         end
-        r6 = @view r_in[(c-1)*6+1:c*6]
+        r6 = @view r_in[c, :]
         if !isnan(r6[1])
             # Misalignment at entrance
             if !iszero(T1)
@@ -392,7 +392,7 @@ function DriftPass_SC_P!(r_in::Array{Float64,1}, le::Float64, beti::Float64, T1:
         if isone(lost_flags[c])
             continue
         end
-        r6 = @view r_in[(c-1)*6+1:c*6]
+        r6 = @view r_in[c, :]
         if !isnan(r6[1])
             # Misalignment at entrance
             if !iszero(T1)
@@ -418,7 +418,7 @@ function DriftPass_SC_P!(r_in::Array{Float64,1}, le::Float64, beti::Float64, T1:
     return nothing
 end
 
-function pass_P!(ele::DRIFT_SC, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass_P!(ele::DRIFT_SC, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: EDRIFT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles

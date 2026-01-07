@@ -29,9 +29,10 @@ end
 #     end
 # end
 
-function compute_delta_pxy!(r_in::Vector{T}, K, Nl, Nm, a, b, Np, dt, lost_flags) where T
-    x = r_in[1:6:end]
-    y = r_in[3:6:end]
+function compute_delta_pxy!(r_in::Matrix{T}, K, Nl, Nm, a, b, Np, dt, lost_flags) where T
+    # Extract x and y coordinates from the matrix (column 1 and 3)
+    x = @view r_in[:, 1]
+    y = @view r_in[:, 3]
     
     mask = 1 .- lost_flags          # mask[k] = 1 if particle k is active, 0 if lost
     
@@ -82,9 +83,9 @@ function compute_delta_pxy!(r_in::Vector{T}, K, Nl, Nm, a, b, Np, dt, lost_flags
     delta_px = - (dt * K / 2.0) * term1
     delta_py = - (dt * K / 2.0) * term2
 
-    # Update p_x and p_y
-    r_in[2:6:end] .+= delta_px
-    r_in[4:6:end] .+= delta_py
+    # Update p_x and p_y (columns 2 and 4)
+    r_in[:, 2] .+= delta_px
+    r_in[:, 4] .+= delta_py
     return nothing
 end
 
@@ -99,7 +100,7 @@ function space_charge!(r_in, K, Nl, Nm, dx, dy, a, b, Np, dt, lost_flags)
     return nothing
 end
 
-function pass!(ele::SPACECHARGE, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass!(ele::SPACECHARGE, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: SPACECHARGE
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -122,7 +123,7 @@ function pass_TPSA!(ele::SPACECHARGE, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degr
     return nothing
 end
 
-function pass_P!(ele::SPACECHARGE, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass_P!(ele::SPACECHARGE, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # println("Parallel computing is not implemented for space charge yet.")
     lost_flags = particles.lost_flag
     I = particles.current

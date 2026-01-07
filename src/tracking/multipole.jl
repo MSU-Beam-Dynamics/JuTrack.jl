@@ -62,7 +62,7 @@ function strthinkick!(r::AbstractVector{Float64}, A::AbstractVector{Float64}, B:
 end
 
 
-function StrMPoleSymplectic4Pass!(r::Array{Float64,1}, le::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function StrMPoleSymplectic4Pass!(r::Matrix{Float64}, le::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_step::Int, 
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
@@ -89,7 +89,7 @@ function StrMPoleSymplectic4Pass!(r::Array{Float64,1}, le::Float64, beti::Float6
         if lost_flags[c] == 1
             continue
         end
-        r6 = @view r[(c-1)*6+1:c*6]
+        r6 = @view r[c, :]
         if !isnan(r6[1])
             # Misalignment at entrance
             if !iszero(T1)
@@ -138,7 +138,7 @@ function StrMPoleSymplectic4Pass!(r::Array{Float64,1}, le::Float64, beti::Float6
     return nothing
 end
 
-function StrMPoleSymplectic4RadPass!(r::Array{Float64,1}, le::Float64, rad_const::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function StrMPoleSymplectic4RadPass!(r::Matrix{Float64}, le::Float64, rad_const::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_step::Int, 
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
@@ -165,7 +165,7 @@ function StrMPoleSymplectic4RadPass!(r::Array{Float64,1}, le::Float64, rad_const
         if lost_flags[c] == 1
             continue
         end
-        r6 = @view r[(c-1)*6+1:c*6]
+        r6 = @view r[c, :]
         if !isnan(r6[1])
             # Misalignment at entrance
             if !iszero(T1)
@@ -214,7 +214,7 @@ function StrMPoleSymplectic4RadPass!(r::Array{Float64,1}, le::Float64, rad_const
     return nothing
 end
 
-function pass!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass!(ele::KQUAD, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: KQUAD
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -253,7 +253,7 @@ function pass!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, particl
     return nothing
 end
 
-function pass!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass!(ele::KSEXT, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: KSEXT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -290,7 +290,7 @@ function pass!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, particl
     return nothing
 end
 
-function pass!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass!(ele::KOCT, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: KOCT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -330,7 +330,7 @@ end
 
 ###################
 # multi-threading
-function StrMPoleSymplectic4Pass_P!(r::Array{Float64,1}, le::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function StrMPoleSymplectic4Pass_P!(r::Matrix{Float64}, le::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_step::Int, 
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
@@ -355,7 +355,7 @@ function StrMPoleSymplectic4Pass_P!(r::Array{Float64,1}, le::Float64, beti::Floa
         if lost_flags[c] == 1
             continue
         end
-        r6 = @view r[(c-1)*6+1:c*6]
+        r6 = @view r[c, :]
         if !isnan(r6[1])
             # Misalignment at entrance
             if !iszero(T1)
@@ -404,7 +404,7 @@ function StrMPoleSymplectic4Pass_P!(r::Array{Float64,1}, le::Float64, beti::Floa
     return nothing
 end
 
-function StrMPoleSymplectic4RadPass_P!(r::Array{Float64,1}, le::Float64, rad_const::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function StrMPoleSymplectic4RadPass_P!(r::Matrix{Float64}, le::Float64, rad_const::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_step::Int, 
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
@@ -432,7 +432,7 @@ function StrMPoleSymplectic4RadPass_P!(r::Array{Float64,1}, le::Float64, rad_con
         if lost_flags[c] == 1
             continue
         end
-        r6 = @view r[(c-1)*6+1:c*6]
+        r6 = @view r[c, :]
         if !isnan(r6[1])
             # Misalignment at entrance
             if !iszero(T1)
@@ -498,7 +498,7 @@ function StrMPoleSymplectic4RadPass_P!(r::Array{Float64,1}, le::Float64, rad_con
     return nothing
 end
 
-function pass_P!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass_P!(ele::KQUAD, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: KQUAD
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -537,7 +537,7 @@ function pass_P!(ele::KQUAD, r_in::Array{Float64,1}, num_particles::Int64, parti
     return nothing
 end
 
-function pass_P!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass_P!(ele::KSEXT, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: KSEXT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -576,7 +576,7 @@ function pass_P!(ele::KSEXT, r_in::Array{Float64,1}, num_particles::Int64, parti
     return nothing
 end
 
-function pass_P!(ele::KOCT, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass_P!(ele::KOCT, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: KOCT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -616,7 +616,7 @@ end
 
 ########################################################
 # Space charge
-function StrMPoleSymplectic4Pass_SC!(r::Array{Float64,1}, le::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function StrMPoleSymplectic4Pass_SC!(r::Matrix{Float64}, le::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_step::Int, 
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
@@ -647,7 +647,7 @@ function StrMPoleSymplectic4Pass_SC!(r::Array{Float64,1}, le::Float64, beti::Flo
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
             
             if step == 1
                 # Misalignment at entrance
@@ -685,7 +685,7 @@ function StrMPoleSymplectic4Pass_SC!(r::Array{Float64,1}, le::Float64, beti::Flo
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
 
             NormL1 = L1 / (1.0 + r6[6])
             NormL2 = L2 / (1.0 + r6[6])
@@ -727,7 +727,7 @@ function StrMPoleSymplectic4Pass_SC!(r::Array{Float64,1}, le::Float64, beti::Flo
     return nothing
 end
 
-function StrMPoleSymplectic4RadPass_SC!(r::Array{Float64,1}, le::Float64, rad_const::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function StrMPoleSymplectic4RadPass_SC!(r::Matrix{Float64}, le::Float64, rad_const::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_step::Int, 
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
@@ -758,7 +758,7 @@ function StrMPoleSymplectic4RadPass_SC!(r::Array{Float64,1}, le::Float64, rad_co
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
             if step == 1
                 # Misalignment at entrance
                 if !iszero(T1)
@@ -793,7 +793,7 @@ function StrMPoleSymplectic4RadPass_SC!(r::Array{Float64,1}, le::Float64, rad_co
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
     
             # Integrator
             for m in 1:num_int_step
@@ -832,7 +832,7 @@ function StrMPoleSymplectic4RadPass_SC!(r::Array{Float64,1}, le::Float64, rad_co
     return nothing
 end
 
-function pass!(ele::KQUAD_SC, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass!(ele::KQUAD_SC, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: KQUAD_SC
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -872,7 +872,7 @@ function pass!(ele::KQUAD_SC, r_in::Array{Float64,1}, num_particles::Int64, part
     return nothing
 end
 
-function pass!(ele::KSEXT_SC, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass!(ele::KSEXT_SC, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: KSEXT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -913,7 +913,7 @@ function pass!(ele::KSEXT_SC, r_in::Array{Float64,1}, num_particles::Int64, part
     return nothing
 end
 
-function pass!(ele::KOCT_SC, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass!(ele::KOCT_SC, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: KOCT_SC
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -954,7 +954,7 @@ function pass!(ele::KOCT_SC, r_in::Array{Float64,1}, num_particles::Int64, parti
 end
 
 
-function StrMPoleSymplectic4Pass_SC!(r::Array{DTPSAD{N, T},1}, le::DTPSAD{N, T}, beti::Float64, A::Array{DTPSAD{N, T},1}, B::Array{DTPSAD{N, T},1}, 
+function StrMPoleSymplectic4Pass_SC!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti::Float64, A::Array{DTPSAD{N, T},1}, B::Array{DTPSAD{N, T},1}, 
     max_order::Int, num_int_step::Int, 
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
     T1::Array{DTPSAD{N, T},1}, T2::Array{DTPSAD{N, T},1}, R1::Array{DTPSAD{N, T},2}, R2::Array{DTPSAD{N, T},2}, 
@@ -985,7 +985,7 @@ function StrMPoleSymplectic4Pass_SC!(r::Array{DTPSAD{N, T},1}, le::DTPSAD{N, T},
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
             
             if step == 1
                 # Misalignment at entrance
@@ -1023,7 +1023,7 @@ function StrMPoleSymplectic4Pass_SC!(r::Array{DTPSAD{N, T},1}, le::DTPSAD{N, T},
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
 
             NormL1 = L1 / (1.0 + r6[6])
             NormL2 = L2 / (1.0 + r6[6])
@@ -1065,7 +1065,7 @@ function StrMPoleSymplectic4Pass_SC!(r::Array{DTPSAD{N, T},1}, le::DTPSAD{N, T},
     return nothing
 end
 
-function StrMPoleSymplectic4RadPass_SC!(r::Array{DTPSAD{N, T},1}, le::DTPSAD{N, T}, rad_const::DTPSAD{N, T}, beti::Float64, A::Array{DTPSAD{N, T},1}, B::Array{DTPSAD{N, T},1}, 
+function StrMPoleSymplectic4RadPass_SC!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, rad_const::DTPSAD{N, T}, beti::Float64, A::Array{DTPSAD{N, T},1}, B::Array{DTPSAD{N, T},1}, 
     max_order::Int, num_int_step::Int, 
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
     T1::Array{DTPSAD{N, T},1}, T2::Array{DTPSAD{N, T},1}, R1::Array{DTPSAD{N, T},2}, R2::Array{DTPSAD{N, T},2}, 
@@ -1096,7 +1096,7 @@ function StrMPoleSymplectic4RadPass_SC!(r::Array{DTPSAD{N, T},1}, le::DTPSAD{N, 
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
             if step == 1
                 # Misalignment at entrance
                 if !iszero(T1)
@@ -1131,7 +1131,7 @@ function StrMPoleSymplectic4RadPass_SC!(r::Array{DTPSAD{N, T},1}, le::DTPSAD{N, 
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
     
             # Integrator
             for m in 1:num_int_step
@@ -1170,7 +1170,7 @@ function StrMPoleSymplectic4RadPass_SC!(r::Array{DTPSAD{N, T},1}, le::DTPSAD{N, 
     return nothing
 end
 
-function pass!(ele::KQUAD_SC{DTPSAD{N, T}}, r_in::Array{DTPSAD{N, T},1}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T}
+function pass!(ele::KQUAD_SC{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T}
     # ele: KQUAD_SC
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -1210,7 +1210,7 @@ function pass!(ele::KQUAD_SC{DTPSAD{N, T}}, r_in::Array{DTPSAD{N, T},1}, num_par
     return nothing
 end
 
-function pass!(ele::KSEXT_SC{DTPSAD{N, T}}, r_in::Array{DTPSAD{N, T},1}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T}
+function pass!(ele::KSEXT_SC{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T}
     # ele: KSEXT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -1250,7 +1250,7 @@ function pass!(ele::KSEXT_SC{DTPSAD{N, T}}, r_in::Array{DTPSAD{N, T},1}, num_par
     return nothing
 end
 
-function pass!(ele::KOCT_SC{DTPSAD{N, T}}, r_in::Array{DTPSAD{N, T},1}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T}
+function pass!(ele::KOCT_SC{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T}
     # ele: KOCT_SC
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -1291,7 +1291,7 @@ function pass!(ele::KOCT_SC{DTPSAD{N, T}}, r_in::Array{DTPSAD{N, T},1}, num_part
 end
 ###################
 # multi-threading
-function StrMPoleSymplectic4Pass_P_SC!(r::Array{Float64,1}, le::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function StrMPoleSymplectic4Pass_P_SC!(r::Matrix{Float64}, le::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_step::Int, 
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
@@ -1322,7 +1322,7 @@ function StrMPoleSymplectic4Pass_P_SC!(r::Array{Float64,1}, le::Float64, beti::F
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
             
             if step == 1
                 # Misalignment at entrance
@@ -1360,7 +1360,7 @@ function StrMPoleSymplectic4Pass_P_SC!(r::Array{Float64,1}, le::Float64, beti::F
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
     
             # Integrator
             for m in 1:num_int_step
@@ -1399,7 +1399,7 @@ function StrMPoleSymplectic4Pass_P_SC!(r::Array{Float64,1}, le::Float64, beti::F
     return nothing
 end
 
-function StrMPoleSymplectic4RadPass_P_SC!(r::Array{Float64,1}, len::Float64, rad_const::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function StrMPoleSymplectic4RadPass_P_SC!(r::Matrix{Float64}, len::Float64, rad_const::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_step::Int, 
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
@@ -1430,7 +1430,7 @@ function StrMPoleSymplectic4RadPass_P_SC!(r::Array{Float64,1}, len::Float64, rad
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
             if step == 1
                 # Misalignment at entrance
                 if !iszero(T1)
@@ -1464,7 +1464,7 @@ function StrMPoleSymplectic4RadPass_P_SC!(r::Array{Float64,1}, len::Float64, rad
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
     
             # Integrator
             for m in 1:num_int_step
@@ -1503,7 +1503,7 @@ function StrMPoleSymplectic4RadPass_P_SC!(r::Array{Float64,1}, len::Float64, rad
     return nothing
 end
 
-function pass_P!(ele::KQUAD_SC, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass_P!(ele::KQUAD_SC, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: KQUAD
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -1544,7 +1544,7 @@ function pass_P!(ele::KQUAD_SC, r_in::Array{Float64,1}, num_particles::Int64, pa
     return nothing
 end
 
-function pass_P!(ele::KSEXT_SC, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass_P!(ele::KSEXT_SC, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: KSEXT_SC
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -1576,7 +1576,7 @@ function pass_P!(ele::KSEXT_SC, r_in::Array{Float64,1}, num_particles::Int64, pa
     return nothing
 end
 
-function pass_P!(ele::KOCT_SC, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass_P!(ele::KOCT_SC, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: KOCT_SC
     # r_in: 6-by-num_particles array
     # num_particles: number of particles

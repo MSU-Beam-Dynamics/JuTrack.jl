@@ -1,4 +1,4 @@
-function pass!(ele::LorentzBoost, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass!(ele::LorentzBoost, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     lost_flags = particles.lost_flag
     if ele.mode == 0
         invcosang = 1.0 / ele.cosang
@@ -6,7 +6,7 @@ function pass!(ele::LorentzBoost, r_in::Array{Float64,1}, num_particles::Int64, 
             if isone(lost_flags[c])
                 continue
             end
-            r6 = @view r_in[(c-1)*6+1:c*6] 
+            r6 = @view r_in[c, :] 
             r6[1] += ele.tanang * r6[5]
             r6[6] -= ele.tanang * r6[2]
             r6[2] *= invcosang
@@ -17,7 +17,7 @@ function pass!(ele::LorentzBoost, r_in::Array{Float64,1}, num_particles::Int64, 
     return nothing
 end
 
-function pass!(ele::InvLorentzBoost, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass!(ele::InvLorentzBoost, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     lost_flags = particles.lost_flag
     if ele.mode == 0
         invcosang = 1.0 / ele.cosang
@@ -25,7 +25,7 @@ function pass!(ele::InvLorentzBoost, r_in::Array{Float64,1}, num_particles::Int6
             if isone(lost_flags[c])
                 continue
             end
-            r6 = @view r_in[(c-1)*6+1:c*6] 
+            r6 = @view r_in[c, :] 
             r6[1] -= ele.sinang * r6[5]
             r6[6] += ele.sinang * r6[2]
             r6[2] *= ele.cosang
@@ -36,7 +36,7 @@ function pass!(ele::InvLorentzBoost, r_in::Array{Float64,1}, num_particles::Int6
     return nothing
 end
 
-function pass_P!(ele::LorentzBoost, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass_P!(ele::LorentzBoost, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     lost_flags = particles.lost_flag
     if ele.mode == 0
         invcosang = 1.0 / ele.cosang
@@ -45,7 +45,7 @@ function pass_P!(ele::LorentzBoost, r_in::Array{Float64,1}, num_particles::Int64
             if isone(lost_flags[c])
                 continue
             end
-            r6 = @view r_in[(c-1)*6+1:c*6] 
+            r6 = @view r_in[c, :] 
             r6[1] += ele.tanang * r6[5]
             r6[6] -= ele.tanang * r6[2]
             r6[2] *= invcosang
@@ -56,7 +56,7 @@ function pass_P!(ele::LorentzBoost, r_in::Array{Float64,1}, num_particles::Int64
     return nothing
 end
 
-function pass_P!(ele::InvLorentzBoost, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass_P!(ele::InvLorentzBoost, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     lost_flags = particles.lost_flag
     if ele.mode == 0
         invcosang = 1.0 / ele.cosang
@@ -65,7 +65,7 @@ function pass_P!(ele::InvLorentzBoost, r_in::Array{Float64,1}, num_particles::In
             if isone(lost_flags[c])
                 continue
             end
-            r6 = @view r_in[(c-1)*6+1:c*6] 
+            r6 = @view r_in[c, :] 
             r6[1] -= ele.sinang * r6[5]
             r6[6] += ele.sinang * r6[2]
             r6[2] *= ele.cosang

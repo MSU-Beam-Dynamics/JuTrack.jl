@@ -380,7 +380,7 @@ end
 
 
 # Main pass implementation using the WIGGLER struct; only 4th-order used
-function pass!(ele::WIGGLER, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass!(ele::WIGGLER, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     T1 = ele.T1
     T2 = ele.T2
     R1 = ele.R1
@@ -388,7 +388,7 @@ function pass!(ele::WIGGLER, r_in::Array{Float64,1}, num_particles::Int64, parti
     lost_flags = particles.lost_flag
 
     for c in 1:num_particles
-        r6 = @view r_in[(c-1)*6+1:c*6]
+        r6 = @view r_in[c, :]
         if lost_flags[c] == 1
             continue
         end
@@ -424,7 +424,7 @@ function pass!(ele::WIGGLER, r_in::Array{Float64,1}, num_particles::Int64, parti
     return nothing
 end
 
-function pass_P!(ele::WIGGLER, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass_P!(ele::WIGGLER, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     T1 = ele.T1
     T2 = ele.T2
     R1 = ele.R1
@@ -432,7 +432,7 @@ function pass_P!(ele::WIGGLER, r_in::Array{Float64,1}, num_particles::Int64, par
     lost_flags = particles.lost_flag
 
     Threads.@threads for c in 1:num_particles
-        r6 = @view r_in[(c-1)*6+1:c*6]
+        r6 = @view r_in[c, :]
         if lost_flags[c] == 1
             continue
         end
@@ -1177,13 +1177,13 @@ function _wig_pass_4th_rad_DTPSAD!(ele::WIGGLER{DTPSAD{N, T}}, r::SubArray) wher
     return nothing
 end
 
-function pass!(ele::WIGGLER{DTPSAD{N, T}}, rin::Vector{DTPSAD{N, T}}, npart::Int, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
+function pass!(ele::WIGGLER{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::Int, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     @inbounds for c in 1:npart
         lost_flag = particles.lost_flag[c]
         if lost_flag == 1
             continue
         end
-        r6 = @view rin[(c-1)*6+1:c*6]
+        r6 = @view rin[c, :]
 
         # entrance misalignment/rotation
         if !all(iszero, ele.T1)

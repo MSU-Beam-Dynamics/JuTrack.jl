@@ -1,5 +1,5 @@
 
-function RFCavityPass!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq::Float64, h::Float64, 
+function RFCavityPass!(r_in::Matrix{Float64}, le::Float64, nv::Float64, freq::Float64, h::Float64, 
     lag::Float64, philag::Float64, nturn::Int, T0::Float64, beta::Float64, num_particles::Int, lost_flags::Array{Int64,1})
     # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
     # le - physical length
@@ -19,7 +19,7 @@ function RFCavityPass!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq::F
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r_in[(c-1)*6+1:c*6]
+            r6 = @view r_in[c, :]
             if !isnan(r6[1])
                 r6[6] += -nv * sin(2 * pi * freq * ((r6[5] - lag) / C0 - (h / freq - T0) * nturn) - philag) / beta^2
             end
@@ -30,7 +30,7 @@ function RFCavityPass!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq::F
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r_in[(c-1)*6+1:c*6]
+            r6 = @view r_in[c, :]
             if !isnan(r6[1])
                 # drift-kick-drift
                 drift6!(r6, halflength, beti)
@@ -46,7 +46,7 @@ function RFCavityPass!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq::F
     return nothing
 end
 
-function pass!(ele::RFCA, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass!(ele::RFCA, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: RFCA
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -65,7 +65,7 @@ end
 
 ##########################################################################################
 # multi-threading
-function RFCavityPass_P!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq::Float64, h::Float64, 
+function RFCavityPass_P!(r_in::Matrix{Float64}, le::Float64, nv::Float64, freq::Float64, h::Float64, 
     lag::Float64, philag::Float64, nturn::Int, T0::Float64, beta::Float64, num_particles::Int, lost_flags::Array{Int64,1})
     # le - physical length
     # nv - peak voltage (V) normalized to the design enegy (eV)
@@ -85,7 +85,7 @@ function RFCavityPass_P!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq:
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r_in[(c-1)*6+1:c*6]
+            r6 = @view r_in[c, :]
             if !isnan(r6[1])
                 r6[6] += -nv * sin(2 * pi * freq * ((r6[5] - lag) / C0 - (h / freq - T0) * nturn) - philag) / beta^2
             end
@@ -97,7 +97,7 @@ function RFCavityPass_P!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq:
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r_in[(c-1)*6+1:c*6]
+            r6 = @view r_in[c, :]
             if !isnan(r6[1])
                 # drift-kick-drift
                 drift6!(r6, halflength, beti)
@@ -112,7 +112,7 @@ function RFCavityPass_P!(r_in::Array{Float64,1}, le::Float64, nv::Float64, freq:
     return nothing
 end
 
-function pass_P!(ele::RFCA, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass_P!(ele::RFCA, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     # ele: RFCA
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -150,7 +150,7 @@ function RFCavityPass!(r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le, nv, f
 
     if le == 0
         # for c in 1:num_particles
-            # r6 = @view r_in[(c-1)*6+1:c*6]
+            # r6 = @view r_in[c, :]
             # if !isnan(r6[1])
             # r_in[5] = tminus(r_in[5], tmult(nv, tsin(tminus(tmult(2*pi*freq, tdiv(tminus(r_in[6], lag), C0)), philag))))
             r_in[6] += -nv * sin(2.0 * pi * freq * ((r_in[5] - lag) / C0 - (h / freq - T0) * nturn) - philag) / beta^2
@@ -159,7 +159,7 @@ function RFCavityPass!(r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}}, le, nv, f
         return nothing
     else
         # for c in 1:num_particles
-            # r6 = @view r_in[(c-1)*6+1:c*6]
+            # r6 = @view r_in[c, :]
             # if !isnan(r6[1])
                 # drift-kick-drift
                 drift6!(r_in, halflength, beti)

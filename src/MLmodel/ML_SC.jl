@@ -9,8 +9,8 @@ using PyCall
 np = pyimport("numpy")
 RectBivariateSpline = pyimport("scipy.interpolate").RectBivariateSpline
 function space_charge_ML!(r_in, K, num_particles, le, lost_flags, model, x_mean, x_std, y_mean, y_std, xedges, yedges, xaxis, delta)
-    x = r_in[1:6:end]
-    y = r_in[3:6:end]
+    x = r_in[:, 1]
+    y = r_in[:, 3]
     x_survi = x[iszero.(lost_flags)]
     y_survi = y[iszero.(lost_flags)]
     H = fit(Histogram, (x_survi, y_survi), (xedges, yedges), closed=:left)
@@ -41,8 +41,8 @@ function space_charge_ML!(r_in, K, num_particles, le, lost_flags, model, x_mean,
     # dy[1,:,:] .= np.gradient(smoothed_H[1,1,:,:], delta, axis=1)
     # dh_dx, dh_dy = derivative_histogram(smoothed_H[1,1,:,:], delta, delta, xaxis, xaxis, x, y)
 
-    r_in[2:6:end] .-= (le * K).* dh_dx
-    r_in[4:6:end] .-= (le * K).* dh_dy
+    r_in[:, 2] .-= (le * K).* dh_dx
+    r_in[:, 4] .-= (le * K).* dh_dy
     return nothing
 end
 mutable struct DRIFT_SC_ML <: AbstractElement{Float64}
@@ -111,7 +111,7 @@ mutable struct KQUAD_SC_ML <: AbstractElement{Float64}
 end
 
 
-function pass!(ele::DRIFT_SC_ML, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam, model, x_mean, x_std, y_mean, y_std, xedges, yedges, xaxis, delta)
+function pass!(ele::DRIFT_SC_ML, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam, model, x_mean, x_std, y_mean, y_std, xedges, yedges, xaxis, delta)
     # ele: EDRIFT
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -125,7 +125,7 @@ function pass!(ele::DRIFT_SC_ML, r_in::Array{Float64,1}, num_particles::Int64, p
     return nothing
 end
 
-function DriftPass_SC_ML!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64,1}, T2::Array{Float64,1}, 
+function DriftPass_SC_ML!(r_in::Matrix{Float64}, le::Float64, T1::Array{Float64,1}, T2::Array{Float64,1}, 
     R1::Array{Float64,2}, R2::Array{Float64, 2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, 
     num_particles::Int, lost_flags::Array{Int64,1}, a, b, Nl, Nm, K, model, x_mean, x_std, y_mean, y_std, xedges, yedges, xaxis, delta)
 
@@ -134,7 +134,7 @@ function DriftPass_SC_ML!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64
         if isone(lost_flags[c])
             continue
         end
-        r6 = @view r_in[(c-1)*6+1:c*6]
+        r6 = @view r_in[c, :]
         if !isnan(r6[1])
             # Misalignment at entrance
             if !iszero(T1)
@@ -163,7 +163,7 @@ function DriftPass_SC_ML!(r_in::Array{Float64,1}, le::Float64, T1::Array{Float64
         if isone(lost_flags[c])
             continue
         end
-        r6 = @view r_in[(c-1)*6+1:c*6]
+        r6 = @view r_in[c, :]
         if !isnan(r6[1])
             # Misalignment at entrance
             if !iszero(T1)
@@ -203,7 +203,7 @@ end
 #     return df_dx_v, df_dy_v
 # end
 
-function StrMPoleSymplectic4Pass_SC!(r::Array{Float64,1}, le::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
+function StrMPoleSymplectic4Pass_SC!(r::Matrix{Float64}, le::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_step::Int, 
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
     fringeIntM0::Array{Float64,1},  # I0m/K1, I1m/K1, I2m/K1, I3m/K1, Lambda2m/K1 
@@ -248,7 +248,7 @@ function StrMPoleSymplectic4Pass_SC!(r::Array{Float64,1}, le::Float64, A::Array{
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
             NormL1 = L1 / (1.0 + r6[6])
             NormL2 = L2 / (1.0 + r6[6])
             
@@ -292,7 +292,7 @@ function StrMPoleSymplectic4Pass_SC!(r::Array{Float64,1}, le::Float64, A::Array{
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r[(c-1)*6+1:c*6]
+            r6 = @view r[c, :]
 
             NormL1 = L1 / (1.0 + r6[6])
             NormL2 = L2 / (1.0 + r6[6])
@@ -338,7 +338,7 @@ function StrMPoleSymplectic4Pass_SC!(r::Array{Float64,1}, le::Float64, A::Array{
     return nothing
 end
 
-function pass!(ele::KQUAD_SC_ML, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam, model, x_mean, x_std, y_mean, y_std, xedges, yedges, xaxis, delta)
+function pass!(ele::KQUAD_SC_ML, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam, model, x_mean, x_std, y_mean, y_std, xedges, yedges, xaxis, delta)
     # ele: KQUAD_SC
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
@@ -362,14 +362,8 @@ function linepass_ML!(line::Vector, particles::Beam, model, x_mean, x_std, y_mea
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     np = particles.nmacro
-    particles6 = matrix_to_array(particles.r)
-    if length(particles6) != np*6
-        error("The number of particles does not match the length of the particle array")
-    end
     for i in eachindex(line)
-        pass!(line[i], particles6, np, particles, model, x_mean, x_std, y_mean, y_std, xedges, yedges, xaxis, delta)        
+        pass!(line[i], particles.r, np, particles, model, x_mean, x_std, y_mean, y_std, xedges, yedges, xaxis, delta)        
     end
-    rout = array_to_matrix(particles6, np)
-    particles.r = rout
     return nothing
 end

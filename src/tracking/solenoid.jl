@@ -1,4 +1,4 @@
-function pass!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass!(ele::SOLENOID, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     lost_flags = particles.lost_flag
     T1 = ele.T1
     R1 = ele.R1
@@ -15,7 +15,7 @@ function pass!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, part
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r_in[(c-1)*6+1:c*6]
+            r6 = @view r_in[c, :]
             if !isnan(r6[1]) 
                 p_norm = 1.0 / (1.0 + r6[6]) # use linearized p_norm
     
@@ -57,7 +57,7 @@ function pass!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, part
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r_in[(c-1)*6+1:c*6]
+            r6 = @view r_in[c, :]
             drift6!(r6, ele.len, beti)
             if check_lost(r6)
                 lost_flags[c] = 1
@@ -71,7 +71,7 @@ end
 
 ##########################################################################################
 # multi-threading
-function pass_P!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass_P!(ele::SOLENOID, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     lost_flags = particles.lost_flag
     T1 = ele.T1
     R1 = ele.R1
@@ -83,7 +83,7 @@ function pass_P!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, pa
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r_in[(c-1)*6+1:c*6]
+            r6 = @view r_in[c, :]
             if !isnan(r6[1]) 
                 p_norm = 1.0 / (1.0 + r6[6])
     
@@ -125,7 +125,7 @@ function pass_P!(ele::SOLENOID, r_in::Array{Float64,1}, num_particles::Int64, pa
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r_in[(c-1)*6+1:c*6]
+            r6 = @view r_in[c, :]
             if !iszero(T1)
                 addvv!(r_in, T1)
             end

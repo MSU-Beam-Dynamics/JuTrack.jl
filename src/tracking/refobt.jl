@@ -1,11 +1,11 @@
 # TRANSLATION and YROTATION are used to convert the MAD-X lattice files
 # The transer map is the same as the one in MAD-X.
-function pass!(elem::TRANSLATION, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass!(elem::TRANSLATION, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     for c in 1:num_particles
         if isone(particles.lost_flag[c])
             continue
         end
-        r6 = @view r_in[(c-1)*6+1:c*6]
+        r6 = @view r_in[c, :]
         if use_exact_beti == 1
             pz = sqrt(1.0 + 2.0 * r6[6] / particles.beta + r6[6]^2 - r6[2]^2 - r6[4]^2)
             r6[1] -= elem.dx + elem.ds * r6[2] / pz
@@ -24,7 +24,7 @@ function pass!(elem::TRANSLATION, r_in::Array{Float64,1}, num_particles::Int64, 
     return nothing
 end
 
-function pass_P!(elem::TRANSLATION, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass_P!(elem::TRANSLATION, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     if use_exact_beti == 1
         beta = particles.beta
     else
@@ -34,7 +34,7 @@ function pass_P!(elem::TRANSLATION, r_in::Array{Float64,1}, num_particles::Int64
         if isone(particles.lost_flag[c])
             continue
         end
-        r6 = @view r_in[(c-1)*6+1:c*6]
+        r6 = @view r_in[c, :]
         if use_exact_beti == 1
             pz = sqrt(1.0 + 2.0 * r6[6] / beta + r6[6]^2 - r6[2]^2 - r6[4]^2)
             r6[1] -= elem.dx + elem.ds * r6[2] / pz
@@ -68,7 +68,7 @@ function pass_TPSA!(elem::TRANSLATION, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Deg
 end
 
 # YROTATION
-function pass!(elem::YROTATION, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass!(elem::YROTATION, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     angle = -elem.angle
     if angle == 0.0
         return nothing
@@ -85,7 +85,7 @@ function pass!(elem::YROTATION, r_in::Array{Float64,1}, num_particles::Int64, pa
         if isone(particles.lost_flag[c])
             continue
         end
-        r6 = @view r_in[(c-1)*6+1:c*6]
+        r6 = @view r_in[c, :]
         x, px, y, py, t, pt = r6[1], r6[2], r6[3], r6[4], r6[5], r6[6]
         pz = sqrt(1.0 + 2.0 * pt / beta + pt^2 - px^2 - py^2)
         ptt = 1.0 - ta*px/pz
@@ -101,7 +101,7 @@ function pass!(elem::YROTATION, r_in::Array{Float64,1}, num_particles::Int64, pa
     return nothing
 end
 
-function pass_P!(elem::YROTATION, r_in::Array{Float64,1}, num_particles::Int64, particles::Beam{Float64})
+function pass_P!(elem::YROTATION, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
     angle = -elem.angle
     if angle == 0.0
         return nothing
@@ -118,7 +118,7 @@ function pass_P!(elem::YROTATION, r_in::Array{Float64,1}, num_particles::Int64, 
         if isone(particles.lost_flag[c])
             continue
         end
-        r6 = @view r_in[(c-1)*6+1:c*6]
+        r6 = @view r_in[c, :]
         x, px, y, py, t, pt = r6[1], r6[2], r6[3], r6[4], r6[5], r6[6]
         pz = sqrt(1.0 + 2.0 * pt / beta + pt^2 - px^2 - py^2)
         ptt = 1.0 - ta*px/pz
