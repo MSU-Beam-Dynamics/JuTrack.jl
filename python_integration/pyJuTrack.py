@@ -358,7 +358,7 @@ class Lattice:
     
     def total_length(self) -> float:
         """Calculate total length of the lattice"""
-        return float(_jl.total_length(self._jl_lattice))
+        return _jl.total_length(self._jl_lattice)
     
     def spos(self, indices: Optional[List[int]] = None):
         """
@@ -380,7 +380,7 @@ class Lattice:
         return _to_numpy_array(result)
     
     def __repr__(self):
-        return f"Lattice(n_elements={len(self)}, length={self.total_length():.3f}m)"
+        return f"Lattice(n_elements={len(self)}, length={self.total_length()}m)"
 
 
 class Beam:
@@ -446,7 +446,7 @@ class Beam:
     @property
     def energy(self) -> float:
         """Beam energy"""
-        return float(self._jl_beam.energy)
+        return self._jl_beam.energy
     
     @property
     def nmacro(self) -> int:
@@ -1311,7 +1311,7 @@ def total_length(lattice) -> float:
     if isinstance(lattice, Lattice):
         return lattice.total_length()
     else:
-        return float(_jl.total_length(lattice))
+        return _jl.total_length(lattice)
 
 def spos(lattice, indices: Optional[List[int]] = None):
     """Get s-positions"""
@@ -1909,7 +1909,7 @@ def gettune(lattice, dp=0.0, **kwargs) -> Tuple[float, float]:
         jl_lattice = lattice
 
     result = _jl.gettune(jl_lattice, dp=dp, **kwargs)
-    return (float(result[0]), float(result[1]))
+    return (result[0], result[1])
 
 def getchrom(lattice, dp=0.0, **kwargs) -> Tuple[float, float]:
     """Get chromaticities (xi_x, xi_y)"""
@@ -1919,7 +1919,7 @@ def getchrom(lattice, dp=0.0, **kwargs) -> Tuple[float, float]:
         jl_lattice = lattice
 
     result = _jl.getchrom(jl_lattice, dp=dp, **kwargs)
-    return (float(result[0]), float(result[1]))
+    return (result[0], result[1])
 
 def rad_on():
     """Turn on radiation"""
@@ -1936,7 +1936,7 @@ def tracking_U0(lattice, **kwargs) -> float:
     else:
         jl_lattice = lattice
     
-    return float(_jl.tracking_U0(jl_lattice, **kwargs))
+    return _jl.tracking_U0(jl_lattice, **kwargs)
 
 def integral_U0(lattice, **kwargs) -> float:
     """Calculate U0 via integration"""
@@ -2042,10 +2042,10 @@ def ringpara(lattice, energy: float = 3e9, Vrf: float = 0.0, harm: int = 1,
     
     # Add RF-dependent parameters (may be NaN)
     try:
-        results['phi_s'] = float(jl_results.phi_s)
-        results['nus'] = float(jl_results.nus)
-        results['delta_max'] = float(jl_results.delta_max)
-        results['bunchlength'] = float(jl_results.bunchlength)
+        results['phi_s'] = jl_results.phi_s
+        results['nus'] = jl_results.nus
+        results['delta_max'] = jl_results.delta_max
+        results['bunchlength'] = jl_results.bunchlength
     except:
         results['phi_s'] = float('nan')
         results['nus'] = float('nan')
@@ -2055,20 +2055,20 @@ def ringpara(lattice, energy: float = 3e9, Vrf: float = 0.0, harm: int = 1,
     return results
 
 # Physical constants
-m_e = float(_jl.m_e)  # Electron mass (eV)
-m_p = float(_jl.m_p)  # Proton mass (eV)
-m_goldion = float(_jl.m_goldion)  # Gold ion mass (eV)
-charge_e = float(_jl.charge_e)  # Elementary charge (C)
-speed_of_light = float(_jl.speed_of_light)  # Speed of light (m/s)
-epsilon_0 = float(_jl.epsilon_0)  # Permittivity of free space
-CGAMMA = float(_jl.CGAMMA)
-__E0 = float(_jl.__E0)  # Electron rest mass energy (GeV)
-__HBAR_C = float(_jl.__HBAR_C)  # ħc in MeV⋅fm
-Cq = float(_jl.Cq)  # Quantum constant (m)  
+m_e = _jl.m_e  # Electron mass (eV)
+m_p = _jl.m_p  # Proton mass (eV)
+m_goldion = _jl.m_goldion  # Gold ion mass (eV)
+charge_e = _jl.charge_e  # Elementary charge (C)
+speed_of_light = _jl.speed_of_light  # Speed of light (m/s)
+epsilon_0 = _jl.epsilon_0  # Permittivity of free space
+CGAMMA = _jl.CGAMMA
+__E0 = _jl.__E0  # Electron rest mass energy (GeV)
+__HBAR_C = _jl.__HBAR_C  # ħc in MeV⋅fm
+Cq = _jl.Cq  # Quantum constant (m)  
 
 # Coordinate limits
-CoordLimit = float(_jl.CoordLimit)
-AngleLimit = float(_jl.AngleLimit)
+CoordLimit = _jl.CoordLimit
+AngleLimit = _jl.AngleLimit
 
 def randn_approx(n: int, m: int) -> np.ndarray:
     """Generate N×M matrix of approximately normal random numbers
