@@ -278,6 +278,32 @@ class Lattice:
     Python wrapper for a Julia lattice vector.
     Handles automatic type conversions for lattice elements.
     Automatically detects Float64 vs DTPSAD parametric types.
+    
+    Supports list-like operations:
+    - Indexing: lattice[i], lattice[i:j]
+    - Iteration: for elem in lattice
+    - Length: len(lattice)
+    - Repetition: lattice * N, N * lattice
+    - Concatenation: lattice1 + lattice2
+    - Append: lattice.append(elem)
+    - Extend: lattice.extend([elem1, elem2]) or lattice.extend(other_lattice)
+    
+    Examples:
+    --------
+    >>> # Create a basic lattice
+    >>> d1 = jt.DRIFT("D1", 1.0)
+    >>> q1 = jt.KQUAD("Q1", 0.5, k1=1.2)
+    >>> fodo = jt.Lattice([d1, q1, d1])
+    >>> 
+    >>> # Repeat the lattice
+    >>> ring = fodo * 10  # or 10 * fodo
+    >>> 
+    >>> # Concatenate lattices
+    >>> full_lattice = fodo + fodo
+    >>> 
+    >>> # Iterate over elements
+    >>> for elem in fodo:
+    ...     print(elem.name)
     """
     def __init__(self, elements: Union[List, Any] = None):
         """
@@ -378,6 +404,52 @@ class Lattice:
             julia_indices = _to_julia_int_vector(indices_1based)
             result = _jl.spos(self._jl_lattice, julia_indices)
         return _to_numpy_array(result)
+    
+    def __mul__(self, n: int):
+        """Repeat lattice n times (lattice * n)"""
+        if not isinstance(n, int):
+            raise TypeError(f"can't multiply Lattice by non-int of type '{type(n).__name__}'")
+        if n < 0:
+            raise ValueError("negative count not supported")
+        
+        # Get all elements from current lattice
+        all_elements = [self._jl_lattice[i] for i in range(len(self))]
+        # Repeat the elements n times
+        repeated_elements = all_elements * n
+        # Create and return new Lattice
+        return Lattice(repeated_elements)
+    
+    def __rmul__(self, n: int):
+        """Repeat lattice n times (n * lattice)"""
+        return self.__mul__(n)
+    
+    def __add__(self, other):
+        """Concatenate two lattices (lattice1 + lattice2)"""
+        if not isinstance(other, Lattice):
+            raise TypeError(f"can only concatenate Lattice (not '{type(other).__name__}') to Lattice")
+        
+        # Get all elements from both lattices
+        elements1 = [self._jl_lattice[i] for i in range(len(self))]
+        elements2 = [other._jl_lattice[i] for i in range(len(other))]
+        
+        # Concatenate and create new Lattice
+        return Lattice(elements1 + elements2)
+    
+    def __iter__(self):
+        """Make lattice iterable"""
+        for i in range(len(self)):
+            yield self._jl_lattice[i]
+    
+    def extend(self, elements):
+        """Extend lattice with elements from iterable"""
+        if isinstance(elements, Lattice):
+            # If it's a Lattice, iterate over its Julia object
+            for elem in elements:
+                _jl.push_b(self._jl_lattice, elem)
+        else:
+            # If it's a list or other iterable
+            for elem in elements:
+                _jl.push_b(self._jl_lattice, elem)
     
     def __repr__(self):
         return f"Lattice(n_elements={len(self)}, length={self.total_length()}m)"
