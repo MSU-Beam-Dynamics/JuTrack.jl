@@ -287,6 +287,7 @@ class Lattice:
     - Concatenation: lattice1 + lattice2
     - Append: lattice.append(elem)
     - Extend: lattice.extend([elem1, elem2]) or lattice.extend(other_lattice)
+    - Copy: lattice.copy() (shallow), lattice.deepcopy() (deep)
     
     Examples:
     --------
@@ -304,6 +305,9 @@ class Lattice:
     >>> # Iterate over elements
     >>> for elem in fodo:
     ...     print(elem.name)
+    >>> 
+    >>> # Copy lattice
+    >>> fodo_copy = fodo.deepcopy()  # Independent copy
     """
     def __init__(self, elements: Union[List, Any] = None):
         """
@@ -451,6 +455,37 @@ class Lattice:
             for elem in elements:
                 _jl.push_b(self._jl_lattice, elem)
     
+    def copy(self):
+        """
+        Create a shallow copy of the lattice.
+        
+        The new lattice will contain references to the same element objects.
+        Modifying elements in the copy will affect the original lattice.
+        
+        Returns:
+            Lattice: A new Lattice object with the same elements
+        """
+        # Get all elements from current lattice
+        elements = [self._jl_lattice[i] for i in range(len(self))]
+        # Create and return new Lattice with same element references
+        return Lattice(elements)
+    
+    def deepcopy(self):
+        """
+        Create a deep copy of the lattice.
+        
+        The new lattice will contain copies of all element objects.
+        Modifying elements in the copy will NOT affect the original lattice.
+        This is safer for independent modifications.
+        
+        Returns:
+            Lattice: A new Lattice object with copied elements
+        """
+        # Use Julia's deepcopy to copy all elements
+        copied_elements = [_jl.deepcopy(self._jl_lattice[i]) for i in range(len(self))]
+        # Create and return new Lattice with copied elements
+        return Lattice(copied_elements)
+    
     def __repr__(self):
         return f"Lattice(n_elements={len(self)}, length={self.total_length()}m)"
 
@@ -546,6 +581,56 @@ class Beam:
         particles = self.get_particles()
         return f"Beam(n_particles={particles.shape[0]}, energy={self.energy:.2e}eV)"
 
+
+# ============================================================================
+# Element Copy Utilities
+# ============================================================================
+
+def copy_element(element):
+    """
+    Create a shallow copy of a lattice element.
+    
+    This creates a new element object that references the same data.
+    For most use cases, deepcopy_element is recommended instead.
+    
+    Args:
+        element: A JuTrack lattice element
+    
+    Returns:
+        A new element object (shallow copy)
+    
+    Example:
+        >>> q1 = jt.KQUAD("Q1", length=0.5, k1=1.2)
+        >>> q2 = jt.copy_element(q1)
+    """
+    return _jl.copy(element)
+
+
+def deepcopy_element(element):
+    """
+    Create a deep copy of a lattice element.
+    
+    This creates a completely independent copy of the element.
+    Modifying the copy will NOT affect the original element.
+    This is the recommended way to copy elements.
+    
+    Args:
+        element: A JuTrack lattice element
+    
+    Returns:
+        A new element object (deep copy)
+    
+    Example:
+        >>> q1 = jt.KQUAD("Q1", length=0.5, k1=1.2)
+        >>> q2 = jt.deepcopy_element(q1)
+        >>> # Modify q2 without affecting q1
+    """
+    return _jl.deepcopy(element)
+
+
+# ============================================================================
+# Lattice Element Constructors
+# ============================================================================
 
 def DRIFT(name: str, length: float, **kwargs):
     """Create a drift space"""
@@ -1018,9 +1103,23 @@ def NVAR():
     return int(_jl.NVAR())
 
 def Number2TPSAD(obj):
-    """Convert numbers to TPSA format"""
+    """Convert numbers to TPSA format
+    
+    Args:
+        obj: Lattice object, list of elements, Julia lattice, or other object
+    
+    Returns:
+        TPSA-converted object (Lattice if input was lattice-like)
+    """
     if isinstance(obj, Lattice):
         tpsa_lattice = _jl.Number2TPSAD(obj.julia_object)
+        result = Lattice.__new__(Lattice)
+        result._jl_lattice = tpsa_lattice
+        return result
+    elif isinstance(obj, list):
+        # Convert list to Lattice first
+        lattice = Lattice(obj)
+        tpsa_lattice = _jl.Number2TPSAD(lattice.julia_object)
         result = Lattice.__new__(Lattice)
         result._jl_lattice = tpsa_lattice
         return result
@@ -1046,9 +1145,23 @@ def convert_to_DTPSAD(value):
         return _jl.DTPSAD(float(value))
 
 def TPSAD2Number(obj):
-    """Convert from TPSA format to numbers"""
+    """Convert from TPSA format to numbers
+    
+    Args:
+        obj: Lattice object, list of elements, Julia lattice, or other object
+    
+    Returns:
+        Number-converted object (Lattice if input was lattice-like)
+    """
     if isinstance(obj, Lattice):
         num_lattice = _jl.TPSAD2Number(obj.julia_object)
+        result = Lattice.__new__(Lattice)
+        result._jl_lattice = num_lattice
+        return result
+    elif isinstance(obj, list):
+        # Convert list to Lattice first
+        lattice = Lattice(obj)
+        num_lattice = _jl.TPSAD2Number(lattice.julia_object)
         result = Lattice.__new__(Lattice)
         result._jl_lattice = num_lattice
         return result
@@ -1218,7 +1331,7 @@ def twissring(lattice, dp=0.0, refpts=None, **kwargs):
     Calculate Twiss parameters around a ring.
     
     Args:
-        lattice: Lattice object
+        lattice: Lattice object, list of elements, or Julia lattice
         dp: Momentum deviation
         refpts: Reference points (list of indices)
         **kwargs: E0, m0, etc.
@@ -1228,6 +1341,8 @@ def twissring(lattice, dp=0.0, refpts=None, **kwargs):
     """
     if isinstance(lattice, Lattice):
         jl_lattice = lattice.julia_object
+    elif isinstance(lattice, list):
+        jl_lattice = Lattice(lattice).julia_object
     else:
         jl_lattice = lattice
     
@@ -1245,6 +1360,8 @@ def twissline(lattice, dp=0.0, refpts=None, **kwargs):
     """Calculate Twiss parameters along a beamline"""
     if isinstance(lattice, Lattice):
         jl_lattice = lattice.julia_object
+    elif isinstance(lattice, list):
+        jl_lattice = Lattice(lattice).julia_object
     else:
         jl_lattice = lattice
         
@@ -1258,58 +1375,30 @@ def twissline(lattice, dp=0.0, refpts=None, **kwargs):
     
     return _jl.twissline(jl_lattice, dp, 0, julia_refpts, **kwargs)
 
-def ADtwissring(lattice, dp=0.0, refpts=None, changed_idx=None, changed_ele=None, **kwargs):
-    """AD-compatible twissring"""
-    if isinstance(lattice, Lattice):
-        jl_lattice = lattice.julia_object
-    else:
-        jl_lattice = lattice
-    
-    if refpts is None:
-        refpts = list(range(1, len(jl_lattice) + 1))
-        julia_refpts = _to_julia_int_vector(refpts)
-    elif isinstance(refpts, (list, np.ndarray)):
-        julia_refpts = _to_julia_int_vector([int(r) for r in refpts])
-    else:
-        julia_refpts = refpts
-    
-    if changed_idx is not None and changed_ele is not None:
-        return _jl.ADtwissring(jl_lattice, dp, 0, julia_refpts, changed_idx, changed_ele, **kwargs)
-    else:
-        return _jl.ADtwissring(jl_lattice, dp, 0, julia_refpts, **kwargs)
-
 def periodicEdwardsTengTwiss(lattice, dp, order, **kwargs):
     """Calculate periodic Twiss parameters"""
     if isinstance(lattice, Lattice):
         jl_lattice = lattice.julia_object
+    elif isinstance(lattice, list):
+        jl_lattice = Lattice(lattice).julia_object
     else:
         jl_lattice = lattice
     
     return _jl.periodicEdwardsTengTwiss(jl_lattice, dp, order, **kwargs)
 
-def ADperiodicEdwardsTengTwiss(lattice, dp, order, changed_idx=None, changed_ele=None, **kwargs):
-    """AD-compatible periodic Twiss"""
-    if isinstance(lattice, Lattice):
-        jl_lattice = lattice.julia_object
-    else:
-        jl_lattice = lattice
-    
-    if changed_idx is not None and changed_ele is not None:
-        return _jl.ADperiodicEdwardsTengTwiss(jl_lattice, dp, order, changed_idx, changed_ele, **kwargs)
-    else:
-        return _jl.ADperiodicEdwardsTengTwiss(jl_lattice, dp, order, **kwargs)
-
 def findm66(lattice, dp=0.0, order=1, **kwargs):
     """Find 6x6 transfer matrix
     
     Args:
-        lattice: Lattice object or Julia lattice
+        lattice: Lattice object, list of elements, or Julia lattice
         dp: Momentum deviation
         order: TPSA order (default: 1)
         **kwargs: Additional arguments (E0, m0, orb)
     """
     if isinstance(lattice, Lattice):
         jl_lattice = lattice.julia_object
+    elif isinstance(lattice, list):
+        jl_lattice = Lattice(lattice).julia_object
     else:
         jl_lattice = lattice
     
@@ -1320,6 +1409,8 @@ def fastfindm66(lattice, dp=0.0, **kwargs):
     """Fast calculation of 6x6 transfer matrix"""
     if isinstance(lattice, Lattice):
         jl_lattice = lattice.julia_object
+    elif isinstance(lattice, list):
+        jl_lattice = Lattice(lattice).julia_object
     else:
         jl_lattice = lattice
     
@@ -1330,7 +1421,7 @@ def findm66_refpts(lattice, refpts, dp=0.0, order=1, **kwargs):
     """Find transfer matrices at reference points
     
     Args:
-        lattice: Lattice object or Julia lattice
+        lattice: Lattice object, list of elements, or Julia lattice
         refpts: Reference point indices
         dp: Momentum deviation
         order: TPSA order (default: 1)
@@ -1338,6 +1429,8 @@ def findm66_refpts(lattice, refpts, dp=0.0, order=1, **kwargs):
     """
     if isinstance(lattice, Lattice):
         jl_lattice = lattice.julia_object
+    elif isinstance(lattice, list):
+        jl_lattice = Lattice(lattice).julia_object
     else:
         jl_lattice = lattice
     
@@ -1352,6 +1445,8 @@ def find_closed_orbit(lattice, dp=0.0, **kwargs):
     """Find closed orbit"""
     if isinstance(lattice, Lattice):
         jl_lattice = lattice.julia_object
+    elif isinstance(lattice, list):
+        jl_lattice = Lattice(lattice).julia_object
     else:
         jl_lattice = lattice
     
@@ -1362,6 +1457,8 @@ def find_closed_orbit_4d(lattice, dp=0.0, **kwargs):
     """Find 4D closed orbit"""
     if isinstance(lattice, Lattice):
         jl_lattice = lattice.julia_object
+    elif isinstance(lattice, list):
+        jl_lattice = Lattice(lattice).julia_object
     else:
         jl_lattice = lattice
 
@@ -1372,6 +1469,8 @@ def find_closed_orbit_6d(lattice, **kwargs):
     """Find 6D closed orbit"""
     if isinstance(lattice, Lattice):
         jl_lattice = lattice.julia_object
+    elif isinstance(lattice, list):
+        jl_lattice = Lattice(lattice).julia_object
     else:
         jl_lattice = lattice
     
@@ -1382,6 +1481,8 @@ def total_length(lattice) -> float:
     """Calculate total length of lattice"""
     if isinstance(lattice, Lattice):
         return lattice.total_length()
+    elif isinstance(lattice, list):
+        return Lattice(lattice).total_length()
     else:
         return _jl.total_length(lattice)
 
@@ -1389,6 +1490,8 @@ def spos(lattice, indices: Optional[List[int]] = None):
     """Get s-positions"""
     if isinstance(lattice, Lattice):
         return lattice.spos(indices)
+    elif isinstance(lattice, list):
+        return Lattice(lattice).spos(indices)
     else:
         if indices is None:
             return _to_numpy_array(_jl.spos(lattice))
@@ -1403,32 +1506,33 @@ def findelem(lattice, element_type=None, name=None, field=None, value=None):
     Find elements in lattice.
     
     Args:
-        lattice: Lattice object
+        lattice: Lattice object, list of elements, or Julia lattice
         element_type: Type of element (e.g., _jl.QUAD)
         name: Element name
         field: Field name
         value: Field value
     
     Returns:
-        List of indices (1-based Julia convention)
+        Python list of indices (1-based Julia convention)
     """
     if isinstance(lattice, Lattice):
         jl_lattice = lattice.julia_object
+    elif isinstance(lattice, list):
+        jl_lattice = Lattice(lattice).julia_object
     else:
         jl_lattice = lattice
     
     if element_type is not None:
-        return _jl.findelem(jl_lattice, element_type)
+        result = _jl.findelem(jl_lattice, element_type)
     elif name is not None:
-        return _jl.findelem(jl_lattice, _jl.Symbol("name"), name)
+        result = _jl.findelem(jl_lattice, _jl.Symbol("name"), name)
     elif field is not None and value is not None:
-        return _jl.findelem(jl_lattice, _jl.Symbol(field), value)
+        result = _jl.findelem(jl_lattice, _jl.Symbol(field), value)
     else:
         raise ValueError("Must provide element_type, name, or field+value")
-
-def buildlatt(elements: List) -> Lattice:
-    """Build a lattice from list of elements"""
-    return Lattice(elements)
+    
+    # Convert Julia vector to Python list
+    return list(result)
 
 def load_lattice(filename: str):
     """Load lattice from .jls file"""
@@ -1444,6 +1548,8 @@ def save_lattice(lattice, filename: str):
     """Save lattice to .jls file"""
     if isinstance(lattice, Lattice):
         jl_lattice = lattice.julia_object
+    elif isinstance(lattice, list):
+        jl_lattice = Lattice(lattice).julia_object
     else:
         jl_lattice = lattice
     
@@ -1503,6 +1609,8 @@ def dynamic_aperture(lattice, **kwargs):
     """Calculate dynamic aperture"""
     if isinstance(lattice, Lattice):
         jl_lattice = lattice.julia_object
+    elif isinstance(lattice, list):
+        jl_lattice = Lattice(lattice).julia_object
     else:
         jl_lattice = lattice
     
@@ -1931,6 +2039,8 @@ def computeRDT(lattice, indices=None, **kwargs):
     """
     if isinstance(lattice, Lattice):
         jl_lattice = lattice.julia_object
+    elif isinstance(lattice, list):
+        jl_lattice = Lattice(lattice).julia_object
     else:
         jl_lattice = lattice
     
@@ -1945,38 +2055,12 @@ def computeRDT(lattice, indices=None, **kwargs):
     
     return _jl.computeRDT(jl_lattice, indices, **kwargs)
 
-def ADcomputeRDT(lattice, index, changed_ids, changed_elems, **kwargs):
-    """
-    Enzyme AD-compatible RDT calculation.
-    
-    This is for Enzyme-based automatic differentiation (Julia-side AD).
-    For Python TPSA optimization, use computeRDT() with DTPSAD lattice instead.
-    
-    Args:
-        lattice: Lattice object
-        index: Indices to compute RDTs at
-        changed_ids: IDs of changed elements
-        changed_elems: Changed element objects
-        **kwargs: Additional keyword arguments (E0, m0, chromatic, etc.)
-    
-    Returns:
-        RDT results
-        
-    Note:
-        This function is primarily for Julia-side Enzyme AD.
-        Python users should use the TPSA approach with computeRDT().
-    """
-    if isinstance(lattice, Lattice):
-        jl_lattice = lattice.julia_object
-    else:
-        jl_lattice = lattice
-    
-    return _jl.ADcomputeRDT(jl_lattice, index, changed_ids, changed_elems, **kwargs)
-
 def gettune(lattice, dp=0.0, **kwargs) -> Tuple[float, float]:
     """Get betatron tunes (nux, nuy)"""
     if isinstance(lattice, Lattice):
         jl_lattice = lattice.julia_object
+    elif isinstance(lattice, list):
+        jl_lattice = Lattice(lattice).julia_object
     else:
         jl_lattice = lattice
 
@@ -1987,6 +2071,8 @@ def getchrom(lattice, dp=0.0, **kwargs) -> Tuple[float, float]:
     """Get chromaticities (xi_x, xi_y)"""
     if isinstance(lattice, Lattice):
         jl_lattice = lattice.julia_object
+    elif isinstance(lattice, list):
+        jl_lattice = Lattice(lattice).julia_object
     else:
         jl_lattice = lattice
 
@@ -2005,6 +2091,8 @@ def tracking_U0(lattice, **kwargs) -> float:
     """Calculate U0 via tracking"""
     if isinstance(lattice, Lattice):
         jl_lattice = lattice.julia_object
+    elif isinstance(lattice, list):
+        jl_lattice = Lattice(lattice).julia_object
     else:
         jl_lattice = lattice
     
@@ -2014,6 +2102,8 @@ def integral_U0(lattice, **kwargs) -> float:
     """Calculate U0 via integration"""
     if isinstance(lattice, Lattice):
         jl_lattice = lattice.julia_object
+    elif isinstance(lattice, list):
+        jl_lattice = Lattice(lattice).julia_object
     else:
         jl_lattice = lattice
     
@@ -2062,6 +2152,8 @@ def ringpara(lattice, energy: float = 3e9, Vrf: float = 0.0, harm: int = 1,
     """
     if isinstance(lattice, Lattice):
         jl_lattice = lattice.julia_object
+    elif isinstance(lattice, list):
+        jl_lattice = Lattice(lattice).julia_object
     else:
         jl_lattice = lattice
     
@@ -2252,8 +2344,8 @@ __all__ = [
     'Number2TPSAD', 'TPSAD2Number', 'convert_to_DTPSAD', 'Gradient', 'Jacobian',
     
     # Twiss and optics
-    'twissring', 'twissline', 'ADtwissring', 
-    'periodicEdwardsTengTwiss', 'ADperiodicEdwardsTengTwiss',
+    'twissring', 'twissline',  
+    'periodicEdwardsTengTwiss', 
     
     # Transfer matrices
     'findm66', 'fastfindm66', 'findm66_refpts',
@@ -2262,7 +2354,7 @@ __all__ = [
     'find_closed_orbit', 'find_closed_orbit_4d', 'find_closed_orbit_6d',
     
     # Lattice utilities
-    'total_length', 'spos', 'findelem', 'buildlatt',
+    'total_length', 'spos', 'findelem',
     
     # Serialization
     'load_lattice', 'save_lattice',
@@ -2278,7 +2370,7 @@ __all__ = [
     'dynamic_aperture', 'FMA',
     
     # RDT
-    'computeRDT', 'ADcomputeRDT',
+    'computeRDT',
     
     # Tune and chromaticity
     'gettune', 'getchrom',

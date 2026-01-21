@@ -175,6 +175,7 @@ struct EdwardsTengTwiss{T} <: AbstractTwiss
 	cosmuy::T
 	R::Matrix{T}
 	mode::Int
+	s::T
 end
 
 """
@@ -182,7 +183,7 @@ end
 	dx::Float64=0.0, dy::Float64=0.0, dpx::Float64=0.0, dpy::Float64=0.0,
 	mux::Float64=0.0, muy::Float64=0.0,
 	R11::Float64=0.0, R12::Float64=0.0, R21::Float64=0.0, R22::Float64=0.0,
-	mode::Int=1)
+	mode::Int=1, s::Float64=0.0)
 
 Construct a `EdwardsTengTwiss` object with betax and betay. All other parameters are optional.
 
@@ -202,6 +203,7 @@ Construct a `EdwardsTengTwiss` object with betax and betay. All other parameters
 - `R21::Float64=0.0`: Matrix Element R21.
 - `R22::Float64=0.0`: Matrix Element R22.
 - `mode::Int=1`: mode for calculation.
+- `s::Float64=0.0`: Position along the beamline.
 """											
 function EdwardsTengTwiss(betax::Float64, betay::Float64;
 						alphax::Float64 = 0.0, alphay::Float64 = 0.0,
@@ -210,7 +212,7 @@ function EdwardsTengTwiss(betax::Float64, betay::Float64;
 						mux::Float64 = 0.0, muy::Float64 = 0.0,
 						R11::Float64 = 0.0, R12::Float64 = 0.0,
 						R21::Float64 = 0.0, R22::Float64 = 0.0,
-						mode::Int = 1)
+						mode::Int = 1, s::Float64 = 0.0)
 	gammax = (1.0 + alphax^2) / betax
 	gammay = (1.0 + alphay^2) / betay
 	sinmux = sin(mux)
@@ -229,7 +231,7 @@ function EdwardsTengTwiss(betax::Float64, betay::Float64;
 	# Return the struct instance
 	return EdwardsTengTwiss{Float64}(betax, betay, alphax, alphay, gammax, gammay,
 		dx, dpx, dy, dpy, dmux, dmuy,
-		sinmux, cosmux, sinmuy, cosmuy, R, mode)
+		sinmux, cosmux, sinmuy, cosmuy, R, mode, s)
 end
 
 """
@@ -246,7 +248,7 @@ end
 		R12::DTPSAD{N,T}=zero(DTPSAD{N,T}),
 		R21::DTPSAD{N,T}=zero(DTPSAD{N,T}),
 		R22::DTPSAD{N,T}=zero(DTPSAD{N,T}),
-		mode::Int=1) where {N, T <: Number}
+		mode::Int=1, s::DTPSAD{N,T}=zero(DTPSAD{N,T})) where {N, T <: Number}
 Construct a `EdwardsTengTwiss` object with betax and betay in TPSA (DTPSAD type) format. All other parameters are optional.
 # Arguments
 - `betax::DTPSAD{N,T}`: Horizontal beta function.
@@ -278,7 +280,7 @@ function EdwardsTengTwiss(betax::DTPSAD{N,T}, betay::DTPSAD{N,T};
 		R12::DTPSAD{N,T} = zero(DTPSAD{N,T}),
 		R21::DTPSAD{N,T} = zero(DTPSAD{N,T}),
 		R22::DTPSAD{N,T} = zero(DTPSAD{N,T}),
-		mode::Int = 1) where {N, T <: Number}
+		mode::Int = 1, s::DTPSAD{N,T} = zero(DTPSAD{N,T})) where {N, T <: Number}
 		gammax = (1.0 + alphax^2) / betax
 		gammay = (1.0 + alphay^2) / betay
 		sinmux = sin(mux)
@@ -294,7 +296,7 @@ function EdwardsTengTwiss(betax::DTPSAD{N,T}, betay::DTPSAD{N,T};
 		R[2, 2] = R22
 		return EdwardsTengTwiss{DTPSAD{N,T}}(betax, betay, alphax, alphay, gammax, gammay,
 			dx, dpx, dy, dpy, dmux, dmuy,
-			sinmux, cosmux, sinmuy, cosmuy, R, mode)
+			sinmux, cosmux, sinmuy, cosmuy, R, mode, s)
 end
 
 """
@@ -502,18 +504,19 @@ function matrixTransform_2by2(M::Matrix{DTPSAD{N,T}}) where {N,T}
 end
 
 """
-	twissPropagate(tin::EdwardsTengTwiss{Float64},M::Matrix{Float64})
+	twissPropagate(tin::EdwardsTengTwiss{Float64},M::Matrix{Float64}; elem_length::Float64=0.0)
 
 Propagate the Twiss parameters through a matrix M.
 
 # Arguments
 - `tin::EdwardsTengTwiss{Float64}`: Input Twiss parameters.
 - `M::Matrix{Float64}`: Transfer matrix.
+- `elem_length::Float64=0.0`: Length of element to add to s position.
 
 # Returns
 - `EdwardsTengTwiss{Float64}`: Output Twiss parameters.
 """
-function twissPropagate(tin::EdwardsTengTwiss{Float64},M::Matrix{Float64})
+function twissPropagate(tin::EdwardsTengTwiss{Float64},M::Matrix{Float64}; elem_length::Float64=0.0)
 	A= M[1:2,1:2]
 	B= M[1:2,3:4]
 	C= M[3:4,1:2]
@@ -594,14 +597,21 @@ function twissPropagate(tin::EdwardsTengTwiss{Float64},M::Matrix{Float64})
 
 	new_mux = tin.mux + delta_mux
 	new_muy = tin.muy + delta_muy
-	return EdwardsTengTwiss{Float64}(v1[1],v2[1],v1[2],v2[2],v1[3],v2[3],eta[1],eta[2],eta[3],eta[4],new_mux,new_muy,smux,cmux,smuy,cmuy,R,mode)
+	new_s = tin.s + elem_length
+	return EdwardsTengTwiss{Float64}(v1[1],v2[1],v1[2],v2[2],v1[3],v2[3],eta[1],eta[2],eta[3],eta[4],new_mux,new_muy,smux,cmux,smuy,cmuy,R,mode,new_s)
 end
 
 """
-	twissPropagate(tin::EdwardsTengTwiss{DTPSAD{N,T}},M::Matrix{DTPSAD{N,T}}) where {N,T}
+	twissPropagate(tin::EdwardsTengTwiss{DTPSAD{N,T}},M::Matrix{DTPSAD{N,T}}; elem_length::Union{Float64,DTPSAD{N,T}}=0.0) where {N,T}
 Propagate the Twiss parameters through a matrix M in TPSA (DTPSAD type) format.
+# Arguments
+- `tin::EdwardsTengTwiss{DTPSAD{N,T}}`: Input Twiss parameters.
+- `M::Matrix{DTPSAD{N,T}}`: Transfer matrix.
+- `elem_length::Union{Float64,DTPSAD{N,T}}=0.0`: Length of element to add to s position.
+# Returns
+- `EdwardsTengTwiss{DTPSAD{N,T}}`: Output Twiss parameters.
 """
-function twissPropagate(tin::EdwardsTengTwiss{DTPSAD{N,T}},M::Matrix{DTPSAD{N,T}}) where {N,T}
+function twissPropagate(tin::EdwardsTengTwiss{DTPSAD{N,T}},M::Matrix{DTPSAD{N,T}}; elem_length::Union{Float64,DTPSAD{N,T}}=0.0) where {N,T}
 	A= M[1:2,1:2]
 	B= M[1:2,3:4]
 	C= M[3:4,1:2]
@@ -679,7 +689,8 @@ function twissPropagate(tin::EdwardsTengTwiss{DTPSAD{N,T}},M::Matrix{DTPSAD{N,T}
 
 	new_mux = tin.mux + delta_mux
 	new_muy = tin.muy + delta_muy
-	return EdwardsTengTwiss{DTPSAD{N,T}}(v1[1],v2[1],v1[2],v2[2],v1[3],v2[3],eta[1],eta[2],eta[3],eta[4],new_mux,new_muy,smux,cmux,smuy,cmuy,R,mode)
+	new_s = tin.s + elem_length
+	return EdwardsTengTwiss{DTPSAD{N,T}}(v1[1],v2[1],v1[2],v2[2],v1[3],v2[3],eta[1],eta[2],eta[3],eta[4],new_mux,new_muy,smux,cmux,smuy,cmuy,R,mode,new_s)
 end
 
 """
@@ -1195,13 +1206,17 @@ function twissline(tin::EdwardsTengTwiss{Float64},seq::Vector{<:AbstractElement{
     ret = tin
     ss = 0.0
 	used_seq = seq[1:endindex]
+	# Compute cumulative length
+	for i in 1:endindex
+		ss += seq[i].len
+	end
 	# M = findm66(used_seq, dp, order)
 	if order ==0
 		M = fastfindm66(used_seq, dp, E0=E0, m0=m0, orb=orb)
 	else
 		M = findm66(used_seq, dp, order, E0=E0, m0=m0, orb=orb)
 	end
-	ret = twissPropagate(ret, M)
+	ret = twissPropagate(ret, M, elem_length=ss)
 	return ret
 end
 
@@ -1223,15 +1238,19 @@ function twissline(tin::EdwardsTengTwiss{DTPSAD{N,T}},seq::Vector{<:AbstractElem
 	end
 	# obtain M through tracking
     ret = tin
-    ss = 0.0
+    ss = zero(DTPSAD{N,T})
 	used_seq = seq[1:endindex]
+	# Compute cumulative length
+	for i in 1:endindex
+		ss += seq[i].len
+	end
 	# M = findm66(used_seq, dp, order)
 	if order ==0
 		M = fastfindm66(used_seq, dp, E0=E0, m0=m0, orb=orb)
 	else
 		error("Order > 0 is not supported for AbstractTPSAElement.")
 	end
-	ret = twissPropagate(ret, M)
+	ret = twissPropagate(ret, M, elem_length=ss)
 	return ret
 end
 
@@ -1266,8 +1285,16 @@ function twissline(tin::EdwardsTengTwiss{Float64},seq::Vector{<:AbstractElement{
 	else
 		M_list = findm66_refpts(seq, dp, order, refpts, E0=E0, m0=m0, orb=orb)
 	end
+	
+	# Compute cumulative lengths for each segment
 	for i in 1:length(refpts)
-		ret = twissPropagate(ret, M_list[:, :, i])
+		start_idx = (i == 1) ? 1 : refpts[i-1] + 1
+		end_idx = refpts[i]
+		segment_length = 0.0
+		for j in start_idx:end_idx
+			segment_length += seq[j].len
+		end
+		ret = twissPropagate(ret, M_list[:, :, i], elem_length=segment_length)
 		ret_vector[i] = ret
 	end
 
@@ -1306,8 +1333,16 @@ function twissline(tin::EdwardsTengTwiss{DTPSAD{N,T}},seq::Vector{<:AbstractElem
 	else
 		error("Order > 0 is not supported for AbstractTPSAElement.")
 	end
+	
+	# Compute cumulative lengths for each segment
 	for i in 1:length(refpts)
-		ret = twissPropagate(ret, M_list[:, :, i])
+		start_idx = (i == 1) ? 1 : refpts[i-1] + 1
+		end_idx = refpts[i]
+		segment_length = zero(DTPSAD{N,T})
+		for j in start_idx:end_idx
+			segment_length += seq[j].len
+		end
+		ret = twissPropagate(ret, M_list[:, :, i], elem_length=segment_length)
 		ret_vector[i] = ret
 	end
 
@@ -1346,8 +1381,22 @@ function ADtwissline(tin::EdwardsTengTwiss{Float64},seq::Vector{<:AbstractElemen
 	else
 		M_list = ADfindm66_refpts(seq, dp, order, refpts, changed_idx, changed_ele, E0=E0, m0=m0, orb=orb)
 	end
+	
+	# Compute cumulative lengths for each segment
 	for i in 1:length(refpts)
-		ret = twissPropagate(ret, M_list[:, :, i])
+		start_idx = (i == 1) ? 1 : refpts[i-1] + 1
+		end_idx = refpts[i]
+		segment_length = 0.0
+		for j in start_idx:end_idx
+			# Check if element index is in changed_idx and use changed_ele length
+			idx_in_changed = findfirst(x -> x == j, changed_idx)
+			if idx_in_changed !== nothing
+				segment_length += changed_ele[idx_in_changed].len
+			else
+				segment_length += seq[j].len
+			end
+		end
+		ret = twissPropagate(ret, M_list[:, :, i], elem_length=segment_length)
 		ret_vector[i] = ret
 	end
 	return ret_vector
@@ -1439,7 +1488,7 @@ function periodicEdwardsTengTwiss(seq::Vector{<:AbstractElement{Float64}}, dp::F
 	alfy=Float64(0.5)*(Y[1,1]-Y[2,2])/smuy
 
 	eta=inv1(Matrix{Float64}(I,(4,4))-( M[1:4,1:4]))*( M[1:4,6])
-	return EdwardsTengTwiss{Float64}(betax,betay,alfx,alfy,gamx,gamy,eta[1],eta[2],eta[3],eta[4],0.0,0.0,smux,cmux,smuy,cmuy,R,1)
+	return EdwardsTengTwiss{Float64}(betax,betay,alfx,alfy,gamx,gamy,eta[1],eta[2],eta[3],eta[4],0.0,0.0,smux,cmux,smuy,cmuy,R,1,0.0)
 end
 
 """
@@ -1502,7 +1551,7 @@ function periodicEdwardsTengTwiss(seq::Vector{<:AbstractElement{DTPSAD{N, T}}}, 
 	alfy=Float64(0.5)*(Y[1,1]-Y[2,2])/smuy
 
 	eta=inv1(Matrix{Float64}(I,(4,4))-M[1:4,1:4])* M[1:4,6]
-	return EdwardsTengTwiss{DTPSAD{N,T}}(betax,betay,alfx,alfy,gamx,gamy,eta[1],eta[2],eta[3],eta[4],DTPSAD(0.0),DTPSAD(0.0),smux,cmux,smuy,cmuy,R,1)
+	return EdwardsTengTwiss{DTPSAD{N,T}}(betax,betay,alfx,alfy,gamx,gamy,eta[1],eta[2],eta[3],eta[4],DTPSAD(0.0),DTPSAD(0.0),smux,cmux,smuy,cmuy,R,1,zero(DTPSAD{N,T}))
 end
 
 function ADperiodicEdwardsTengTwiss(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, 
@@ -1568,7 +1617,7 @@ function ADperiodicEdwardsTengTwiss(seq::Vector{<:AbstractElement{Float64}}, dp:
 		Identity[i, i] = 1.0
 	end
 	eta=inv1(Identity-( M[1:4,1:4]))*( M[1:4,6])
-	return EdwardsTengTwiss{Float64}(betax,betay,alfx,alfy,gamx,gamy,eta[1],eta[2],eta[3],eta[4],0.0,0.0,smux,cmux,smuy,cmuy,R,1)
+	return EdwardsTengTwiss{Float64}(betax,betay,alfx,alfy,gamx,gamy,eta[1],eta[2],eta[3],eta[4],0.0,0.0,smux,cmux,smuy,cmuy,R,1,0.0)
 end
 
 """
