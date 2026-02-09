@@ -933,6 +933,59 @@ def set_tps_dim(dim: int):
     _jl.set_tps_dim(dim)
 
 
+def _is_julia_dtpsad(obj):
+    """Check if an object is a Julia DTPSAD object."""
+    if isinstance(obj, DTPSADWrapper):
+        return True
+    if hasattr(obj, '__class__'):
+        type_str = str(type(obj))
+        return 'DTPSAD' in type_str or (hasattr(obj, '_jl_raw') and 'DTPSAD' in str(obj._jl_raw))
+    return False
+
+
+def _auto_wrap_dtpsad(obj):
+    """Automatically wrap Julia DTPSAD objects in DTPSADWrapper."""
+    if isinstance(obj, DTPSADWrapper):
+        return obj
+    if _is_julia_dtpsad(obj):
+        return DTPSADWrapper(obj)
+    # Handle matrices/arrays of DTPSAD
+    if hasattr(obj, '__getitem__'):
+        # Wrap the container to auto-wrap elements on access
+        return _DTPSADMatrixWrapper(obj)
+    return obj
+
+
+class _DTPSADMatrixWrapper:
+    """Wrapper for Julia matrices/arrays that auto-wraps DTPSAD elements on access."""
+    
+    def __init__(self, julia_matrix):
+        self._jl_matrix = julia_matrix
+    
+    def __getitem__(self, key):
+        """Auto-wrap DTPSAD elements when accessing matrix elements."""
+        result = self._jl_matrix[key]
+        return _auto_wrap_dtpsad(result)
+    
+    def __setitem__(self, key, value):
+        """Set matrix element, unwrapping if needed."""
+        if isinstance(value, DTPSADWrapper):
+            value = value._jl_obj
+        self._jl_matrix[key] = value
+    
+    def __repr__(self):
+        return repr(self._jl_matrix)
+    
+    def __str__(self):
+        return str(self._jl_matrix)
+    
+    # Forward attribute access to the Julia object
+    def __getattr__(self, name):
+        if name.startswith('_'):
+            raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+        return getattr(self._jl_matrix, name)
+
+
 class DTPSADWrapper:
     """
     Python wrapper for Julia DTPSAD type with full operator support.
@@ -952,10 +1005,22 @@ class DTPSADWrapper:
     def __str__(self):
         return str(self._jl_obj)
     
+    def __format__(self, format_spec):
+        """Format the DTPSAD value using the .val attribute.
+        
+        This allows f-string formatting like f"{dtpsad:.6e}" which formats dtpsad.val
+        """
+        if format_spec == '':
+            return str(self._jl_obj)
+        # Format the value attribute with the given specification
+        return format(float(self._jl_obj.val), format_spec)
+    
     # Arithmetic operators
     def __add__(self, other):
         if isinstance(other, DTPSADWrapper):
             return DTPSADWrapper(_jl.seval("+")(self._jl_obj, other._jl_obj))
+        elif _is_julia_dtpsad(other):
+            return DTPSADWrapper(_jl.seval("+")(self._jl_obj, other))
         elif isinstance(other, (int, float, np.integer, np.floating)):
             return DTPSADWrapper(_jl.seval("+")(self._jl_obj, other))
         else:
@@ -964,12 +1029,16 @@ class DTPSADWrapper:
     def __radd__(self, other):
         if isinstance(other, (int, float, np.integer, np.floating)):
             return DTPSADWrapper(_jl.seval("+")(other, self._jl_obj))
+        elif _is_julia_dtpsad(other):
+            return DTPSADWrapper(_jl.seval("+")(other, self._jl_obj))
         else:
             return NotImplemented
     
     def __sub__(self, other):
         if isinstance(other, DTPSADWrapper):
             return DTPSADWrapper(_jl.seval("-")(self._jl_obj, other._jl_obj))
+        elif _is_julia_dtpsad(other):
+            return DTPSADWrapper(_jl.seval("-")(self._jl_obj, other))
         elif isinstance(other, (int, float, np.integer, np.floating)):
             return DTPSADWrapper(_jl.seval("-")(self._jl_obj, other))
         else:
@@ -978,12 +1047,16 @@ class DTPSADWrapper:
     def __rsub__(self, other):
         if isinstance(other, (int, float, np.integer, np.floating)):
             return DTPSADWrapper(_jl.seval("-")(other, self._jl_obj))
+        elif _is_julia_dtpsad(other):
+            return DTPSADWrapper(_jl.seval("-")(other, self._jl_obj))
         else:
             return NotImplemented
     
     def __mul__(self, other):
         if isinstance(other, DTPSADWrapper):
             return DTPSADWrapper(_jl.seval("*")(self._jl_obj, other._jl_obj))
+        elif _is_julia_dtpsad(other):
+            return DTPSADWrapper(_jl.seval("*")(self._jl_obj, other))
         elif isinstance(other, (int, float, np.integer, np.floating)):
             return DTPSADWrapper(_jl.seval("*")(self._jl_obj, other))
         else:
@@ -992,12 +1065,16 @@ class DTPSADWrapper:
     def __rmul__(self, other):
         if isinstance(other, (int, float, np.integer, np.floating)):
             return DTPSADWrapper(_jl.seval("*")(other, self._jl_obj))
+        elif _is_julia_dtpsad(other):
+            return DTPSADWrapper(_jl.seval("*")(other, self._jl_obj))
         else:
             return NotImplemented
     
     def __truediv__(self, other):
         if isinstance(other, DTPSADWrapper):
             return DTPSADWrapper(_jl.seval("/")(self._jl_obj, other._jl_obj))
+        elif _is_julia_dtpsad(other):
+            return DTPSADWrapper(_jl.seval("/")(self._jl_obj, other))
         elif isinstance(other, (int, float, np.integer, np.floating)):
             return DTPSADWrapper(_jl.seval("/")(self._jl_obj, other))
         else:
@@ -1005,6 +1082,8 @@ class DTPSADWrapper:
     
     def __rtruediv__(self, other):
         if isinstance(other, (int, float, np.integer, np.floating)):
+            return DTPSADWrapper(_jl.seval("/")(other, self._jl_obj))
+        elif _is_julia_dtpsad(other):
             return DTPSADWrapper(_jl.seval("/")(other, self._jl_obj))
         else:
             return NotImplemented
@@ -1025,6 +1104,8 @@ class DTPSADWrapper:
     def __eq__(self, other):
         if isinstance(other, DTPSADWrapper):
             return self._jl_obj.val == other._jl_obj.val
+        elif _is_julia_dtpsad(other):
+            return self._jl_obj.val == other.val
         elif isinstance(other, (int, float, np.integer, np.floating)):
             return self._jl_obj.val == other
         else:
@@ -1037,6 +1118,8 @@ class DTPSADWrapper:
     def __lt__(self, other):
         if isinstance(other, DTPSADWrapper):
             return self._jl_obj.val < other._jl_obj.val
+        elif _is_julia_dtpsad(other):
+            return self._jl_obj.val < other.val
         elif isinstance(other, (int, float, np.integer, np.floating)):
             return self._jl_obj.val < other
         else:
@@ -1045,6 +1128,8 @@ class DTPSADWrapper:
     def __le__(self, other):
         if isinstance(other, DTPSADWrapper):
             return self._jl_obj.val <= other._jl_obj.val
+        elif _is_julia_dtpsad(other):
+            return self._jl_obj.val <= other.val
         elif isinstance(other, (int, float, np.integer, np.floating)):
             return self._jl_obj.val <= other
         else:
@@ -1053,6 +1138,8 @@ class DTPSADWrapper:
     def __gt__(self, other):
         if isinstance(other, DTPSADWrapper):
             return self._jl_obj.val > other._jl_obj.val
+        elif _is_julia_dtpsad(other):
+            return self._jl_obj.val > other.val
         elif isinstance(other, (int, float, np.integer, np.floating)):
             return self._jl_obj.val > other
         else:
@@ -1061,6 +1148,8 @@ class DTPSADWrapper:
     def __ge__(self, other):
         if isinstance(other, DTPSADWrapper):
             return self._jl_obj.val >= other._jl_obj.val
+        elif _is_julia_dtpsad(other):
+            return self._jl_obj.val >= other.val
         elif isinstance(other, (int, float, np.integer, np.floating)):
             return self._jl_obj.val >= other
         else:
@@ -1159,42 +1248,63 @@ def DTPSAD(value: float, var_idx: int = None):
         # DTPSAD(value, var_idx) - create variable
         return DTPSADWrapper(_jl.DTPSAD(value, var_idx))
 
-def pow(x, n):
+
+def wrap(obj):
     """
-    Power function that works with both Python numbers and Julia DTPSAD objects.
+    Wrap a Julia DTPSAD object for Python operator support.
     
-    This allows Python syntax like pow(x, 2) to work with DTPSAD values.
-    Alternative to x**2 which now works with DTPSADWrapper.
+    NOTE: In most cases you don't need this! Functions like findm66() now
+    automatically return wrapped matrices, so indexing gives you wrapped DTPSAD
+    objects that work with Python operators.
     
     Args:
-        x: Base (Python number or DTPSAD)
-        n: Exponent (number)
+        obj: Julia DTPSAD object, DTPSADWrapper, or regular Python number
     
     Returns:
-        x^n (same type as input)
+        DTPSADWrapper if obj is a DTPSAD, otherwise returns obj unchanged
     
     Examples:
-        >>> x1 = jt.DTPSAD(2.0, 1)
-        >>> y = jt.pow(x1, 2)  # Works!
-        >>> y = x1 ** 2  # Now also works with wrapper!
+        >>> # Matrix elements are already wrapped automatically!
+        >>> m66 = jt.findm66(cell_tpsa, 0.0, 0)  # Auto-wrapped matrix
+        >>> trace_x = m66[0, 0] + m66[1, 1]      # Elements auto-wrapped!
+        >>> result = trace_x - 2.0                # Python operators just work!
+        >>>
+        >>> # Only use wrap() if you have a raw Julia DTPSAD from elsewhere
+        >>> raw_dtpsad = jt._jl.DTPSAD(5.0, 1)
+        >>> wrapped = jt.wrap(raw_dtpsad)
+        >>> result = wrapped - 2.0                # Now works
+    """
+    return _auto_wrap_dtpsad(obj)
+
+
+def pow(x, n):
+    """
+    Power function for DTPSAD values.
+    
+    Args:
+        x: DTPSAD or number
+        n: Exponent
+    
+    Returns:
+        x^n
     """
     if isinstance(x, DTPSADWrapper):
-        # Use the wrapper's __pow__ method
+        # Use the wrapper's __pow__
         return x ** n
-    elif hasattr(x, '_jl_callmethod'):
-        # It's a raw Julia object, use Julia's ^ operator
+    elif hasattr(x, '_jl_callmethod') or _is_julia_dtpsad(x):
+        # Raw Julia DTPSAD - use Julia's ^ operator
         return DTPSADWrapper(_jl.seval("^")(x, n))
     else:
-        # Python number, use Python's **
+        # Python number
         return x ** n
 
 
-# Math functions that work with both DTPSAD and regular numbers
+# Math functions compatible with DTPSAD
 def sin(x):
     """Sine function compatible with DTPSAD and regular numbers."""
     if isinstance(x, DTPSADWrapper):
         return DTPSADWrapper(_jl.sin(x._jl_obj))
-    elif hasattr(x, '_jl_callmethod'):
+    elif hasattr(x, '_jl_callmethod') or _is_julia_dtpsad(x):
         return DTPSADWrapper(_jl.sin(x))
     else:
         return np.sin(x)
@@ -1204,7 +1314,7 @@ def cos(x):
     """Cosine function compatible with DTPSAD and regular numbers."""
     if isinstance(x, DTPSADWrapper):
         return DTPSADWrapper(_jl.cos(x._jl_obj))
-    elif hasattr(x, '_jl_callmethod'):
+    elif hasattr(x, '_jl_callmethod') or _is_julia_dtpsad(x):
         return DTPSADWrapper(_jl.cos(x))
     else:
         return np.cos(x)
@@ -1214,7 +1324,7 @@ def tan(x):
     """Tangent function compatible with DTPSAD and regular numbers."""
     if isinstance(x, DTPSADWrapper):
         return DTPSADWrapper(_jl.tan(x._jl_obj))
-    elif hasattr(x, '_jl_callmethod'):
+    elif hasattr(x, '_jl_callmethod') or _is_julia_dtpsad(x):
         return DTPSADWrapper(_jl.tan(x))
     else:
         return np.tan(x)
@@ -1224,7 +1334,7 @@ def exp(x):
     """Exponential function compatible with DTPSAD and regular numbers."""
     if isinstance(x, DTPSADWrapper):
         return DTPSADWrapper(_jl.exp(x._jl_obj))
-    elif hasattr(x, '_jl_callmethod'):
+    elif hasattr(x, '_jl_callmethod') or _is_julia_dtpsad(x):
         return DTPSADWrapper(_jl.exp(x))
     else:
         return np.exp(x)
@@ -1234,7 +1344,7 @@ def log(x):
     """Natural logarithm compatible with DTPSAD and regular numbers."""
     if isinstance(x, DTPSADWrapper):
         return DTPSADWrapper(_jl.log(x._jl_obj))
-    elif hasattr(x, '_jl_callmethod'):
+    elif hasattr(x, '_jl_callmethod') or _is_julia_dtpsad(x):
         return DTPSADWrapper(_jl.log(x))
     else:
         return np.log(x)
@@ -1244,7 +1354,7 @@ def sqrt(x):
     """Square root compatible with DTPSAD and regular numbers."""
     if isinstance(x, DTPSADWrapper):
         return DTPSADWrapper(_jl.sqrt(x._jl_obj))
-    elif hasattr(x, '_jl_callmethod'):
+    elif hasattr(x, '_jl_callmethod') or _is_julia_dtpsad(x):
         return DTPSADWrapper(_jl.sqrt(x))
     else:
         return np.sqrt(x)
@@ -1254,7 +1364,7 @@ def sinh(x):
     """Hyperbolic sine compatible with DTPSAD and regular numbers."""
     if isinstance(x, DTPSADWrapper):
         return DTPSADWrapper(_jl.sinh(x._jl_obj))
-    elif hasattr(x, '_jl_callmethod'):
+    elif hasattr(x, '_jl_callmethod') or _is_julia_dtpsad(x):
         return DTPSADWrapper(_jl.sinh(x))
     else:
         return np.sinh(x)
@@ -1264,7 +1374,7 @@ def cosh(x):
     """Hyperbolic cosine compatible with DTPSAD and regular numbers."""
     if isinstance(x, DTPSADWrapper):
         return DTPSADWrapper(_jl.cosh(x._jl_obj))
-    elif hasattr(x, '_jl_callmethod'):
+    elif hasattr(x, '_jl_callmethod') or _is_julia_dtpsad(x):
         return DTPSADWrapper(_jl.cosh(x))
     else:
         return np.cosh(x)
@@ -1274,7 +1384,7 @@ def tanh(x):
     """Hyperbolic tangent compatible with DTPSAD and regular numbers."""
     if isinstance(x, DTPSADWrapper):
         return DTPSADWrapper(_jl.tanh(x._jl_obj))
-    elif hasattr(x, '_jl_callmethod'):
+    elif hasattr(x, '_jl_callmethod') or _is_julia_dtpsad(x):
         return DTPSADWrapper(_jl.tanh(x))
     else:
         return np.tanh(x)
@@ -1284,10 +1394,20 @@ def abs(x):
     """Absolute value compatible with DTPSAD and regular numbers."""
     if isinstance(x, DTPSADWrapper):
         return DTPSADWrapper(_jl.abs(x._jl_obj))
-    elif hasattr(x, '_jl_callmethod'):
+    elif hasattr(x, '_jl_callmethod') or _is_julia_dtpsad(x):
         return DTPSADWrapper(_jl.abs(x))
     else:
         return np.abs(x)
+
+
+def conj(x):
+    """Conjugate compatible with DTPSAD and regular numbers."""
+    if isinstance(x, DTPSADWrapper):
+        return DTPSADWrapper(_jl.conj(x._jl_obj))
+    elif hasattr(x, '_jl_callmethod') or _is_julia_dtpsad(x):
+        return DTPSADWrapper(_jl.conj(x))
+    else:
+        return np.conj(x)
 
 
 def to_dtpsad_matrix(arr):
@@ -1378,28 +1498,23 @@ def zeros(dtype, n: int, m: int):
     
 def conj(x):
     """
-    Conjugate function that works with both Python numbers and Julia DTPSAD objects.
-    
-    This allows Python syntax like conj(x) to work with DTPSAD values.
+    Conjugate function that works transparently with DTPSAD and regular numbers.
     
     Args:
-        x: Input (Python number or DTPSAD)
+        x: DTPSAD (raw Julia or wrapped) or regular number
     
     Returns:
-        Conjugate of x (same type as input)
+        Raw Julia DTPSAD if input is DTPSAD, otherwise numpy result
     
     Examples:
         >>> x1 = jt.DTPSAD(2.0, 1)
         >>> y = jt.conj(x1)  # Works!
     """
     if isinstance(x, DTPSADWrapper):
-        # Use Julia's conj function and wrap the result
-        return DTPSADWrapper(_jl.conj(x._jl_obj))
-    elif hasattr(x, '_jl_callmethod'):
-        # It's a raw Julia object, use Julia's conj function
-        return DTPSADWrapper(_jl.conj(x))
+        return _jl.conj(x._jl_obj)
+    elif hasattr(x, '_jl_callmethod') or _is_julia_dtpsad(x):
+        return _jl.conj(x)
     else:
-        # Python number, use Python's complex conjugate
         return np.conj(x)
     
 def NVAR():
@@ -1699,14 +1814,17 @@ def periodicEdwardsTengTwiss(lattice, dp, order, **kwargs):
     
     return _jl.periodicEdwardsTengTwiss(jl_lattice, dp, order, **kwargs)
 
-def findm66(lattice, dp=0.0, order=1, **kwargs):
+def findm66(lattice, dp=0.0, order=0, **kwargs):
     """Find 6x6 transfer matrix
     
     Args:
         lattice: Lattice object, list of elements, or Julia lattice
         dp: Momentum deviation
-        order: TPSA order (default: 1)
+        order: TPSA order (default: 0)
         **kwargs: Additional arguments (E0, m0, orb)
+    
+    Returns:
+        Matrix with auto-wrapping for DTPSAD elements, or numpy array for Float64
     """
     if isinstance(lattice, Lattice):
         jl_lattice = lattice.julia_object
@@ -1716,10 +1834,25 @@ def findm66(lattice, dp=0.0, order=1, **kwargs):
         jl_lattice = lattice
     
     result = _jl.findm66(jl_lattice, dp, order, **kwargs)
+    
+    # Check if result contains DTPSAD elements
+    if hasattr(result, '__getitem__'):
+        try:
+            first_elem = result[0, 0]
+            if _is_julia_dtpsad(first_elem):
+                # Return wrapped matrix for auto-wrapping on element access
+                return _DTPSADMatrixWrapper(result)
+        except:
+            pass
+    
     return _to_numpy_array(result)
 
 def fastfindm66(lattice, dp=0.0, **kwargs):
-    """Fast calculation of 6x6 transfer matrix"""
+    """Fast calculation of 6x6 transfer matrix
+    
+    Returns:
+        Matrix with auto-wrapping for DTPSAD elements, or numpy array for Float64
+    """
     if isinstance(lattice, Lattice):
         jl_lattice = lattice.julia_object
     elif isinstance(lattice, list):
@@ -1728,16 +1861,26 @@ def fastfindm66(lattice, dp=0.0, **kwargs):
         jl_lattice = lattice
     
     result = _jl.fastfindm66(jl_lattice, dp, **kwargs)
+    
+    # Check if result contains DTPSAD elements
+    if hasattr(result, '__getitem__'):
+        try:
+            first_elem = result[0, 0]
+            if _is_julia_dtpsad(first_elem):
+                return _DTPSADMatrixWrapper(result)
+        except:
+            pass
+    
     return _to_numpy_array(result)
 
-def findm66_refpts(lattice, refpts, dp=0.0, order=1, **kwargs):
+def findm66_refpts(lattice, refpts, dp=0.0, order=0, **kwargs):
     """Find transfer matrices at reference points
     
     Args:
         lattice: Lattice object, list of elements, or Julia lattice
         refpts: Reference point indices
         dp: Momentum deviation
-        order: TPSA order (default: 1)
+        order: TPSA order (default: 0)
         **kwargs: Additional arguments (E0, m0, orb)
     """
     if isinstance(lattice, Lattice):
