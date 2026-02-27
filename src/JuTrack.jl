@@ -80,7 +80,7 @@ include("utils/dynamic_aperture.jl")
 # end
 # include("utils/lattice_plot.jl")
 
-export Beam
+export Beam, Beam_Gauss
 export m_e, m_p, m_goldion, charge_e, speed_of_light, epsilon_0, CGAMMA, CoordLimit, AngleLimit, use_exact_Hamiltonian, use_exact_drift, use_exact_beti
 export __E0, __HBAR_C, Cq, __RE
 export qr_eigen, diag1, randn_approx
