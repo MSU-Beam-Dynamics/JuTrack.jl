@@ -16,7 +16,12 @@ def read_readme():
 # Read version from pyJuTrack.py
 def get_version():
     version = {}
-    with open(os.path.join(os.path.dirname(__file__), 'pyJuTrack.py'), 'r') as f:
+    with open(
+        os.path.join(os.path.dirname(__file__), 'pyJuTrack.py'),
+        'r',
+        encoding='utf-8',
+        errors='replace',
+    ) as f:
         for line in f:
             if line.startswith('__version__'):
                 exec(line, version)

@@ -593,6 +593,71 @@ class Beam:
         return f"Beam(n_particles={particles.shape[0]}, energy={self.energy:.2e}eV)"
 
 
+def Beam_Gauss(nmacro: int, energy: float = 1e9, *,
+              betax: float = 1.0, alphax: float = 0.0, emitx: float = 1e-8,
+              betay: float = 1.0, alphay: float = 0.0, emity: float = 1e-8,
+              betaz: float = 1.0, alphaz: float = 0.0, emitz: float = 1e-8,
+              dtype=None, **kwargs) -> Beam:
+    """
+    Construct a Beam with a 6D Gaussian distribution from Courant-Snyder parameters.
+
+    Args:
+        nmacro: Number of macro particles.
+        energy: Beam energy in eV (default: 1e9).
+        betax:  Horizontal beta function (default: 1.0).
+        alphax: Horizontal alpha function (default: 0.0).
+        emitx:  Horizontal geometric emittance (default: 1e-8).
+        betay:  Vertical beta function (default: 1.0).
+        alphay: Vertical alpha function (default: 0.0).
+        emity:  Vertical geometric emittance (default: 1e-8).
+        betaz:  Longitudinal beta function (default: 1.0).
+        alphaz: Longitudinal alpha function (default: 0.0).
+        emitz:  Longitudinal geometric emittance (default: 1e-8).
+        dtype:  Pass jt.DTPSAD to create a DTPSAD beam for automatic
+                differentiation.  None (default) creates a Float64 beam.
+        **kwargs: Additional keyword arguments forwarded to Julia:
+            - np: Number of real particles (default: nmacro)
+            - charge: Particle charge in units of e (default: -1.0)
+            - mass: Particle mass in eV (default: m_e)
+            - atn: Atomic number (default: 1.0)
+            - centroid: 6-element list [x, px, y, py, z, pz] (default: zeros)
+            - T0: Revolution period (default: 0.0)
+            - znbin: Number of z bins (default: 99)
+            - current: Beam current in A (default: 0.0)
+
+    Returns:
+        Beam object with Gaussian-distributed particles.
+
+    Examples:
+        >>> # Float64 beam
+        >>> beam = jt.Beam_Gauss(10000, energy=3e9,
+        ...     betax=10.0, alphax=-1.5, emitx=20e-9,
+        ...     betay=5.0,  alphay=0.5,  emity=2e-9)
+
+        >>> # DTPSAD beam for automatic differentiation
+        >>> jt.set_tps_dim(3)
+        >>> beam = jt.Beam_Gauss(10000, energy=3e9, dtype=jt.DTPSAD,
+        ...     betax=10.0, emitx=20e-9)
+    """
+    kwargs = _convert_kwargs_to_julia(kwargs)
+    cs_kwargs = dict(
+        energy=energy,
+        betax=betax, alphax=alphax, emitx=emitx,
+        betay=betay, alphay=alphay, emity=emity,
+        betaz=betaz, alphaz=alphaz, emitz=emitz,
+    )
+    cs_kwargs.update(kwargs)
+
+    if dtype is not None and 'DTPSAD' in str(dtype):
+        jl_beam = _jl.Beam_Gauss(_jl.DTPSAD, int(nmacro), **cs_kwargs)
+    else:
+        jl_beam = _jl.Beam_Gauss(int(nmacro), **cs_kwargs)
+
+    beam = Beam.__new__(Beam)
+    beam._jl_beam = jl_beam
+    return beam
+
+
 # ============================================================================
 # Element Copy Utilities
 # ============================================================================
@@ -1784,24 +1849,103 @@ def twissring(lattice, dp=0.0, refpts=None, **kwargs):
     
     return _jl.twissring(jl_lattice, dp, 0, julia_refpts, **kwargs)
 
-def twissline(lattice, dp=0.0, refpts=None, **kwargs):
-    """Calculate Twiss parameters along a beamline"""
+def twissline(tin, lattice, dp=0.0, order=0, refpts=None, **kwargs):
+    """Propagate Twiss parameters through a sequence of elements.
+    
+    If refpts is a single int, propagate up to that element index and return
+    a single EdwardsTengTwiss. If refpts is a list/array of ints, save Twiss
+    parameters at those locations and return a list of EdwardsTengTwiss.
+    If refpts is None, propagate through the entire lattice (equivalent to
+    endindex = len(lattice)).
+    
+    Args:
+        tin: Input EdwardsTengTwiss parameters (from EdwardsTengTwiss() or
+            periodicEdwardsTengTwiss()).
+        lattice: Lattice object, list of elements, or Julia lattice.
+        dp: Momentum deviation (default: 0.0).
+        order: Order of the map. 0 for finite difference, others for TPSA
+            (default: 0).
+        refpts: Reference points for Twiss calculation. Can be:
+            - None: propagate through entire lattice (single result).
+            - int: index of last element (single result, 1-based).
+            - list/array of ints: indices where Twiss parameters are saved
+              (returns a vector of EdwardsTengTwiss, 1-based).
+        **kwargs: Additional keyword arguments (E0, m0, orb).
+    
+    Returns:
+        Single EdwardsTengTwiss (if refpts is None or int), or a vector of
+        EdwardsTengTwiss (if refpts is a list/array).
+    
+    Examples:
+        >>> twiss0 = jt.periodicEdwardsTengTwiss(ring, 0.0, 0)
+        >>> # Propagate to element 10
+        >>> twiss_out = jt.twissline(twiss0, ring, dp=0.0, order=0, refpts=10)
+        >>> # Get Twiss at multiple locations
+        >>> twiss_vec = jt.twissline(twiss0, ring, dp=0.0, order=0,
+        ...     refpts=[10, 20, 30])
+    """
     if isinstance(lattice, Lattice):
         jl_lattice = lattice.julia_object
     elif isinstance(lattice, list):
         jl_lattice = Lattice(lattice).julia_object
     else:
         jl_lattice = lattice
-        
-    if refpts is None:
-        refpts = list(range(1, len(jl_lattice) + 1))
-        julia_refpts = _to_julia_int_vector(refpts)
-    elif isinstance(refpts, (list, np.ndarray)):
-        julia_refpts = _to_julia_int_vector([int(r) for r in refpts])
-    else:
-        julia_refpts = refpts
     
-    return _jl.twissline(jl_lattice, dp, 0, julia_refpts, **kwargs)
+    kwargs = _convert_kwargs_to_julia(kwargs)
+    
+    if refpts is None:
+        # Propagate through entire lattice
+        endindex = len(jl_lattice)
+        return _jl.twissline(tin, jl_lattice, dp, order, endindex, **kwargs)
+    elif isinstance(refpts, (list, np.ndarray)):
+        # Vector of reference points -> returns Vector{EdwardsTengTwiss}
+        julia_refpts = _to_julia_int_vector([int(r) for r in refpts])
+        return _jl.twissline(tin, jl_lattice, dp, order, julia_refpts, **kwargs)
+    else:
+        # Single int endindex
+        return _jl.twissline(tin, jl_lattice, dp, order, int(refpts), **kwargs)
+
+def EdwardsTengTwiss(betax, betay, **kwargs):
+    """Create an EdwardsTengTwiss object.
+    
+    Construct an Edwards-Teng coupled Twiss parameter set from betax and betay.
+    All other parameters are optional keyword arguments.
+    
+    Args:
+        betax: Horizontal beta function (float or DTPSAD).
+        betay: Vertical beta function (float or DTPSAD).
+        **kwargs: Optional keyword arguments:
+            - alphax: Horizontal alpha function (default: 0.0)
+            - alphay: Vertical alpha function (default: 0.0)
+            - dx: Horizontal dispersion (default: 0.0)
+            - dy: Vertical dispersion (default: 0.0)
+            - dpx: Derivative of horizontal dispersion (default: 0.0)
+            - dpy: Derivative of vertical dispersion (default: 0.0)
+            - mux: Horizontal phase advance (default: 0.0)
+            - muy: Vertical phase advance (default: 0.0)
+            - R11: Coupling matrix element R11 (default: 0.0)
+            - R12: Coupling matrix element R12 (default: 0.0)
+            - R21: Coupling matrix element R21 (default: 0.0)
+            - R22: Coupling matrix element R22 (default: 0.0)
+            - mode: Mode for calculation (default: 1)
+            - s: Position along the beamline (default: 0.0)
+    
+    Returns:
+        A Julia EdwardsTengTwiss object.
+    
+    Examples:
+        >>> # Simple uncoupled Twiss
+        >>> twiss = jt.EdwardsTengTwiss(10.0, 5.0, alphax=0.5, alphay=-0.3)
+        
+        >>> # With dispersion and coupling
+        >>> twiss = jt.EdwardsTengTwiss(10.0, 5.0, dx=0.1, dpx=0.01,
+        ...     R11=0.01, R12=0.0, R21=0.0, R22=0.01)
+        
+        >>> # DTPSAD version for automatic differentiation
+        >>> twiss = jt.EdwardsTengTwiss(betax_tpsa, betay_tpsa, alphax=alphax_tpsa)
+    """
+    kwargs = _convert_kwargs_to_julia(kwargs)
+    return _jl.EdwardsTengTwiss(betax, betay, **kwargs)
 
 def periodicEdwardsTengTwiss(lattice, dp, order, **kwargs):
     """Calculate periodic Twiss parameters"""
@@ -2041,6 +2185,26 @@ def histogram1DinZ(beam: Beam):
         >>> jt.histogram1DinZ(beam)
     """
     _jl.histogram1DinZ_b(beam.julia_object)
+
+def twiss_beam(beam: Beam) -> dict:
+    """Calculate Courant-Snyder (Twiss) parameters of the beam from its particle distribution.
+
+    Args:
+        beam: Beam object.
+
+    Returns:
+        dict with keys betax, alphax, emitx, betay, alphay, emity, betaz, alphaz, emitz.
+
+    Example:
+        >>> tw = jt.twiss_beam(beam)
+        >>> print(tw['betax'], tw['emitx'])
+    """
+    result = _jl.twiss_beam(beam.julia_object)
+    return {
+        'betax': float(result[0]), 'alphax': float(result[1]), 'emitx': float(result[2]),
+        'betay': float(result[3]), 'alphay': float(result[4]), 'emity': float(result[5]),
+        'betaz': float(result[6]), 'alphaz': float(result[7]), 'emitz': float(result[8]),
+    }
 
 def get_emittance(beam: Beam) -> Tuple[float, float, float]:
     """Get beam emittances (ex, ey, ez)"""
@@ -2765,7 +2929,7 @@ __author__ = "JuTrack.jl Integration"
 
 __all__ = [
     # Classes
-    'Lattice', 'Beam',
+    'Lattice', 'Beam', 'Beam_Gauss',
     
     # Element types (for findelem by type)
     'element_types', 'ElementTypes',
@@ -2801,7 +2965,7 @@ __all__ = [
     
     # Twiss and optics
     'twissring', 'twissline',  
-    'periodicEdwardsTengTwiss', 
+    'EdwardsTengTwiss', 'periodicEdwardsTengTwiss', 
     
     # Transfer matrices
     'findm66', 'fastfindm66', 'findm66_refpts',
@@ -2820,6 +2984,7 @@ __all__ = [
     
     # Beam initialization
     'initilize_6DGaussiandist', 'initilize_zslice', 'histogram1DinZ',
+    'twiss_beam',
     'get_emittance', 'get_centroid', 'get_2nd_moment',
     
     # Dynamic aperture and FMA

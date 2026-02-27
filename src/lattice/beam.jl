@@ -191,4 +191,148 @@ function Beam(r_GTPS::Matrix{DTPSAD{N, T}}; energy::Float64=1e9, np::Int=size(r_
                 centroid, zeros(DTPSAD{N, T}, 6, 6), zeros(DTPSAD{N, T}, 6), DTPSAD(current))
 end
 
+"""
+    Beam_Gauss(nmacro::Int; energy::Float64=1e9, np::Int=nmacro,
+        betax::Float64=1.0, alphax::Float64=0.0, emitx::Float64=1e-8,
+        betay::Float64=1.0, alphay::Float64=0.0, emity::Float64=1e-8,
+        betaz::Float64=1.0, alphaz::Float64=0.0, emitz::Float64=1e-8,
+        charge::Float64=-1.0, mass::Float64=m_e, atn::Float64=1.0,
+        centroid::Vector{Float64}=zeros(Float64, 6), T0::Float64=0.0,
+        znbin::Int=99, current::Float64=0.0)
+
+Construct a `Beam` object with a 6D Gaussian distribution generated from Courant-Snyder parameters.
+
+# Arguments
+- `nmacro::Int`: Number of macro particles.
+- `energy::Float64`: Beam energy in eV (default: 1e9).
+- `np::Int`: Number of real particles (default: nmacro).
+- `betax, alphax, emitx`: Horizontal Courant-Snyder parameters and geometric emittance.
+- `betay, alphay, emity`: Vertical Courant-Snyder parameters and geometric emittance.
+- `betaz, alphaz, emitz`: Longitudinal Courant-Snyder parameters and geometric emittance.
+- `charge, mass, atn`: Particle species parameters.
+- `centroid`: 6D centroid offset [x, px, y, py, z, pz].
+- `T0, znbin, current`: Other beam parameters.
+
+# Example
+```julia
+beam = Beam_Gauss(10000, energy=3e9, betax=10.0, alphax=-1.5, emitx=20e-9,
+                  betay=5.0, alphay=0.5, emity=2e-9)
+```
+"""
+function Beam_Gauss(nmacro::Int; energy::Float64=1e9, np::Int=nmacro,
+    betax::Float64=1.0, alphax::Float64=0.0, emitx::Float64=1e-8,
+    betay::Float64=1.0, alphay::Float64=0.0, emity::Float64=1e-8,
+    betaz::Float64=1.0, alphaz::Float64=0.0, emitz::Float64=1e-8,
+    charge::Float64=-1.0, mass::Float64=m_e, atn::Float64=1.0,
+    centroid::Vector{Float64}=zeros(Float64, 6), T0::Float64=0.0,
+    znbin::Int=99, current::Float64=0.0)
+
+    r = zeros(Float64, nmacro, 6)
+
+    # Horizontal plane: use Courant-Snyder parameterization
+    # sigma matrix: [[beta, -alpha], [-alpha, (1+alpha^2)/beta]] * emit
+    x1 = randn_approx(2, nmacro)
+    @inbounds for c in 1:nmacro
+        r[c, 1] = sqrt(emitx * betax) * x1[1, c] + centroid[1]
+        r[c, 2] = sqrt(emitx / betax) * (-alphax * x1[1, c] + x1[2, c]) + centroid[2]
+    end
+
+    # Vertical plane
+    x2 = randn_approx(2, nmacro)
+    @inbounds for c in 1:nmacro
+        r[c, 3] = sqrt(emity * betay) * x2[1, c] + centroid[3]
+        r[c, 4] = sqrt(emity / betay) * (-alphay * x2[1, c] + x2[2, c]) + centroid[4]
+    end
+
+    # Longitudinal plane
+    x3 = randn_approx(2, nmacro)
+    @inbounds for c in 1:nmacro
+        r[c, 5] = sqrt(emitz * betaz) * x3[1, c] + centroid[5]
+        r[c, 6] = sqrt(emitz / betaz) * (-alphaz * x3[1, c] + x3[2, c]) + centroid[6]
+    end
+
+    emittance = [emitx, emity, emitz]
+
+    lost_flag = zeros(Int, nmacro)
+    gamma = (energy + mass) / mass
+    beta = sqrt(1.0 - 1.0 / gamma^2)
+    classrad0 = charge * charge / (atn * mass) / 4 / pi / 55.26349406 * 1e-6
+    radconst = 4 * pi / 3 * classrad0 / mass / mass / mass
+    inzindex = zeros(Int, nmacro)
+    zhist = zeros(Float64, znbin)
+    zhist_edges = zeros(Float64, znbin + 1)
+    return Beam{Float64}(r, np, nmacro, energy, lost_flag, charge, mass, gamma, beta, atn, classrad0, radconst,
+        T0, 1, znbin, inzindex, zhist, zhist_edges,
+        zeros(Float64, nmacro), zeros(Float64, nmacro), zeros(Float64, nmacro),
+        zeros(Float64, nmacro), zeros(Float64, nmacro), emittance, centroid,
+        zeros(Float64, 6, 6), zeros(Float64, 6), current)
+end
+
+"""
+    Beam_Gauss(::Type{DTPSAD}, nmacro::Int; energy::Float64=1e9, np::Int=nmacro,
+        betax::Float64=1.0, alphax::Float64=0.0, emitx::Float64=1e-8,
+        betay::Float64=1.0, alphay::Float64=0.0, emity::Float64=1e-8,
+        betaz::Float64=1.0, alphaz::Float64=0.0, emitz::Float64=1e-8,
+        charge::Float64=-1.0, mass::Float64=m_e, atn::Float64=1.0,
+        centroid::Vector{Float64}=zeros(Float64, 6), T0::Float64=0.0,
+        znbin::Int=99, current::Float64=0.0)
+
+Construct a `Beam` object with a 6D Gaussian distribution (DTPSAD type for automatic differentiation)
+generated from Courant-Snyder parameters.
+
+# Example
+```julia
+set_tps_dim(3)
+beam = Beam_Gauss(DTPSAD, 10000, energy=3e9, betax=10.0, emitx=20e-9)
+```
+"""
+function Beam_Gauss(::Type{DTPSAD}, nmacro::Int; energy::Float64=1e9, np::Int=nmacro,
+    betax::Float64=1.0, alphax::Float64=0.0, emitx::Float64=1e-8,
+    betay::Float64=1.0, alphay::Float64=0.0, emity::Float64=1e-8,
+    betaz::Float64=1.0, alphaz::Float64=0.0, emitz::Float64=1e-8,
+    charge::Float64=-1.0, mass::Float64=m_e, atn::Float64=1.0,
+    centroid::Vector{Float64}=zeros(Float64, 6), T0::Float64=0.0,
+    znbin::Int=99, current::Float64=0.0)
+
+    # First generate Float64 coordinates
+    r_f64 = zeros(Float64, nmacro, 6)
+
+    x1 = randn_approx(2, nmacro)
+    @inbounds for c in 1:nmacro
+        r_f64[c, 1] = sqrt(emitx * betax) * x1[1, c] + centroid[1]
+        r_f64[c, 2] = sqrt(emitx / betax) * (-alphax * x1[1, c] + x1[2, c]) + centroid[2]
+    end
+
+    x2 = randn_approx(2, nmacro)
+    @inbounds for c in 1:nmacro
+        r_f64[c, 3] = sqrt(emity * betay) * x2[1, c] + centroid[3]
+        r_f64[c, 4] = sqrt(emity / betay) * (-alphay * x2[1, c] + x2[2, c]) + centroid[4]
+    end
+
+    x3 = randn_approx(2, nmacro)
+    @inbounds for c in 1:nmacro
+        r_f64[c, 5] = sqrt(emitz * betaz) * x3[1, c] + centroid[5]
+        r_f64[c, 6] = sqrt(emitz / betaz) * (-alphaz * x3[1, c] + x3[2, c]) + centroid[6]
+    end
+
+    # Convert to DTPSAD
+    r_GTPS = DTPSAD.(r_f64)
+    emittance = [emitx, emity, emitz]
+
+    lost_flag = zeros(Int, nmacro)
+    gamma = (DTPSAD(energy) + DTPSAD(mass)) / DTPSAD(mass)
+    beta = sqrt(1.0 - 1.0 / gamma^2)
+    classrad0 = DTPSAD(charge) * DTPSAD(charge) / (DTPSAD(atn) * DTPSAD(mass)) / 4.0 / Float64(pi) / 55.26349406 * 1e-6
+    radconst = 4 * Float64(pi) / 3 * classrad0 / DTPSAD(mass)^3
+    inzindex = zeros(Int, nmacro)
+    NT = typeof(gamma)
+    zhist = zeros(NT, znbin)
+    zhist_edges = zeros(NT, znbin + 1)
+    return Beam{NT}(r_GTPS, np, nmacro, DTPSAD(energy), lost_flag, DTPSAD(charge), DTPSAD(mass), gamma, beta, DTPSAD(atn), classrad0, radconst,
+        T0, 1, znbin, inzindex, zhist, zhist_edges,
+        zeros(NT, nmacro), zeros(NT, nmacro), zeros(NT, nmacro),
+        zeros(NT, nmacro), zeros(NT, nmacro), emittance,
+        centroid, zeros(NT, 6, 6), zeros(NT, 6), DTPSAD(current))
+end
+
 
