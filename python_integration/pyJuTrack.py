@@ -80,8 +80,12 @@ def _initialize_julia():
     
     print("Initializing JuTrack.jl...")
     
-    # Activate the JuTrack.jl project
-    project_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    # Activate the JuTrack.jl project.
+    # If JULIA_PROJECT is already set (e.g. by the offline bundle's
+    # activate_jutrack.sh), honour it.  Otherwise fall back to the parent
+    # directory of this file (works when running from the source tree).
+    project_path = os.environ.get('JULIA_PROJECT') or \
+        os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     juliacall.Pkg.activate(project_path)
     
     # Import Julia Main module
@@ -93,17 +97,22 @@ def _initialize_julia():
     _ensure_conda_pycall_ready(jl)
     
     # Automatically fix version mismatches by updating the manifest
-    # This resolves the StyledStrings issue when switching between Julia versions
-    try:
-        jl.seval('import Pkg; Pkg.resolve()')
-        jl.seval('import Pkg; Pkg.instantiate()')
-    except:
-        # If resolve/instantiate fail, try more aggressive approach
+    # This resolves the StyledStrings issue when switching between Julia versions.
+    # Skip this entirely in offline / pre-built environments where the depot is
+    # already correct and network access is unavailable.
+    _offline = os.environ.get('JULIA_PKG_OFFLINE', '').lower() in ('true', '1') or \
+               os.environ.get('PYTHON_JULIAPKG_OFFLINE', '').lower() in ('yes', '1', 'true')
+    if not _offline:
         try:
-            # Update packages to be compatible with current Julia version
-            jl.seval('import Pkg; Pkg.update()')
+            jl.seval('import Pkg; Pkg.resolve()')
+            jl.seval('import Pkg; Pkg.instantiate()')
         except:
-            pass  # Continue even if this fails
+            # If resolve/instantiate fail, try more aggressive approach
+            try:
+                # Update packages to be compatible with current Julia version
+                jl.seval('import Pkg; Pkg.update()')
+            except:
+                pass  # Continue even if this fails
     
     # Load JuTrack (suppress all warnings and output)
     with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
@@ -120,8 +129,10 @@ def _initialize_julia():
             jl.seval('Logging.global_logger(old_logger)')
             
             # Attempt automatic fix: update all packages for current Julia version
+            # (skip when offline – nothing can be updated without a network)
             try:
-                jl.seval('import Pkg; Pkg.update(); Pkg.resolve(); Pkg.instantiate()')
+                if not _offline:
+                    jl.seval('import Pkg; Pkg.update(); Pkg.resolve(); Pkg.instantiate()')
                 # Try loading JuTrack again after fix
                 jl.seval('Logging.global_logger(Logging.NullLogger())')
                 jl.seval('using JuTrack')
@@ -144,7 +155,7 @@ def _initialize_julia():
             jl.seval('Logging.global_logger(old_logger)')
     
     _julia_initialized = True
-    
+
     # Try to import PyCall if available (optional - only needed for some plotting features)
     # If it fails, pyJuTrack will still work for tracking and optimization
     try:
@@ -1637,6 +1648,37 @@ def convert_to_DTPSAD(value):
     else:
         return _jl.DTPSAD(float(value))
 
+
+def set_field(element, field_name: str, value):
+    """
+    Set a field on a Julia lattice element, with automatic DTPSAD unwrapping.
+
+    Direct attribute assignment (``element.len = val``) goes through
+    PythonCall's ``__setattr__`` which cannot convert a Python-wrapped DTPSAD
+    back to the Julia type.  This helper bypasses that limitation by
+    unwrapping ``DTPSADWrapper`` objects and calling Julia's ``setfield!``
+    directly through juliacall, which handles the conversion properly.
+
+    Args:
+        element: A Julia lattice element (e.g. ``ring_tpsa[1]``)
+        field_name: Name of the field to set (e.g. ``'len'``, ``'k1'``)
+        value: New value – can be a ``DTPSADWrapper``, a raw Julia DTPSAD,
+               a plain Python number, or a list/array.
+
+    Examples:
+        >>> ring_tpsa = jt.Number2TPSAD(elements)
+        >>> len_var = jt.DTPSAD(5.27, 1)
+        >>> jt.set_field(ring_tpsa[1], 'len', len_var)
+        >>> print(ring_tpsa[1].len)  # now a DTPSAD with derivative
+    """
+    # Unwrap DTPSADWrapper to the raw Julia object
+    if isinstance(value, DTPSADWrapper):
+        value = value._jl_obj
+    # Unwrap lists of DTPSADWrapper
+    elif isinstance(value, list) and value and isinstance(value[0], DTPSADWrapper):
+        value = _to_julia_dtpsad_vector(value)
+    _jl.setfield_b(element, _jl.Symbol(field_name), value)
+
 def TPSAD2Number(obj):
     """Convert from TPSA format to numbers
     
@@ -2962,6 +3004,7 @@ __all__ = [
     # TPSA
     'set_tps_dim', 'DTPSAD', 'NVAR', 'zeros', 'to_dtpsad_matrix', 'pow',
     'Number2TPSAD', 'TPSAD2Number', 'convert_to_DTPSAD', 'Gradient', 'Jacobian',
+    'set_field',
     
     # Twiss and optics
     'twissring', 'twissline',  

@@ -11,6 +11,10 @@ function translate_AT_to_Julia(THERING, filename)
         className = element.Class;  
 
         switch className
+            case 'Marker'
+                eletype = 'MARKER';
+                juliaStr = sprintf('%s = %s(name="%s")\n', ...
+                element.FamName, eletype, element.FamName);
             case 'RFCavity'
                 eletype = 'RFCA';
                 juliaStr = sprintf('%s = %s(name="%s", len=%.10f, volt=%.10f, h=%.10f, freq=%.10e, energy=%.10e)\n', ...
@@ -18,28 +22,50 @@ function translate_AT_to_Julia(THERING, filename)
                 element.Voltage, element.HarmNumber, element.Frequency, element.Energy);
             case 'Bend'
                 eletype = 'SBEND';
-                juliaStr = sprintf('%s = %s(name="%s", len=%.10f, angle=%.10f, e1=%.10f, e2=%.10e, PolynomB=[0.0, %.10e, 0.0, 0.0])\n', ...
+                T1 = get_element_field(element, 'T1', zeros(6,1));
+                R1 = get_element_field(element, 'R1', eye(6));
+                T2 = get_element_field(element, 'T2', zeros(6,1));
+                R2 = get_element_field(element, 'R2', eye(6));
+                juliaStr = sprintf('%s = %s(name="%s", len=%.10f, angle=%.10f, e1=%.10f, e2=%.10e, PolynomB=[0.0, %.10e, 0.0, 0.0], T1=%s, R1=%s, T2=%s, R2=%s)\n', ...
                 element.FamName, eletype, element.FamName, element.Length, ...
-                element.BendingAngle, element.EntranceAngle, element.ExitAngle, element.K);
+                element.BendingAngle, element.EntranceAngle, element.ExitAngle, element.K, ...
+                matrix_to_julia_str(T1), matrix_to_julia_str(R1), matrix_to_julia_str(T2), matrix_to_julia_str(R2));
             case 'Quadrupole'
                 eletype = 'KQUAD';
-                juliaStr = sprintf('%s = %s(name="%s", len=%.10f, k1=%.10f)\n', ...
+                T1 = get_element_field(element, 'T1', zeros(6,1));
+                R1 = get_element_field(element, 'R1', eye(6));
+                T2 = get_element_field(element, 'T2', zeros(6,1));
+                R2 = get_element_field(element, 'R2', eye(6));
+                juliaStr = sprintf('%s = %s(name="%s", len=%.10f, k1=%.10f, T1=%s, R1=%s, T2=%s, R2=%s)\n', ...
                 element.FamName, eletype, element.FamName, element.Length, ...
-                element.K);
+                element.K, matrix_to_julia_str(T1), matrix_to_julia_str(R1), matrix_to_julia_str(T2), matrix_to_julia_str(R2));
             case 'Sextupole'
                 eletype = 'KSEXT';
-                juliaStr = sprintf('%s = %s(name="%s", len=%.10f, k2=%.10f)\n', ...
+                T1 = get_element_field(element, 'T1', zeros(6,1));
+                R1 = get_element_field(element, 'R1', eye(6));
+                T2 = get_element_field(element, 'T2', zeros(6,1));
+                R2 = get_element_field(element, 'R2', eye(6));
+                juliaStr = sprintf('%s = %s(name="%s", len=%.10f, k2=%.10f, T1=%s, R1=%s, T2=%s, R2=%s)\n', ...
                 element.FamName, eletype, element.FamName, element.Length, ...
-                element.PolynomB(3)*2);
+                element.PolynomB(3)*2, matrix_to_julia_str(T1), matrix_to_julia_str(R1), matrix_to_julia_str(T2), matrix_to_julia_str(R2));
             case 'Octupole'
                 eletype = 'KOCT';
-                juliaStr = sprintf('%s = %s(name="%s", len=%.10f, k3=%.10f)\n', ...
+                T1 = get_element_field(element, 'T1', zeros(6,1));
+                R1 = get_element_field(element, 'R1', eye(6));
+                T2 = get_element_field(element, 'T2', zeros(6,1));
+                R2 = get_element_field(element, 'R2', eye(6));
+                juliaStr = sprintf('%s = %s(name="%s", len=%.10f, k3=%.10f, T1=%s, R1=%s, T2=%s, R2=%s)\n', ...
                 element.FamName, eletype, element.FamName, element.Length, ...
-                element.PolynomB(4)*6);
+                element.PolynomB(4)*6, matrix_to_julia_str(T1), matrix_to_julia_str(R1), matrix_to_julia_str(T2), matrix_to_julia_str(R2));
             case 'Drift'
                 eletype = 'DRIFT';
-                juliaStr = sprintf('%s = %s(name="%s", len=%.10f)\n', ...
-                element.FamName, eletype, element.FamName, element.Length);
+                T1 = get_element_field(element, 'T1', zeros(6,1));
+                R1 = get_element_field(element, 'R1', eye(6));
+                T2 = get_element_field(element, 'T2', zeros(6,1));
+                R2 = get_element_field(element, 'R2', eye(6));
+                juliaStr = sprintf('%s = %s(name="%s", len=%.10f, T1=%s, R1=%s, T2=%s, R2=%s)\n', ...
+                element.FamName, eletype, element.FamName, element.Length, ...
+                matrix_to_julia_str(T1), matrix_to_julia_str(R1), matrix_to_julia_str(T2), matrix_to_julia_str(R2));
             case 'BPM'
                 eletype = 'MARKER';
                 juliaStr = sprintf('%s = %s(name="%s")\n', ...
@@ -96,3 +122,40 @@ function remove_repeated_lines(inputFile, outputFile)
     disp(['Output file created: ', outputFile]);
 end
 
+function value = get_element_field(element, fieldname, default_value)
+    % Helper function to safely get a field from element
+    % Returns default_value if field doesn't exist
+    if isfield(element, fieldname)
+        value = element.(fieldname);
+    else
+        value = default_value;
+    end
+end
+
+function str = matrix_to_julia_str(mat)
+    % Helper function to convert a matrix or vector to Julia format string
+    if isvector(mat)
+        % For vectors, format as [val1, val2, val3, ...]
+        str = sprintf('[%.10e', mat(1));
+        for i = 2:length(mat)
+            str = sprintf('%s, %.10e', str, mat(i));
+        end
+        str = sprintf('%s]', str);
+    else
+        % For matrices, format as [row1; row2; ...]
+        [m, n] = size(mat);
+        str = sprintf('[');
+        for i = 1:m
+            if i > 1
+                str = sprintf('%s; ', str);
+            end
+            for j = 1:n
+                if j > 1
+                    str = sprintf('%s ', str);
+                end
+                str = sprintf('%s%.10e', str, mat(i,j));
+            end
+        end
+        str = sprintf('%s]', str);
+    end
+end

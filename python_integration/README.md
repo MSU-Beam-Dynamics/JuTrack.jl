@@ -170,6 +170,32 @@ ring = jt.load_lattice("path/to/lattice.jls")
 jt.save_lattice(ring, "path/to/output.jls")
 ```
 
+### DTPSAD and Setting Element Fields. Currently, we cannot directly assign a DTPSAD variable in Python to Julia lattice element.
+
+```python
+# Set TPSA dimension (number of variables)
+jt.set_tps_dim(6)
+
+# Convert lattice to TPSA format for automatic differentiation
+ring_tpsa = jt.Number2TPSAD(elements)
+
+# Create DTPSAD variables
+len_var = jt.DTPSAD(5.27, 1)   # value=5.27, derivative w.r.t. variable 1
+k1_var  = jt.DTPSAD(1.2,  2)   # value=1.2, derivative w.r.t. variable 2
+
+# Set fields on TPSA elements using set_field()
+# (Direct assignment like `elem.len = val` does not work for DTPSAD values)
+jt.set_field(ring_tpsa[1], 'len', len_var)
+jt.set_field(ring_tpsa[3], 'k1',  k1_var)
+
+# Convert back to numeric lattice
+ring_num = jt.TPSAD2Number(ring_tpsa)
+
+# Compute gradient and Jacobian
+grad = jt.Gradient(func, x)
+jac  = jt.Jacobian(func, x)
+```
+
 ### Advanced: Direct Julia Access
 
 ```python
