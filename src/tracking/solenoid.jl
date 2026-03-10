@@ -47,7 +47,7 @@ function pass!(ele::SOLENOID, r_in::Matrix{Float64}, num_particles::Int64, parti
                     addvv!(r6, T2)
                 end
 
-                if check_lost(r6)
+                if check_lost(r6) || check_lost_aperture(r6, ele.RApertures, ele.EApertures)
                     lost_flags[c] = 1
                 end
             end
@@ -59,7 +59,7 @@ function pass!(ele::SOLENOID, r_in::Matrix{Float64}, num_particles::Int64, parti
             end
             r6 = @view r_in[c, :]
             drift6!(r6, ele.len, beti)
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, ele.RApertures, ele.EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -115,7 +115,7 @@ function pass_P!(ele::SOLENOID, r_in::Matrix{Float64}, num_particles::Int64, par
                     addvv!(r6, T2)
                 end
 
-                if check_lost(r6)
+                if check_lost(r6) || check_lost_aperture(r6, ele.RApertures, ele.EApertures)
                     lost_flags[c] = 1
                 end
             end
@@ -139,7 +139,7 @@ function pass_P!(ele::SOLENOID, r_in::Matrix{Float64}, num_particles::Int64, par
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, ele.RApertures, ele.EApertures)
                 lost_flags[c] = 1
             end
         end

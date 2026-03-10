@@ -121,7 +121,7 @@ function BendLinearPass!(r::Matrix{Float64}, le::Float64, grd::Float64, ba::Floa
         if !iszero(T2)
             addvv!(r6, T2)
         end
-        if check_lost(r6)
+        if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
             lost_flags[c] = 1
         end
     end
@@ -162,7 +162,7 @@ function BendLinearPass_P!(r::Matrix{Float64}, le::Float64, grd::Float64, ba::Fl
         if !iszero(T2)
             addvv!(r6, T2)
         end
-        if check_lost(r6)
+        if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
             lost_flags[c] = 1
         end
     end

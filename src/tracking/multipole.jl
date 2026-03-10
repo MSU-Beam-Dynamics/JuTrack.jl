@@ -125,7 +125,7 @@ function StrMPoleSymplectic4Pass!(r::Matrix{Float64}, le::Float64, beti::Float64
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -201,7 +201,7 @@ function StrMPoleSymplectic4RadPass!(r::Matrix{Float64}, le::Float64, rad_const:
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -393,7 +393,7 @@ function StrMPoleSymplectic4Pass_P!(r::Matrix{Float64}, le::Float64, beti::Float
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -485,7 +485,7 @@ function StrMPoleSymplectic4RadPass_P!(r::Matrix{Float64}, le::Float64, rad_cons
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -674,7 +674,7 @@ function StrMPoleSymplectic4Pass_SC!(r::Matrix{Float64}, le::Float64, beti::Floa
                 drift6!(r6, L1, beti)
             end
 
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -714,7 +714,7 @@ function StrMPoleSymplectic4Pass_SC!(r::Matrix{Float64}, le::Float64, beti::Floa
                     addvv!(r6, T2)
                 end
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -782,7 +782,7 @@ function StrMPoleSymplectic4RadPass_SC!(r::Matrix{Float64}, le::Float64, rad_con
                 strthinkickrad!(r6, A, B, K1, E0, max_order, rad_const)
                 drift6!(r6, L1, beti)
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -819,7 +819,7 @@ function StrMPoleSymplectic4RadPass_SC!(r::Matrix{Float64}, le::Float64, rad_con
                     addvv!(r6, T2)
                 end
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -1012,7 +1012,7 @@ function StrMPoleSymplectic4Pass_SC!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, 
                 drift6!(r6, L1)
             end
 
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -1052,7 +1052,7 @@ function StrMPoleSymplectic4Pass_SC!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, 
                     addvv!(r6, T2)
                 end
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -1120,7 +1120,7 @@ function StrMPoleSymplectic4RadPass_SC!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T
                 strthinkickrad!(r6, A, B, K1, E0, max_order, rad_const)
                 drift6!(r6, L1)
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -1157,7 +1157,7 @@ function StrMPoleSymplectic4RadPass_SC!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T
                     addvv!(r6, T2)
                 end
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -1349,7 +1349,7 @@ function StrMPoleSymplectic4Pass_P_SC!(r::Matrix{Float64}, le::Float64, beti::Fl
                 drift6!(r6, L1, beti)
             end
 
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -1386,7 +1386,7 @@ function StrMPoleSymplectic4Pass_P_SC!(r::Matrix{Float64}, le::Float64, beti::Fl
                     addvv!(r6, T2)
                 end
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -1453,7 +1453,7 @@ function StrMPoleSymplectic4RadPass_P_SC!(r::Matrix{Float64}, len::Float64, rad_
                 strthinkickrad!(r6, A, B, K1, E0, max_order, rad_const)
                 drift6!(r6, L1, beti)
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -1490,7 +1490,7 @@ function StrMPoleSymplectic4RadPass_P_SC!(r::Matrix{Float64}, len::Float64, rad_
                     addvv!(r6, T2)
                 end
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end

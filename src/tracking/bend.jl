@@ -145,7 +145,7 @@ function BendSymplecticPassRad!(r::Matrix{Float64}, le::Float64, beti::Float64, 
         if !iszero(T2)
             addvv!(r6, T2)
         end
-        if check_lost(r6)
+        if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
             lost_flags[c] = 1
         end
     end
@@ -244,7 +244,7 @@ function BendSymplecticPass!(r::Matrix{Float64}, le::Float64, beti::Float64, irh
         if !iszero(T2)
             addvv!(r6, T2)
         end
-        if check_lost(r6)
+        if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
             lost_flags[c] = 1
         end
     end
@@ -379,7 +379,7 @@ function BendSymplecticPassRad_P!(r::Matrix{Float64}, le::Float64, beti::Float64
         if !iszero(T2)
             addvv!(r6, T2)
         end
-        if check_lost(r6)
+        if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
             lost_flags[c] = 1
         end
     end
@@ -476,7 +476,7 @@ function BendSymplecticPass_P!(r::Matrix{Float64}, le::Float64, beti::Float64, i
         if !iszero(T2)
             addvv!(r6, T2)
         end
-        if check_lost(r6)
+        if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
             lost_flags[c] = 1
         end
     end
@@ -857,7 +857,7 @@ function ExactSectorBend!(r::Matrix{Float64}, le::Float64, beti::Float64, angle:
         if !iszero(T2)
             addvv!(r6, T2)
         end
-        if check_lost(r6)
+        if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
             lost_flags[c] = 1
         end
     end
@@ -957,7 +957,7 @@ function ExactSectorBend_rad!(r::Matrix{Float64}, le::Float64, rad_const::Float6
         if !iszero(T2)
             addvv!(r6, T2)
         end
-        if check_lost(r6)
+        if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
             lost_flags[c] = 1
         end
     end
@@ -1057,7 +1057,7 @@ function ExactSectorBend_rad_P!(r::Matrix{Float64}, le::Float64, rad_const::Floa
         if !iszero(T2)
             addvv!(r6, T2)
         end
-        if check_lost(r6)
+        if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
             lost_flags[c] = 1
         end
     end
@@ -1157,7 +1157,7 @@ function ExactSectorBend_P!(r::Matrix{Float64}, le::Float64, beti::Float64, angl
         if !iszero(T2)
             addvv!(r6, T2)
         end
-        if check_lost(r6)
+        if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
             lost_flags[c] = 1
         end
     end
@@ -1789,7 +1789,7 @@ function BendSymplecticPassRad_SC!(r::Matrix{Float64}, le::Float64, beti::Float6
                     drift6!(r6, L1, beti)
                 end
 
-                if check_lost(r6)
+                if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                     lost_flags[c] = 1
                 end
             end
@@ -1857,7 +1857,7 @@ function BendSymplecticPassRad_SC!(r::Matrix{Float64}, le::Float64, beti::Float6
                     end
                 end
 
-                if check_lost(r6)
+                if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                     lost_flags[c] = 1
                 end
             end
@@ -1944,7 +1944,7 @@ function BendSymplecticPassRad_SC!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, be
                     drift6!(r6, L1)
                 end
 
-                if check_lost(r6)
+                if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                     lost_flags[c] = 1
                 end
             end
@@ -2012,7 +2012,7 @@ function BendSymplecticPassRad_SC!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, be
                     end
                 end
 
-                if check_lost(r6)
+                if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                     lost_flags[c] = 1
                 end
             end
@@ -2103,7 +2103,7 @@ function BendSymplecticPass_SC!(r::Matrix{Float64}, le::Float64, beti::Float64, 
                     drift6!(r6, L1, beti)
                 end
 
-                if check_lost(r6)
+                if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                     lost_flags[c] = 1
                 end
             end
@@ -2150,7 +2150,7 @@ function BendSymplecticPass_SC!(r::Matrix{Float64}, le::Float64, beti::Float64, 
                 end
             end
 
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -2239,7 +2239,7 @@ function BendSymplecticPass_SC!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti:
                     drift6!(r6, L1)
                 end
 
-                if check_lost(r6)
+                if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                     lost_flags[c] = 1
                 end
             end
@@ -2286,7 +2286,7 @@ function BendSymplecticPass_SC!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti:
                 end
             end
 
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -2446,7 +2446,7 @@ function BendSymplecticPassRad_P_SC!(r::Matrix{Float64}, le::Float64, beti::Floa
                     drift6!(r6, L1, beti)
                 end
 
-                if check_lost(r6)
+                if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                     lost_flags[c] = 1
                 end
             end
@@ -2514,7 +2514,7 @@ function BendSymplecticPassRad_P_SC!(r::Matrix{Float64}, le::Float64, beti::Floa
                     end
                 end
 
-                if check_lost(r6)
+                if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                     lost_flags[c] = 1
                 end
             end
@@ -2605,7 +2605,7 @@ function BendSymplecticPass_P_SC!(r::Matrix{Float64}, le::Float64, beti::Float64
                     drift6!(r6, L1, beti)
                 end
 
-                if check_lost(r6)
+                if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                     lost_flags[c] = 1
                 end
             end
@@ -2652,7 +2652,7 @@ function BendSymplecticPass_P_SC!(r::Matrix{Float64}, le::Float64, beti::Float64
                 end
             end
 
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end

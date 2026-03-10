@@ -39,8 +39,8 @@ A drift element.
 - T2::Array{Float64,1}: misalignment at exit
 - R1::Array{Float64,2}: rotation at entrance
 - R2::Array{Float64,2}: rotation at exit
-- RApertures::Array{Float64,1}: rectangular apertures. Not implemented yet.
-- EApertures::Array{Float64,1}: elliptical apertures. Not implemented yet.
+- RApertures::Array{Float64,1}: rectangular apertures. RApertures = [xmin, xmax, ymin, ymax, 0, 0], EApertures = [ax, ay, 0, 0, 0, 0].
+- EApertures::Array{Float64,1}: elliptical apertures. RApertures = [xmin, xmax, ymin, ymax, 0, 0], EApertures = [ax, ay, 0, 0, 0, 0].
 Example:
 ```julia
 drift = DRIFT(name="D1", len=1.0)
@@ -86,8 +86,8 @@ A drift element with space charge.
 - T2::Array{Float64,1}: misalignment at exit
 - R1::Array{Float64,2}: rotation at entrance
 - R2::Array{Float64,2}: rotation at exit
-- RApertures::Array{Float64,1}: rectangular apertures. Not implemented yet.
-- EApertures::Array{Float64,1}: elliptical apertures. Not implemented yet.
+- RApertures::Array{Float64,1}: rectangular apertures. RApertures = [xmin, xmax, ymin, ymax, 0, 0], EApertures = [ax, ay, 0, 0, 0, 0].
+- EApertures::Array{Float64,1}: elliptical apertures. RApertures = [xmin, xmax, ymin, ymax, 0, 0], EApertures = [ax, ay, 0, 0, 0, 0].
 - a::Float64: horizontal size of the perfectly conducting pipe
 - b::Float64: vertical size of the perfectly conducting pipe
 - Nl::Int64: number of mode in the horizontal direction
@@ -1076,18 +1076,21 @@ mutable struct RFCA{T} <: AbstractElement{T}
     lag::T
     philag::T
     energy::T
+    RApertures::Array{Float64,1}
+    EApertures::Array{Float64,1}
     eletype::String
     # constructor with all parameters
-    RFCA(name::String, len::T, volt::T, freq::T, h::T, lag::T, philag::T, energy::T, eletype::String) where T = 
-        new{T}(name, len, volt, freq, h, lag, philag, energy, eletype)
+    RFCA(name::String, len::T, volt::T, freq::T, h::T, lag::T, philag::T, energy::T, 
+        RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, eletype::String) where T = 
+        new{T}(name, len, volt, freq, h, lag, philag, energy, RApertures, EApertures, eletype)
 end
 function RFCA(;name::String = "RFCA", len = 0.0, volt = 0.0, freq = 0.0, h = 1.0, 
-                lag = 0.0, philag = 0.0, energy = 0.0)
+                lag = 0.0, philag = 0.0, energy = 0.0, RApertures = zeros(6), EApertures = zeros(6))
     if len isa DTPSAD || volt isa DTPSAD || freq isa DTPSAD || h isa DTPSAD || lag isa DTPSAD || philag isa DTPSAD || energy isa DTPSAD
         return RFCA(name, DTPSAD(len), DTPSAD(volt), DTPSAD(freq), DTPSAD(h), 
-                    DTPSAD(lag), DTPSAD(philag), DTPSAD(energy), "RFCA")
+                    DTPSAD(lag), DTPSAD(philag), DTPSAD(energy), RApertures, EApertures, "RFCA")
     end
-    return RFCA(name, len, volt, freq, h, lag, philag, energy, "RFCA")
+    return RFCA(name, len, volt, freq, h, lag, philag, energy, RApertures, EApertures, "RFCA")
 end
 
 """
@@ -1108,17 +1111,20 @@ mutable struct SOLENOID{T} <: AbstractElement{T}
     T2::Array{T,1}
     R1::Array{T,2}
     R2::Array{T,2}
+    RApertures::Array{Float64,1}
+    EApertures::Array{Float64,1}
     eletype::String
     # constructor with all parameters
     SOLENOID(name::String, len::T, ks::T, T1::Array{T,1}, T2::Array{T,1}, 
-    R1::Array{T,2}, R2::Array{T,2}, eletype::String) where T = new{T}(name, len, ks, T1, T2, R1, R2, eletype)
+    R1::Array{T,2}, R2::Array{T,2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, eletype::String) where T = 
+        new{T}(name, len, ks, T1, T2, R1, R2, RApertures, EApertures, eletype)
 end
 function SOLENOID(;name::String = "Solenoid", len = 0.0, ks = 0.0, T1 = zeros(6), 
-                T2 = zeros(6), R1 = zeros(6,6), R2 = zeros(6,6))
+                T2 = zeros(6), R1 = zeros(6,6), R2 = zeros(6,6), RApertures = zeros(6), EApertures = zeros(6))
     if len isa DTPSAD || ks isa DTPSAD || T1[1] isa DTPSAD || T2[1] isa DTPSAD || R1[1,1] isa DTPSAD || R2[1,1] isa DTPSAD
-        return SOLENOID(name, DTPSAD(len), DTPSAD(ks), DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2), "SOLENOID")
+        return SOLENOID(name, DTPSAD(len), DTPSAD(ks), DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2), RApertures, EApertures, "SOLENOID")
     end
-    return SOLENOID(name, len, ks, T1, T2, R1, R2, "SOLENOID")
+    return SOLENOID(name, len, ks, T1, T2, R1, R2, RApertures, EApertures, "SOLENOID")
 end
 
 """
@@ -1141,21 +1147,24 @@ mutable struct CORRECTOR{T} <: AbstractElement{T}
     T2::Array{T,1}
     R1::Array{T,2}
     R2::Array{T,2}
+    RApertures::Array{Float64,1}
+    EApertures::Array{Float64,1}
     eletype::String
 
     # constructor with all parameters
     CORRECTOR(name::String, len::T, xkick::T, ykick::T, 
-    T1::Array{T,1}, T2::Array{T,1}, R1::Array{T,2}, R2::Array{T,2}, eletype::String) where T = 
-        new{T}(name, len, xkick, ykick, T1, T2, R1, R2, eletype)
+    T1::Array{T,1}, T2::Array{T,1}, R1::Array{T,2}, R2::Array{T,2}, 
+    RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, eletype::String) where T = 
+        new{T}(name, len, xkick, ykick, T1, T2, R1, R2, RApertures, EApertures, eletype)
 end
 function CORRECTOR(;name::String = "CORRECTOR", len = 0.0, xkick = 0.0, ykick = 0.0, 
                     T1 = zeros(6), T2 = zeros(6), R1 = zeros(6,6), 
-                    R2 = zeros(6,6))
+                    R2 = zeros(6,6), RApertures = zeros(6), EApertures = zeros(6))
     if len isa DTPSAD || xkick isa DTPSAD || ykick isa DTPSAD || T1[1] isa DTPSAD || T2[1] isa DTPSAD || R1[1,1] isa DTPSAD || R2[1,1] isa DTPSAD
         return CORRECTOR(name, DTPSAD(len), DTPSAD(xkick), DTPSAD(ykick), 
-                        DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2), "CORRECTOR")
+                        DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2), RApertures, EApertures, "CORRECTOR")
     end
-    return CORRECTOR(name, len, xkick, ykick, T1, T2, R1, R2, "CORRECTOR")
+    return CORRECTOR(name, len, xkick, ykick, T1, T2, R1, R2, RApertures, EApertures, "CORRECTOR")
 end
 
 function HKICKER(;name::String = "HKicker", len = 0.0, xkick = 0.0)
@@ -1396,21 +1405,23 @@ mutable struct CRABCAVITY{T} <: AbstractElement{T}
     phi::T  # phase
     errors::Array{T,1} # 1: Voltage error, 2: Phase error
     energy::T
+    RApertures::Array{Float64,1}
+    EApertures::Array{Float64,1}
     eletype::String 
 
     # constructor with all parameters
     CRABCAVITY(name::String, len::T, volt::T, freq::T, k::T, phi::T,
-    errors::Array{T,1}, energy::T, eletype::String) where T = 
-        new{T}(name, len, volt, freq, k, phi, errors, energy, eletype)
+    errors::Array{T,1}, energy::T, RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, eletype::String) where T = 
+        new{T}(name, len, volt, freq, k, phi, errors, energy, RApertures, EApertures, eletype)
 end
 function CRABCAVITY(;name::String = "CRABCAVITY", len = 0.0, volt = 0.0, 
-    freq = 0.0, phi = 0.0, errors = zeros(2), energy = 1e9)
+    freq = 0.0, phi = 0.0, errors = zeros(2), energy = 1e9, RApertures = zeros(6), EApertures = zeros(6))
     k = 2*π*freq/2.99792458e8
     if len isa DTPSAD || volt isa DTPSAD || freq isa DTPSAD || phi isa DTPSAD || errors[1] isa DTPSAD || energy isa DTPSAD
         return CRABCAVITY(name, DTPSAD(len), DTPSAD(volt), DTPSAD(freq), 
-            DTPSAD(k), DTPSAD(phi), DTPSAD.(errors), DTPSAD(energy), "CRABCAVITY")
+            DTPSAD(k), DTPSAD(phi), DTPSAD.(errors), DTPSAD(energy), RApertures, EApertures, "CRABCAVITY")
     end
-    return CRABCAVITY(name, len, volt, freq, k, phi, errors, energy, "CRABCAVITY")
+    return CRABCAVITY(name, len, volt, freq, k, phi, errors, energy, RApertures, EApertures, "CRABCAVITY")
 end
 
 mutable struct CRABCAVITY_K2{T} <: AbstractElement{T}
@@ -1423,21 +1434,23 @@ mutable struct CRABCAVITY_K2{T} <: AbstractElement{T}
     k2::T  # k2
     errors::Array{T,1} # 1: Voltage error, 2: Phase error
     energy::T
+    RApertures::Array{Float64,1}
+    EApertures::Array{Float64,1}
     eletype::String 
 
     # constructor with all parameters
     CRABCAVITY_K2(name::String, len::T, volt::T, freq::T, k::T, phi::T,
-    k2::T, errors::Array{T,1}, energy::T, eletype::String) where T = 
-        new{T}(name, len, volt, freq, k, phi, k2, errors, energy, eletype)
+    k2::T, errors::Array{T,1}, energy::T, RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, eletype::String) where T = 
+        new{T}(name, len, volt, freq, k, phi, k2, errors, energy, RApertures, EApertures, eletype)
 end
 function CRABCAVITY_K2(;name::String = "CRABCAVITY_K2", len = 0.0, volt = 0.0, 
-    freq = 0.0, phi = 0.0, k2 = 0.0, errors = zeros(2), energy = 1e9)
+    freq = 0.0, phi = 0.0, k2 = 0.0, errors = zeros(2), energy = 1e9, RApertures = zeros(6), EApertures = zeros(6))
     k = 2*π*freq/2.99792458e8
     if len isa DTPSAD || volt isa DTPSAD || freq isa DTPSAD || phi isa DTPSAD || k2 isa DTPSAD || errors[1] isa DTPSAD || energy isa DTPSAD
         return CRABCAVITY_K2(name, DTPSAD(len), DTPSAD(volt), DTPSAD(freq), 
-            DTPSAD(k), DTPSAD(phi), DTPSAD(k2), DTPSAD.(errors), DTPSAD(energy), "CRABCAVITY_K2")
+            DTPSAD(k), DTPSAD(phi), DTPSAD(k2), DTPSAD.(errors), DTPSAD(energy), RApertures, EApertures, "CRABCAVITY_K2")
     end
-    return CRABCAVITY_K2(name, len, volt, freq, k, phi, k2, errors, energy, "CRABCAVITY_K2")
+    return CRABCAVITY_K2(name, len, volt, freq, k, phi, k2, errors, energy, RApertures, EApertures, "CRABCAVITY_K2")
 end
 
 
@@ -1449,20 +1462,22 @@ mutable struct easyCRABCAVITY{T} <: AbstractElement{T}
     k::T 
     phi::T 
     errors::Array{T,1}  # 1: Voltage error, 2: Phase error
+    RApertures::Array{Float64,1}
+    EApertures::Array{Float64,1}
     eletype::String
 
     # constructor with all parameters
     easyCRABCAVITY(name::String, len::T, halfthetac::T, freq::T,
-    k::T, phi::T, errors::Array{T,1}, eletype::String) where T =
-        new{T}(name, len, halfthetac, freq, k, phi, errors, eletype)
+    k::T, phi::T, errors::Array{T,1}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, eletype::String) where T =
+        new{T}(name, len, halfthetac, freq, k, phi, errors, RApertures, EApertures, eletype)
 end
 function easyCRABCAVITY(;name::String = "easyCRABCAVITY", len = 0.0, halfthetac = 0.0, 
-    freq = 0.0, k = 0.0, phi = 0.0, errors = zeros(2), eletype::String = "easyCRABCAVITY")
+    freq = 0.0, k = 0.0, phi = 0.0, errors = zeros(2), RApertures = zeros(6), EApertures = zeros(6), eletype::String = "easyCRABCAVITY")
     if len isa DTPSAD || halfthetac isa DTPSAD || freq isa DTPSAD || k isa DTPSAD || phi isa DTPSAD || errors[1] isa DTPSAD
         return easyCRABCAVITY(name, DTPSAD(len), DTPSAD(halfthetac), DTPSAD(freq), 
-            DTPSAD(k), DTPSAD(phi), DTPSAD.(errors), eletype)
+            DTPSAD(k), DTPSAD(phi), DTPSAD.(errors), RApertures, EApertures, eletype)
     end
-    return easyCRABCAVITY(name, len, halfthetac, freq, k, phi, errors, eletype)
+    return easyCRABCAVITY(name, len, halfthetac, freq, k, phi, errors, RApertures, EApertures, eletype)
 end
 
 mutable struct AccelCavity{T} <: AbstractElement{T}
@@ -1473,20 +1488,23 @@ mutable struct AccelCavity{T} <: AbstractElement{T}
     k::T  # wave number
     h::T  # harmonic number
     phis::T  # synchronous phase π/2 for accelerating on crest
+    RApertures::Array{Float64,1}
+    EApertures::Array{Float64,1}
     eletype::String 
 
     # constructor with all parameters
-    AccelCavity(name::String, len::T, volt::T, freq::T, k::T, h::T, phis::T, eletype::String) where T = 
-        new{T}(name, len, volt, freq, k, h, phis, eletype)
+    AccelCavity(name::String, len::T, volt::T, freq::T, k::T, h::T, phis::T, 
+        RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, eletype::String) where T = 
+        new{T}(name, len, volt, freq, k, h, phis, RApertures, EApertures, eletype)
 end
 function AccelCavity(;name::String = "AccelCavity", len = 0.0, volt = 0.0, 
-    freq = 0.0, h = 1.0, phis = 0.0)
+    freq = 0.0, h = 1.0, phis = 0.0, RApertures = zeros(6), EApertures = zeros(6))
     k = 2*π*freq/2.99792458e8
     if len isa DTPSAD || volt isa DTPSAD || freq isa DTPSAD || h isa DTPSAD || phis isa DTPSAD
         return AccelCavity(name, DTPSAD(len), DTPSAD(volt), DTPSAD(freq), 
-            DTPSAD(k), DTPSAD(h), DTPSAD(phis), "AccelCavity")
+            DTPSAD(k), DTPSAD(h), DTPSAD(phis), RApertures, EApertures, "AccelCavity")
     end
-    return AccelCavity(name, len, volt, freq, k, h, phis, "AccelCavity")
+    return AccelCavity(name, len, volt, freq, k, h, phis, RApertures, EApertures, "AccelCavity")
 end
 
 

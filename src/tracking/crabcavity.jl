@@ -25,6 +25,9 @@ function CRABCAVITYPass!(r::Matrix{Float64}, cavity::CRABCAVITY, beta::Float64, 
             r6[6] += (-cavity.k * cavity.volt/E/beta) * r6[1] * cos(ang/beta)
             drift6!(r6, cavity.len / 2.0, beti)
         end
+        if check_lost(r6) || check_lost_aperture(r6, cavity.RApertures, cavity.EApertures)
+            lost_flags[c] = 1
+        end
     end
     return nothing
 end
@@ -64,6 +67,9 @@ function CRABCAVITYK2Pass!(r::Matrix{Float64}, cavity::CRABCAVITY_K2, beta::Floa
             r6[6] -= (cavity.k2 * cavity.k / 3.0) * (r6[1]^3 - 3.0 * r6[1] * r6[3]^2) * cos(ang)
             drift6!(r6, cavity.len / 2.0, beti)
         end
+        if check_lost(r6) || check_lost_aperture(r6, cavity.RApertures, cavity.EApertures)
+            lost_flags[c] = 1
+        end
     end
     return nothing
 end
@@ -78,6 +84,9 @@ function easyCRABCAVITYPass!(r::Matrix{Float64}, cavity::easyCRABCAVITY, num_par
         ang = cavity.k * r6[5] + cavity.phi
         r6[1] += (cavity.halfthetac/cavity.k) * sin(ang)
         r6[6] += cavity.halfthetac * r6[2] * cos(ang)
+        if check_lost(r6) || check_lost_aperture(r6, cavity.RApertures, cavity.EApertures)
+            lost_flags[c] = 1
+        end
     end
     return nothing
 end
@@ -92,6 +101,9 @@ function AccelCavityPass!(r::Matrix{Float64}, cavity::AccelCavity, beta2E::Float
         r6 = @view r[c, :] 
         sv = sin(cavity.k * r6[5] + cavity.phis) - sin(cavity.phis)
         r6[6] += v_beta2E * sv
+        if check_lost(r6) || check_lost_aperture(r6, cavity.RApertures, cavity.EApertures)
+            lost_flags[c] = 1
+        end
     end
     return nothing
 end
@@ -151,6 +163,9 @@ function CRABCAVITYPass_P!(r::Matrix{Float64}, cavity::CRABCAVITY, beta::Float64
             r6[6] += (-cavity.k * cavity.volt/E/beta) * r6[1] * cos(ang/beta)
             drift6!(r6, cavity.len / 2.0, beti)
         end
+        if check_lost(r6) || check_lost_aperture(r6, cavity.RApertures, cavity.EApertures)
+            lost_flags[c] = 1
+        end
     end
     return nothing
 end
@@ -190,6 +205,9 @@ function CRABCAVITYK2Pass_P!(r::Matrix{Float64}, cavity::CRABCAVITY_K2, beta::Fl
             r6[6] -= (cavity.k2 * cavity.k / 3.0) * (r6[1]^3 - 3.0 * r6[1] * r6[3]^2) * cos(ang)
             drift6!(r6, cavity.len / 2.0, beti)
         end
+        if check_lost(r6) || check_lost_aperture(r6, cavity.RApertures, cavity.EApertures)
+            lost_flags[c] = 1
+        end
     end
     return nothing
 end
@@ -204,6 +222,9 @@ function easyCRABCAVITYPass_P!(r::Matrix{Float64}, cavity::easyCRABCAVITY, num_p
         ang = cavity.k * r6[5] + cavity.phi
         r6[1] += (cavity.halfthetac/cavity.k) * sin(ang)
         r6[6] += cavity.halfthetac * r6[2] * cos(ang)
+        if check_lost(r6) || check_lost_aperture(r6, cavity.RApertures, cavity.EApertures)
+            lost_flags[c] = 1
+        end
     end
     return nothing
 end
@@ -218,6 +239,9 @@ function AccelCavityPass_P!(r::Matrix{Float64}, cavity::AccelCavity, beta2E::Flo
         r6 = @view r[c, :] 
         sv = sin(cavity.k * r6[5] + cavity.phis) - sin(cavity.phis)
         r6[6] += v_beta2E * sv
+        if check_lost(r6) || check_lost_aperture(r6, cavity.RApertures, cavity.EApertures)
+            lost_flags[c] = 1
+        end
     end
     return nothing
 end

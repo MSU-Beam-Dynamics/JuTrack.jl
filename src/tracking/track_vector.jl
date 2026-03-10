@@ -285,3 +285,23 @@ function check_lost(r6)
     end
     return false
 end
+
+function check_lost_aperture(r6, RApertures::Array{Float64,1}, EApertures::Array{Float64,1})
+    # Rectangular aperture check: RApertures = [xmin, xmax, ymin, ymax, 0, 0]
+    # where xmin < 0, xmax > 0, ymin < 0, ymax > 0 typically.
+    if !iszero(RApertures)
+        if r6[1] < RApertures[1] || r6[1] > RApertures[2] || r6[3] < RApertures[3] || r6[3] > RApertures[4]
+            return true
+        end
+    end
+    # Elliptical aperture check: EApertures = [ax, ay, 0, 0, 0, 0]
+    # where ax, ay are the semi-axes of the ellipse.
+    if !iszero(EApertures)
+        if EApertures[1] > 0.0 && EApertures[2] > 0.0
+            if r6[1]^2 / EApertures[1]^2 + r6[3]^2 / EApertures[2]^2 > 1.0
+                return true
+            end
+        end
+    end
+    return false
+end

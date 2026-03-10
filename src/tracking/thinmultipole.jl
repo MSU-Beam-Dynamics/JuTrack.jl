@@ -64,7 +64,7 @@ function ThinMPolePass!(r::Matrix{Float64}, le::Float64, A::Array{Float64,1}, B:
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -125,7 +125,7 @@ function ThinMPolePass_P!(r::Matrix{Float64}, le::Float64, A::Array{Float64,1}, 
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end

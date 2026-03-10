@@ -100,7 +100,7 @@ export TRANSLATION, YROTATION
 export SPACECHARGE, QUAD_SC, DRIFT_SC, KQUAD_SC, KSEXT_SC, KOCT_SC, SBEND_SC, RBEND_SC, calculate_K
 export EdwardsTengTwiss, AbstractTwiss, twissPropagate, findm66, periodicEdwardsTengTwiss, twissline, ADtwissline, twissring, ADfindm66, ADtwissring, ADperiodicEdwardsTengTwiss
 export find_closed_orbit, fastfindm66, fastfindm66_refpts, ADfastfindm66_refpts, findm66_refpts
-export linepass!, pass!, ringpass!, linepass_TPSA!, pass_TPSA!, ringpass_TPSA!, check_lost
+export linepass!, pass!, ringpass!, linepass_TPSA!, pass_TPSA!, ringpass_TPSA!, check_lost, check_lost_aperture
 export plinepass!, pringpass!, pass_P!, ADlinepass!, ADlinepass_TPSA!, ADringpass!, ADpringpass!, ADplinepass!
 export matrix_to_array, array_to_matrix
 # export plot_lattice

@@ -1,5 +1,6 @@
 function CorrectorPass!(r::Matrix{Float64}, le::Float64, xkick::Float64, ykick::Float64,
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
+    RApertures::Array{Float64,1}, EApertures::Array{Float64,1},
     num_particles::Int, lost_flags::Array{Int64,1})
     # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
 
@@ -37,7 +38,7 @@ function CorrectorPass!(r::Matrix{Float64}, le::Float64, xkick::Float64, ykick::
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -51,12 +52,13 @@ function pass!(ele::CORRECTOR, r_in::Matrix{Float64}, num_particles::Int64, part
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
     lost_flags = particles.lost_flag
-    CorrectorPass!(r_in, ele.len, ele.xkick, ele.ykick, ele.T1, ele.T2, ele.R1, ele.R2, num_particles, lost_flags)
+    CorrectorPass!(r_in, ele.len, ele.xkick, ele.ykick, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags)
     return nothing
 end
 
 function CorrectorPass_P!(r::Matrix{Float64}, le::Float64, xkick::Float64, ykick::Float64,
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
+    RApertures::Array{Float64,1}, EApertures::Array{Float64,1},
     num_particles::Int, lost_flags::Array{Int64,1})
 
     Threads.@threads for c in 1:num_particles
@@ -97,7 +99,7 @@ function CorrectorPass_P!(r::Matrix{Float64}, le::Float64, xkick::Float64, ykick
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -111,7 +113,7 @@ function pass_P!(ele::CORRECTOR, r_in::Matrix{Float64}, num_particles::Int64, pa
     # r_in: 6-by-num_particles array
     # num_particles: number of particles
     lost_flags = particles.lost_flag
-    CorrectorPass_P!(r_in, ele.len, ele.xkick, ele.ykick, ele.T1, ele.T2, ele.R1, ele.R2, num_particles, lost_flags)
+    CorrectorPass_P!(r_in, ele.len, ele.xkick, ele.ykick, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, num_particles, lost_flags)
     return nothing
 end
 

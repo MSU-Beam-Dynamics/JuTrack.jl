@@ -66,7 +66,7 @@ function QuadLinearPass!(r::Matrix{Float64}, le::Float64, k1::Float64, beti::Flo
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -156,7 +156,7 @@ function QuadLinearPass_P!(r::Matrix{Float64}, le::Float64, k1::Float64, beti::F
                 if !iszero(T2)
                     addvv!(r6, T2)
                 end
-                if check_lost(r6)
+                if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                     lost_flags[c] = 1
                 end
             end
@@ -328,7 +328,7 @@ function QuadLinearPass_SC!(r::Matrix{Float64}, le::Float64, k1::Float64, beti::
                 r6[5]+= (xpr*xpr*(lstep/2.0+MHD*M12)+ypr*ypr*(lstep/2.0+MVD*M34))/4.0
                 r6[5]+= (x*xpr*M12*M21 + y*ypr*M34*M43)/2.0
 
-                if check_lost(r6)
+                if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                     lost_flags[c] = 1
                 end
             end
@@ -390,7 +390,7 @@ function QuadLinearPass_SC!(r::Matrix{Float64}, le::Float64, k1::Float64, beti::
                     addvv!(r6, T2)
                 end
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end        
@@ -477,7 +477,7 @@ function QuadLinearPass_SC!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, k1::DTPSA
                 r6[5]+= (xpr*xpr*(lstep/2.0+MHD*M12)+ypr*ypr*(lstep/2.0+MVD*M34))/4.0
                 r6[5]+= (x*xpr*M12*M21 + y*ypr*M34*M43)/2.0
 
-                if check_lost(r6)
+                if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                     lost_flags[c] = 1
                 end
             end
@@ -539,7 +539,7 @@ function QuadLinearPass_SC!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, k1::DTPSA
                     addvv!(r6, T2)
                 end
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end        
@@ -626,7 +626,7 @@ function QuadLinearPass_SC_P!(r::Matrix{Float64}, le::Float64, k1::Float64, beti
                 r6[5]+= (xpr*xpr*(lstep/2.0+MHD*M12)+ypr*ypr*(lstep/2.0+MVD*M34))/4.0
                 r6[5]+= (x*xpr*M12*M21 + y*ypr*M34*M43)/2.0
 
-                if check_lost(r6)
+                if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                     lost_flags[c] = 1
                 end
             end
@@ -688,7 +688,7 @@ function QuadLinearPass_SC_P!(r::Matrix{Float64}, le::Float64, k1::Float64, beti
                     addvv!(r6, T2)
                 end
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end        

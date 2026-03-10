@@ -92,7 +92,7 @@ function DriftPass!(r_in::Matrix{Float64}, le::Float64, beti::Float64, T1::Array
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -154,7 +154,7 @@ function DriftPass_P!(r_in::Matrix{Float64}, le::Float64, beti::Float64, T1::Arr
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -210,7 +210,7 @@ function DriftPass_SC!(r_in::Matrix{Float64}, le::Float64, beti::Float64, T1::Ar
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -239,7 +239,7 @@ function DriftPass_SC!(r_in::Matrix{Float64}, le::Float64, beti::Float64, T1::Ar
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -275,7 +275,7 @@ function DriftPass_SC!(r_in::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti::Float
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -304,7 +304,7 @@ function DriftPass_SC!(r_in::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti::Float
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -380,7 +380,7 @@ function DriftPass_SC_P!(r_in::Matrix{Float64}, le::Float64, beti::Float64, T1::
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -409,7 +409,7 @@ function DriftPass_SC_P!(r_in::Matrix{Float64}, le::Float64, beti::Float64, T1::
             if !iszero(T2)
                 addvv!(r6, T2)
             end
-            if check_lost(r6)
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
