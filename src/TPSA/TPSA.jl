@@ -100,6 +100,28 @@ function CTPS(M::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_De
     return CTPS{T, TPS_Dim, Max_TPS_Degree}(M.degree, length(map), map, M.polymap)
 end
 
+@inline function ctps_zero_like(::Type{S}, proto::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {S, T, TPS_Dim, Max_TPS_Degree}
+    map = Vector{S}(undef, proto.terms)
+    fill!(map, zero(S))
+    return CTPS{S, TPS_Dim, Max_TPS_Degree}(0, proto.terms, map, proto.polymap)
+end
+
+@inline ctps_zero_like(proto::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree} =
+    ctps_zero_like(T, proto)
+
+@inline function ctps_const_like(proto::CTPS{T, TPS_Dim, Max_TPS_Degree}, a::S) where {T, S, TPS_Dim, Max_TPS_Degree}
+    ctps = ctps_zero_like(S, proto)
+    ctps.map[1] = a
+    return ctps
+end
+
+@inline function ctps_one_like(::Type{S}, proto::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {S, T, TPS_Dim, Max_TPS_Degree}
+    return ctps_const_like(proto, one(S))
+end
+
+@inline ctps_one_like(proto::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree} =
+    ctps_one_like(T, proto)
+
 """
     cst(ctps::CTPS)
 
@@ -334,7 +356,7 @@ function inv(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_
     # Separate out the non-constant part
     temp = ctps - c0
     inv_c0 = one(T) / c0
-    term_by_order = CTPS(inv_c0, TPS_Dim, Max_TPS_Degree)
+    term_by_order = ctps_const_like(ctps, inv_c0)
     SUM = CTPS(term_by_order)
     for i in 1:Max_TPS_Degree
         term_by_order *= -(temp / c0)
@@ -347,11 +369,11 @@ function exp(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_
     a0 = cst(ctps)
     # When the constant term is zero, exp(ctps) starts at one
     if a0 == zero(T)
-        return CTPS(one(T), TPS_Dim, Max_TPS_Degree)
+        return ctps_one_like(ctps)
     end
     temp = ctps - a0
-    term_by_order = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
-    SUM = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
+    term_by_order = ctps_one_like(ctps)
+    SUM = ctps_one_like(ctps)
     for i in 1:Max_TPS_Degree
         term_by_order *= temp
         coeff = one(T) / T(factorial_double(i))
@@ -365,7 +387,7 @@ function log(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_
     a0 == zero(T) && throw(DomainError(ctps, "log of zero in CTPS"))
     temp = ctps - a0
     term_by_order = temp / a0
-    SUM = CTPS(zero(T), TPS_Dim, Max_TPS_Degree) + term_by_order
+    SUM = ctps_zero_like(ctps) + term_by_order
     for i in 2:Max_TPS_Degree
         term_by_order *= -(temp / a0)
         SUM += term_by_order / T(i)
@@ -390,7 +412,7 @@ end
 
 function pow(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, b::Int) where {T, TPS_Dim, Max_TPS_Degree}
     b == 1 && return ctps
-    b == 0 && return CTPS(one(T), TPS_Dim, Max_TPS_Degree)
+    b == 0 && return ctps_one_like(ctps)
     if b > 1
         # Handle simple positive integer powers by repeated multiplication
         result = CTPS(ctps)
@@ -405,8 +427,8 @@ function pow(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}, b::Int) where {T, TPS_Dim, 
     temp = ctps - a0
     index = T(b)
     factor = a0^b
-    term_by_order = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
-    SUM = CTPS(factor, TPS_Dim, Max_TPS_Degree)
+    term_by_order = ctps_one_like(ctps)
+    SUM = ctps_const_like(ctps, factor)
     for i in 1:Max_TPS_Degree
         factor = factor / a0 * (index / T(i))
         index -= one(T)
@@ -428,8 +450,8 @@ function sin(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_
     sin_a0 = sin(a0)
     cos_a0 = cos(a0)
     temp = ctps - a0
-    term_by_order = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
-    SUM = CTPS(zero(T), TPS_Dim, Max_TPS_Degree)
+    term_by_order = ctps_one_like(ctps)
+    SUM = ctps_zero_like(ctps)
     odd = true
     for i in 1:Max_TPS_Degree
         coeff = if odd
@@ -449,8 +471,8 @@ function cos(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_
     sin_a0 = sin(a0)
     cos_a0 = cos(a0)
     temp = ctps - a0
-    term_by_order = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
-    SUM = CTPS(zero(T), TPS_Dim, Max_TPS_Degree)
+    term_by_order = ctps_one_like(ctps)
+    SUM = ctps_zero_like(ctps)
     odd = true
     for i in 1:Max_TPS_Degree
         coeff = if odd
@@ -495,8 +517,8 @@ function sinh(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS
     sinh_a0 = sinh(a0)
     cosh_a0 = cosh(a0)
     temp = ctps - a0
-    term_by_order = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
-    SUM = CTPS(zero(T), TPS_Dim, Max_TPS_Degree)
+    term_by_order = ctps_one_like(ctps)
+    SUM = ctps_zero_like(ctps)
     odd = true
     for i in 1:Max_TPS_Degree
         coeff = if odd
@@ -516,8 +538,8 @@ function cosh(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS
     sinh_a0 = sinh(a0)
     cosh_a0 = cosh(a0)
     temp = ctps - a0
-    term_by_order = CTPS(one(T), TPS_Dim, Max_TPS_Degree)
-    SUM = CTPS(zero(T), TPS_Dim, Max_TPS_Degree)
+    term_by_order = ctps_one_like(ctps)
+    SUM = ctps_zero_like(ctps)
     odd = true
     for i in 1:Max_TPS_Degree
         coeff = if odd
@@ -544,7 +566,7 @@ end
 # Addition operations with type promotion
 function +(ctps1::CTPS{T1, TPS_Dim, Max_TPS_Degree}, ctps2::CTPS{T2, TPS_Dim, Max_TPS_Degree}) where {T1, T2, TPS_Dim, Max_TPS_Degree}
     T = promote_type(T1, T2)
-    ctps_new = CTPS(T(zero(T)), TPS_Dim, Max_TPS_Degree)
+    ctps_new = ctps_zero_like(T, ctps1)
     @inbounds for i in eachindex(ctps_new.map)
         ctps_new.map[i] = T(ctps1.map[i]) + T(ctps2.map[i])
     end
@@ -553,7 +575,7 @@ end
 
 function +(ctps::CTPS{T1, TPS_Dim, Max_TPS_Degree}, a::T2) where {T1, T2, TPS_Dim, Max_TPS_Degree}
     T = promote_type(T1, T2)
-    ctps_new = CTPS(T(zero(T)), TPS_Dim, Max_TPS_Degree)
+    ctps_new = ctps_zero_like(T, ctps)
     @inbounds for i in eachindex(ctps_new.map)
         ctps_new.map[i] = T(ctps.map[i])
     end
@@ -568,7 +590,7 @@ end
 # Subtraction operations with type promotion
 function -(ctps1::CTPS{T1, TPS_Dim, Max_TPS_Degree}, ctps2::CTPS{T2, TPS_Dim, Max_TPS_Degree}) where {T1, T2, TPS_Dim, Max_TPS_Degree}
     T = promote_type(T1, T2)
-    ctps_new = CTPS(T(zero(T)), TPS_Dim, Max_TPS_Degree)
+    ctps_new = ctps_zero_like(T, ctps1)
     @inbounds for i in eachindex(ctps_new.map)
         ctps_new.map[i] = T(ctps1.map[i]) - T(ctps2.map[i])
     end
@@ -577,7 +599,7 @@ end
 
 function -(ctps::CTPS{T1, TPS_Dim, Max_TPS_Degree}, a::T2) where {T1, T2, TPS_Dim, Max_TPS_Degree}
     T = promote_type(T1, T2)
-    ctps_new = CTPS(T(zero(T)), TPS_Dim, Max_TPS_Degree)
+    ctps_new = ctps_zero_like(T, ctps)
     @inbounds for i in eachindex(ctps_new.map)
         ctps_new.map[i] = T(ctps.map[i])
     end
@@ -587,7 +609,7 @@ end
 
 function -(a::T2, ctps::CTPS{T1, TPS_Dim, Max_TPS_Degree}) where {T1, T2, TPS_Dim, Max_TPS_Degree}
     T = promote_type(T1, T2)
-    ctps_new = CTPS(T(zero(T)), TPS_Dim, Max_TPS_Degree)
+    ctps_new = ctps_zero_like(T, ctps)
     @inbounds for i in eachindex(ctps_new.map)
         ctps_new.map[i] = -T(ctps.map[i])
     end
@@ -634,7 +656,7 @@ end
 
 function *(ctps::CTPS{T1, TPS_Dim, Max_TPS_Degree}, a::T2) where {T1, T2, TPS_Dim, Max_TPS_Degree}
     T = promote_type(T1, T2)
-    ctps_new = CTPS(T(zero(T)), TPS_Dim, Max_TPS_Degree)
+    ctps_new = ctps_zero_like(T, ctps)
     @inbounds for i in eachindex(ctps_new.map)
         ctps_new.map[i] = T(ctps.map[i]) * T(a)
     end
@@ -655,7 +677,7 @@ end
 function /(ctps::CTPS{T1, TPS_Dim, Max_TPS_Degree}, a::T2) where {T1, T2, TPS_Dim, Max_TPS_Degree}
     a == zero(T2) && throw(DivideError())
     T = promote_type(T1, T2)
-    ctps_new = CTPS(T(zero(T)), TPS_Dim, Max_TPS_Degree)
+    ctps_new = ctps_zero_like(T, ctps)
     @inbounds for i in eachindex(ctps_new.map)
         ctps_new.map[i] = T(ctps.map[i]) / T(a)
     end
@@ -688,7 +710,7 @@ function inv(ctps::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T<:Complex, TPS_Dim,
     # Separate out the non-constant part
     temp = ctps - c0
     inv_c0 = one(T) / c0
-    term_by_order = CTPS(inv_c0, TPS_Dim, Max_TPS_Degree)
+    term_by_order = ctps_const_like(ctps, inv_c0)
     SUM = CTPS(term_by_order)
     for i in 1:Max_TPS_Degree
         term_by_order *= -(temp / c0)
