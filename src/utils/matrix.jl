@@ -71,3 +71,11 @@ function randn_approx(N::Int, M::Int)
     end
     return s .- 6.0
 end
+
+function randn_approx(rng, N::Int, M::Int)
+    s = zeros(N, M)
+    for _ in 1:12
+        s .+= rand(rng, N, M)
+    end
+    return s .- 6.0
+end

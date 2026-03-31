@@ -78,6 +78,8 @@ print(f"Tunes: νx={nux:.4f}, νy={nuy:.4f}")
 
 **Space Charge Elements:**
 - `SPACECHARGE`
+- `SPACECHARGE2P5D`
+- `insert_space_charge_2p5d(lattice, sc_path_length_min, ...)`
 - `QUAD_SC`, `DRIFT_SC`, `KQUAD_SC`, `KSEXT_SC`, `KOCT_SC`
 - `SBEND_SC`, `RBEND_SC`
 
@@ -98,6 +100,59 @@ jt.ringpass(lattice, beam, num_turns=1000)
 jt.plinepass(lattice, beam, nthreads=8)
 jt.pringpass(lattice, beam, num_turns=1000, nthreads=8)
 ```
+
+### 2.5-D Space Charge
+
+JuTrack's 2.5-D model follows the coordinate convention
+`[x, px, y, py, z, dp/p0]`. In Python you can either create
+`SPACECHARGE2P5D` nodes explicitly, or insert them automatically into an
+existing numeric lattice.
+
+```python
+import numpy as np
+import pyJuTrack as jt
+
+d1 = jt.DRIFT("D1", 0.2)
+q1 = jt.KQUAD("Q1", 0.1, k1=29.6)
+d2 = jt.DRIFT("D2", 0.4)
+q2 = jt.KQUAD("Q2", 0.1, k1=-29.6)
+d3 = jt.DRIFT("D3", 0.2)
+
+cell = jt.Lattice([d1, q1, d2, q2, d3])
+cell_sc = jt.insert_space_charge_2p5d(
+    cell,
+    0.05,
+    periodic=True,
+    xsize=32,
+    ysize=32,
+    zsize=32,
+    pipe_radius=13e-3,
+    xy_ratio=1.0,
+    long_avg_n=3,
+)
+
+particles = np.zeros((1000, 6))
+particles[:, 0] = np.random.randn(1000) * 2e-4
+particles[:, 2] = np.random.randn(1000) * 2e-4
+particles[:, 5] = np.random.randn(1000) * 1e-5
+particles[:, 4] = np.random.randn(1000) * 3e-2
+
+beam = jt.Beam(
+    particles,
+    energy=1.0e9,
+    np=2_000_000_000,
+    current=20.0,
+    mass=jt.m_p,
+    charge=1.0,
+)
+
+jt.linepass(cell_sc, beam)
+```
+
+Notes:
+- `effective_length` is the path length represented by each thin kick.
+- `insert_space_charge_2p5d(...)` currently inserts nodes into numeric lattices. If you need DTPSAD/AD, insert the nodes first and then call `jt.Number2TPSAD(...)`.
+- The 2.5-D model is inactive if the bunch has zero longitudinal extent, so `z` must not be identical for every particle.
 
 ### Twiss Parameters and Optics
 

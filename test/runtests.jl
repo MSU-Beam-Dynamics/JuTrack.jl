@@ -78,4 +78,40 @@ Q2 = QUAD(k1=DTPSAD(-1.2), len=DTPSAD(0.5))
 line_ = [D1, Q1, D1, Q2, D1]
 linepass!(line_, beam_tpsa)
 println(beam_tpsa.r)
+
+@testset "SPACECHARGE2P5D DTPSAD" begin
+    set_tps_dim(1)
+    pts = [
+        -1.0e-3  2.0e-4  -0.8e-3  1.5e-4  -1.2e-4  2.0e-6;
+        -5.0e-4 -1.0e-4   2.0e-4 -1.0e-4  -6.0e-5 -1.0e-6;
+         2.0e-4  1.0e-4  -3.0e-4  2.5e-4  -2.0e-5  1.5e-6;
+         6.0e-4 -2.0e-4   7.0e-4 -2.0e-4   3.0e-5 -2.0e-6;
+         9.0e-4  3.0e-4  -6.0e-4  1.0e-4   7.0e-5  1.0e-6;
+         1.3e-3 -1.5e-4   1.1e-3 -2.5e-4   1.1e-4 -1.5e-6;
+    ]
+
+    beam_f = Beam(copy(pts), 1.0e9; np=1_000_000, charge=1.0, mass=m_p)
+    sc_f = SPACECHARGE2P5D(effective_len=0.05, xsize=8, ysize=8, zsize=4,
+        pipe_radius=0.013, xy_ratio=1.0, long_avg_n=3)
+    pass!(sc_f, beam_f.r, beam_f.nmacro, beam_f)
+
+    beam_d = Beam(DTPSAD.(pts); energy=1.0e9, np=1_000_000, charge=1.0, mass=m_p)
+    sc_d = SPACECHARGE2P5D(effective_len=DTPSAD(0.05, 1), xsize=8, ysize=8, zsize=4,
+        pipe_radius=DTPSAD(0.013), xy_ratio=DTPSAD(1.0), long_avg_n=3)
+    pass!(sc_d, beam_d.r, beam_d.nmacro, beam_d)
+
+    maxdiff = 0.0
+    for i in eachindex(beam_f.r)
+        maxdiff = max(maxdiff, abs(beam_f.r[i] - beam_d.r[i].val))
+    end
+    @test maxdiff < 1.0e-18
+    @test abs(beam_d.r[1, 2].deriv[1]) > 0.0
+    @test abs(beam_d.r[1, 6].deriv[1]) > 0.0
+
+    line_sc = [SPACECHARGE2P5D(effective_len=0.05, xsize=8, ysize=8, zsize=4,
+        pipe_radius=0.013, xy_ratio=1.0, long_avg_n=3)]
+    line_sc_d = Number2TPSAD(line_sc, DTPSAD{1, Float64})
+    @test line_sc_d[1].rho_grid isa Matrix{Float64}
+    @test line_sc_d[1].green_dx isa Float64
+end
 end

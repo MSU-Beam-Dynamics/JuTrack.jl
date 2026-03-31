@@ -1,3 +1,5 @@
+using Random
+
 """
     Beam
 
@@ -225,27 +227,27 @@ function Beam_Gauss(nmacro::Int; energy::Float64=1e9, np::Int=nmacro,
     betaz::Float64=1.0, alphaz::Float64=0.0, emitz::Float64=1e-8,
     charge::Float64=-1.0, mass::Float64=m_e, atn::Float64=1.0,
     centroid::Vector{Float64}=zeros(Float64, 6), T0::Float64=0.0,
-    znbin::Int=99, current::Float64=0.0)
+    znbin::Int=99, current::Float64=0.0, seed::Int=12345)
 
     r = zeros(Float64, nmacro, 6)
 
     # Horizontal plane: use Courant-Snyder parameterization
     # sigma matrix: [[beta, -alpha], [-alpha, (1+alpha^2)/beta]] * emit
-    x1 = randn_approx(2, nmacro)
+    x1 = randn_approx(Random.MersenneTwister(seed), 2, nmacro)
     @inbounds for c in 1:nmacro
         r[c, 1] = sqrt(emitx * betax) * x1[1, c] + centroid[1]
         r[c, 2] = sqrt(emitx / betax) * (-alphax * x1[1, c] + x1[2, c]) + centroid[2]
     end
 
     # Vertical plane
-    x2 = randn_approx(2, nmacro)
+    x2 = randn_approx(Random.MersenneTwister(seed + 1), 2, nmacro)
     @inbounds for c in 1:nmacro
         r[c, 3] = sqrt(emity * betay) * x2[1, c] + centroid[3]
         r[c, 4] = sqrt(emity / betay) * (-alphay * x2[1, c] + x2[2, c]) + centroid[4]
     end
 
     # Longitudinal plane
-    x3 = randn_approx(2, nmacro)
+    x3 = randn_approx(Random.MersenneTwister(seed + 2), 2, nmacro)
     @inbounds for c in 1:nmacro
         r[c, 5] = sqrt(emitz * betaz) * x3[1, c] + centroid[5]
         r[c, 6] = sqrt(emitz / betaz) * (-alphaz * x3[1, c] + x3[2, c]) + centroid[6]
@@ -292,24 +294,24 @@ function Beam_Gauss(::Type{DTPSAD}, nmacro::Int; energy::Float64=1e9, np::Int=nm
     betaz::Float64=1.0, alphaz::Float64=0.0, emitz::Float64=1e-8,
     charge::Float64=-1.0, mass::Float64=m_e, atn::Float64=1.0,
     centroid::Vector{Float64}=zeros(Float64, 6), T0::Float64=0.0,
-    znbin::Int=99, current::Float64=0.0)
+    znbin::Int=99, current::Float64=0.0, seed::Int=12345)
 
     # First generate Float64 coordinates
     r_f64 = zeros(Float64, nmacro, 6)
 
-    x1 = randn_approx(2, nmacro)
+    x1 = randn_approx(Random.MersenneTwister(seed), 2, nmacro)
     @inbounds for c in 1:nmacro
         r_f64[c, 1] = sqrt(emitx * betax) * x1[1, c] + centroid[1]
         r_f64[c, 2] = sqrt(emitx / betax) * (-alphax * x1[1, c] + x1[2, c]) + centroid[2]
     end
 
-    x2 = randn_approx(2, nmacro)
+    x2 = randn_approx(Random.MersenneTwister(seed + 1), 2, nmacro)
     @inbounds for c in 1:nmacro
         r_f64[c, 3] = sqrt(emity * betay) * x2[1, c] + centroid[3]
         r_f64[c, 4] = sqrt(emity / betay) * (-alphay * x2[1, c] + x2[2, c]) + centroid[4]
     end
 
-    x3 = randn_approx(2, nmacro)
+    x3 = randn_approx(Random.MersenneTwister(seed + 2), 2, nmacro)
     @inbounds for c in 1:nmacro
         r_f64[c, 5] = sqrt(emitz * betaz) * x3[1, c] + centroid[5]
         r_f64[c, 6] = sqrt(emitz / betaz) * (-alphaz * x3[1, c] + x3[2, c]) + centroid[6]

@@ -1197,6 +1197,59 @@ function SPACECHARGE(;name::String = "SPACECHARGE", len = 0.0, effective_len = 0
     return SPACECHARGE(name, len, effective_len, Nl, Nm, a, b, "SPACECHARGE")
 end
 
+mutable struct SPACECHARGE2P5D{T} <: AbstractElement{T}
+    name::String
+    len::T
+    effective_len::T
+    xsize::Int64
+    ysize::Int64
+    zsize::Int64
+    pipe_radius::T
+    xy_ratio::T
+    long_avg_n::Int64
+    rho_grid::Matrix{Float64}
+    phi_grid::Matrix{Float64}
+    z_grid::Vector{Float64}
+    z_deriv_grid::Vector{Float64}
+    green_fft::Matrix{ComplexF64}
+    green_dx::Float64
+    green_dy::Float64
+    eletype::String
+
+    SPACECHARGE2P5D(name::String, len::T, effective_len::T, xsize::Int64, ysize::Int64, zsize::Int64,
+        pipe_radius::T, xy_ratio::T, long_avg_n::Int64, rho_grid::Matrix{Float64}, phi_grid::Matrix{Float64},
+        z_grid::Vector{Float64}, z_deriv_grid::Vector{Float64}, green_fft::Matrix{ComplexF64},
+        green_dx::Float64, green_dy::Float64, eletype::String) where T =
+        new{T}(name, len, effective_len, xsize, ysize, zsize, pipe_radius, xy_ratio, long_avg_n,
+            rho_grid, phi_grid, z_grid, z_deriv_grid, green_fft, green_dx, green_dy, eletype)
+end
+
+function SPACECHARGE2P5D(;name::String = "SPACECHARGE2P5D", len = 0.0, effective_len = 0.0,
+    xsize::Int64 = 64, ysize::Int64 = 64, zsize::Int64 = 32, pipe_radius = 1.0,
+    xy_ratio = 1.0, long_avg_n::Int64 = 3)
+    if xsize < 3 || ysize < 3
+        error("SPACECHARGE2P5D requires xsize >= 3 and ysize >= 3.")
+    end
+    if zsize < 1
+        error("SPACECHARGE2P5D requires zsize >= 1.")
+    end
+    if long_avg_n < 1
+        error("SPACECHARGE2P5D requires long_avg_n >= 1.")
+    end
+    rho_grid = zeros(Float64, xsize, ysize)
+    phi_grid = zeros(Float64, xsize, ysize)
+    z_grid = zeros(Float64, zsize)
+    z_deriv_grid = zeros(Float64, zsize)
+    green_fft = zeros(ComplexF64, 2 * xsize, 2 * ysize)
+    if len isa DTPSAD || effective_len isa DTPSAD || pipe_radius isa DTPSAD || xy_ratio isa DTPSAD
+        return SPACECHARGE2P5D(name, DTPSAD(len), DTPSAD(effective_len), xsize, ysize, zsize,
+            DTPSAD(pipe_radius), DTPSAD(xy_ratio), long_avg_n, rho_grid, phi_grid, z_grid,
+            z_deriv_grid, green_fft, 0.0, 0.0, "SPACECHARGE2P5D")
+    end
+    return SPACECHARGE2P5D(name, len, effective_len, xsize, ysize, zsize, pipe_radius, xy_ratio,
+        long_avg_n, rho_grid, phi_grid, z_grid, z_deriv_grid, green_fft, 0.0, 0.0, "SPACECHARGE2P5D")
+end
+
 # TRANSLATION and YROTATION are used to convert the MAD-X lattice files
 mutable struct TRANSLATION{T} <: AbstractElement{T}
     name::String

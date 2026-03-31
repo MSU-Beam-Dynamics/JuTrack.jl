@@ -1820,11 +1820,15 @@ end
 
 # Reverse conversion functions
 function _strip_inverse(param::Float64, fieldname::Symbol, ::Type{DTPSAD{N, T}}) where {N, T}
+    if fieldname === :green_dx || fieldname === :green_dy
+        return param
+    end
     return DTPSAD(param)
 end
 
 function _strip_inverse(param::Vector{Float64}, fieldname::Symbol, ::Type{DTPSAD{N, T}}) where {N, T}
-    if fieldname == :RApertures || fieldname == :EApertures
+    if fieldname == :RApertures || fieldname == :EApertures ||
+       fieldname == :z_grid || fieldname == :z_deriv_grid
         return param  # Keep apertures as Float64 vectors
     else
         return [DTPSAD(p) for p in param]
@@ -1832,7 +1836,10 @@ function _strip_inverse(param::Vector{Float64}, fieldname::Symbol, ::Type{DTPSAD
 end
 
 function _strip_inverse(param::Matrix{Float64}, fieldname::Symbol, ::Type{DTPSAD{N, T}}) where {N, T}
-    Mat = zeros(DTPSAD{N, T}, size(param))
+    if fieldname == :rho_grid || fieldname == :phi_grid
+        return param
+    end
+    Mat = zeros(DTPSAD{N, T}, size(param)...)
     for i in eachindex(param)
         Mat[i] = DTPSAD(param[i])
     end

@@ -88,6 +88,44 @@ def test_tracking():
         print(f"✗ Tracking failed: {e}")
         return False
 
+def test_space_charge_2p5d():
+    """Test 2.5-D space-charge element creation and lattice insertion"""
+    try:
+        import pyJuTrack as jt
+
+        sc = jt.SPACECHARGE2P5D(
+            "SC",
+            effective_length=0.05,
+            xsize=8,
+            ysize=8,
+            zsize=4,
+            pipe_radius=13e-3,
+        )
+        assert str(sc.eletype) == "SPACECHARGE2P5D"
+
+        line = jt.Lattice([
+            jt.DRIFT("D1", 0.2),
+            jt.KQUAD("Q1", length=0.1, k1=29.6),
+            jt.DRIFT("D2", 0.2),
+        ])
+        line_sc = jt.insert_space_charge_2p5d(
+            line,
+            0.05,
+            periodic=True,
+            xsize=8,
+            ysize=8,
+            zsize=4,
+            pipe_radius=13e-3,
+        )
+        has_sc = any(str(elem.eletype) == "SPACECHARGE2P5D" for elem in line_sc)
+        assert has_sc, "Expected inserted lattice to contain SPACECHARGE2P5D nodes"
+
+        print("2.5-D space-charge wrapper working")
+        return True
+    except Exception as e:
+        print(f"2.5-D space-charge test failed: {e}")
+        return False
+
 def test_tpsa():
     """Test TPSA functionality"""
     try:
@@ -140,6 +178,7 @@ def run_all_tests():
     tests = [
         ("Import", test_import),
         ("Basic Elements", test_basic_elements),
+        ("2.5-D Space Charge", test_space_charge_2p5d),
         ("Lattice Creation", test_lattice),
         ("Beam Creation", test_beam),
         ("Particle Tracking", test_tracking),

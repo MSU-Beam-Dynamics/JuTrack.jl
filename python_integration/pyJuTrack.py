@@ -227,6 +227,27 @@ def _convert_kwargs_to_julia(kwargs):
             converted[key] = value
     return converted
 
+def _rename_kwarg(kwargs, old_name: str, new_name: str):
+    """Rename a keyword argument if present, with conflict checking."""
+    if old_name in kwargs:
+        if new_name in kwargs:
+            raise TypeError(f"Received both '{old_name}' and '{new_name}'. Please use only one.")
+        kwargs[new_name] = kwargs.pop(old_name)
+    return kwargs
+
+def _normalize_spacecharge_2p5d_kwargs(kwargs):
+    """
+    Normalize Python-friendly SPACECHARGE2P5D keyword names to Julia names.
+
+    Accepted aliases:
+    - length -> len
+    - effective_length -> effective_len
+    """
+    kwargs = dict(kwargs)
+    _rename_kwarg(kwargs, 'length', 'len')
+    _rename_kwarg(kwargs, 'effective_length', 'effective_len')
+    return kwargs
+
 def _to_julia_vector(python_list, element_type=None):
     """Convert Python list to properly typed Julia vector"""
     if element_type is not None:
@@ -841,6 +862,47 @@ def SPACECHARGE(name: str, **kwargs):
     kwargs = _convert_kwargs_to_julia(kwargs)
     return _jl.SPACECHARGE(name=name, **kwargs)
 
+def SPACECHARGE2P5D(name: str = "SPACECHARGE2P5D", length: float = 0.0,
+                    effective_length: float = 0.0, **kwargs):
+    """
+    Create a 2.5-D space-charge kick element.
+
+    The JuTrack/PyORBIT-compatible 2.5-D model uses the coordinate convention
+    ``[x, px, y, py, z, dp/p0]``. The element itself is a thin kick, while
+    ``effective_length`` stores the transport path length associated with the
+    kick strength.
+
+    Args:
+        name: Element name.
+        length: Thin-element physical length. Usually left at 0.0.
+        effective_length: Path length represented by this kick.
+        **kwargs: Additional JuTrack keyword arguments such as:
+            - xsize, ysize, zsize
+            - pipe_radius
+            - xy_ratio
+            - long_avg_n
+
+    Returns:
+        Julia ``SPACECHARGE2P5D`` element.
+
+    Example:
+        >>> sc = jt.SPACECHARGE2P5D(
+        ...     "SC",
+        ...     effective_length=0.05,
+        ...     xsize=32, ysize=32, zsize=32,
+        ...     pipe_radius=13e-3,
+        ... )
+    """
+    kwargs = _normalize_spacecharge_2p5d_kwargs(kwargs)
+    if length != 0.0 and 'len' in kwargs:
+        raise TypeError("Received both 'length' and 'len'. Please use only one.")
+    if effective_length != 0.0 and 'effective_len' in kwargs:
+        raise TypeError("Received both 'effective_length' and 'effective_len'. Please use only one.")
+    kwargs.setdefault('len', length)
+    kwargs.setdefault('effective_len', effective_length)
+    kwargs = _convert_kwargs_to_julia(kwargs)
+    return _jl.SPACECHARGE2P5D(name=name, **kwargs)
+
 def QUAD_SC(name: str, length: float, k1: float, **kwargs):
     """Create a quadrupole with space charge"""
     kwargs = _convert_kwargs_to_julia(kwargs)
@@ -876,6 +938,81 @@ def RBEND_SC(name: str, length: float, angle: float, **kwargs):
     kwargs = _convert_kwargs_to_julia(kwargs)
     return _jl.RBEND_SC(name=name, len=length, angle=angle, **kwargs)
 
+def insert_space_charge_2p5d(lattice, sc_path_length_min: float = None, **kwargs):
+    """
+    Insert ``SPACECHARGE2P5D`` nodes into a numeric lattice.
+
+    This is the Python wrapper for Julia's ``insert_space_charge_2p5d`` and is
+    the most convenient way to add the 2.5-D model to an existing beamline.
+
+    Args:
+        lattice: ``Lattice`` object, Python list of elements, or Julia lattice.
+        sc_path_length_min: Minimum path length between successive kicks.
+        **kwargs: Passed through to JuTrack. Common options:
+            - periodic: If True, wrap the kick pattern periodically over the cell.
+            - xsize, ysize, zsize
+            - pipe_radius
+            - xy_ratio
+            - long_avg_n
+
+    Returns:
+        ``Lattice`` if the input was a Python lattice/list, otherwise the raw
+        Julia lattice object.
+
+    Notes:
+        - The Julia implementation currently accepts numeric lattices
+          ``AbstractElement{Float64}``. For AD workflows, insert the 2.5-D nodes
+          first and then convert the lattice with ``jt.Number2TPSAD(...)``.
+        - ``path_length_min`` and ``spacing`` are accepted as aliases for
+          ``sc_path_length_min``.
+
+    Example:
+        >>> line = jt.Lattice([jt.DRIFT("D1", 0.2), jt.KQUAD("Q1", 0.1, k1=29.6)])
+        >>> line_sc = jt.insert_space_charge_2p5d(
+        ...     line,
+        ...     0.05,
+        ...     periodic=True,
+        ...     xsize=32, ysize=32, zsize=32,
+        ...     pipe_radius=13e-3,
+        ... )
+    """
+    if sc_path_length_min is None:
+        if 'path_length_min' in kwargs:
+            sc_path_length_min = kwargs.pop('path_length_min')
+        elif 'spacing' in kwargs:
+            sc_path_length_min = kwargs.pop('spacing')
+        else:
+            raise TypeError("insert_space_charge_2p5d() missing required argument 'sc_path_length_min'")
+
+    return_python_lattice = False
+    if isinstance(lattice, Lattice):
+        jl_lattice = lattice.julia_object
+        return_python_lattice = True
+    elif isinstance(lattice, list):
+        jl_lattice = Lattice(lattice).julia_object
+        return_python_lattice = True
+    else:
+        jl_lattice = lattice
+
+    if hasattr(jl_lattice, '__len__') and len(jl_lattice) > 0:
+        first_type = str(_jl.typeof(jl_lattice[0]))
+        if 'DTPSAD' in first_type:
+            raise TypeError(
+                "insert_space_charge_2p5d currently expects a numeric lattice "
+                "(AbstractElement{Float64}). Insert the 2.5-D nodes first, then "
+                "convert with jt.Number2TPSAD(...) if you need AD."
+            )
+
+    kwargs = _normalize_spacecharge_2p5d_kwargs(kwargs)
+    kwargs = _convert_kwargs_to_julia(kwargs)
+    result = _jl.insert_space_charge_2p5d(jl_lattice, float(sc_path_length_min), **kwargs)
+
+    if return_python_lattice:
+        wrapped = Lattice.__new__(Lattice)
+        wrapped._jl_lattice = result
+        return wrapped
+    return result
+
 class ElementTypes:
     """Julia element type constants for use with findelem"""
     DRIFT = _jl.DRIFT
@@ -897,6 +1034,7 @@ class ElementTypes:
     CRABCAVITY = _jl.CRABCAVITY
     thinMULTIPOLE = _jl.thinMULTIPOLE
     SPACECHARGE = _jl.SPACECHARGE
+    SPACECHARGE2P5D = _jl.SPACECHARGE2P5D
 
 element_types = ElementTypes()
 
@@ -2992,7 +3130,8 @@ __all__ = [
     'LongitudinalRLCWake',
     
     # Space charge
-    'SPACECHARGE', 'QUAD_SC', 'DRIFT_SC', 'KQUAD_SC', 'KSEXT_SC',
+    'SPACECHARGE', 'SPACECHARGE2P5D', 'insert_space_charge_2p5d',
+    'QUAD_SC', 'DRIFT_SC', 'KQUAD_SC', 'KSEXT_SC',
     'KOCT_SC', 'SBEND_SC', 'RBEND_SC',
     
     # Transformations

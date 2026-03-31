@@ -96,7 +96,11 @@ end
 Copy constructor for truncated power series. 
 """
 function CTPS(M::CTPS{T, TPS_Dim, Max_TPS_Degree}) where {T, TPS_Dim, Max_TPS_Degree}
-    map = copy(M.map)
+    # map = copy(M.map)
+    map = zeros(T, M.terms)
+    @inbounds for i in eachindex(map)
+        map[i] = M.map[i]
+    end
     return CTPS{T, TPS_Dim, Max_TPS_Degree}(M.degree, length(map), map, M.polymap)
 end
 

@@ -49,6 +49,7 @@ include("tracking/corrector.jl")
 include("tracking/wakefield.jl")
 include("tracking/quad.jl")
 include("tracking/space_charge.jl")
+include("tracking/space_charge_2p5D.jl")
 include("tracking/refobt.jl")
 include("tracking/bendlinear.jl")
 include("tracking/wiggler.jl")
@@ -98,6 +99,7 @@ export AbstractElement, DRIFT, KQUAD, KSEXT, KOCT, SBEND, RBEND, RFCA, SOLENOID,
 export QUAD, LBEND, ESBEND, ERBEND, WIGGLER, buildlatt
 export TRANSLATION, YROTATION
 export SPACECHARGE, QUAD_SC, DRIFT_SC, KQUAD_SC, KSEXT_SC, KOCT_SC, SBEND_SC, RBEND_SC, calculate_K
+export SPACECHARGE2P5D, insert_space_charge_2p5d
 export EdwardsTengTwiss, AbstractTwiss, twissPropagate, findm66, periodicEdwardsTengTwiss, twissline, ADtwissline, twissring, ADfindm66, ADtwissring, ADperiodicEdwardsTengTwiss
 export find_closed_orbit, fastfindm66, fastfindm66_refpts, ADfastfindm66_refpts, findm66_refpts
 export linepass!, pass!, ringpass!, linepass_TPSA!, pass_TPSA!, ringpass_TPSA!, check_lost, check_lost_aperture
