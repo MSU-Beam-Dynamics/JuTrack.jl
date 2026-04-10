@@ -5,42 +5,33 @@ function CorrectorPass!(r::Matrix{Float64}, le::Float64, xkick::Float64, ykick::
     # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
 
     for c in 1:num_particles
-        if lost_flags[c] == 1
+        if isone(lost_flags[c]) || isnan(r[c, 1])
             continue
         end
-        r6 = @view r[c, :]
-        if !isnan(r6[1])
-            p_norm = 1.0 / (1.0 + r6[6])
-            
-            NormL = le * p_norm
-            # Misalignment at entrance
-            if !iszero(T1)
-                addvv!(r6, T1)
-            end
-            if !iszero(R1)
-                multmv!(r6, R1)
-            end
+        if !iszero(T1)
+            addvv_row!(r, c, T1)
+        end
+        if !iszero(R1)
+            multmv_row!(r, c, R1)
+        end
 
-            
-            r6[5] += NormL*p_norm*(xkick*xkick/3 + ykick*ykick/3 +
-   		            r6[2]*r6[2] + r6[4]*r6[4] +
-   		            r6[2]*xkick + r6[4]*ykick)/2
-            r6[1] += NormL*(r6[2]+xkick/2)
-		    r6[2] += xkick
-		    r6[3] += NormL*(r6[4]+ykick/2)
-   		    r6[4] += ykick
+        p_norm = 1.0 / (1.0 + r[c, 6])
+        NormL = le * p_norm
+        r[c, 5] += NormL * p_norm * (xkick * xkick / 3.0 + ykick * ykick / 3.0 +
+            r[c, 2] * r[c, 2] + r[c, 4] * r[c, 4] + r[c, 2] * xkick + r[c, 4] * ykick) / 2.0
+        r[c, 1] += NormL * (r[c, 2] + xkick / 2.0)
+        r[c, 2] += xkick
+        r[c, 3] += NormL * (r[c, 4] + ykick / 2.0)
+        r[c, 4] += ykick
 
-
-            # Misalignment at exit
-            if !iszero(R2)
-                multmv!(r6, R2)
-            end
-            if !iszero(T2)
-                addvv!(r6, T2)
-            end
-            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
-                lost_flags[c] = 1
-            end
+        if !iszero(R2)
+            multmv_row!(r, c, R2)
+        end
+        if !iszero(T2)
+            addvv_row!(r, c, T2)
+        end
+        if _check_lost_row(r, c) || _check_lost_aperture_row(r, c, RApertures, EApertures)
+            lost_flags[c] = 1
         end
     end
 
@@ -62,46 +53,33 @@ function CorrectorPass_P!(r::Matrix{Float64}, le::Float64, xkick::Float64, ykick
     num_particles::Int, lost_flags::Array{Int64,1})
 
     Threads.@threads for c in 1:num_particles
-    # for c in 1:num_particles
-        if lost_flags[c] == 1
+        if isone(lost_flags[c]) || isnan(r[c, 1])
             continue
         end
-        r6 = @view r[c, :]
-        if !isnan(r6[1])
-            if 1.0 + r6[6] >= 0
-                p_norm = 1.0 / sqrt(1.0 + r6[6])
-            else
-                lost_flags[c] = 1
-                continue
-            end
-            NormL = le * p_norm
-            # Misalignment at entrance
-            if !iszero(T1)
-                addvv!(r6, T1)
-            end
-            if !iszero(R1)
-                multmv!(r6, R1)
-            end
+        if !iszero(T1)
+            addvv_row!(r, c, T1)
+        end
+        if !iszero(R1)
+            multmv_row!(r, c, R1)
+        end
 
+        p_norm = 1.0 / (1.0 + r[c, 6])
+        NormL = le * p_norm
+        r[c, 5] += NormL * p_norm * (xkick * xkick / 3.0 + ykick * ykick / 3.0 +
+            r[c, 2] * r[c, 2] + r[c, 4] * r[c, 4] + r[c, 2] * xkick + r[c, 4] * ykick) / 2.0
+        r[c, 1] += NormL * (r[c, 2] + xkick / 2.0)
+        r[c, 2] += xkick
+        r[c, 3] += NormL * (r[c, 4] + ykick / 2.0)
+        r[c, 4] += ykick
 
-            r6[5] += NormL*p_norm*(xkick*xkick/3 + ykick*ykick/3 +
-   		            r6[2]*r6[2] + r6[4]*r6[4] +
-   		            r6[2]*xkick + r6[4]*ykick)/2
-            r6[1] += NormL*(r6[2]+xkick/2)
-		    r6[2] += xkick
-		    r6[3] += NormL*(r6[4]+ykick/2)
-   		    r6[4] += ykick
-
-            # Misalignment at exit
-            if !iszero(R2)
-                multmv!(r6, R2)
-            end
-            if !iszero(T2)
-                addvv!(r6, T2)
-            end
-            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
-                lost_flags[c] = 1
-            end
+        if !iszero(R2)
+            multmv_row!(r, c, R2)
+        end
+        if !iszero(T2)
+            addvv_row!(r, c, T2)
+        end
+        if _check_lost_row(r, c) || _check_lost_aperture_row(r, c, RApertures, EApertures)
+            lost_flags[c] = 1
         end
     end
 

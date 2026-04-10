@@ -101,18 +101,32 @@ function element_to_python(ele, eletype::String, name::String)
         return corrector_to_python(ele, name)
     elseif eletype == "DRIFT_SC"
         return drift_sc_to_python(ele, name)
+    elseif eletype == "DRIFT_SC2P5D"
+        return drift_sc2p5d_to_python(ele, name)
     elseif eletype == "QUAD_SC"
         return quad_sc_to_python(ele, name)
+    elseif eletype == "QUAD_SC2P5D"
+        return quad_sc2p5d_to_python(ele, name)
     elseif eletype == "KQUAD_SC"
         return kquad_sc_to_python(ele, name)
+    elseif eletype == "KQUAD_SC2P5D"
+        return kquad_sc2p5d_to_python(ele, name)
     elseif eletype == "KSEXT_SC"
         return ksext_sc_to_python(ele, name)
+    elseif eletype == "KSEXT_SC2P5D"
+        return ksext_sc2p5d_to_python(ele, name)
     elseif eletype == "KOCT_SC"
         return koct_sc_to_python(ele, name)
+    elseif eletype == "KOCT_SC2P5D"
+        return koct_sc2p5d_to_python(ele, name)
     elseif eletype == "SBEND_SC"
         return sbend_sc_to_python(ele, name)
+    elseif eletype == "SBEND_SC2P5D"
+        return sbend_sc2p5d_to_python(ele, name)
     elseif eletype == "RBEND_SC"
         return rbend_sc_to_python(ele, name)
+    elseif eletype == "RBEND_SC2P5D"
+        return rbend_sc2p5d_to_python(ele, name)
     elseif eletype == "SPACECHARGE2P5D"
         return spacecharge2p5d_to_python(ele, name)
     else
@@ -545,6 +559,106 @@ function rbend_sc_to_python(ele, name::String)
     
     add_misalignment_params(params, ele)
     return "$name = jt.RBEND_SC(" * join(params, ", ") * ")"
+end
+
+function add_sc2p5d_params(params::Vector{String}, ele)
+    if hasfield(typeof(ele), :xsize)
+        push!(params, "xsize=$(ele.xsize)")
+    end
+    if hasfield(typeof(ele), :ysize)
+        push!(params, "ysize=$(ele.ysize)")
+    end
+    if hasfield(typeof(ele), :zsize)
+        push!(params, "zsize=$(ele.zsize)")
+    end
+    if hasfield(typeof(ele), :pipe_radius)
+        push!(params, @sprintf("pipe_radius=%.10e", ele.pipe_radius))
+    end
+    if hasfield(typeof(ele), :xy_ratio) && ele.xy_ratio != 1.0
+        push!(params, @sprintf("xy_ratio=%.10e", ele.xy_ratio))
+    end
+    if hasfield(typeof(ele), :long_avg_n) && ele.long_avg_n != 3
+        push!(params, "long_avg_n=$(ele.long_avg_n)")
+    end
+    if hasfield(typeof(ele), :Nsteps) && ele.Nsteps != 1
+        push!(params, "Nsteps=$(ele.Nsteps)")
+    end
+end
+
+function drift_sc2p5d_to_python(ele, name::String)
+    params = ["\"$name\"", @sprintf("%.10e", ele.len)]
+    add_sc2p5d_params(params, ele)
+    add_misalignment_params(params, ele)
+    return "$name = jt.DRIFT_SC2P5D(" * join(params, ", ") * ")"
+end
+
+function quad_sc2p5d_to_python(ele, name::String)
+    params = ["\"$name\"", @sprintf("%.10e", ele.len), @sprintf("k1=%.10e", ele.k1)]
+    add_sc2p5d_params(params, ele)
+    add_misalignment_params(params, ele)
+    return "$name = jt.QUAD_SC2P5D(" * join(params, ", ") * ")"
+end
+
+function kquad_sc2p5d_to_python(ele, name::String)
+    params = ["\"$name\"", @sprintf("%.10e", ele.len), @sprintf("k1=%.10e", ele.k1)]
+    if hasfield(typeof(ele), :NumIntSteps) && ele.NumIntSteps != 10
+        push!(params, "NumIntSteps=$(ele.NumIntSteps)")
+    end
+    add_sc2p5d_params(params, ele)
+    add_misalignment_params(params, ele)
+    return "$name = jt.KQUAD_SC2P5D(" * join(params, ", ") * ")"
+end
+
+function ksext_sc2p5d_to_python(ele, name::String)
+    params = ["\"$name\"", @sprintf("%.10e", ele.len), @sprintf("k2=%.10e", ele.k2)]
+    if hasfield(typeof(ele), :NumIntSteps) && ele.NumIntSteps != 10
+        push!(params, "NumIntSteps=$(ele.NumIntSteps)")
+    end
+    add_sc2p5d_params(params, ele)
+    add_misalignment_params(params, ele)
+    return "$name = jt.KSEXT_SC2P5D(" * join(params, ", ") * ")"
+end
+
+function koct_sc2p5d_to_python(ele, name::String)
+    params = ["\"$name\"", @sprintf("%.10e", ele.len), @sprintf("k3=%.10e", ele.k3)]
+    if hasfield(typeof(ele), :NumIntSteps) && ele.NumIntSteps != 10
+        push!(params, "NumIntSteps=$(ele.NumIntSteps)")
+    end
+    add_sc2p5d_params(params, ele)
+    add_misalignment_params(params, ele)
+    return "$name = jt.KOCT_SC2P5D(" * join(params, ", ") * ")"
+end
+
+function sbend_sc2p5d_to_python(ele, name::String)
+    params = ["\"$name\"", @sprintf("%.10e", ele.len), @sprintf("%.10e", ele.angle)]
+    if hasfield(typeof(ele), :e1) && ele.e1 != 0.0
+        push!(params, @sprintf("e1=%.10e", ele.e1))
+    end
+    if hasfield(typeof(ele), :e2) && ele.e2 != 0.0
+        push!(params, @sprintf("e2=%.10e", ele.e2))
+    end
+    if hasfield(typeof(ele), :NumIntSteps) && ele.NumIntSteps != 10
+        push!(params, "NumIntSteps=$(ele.NumIntSteps)")
+    end
+    add_sc2p5d_params(params, ele)
+    add_misalignment_params(params, ele)
+    return "$name = jt.SBEND_SC2P5D(" * join(params, ", ") * ")"
+end
+
+function rbend_sc2p5d_to_python(ele, name::String)
+    params = ["\"$name\"", @sprintf("%.10e", ele.len), @sprintf("%.10e", ele.angle)]
+    if hasfield(typeof(ele), :e1) && ele.e1 != 0.0
+        push!(params, @sprintf("e1=%.10e", ele.e1))
+    end
+    if hasfield(typeof(ele), :e2) && ele.e2 != 0.0
+        push!(params, @sprintf("e2=%.10e", ele.e2))
+    end
+    if hasfield(typeof(ele), :NumIntSteps) && ele.NumIntSteps != 10
+        push!(params, "NumIntSteps=$(ele.NumIntSteps)")
+    end
+    add_sc2p5d_params(params, ele)
+    add_misalignment_params(params, ele)
+    return "$name = jt.RBEND_SC2P5D(" * join(params, ", ") * ")"
 end
 
 function spacecharge2p5d_to_python(ele, name::String)

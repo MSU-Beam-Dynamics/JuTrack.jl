@@ -133,6 +133,87 @@ function DRIFT_SC(;name::String = "DRIFT_SC", len = 0.0, T1 = zeros(6),
     return DRIFT_SC(name, len, T1, T2, R1, R2, RApertures, EApertures, a, b, Nl, Nm, Nsteps, "DRIFT_SC")
 end
 
+"""
+    DRIFT_SC2P5D(;name::String = "DRIFT_SC2P5D", len::Float64 = 0.0,
+        T1::Array{Float64,1} = zeros(6), T2::Array{Float64,1} = zeros(6),
+        R1::Array{Float64,2} = zeros(6,6), R2::Array{Float64,2} = zeros(6,6),
+        RApertures::Array{Float64,1} = zeros(6), EApertures::Array{Float64,1} = zeros(6),
+        xsize::Int64 = 64, ysize::Int64 = 64, zsize::Int64 = 32,
+        pipe_radius::Float64 = 1.0, xy_ratio::Float64 = 1.0,
+        long_avg_n::Int64 = 3, Nsteps::Int64 = 1)
+
+A drift element with JuTrack-native 2.5-D space charge. Each step uses a
+half-drift, one 2.5-D RB kick over the full step length, and another
+half-drift.
+"""
+mutable struct DRIFT_SC2P5D{T} <: AbstractElement{T}
+    name::String
+    len::T
+    T1::Array{T,1}
+    T2::Array{T,1}
+    R1::Array{T,2}
+    R2::Array{T,2}
+    RApertures::Array{Float64,1}
+    EApertures::Array{Float64,1}
+    xsize::Int64
+    ysize::Int64
+    zsize::Int64
+    pipe_radius::T
+    xy_ratio::T
+    long_avg_n::Int64
+    Nsteps::Int64
+    rho_grid::Matrix{Float64}
+    phi_grid::Matrix{Float64}
+    z_grid::Vector{Float64}
+    z_deriv_grid::Vector{Float64}
+    green_fft::Matrix{ComplexF64}
+    green_dx::Float64
+    green_dy::Float64
+    eletype::String
+
+    DRIFT_SC2P5D(name::String, len::T, T1::Array{T,1}, T2::Array{T,1},
+        R1::Array{T,2}, R2::Array{T,2}, RApertures::Array{Float64,1},
+        EApertures::Array{Float64,1}, xsize::Int64, ysize::Int64, zsize::Int64,
+        pipe_radius::T, xy_ratio::T, long_avg_n::Int64, Nsteps::Int64,
+        rho_grid::Matrix{Float64}, phi_grid::Matrix{Float64}, z_grid::Vector{Float64},
+        z_deriv_grid::Vector{Float64}, green_fft::Matrix{ComplexF64},
+        green_dx::Float64, green_dy::Float64, eletype::String) where {T} =
+        new{T}(name, len, T1, T2, R1, R2, RApertures, EApertures, xsize, ysize, zsize,
+            pipe_radius, xy_ratio, long_avg_n, Nsteps, rho_grid, phi_grid, z_grid,
+            z_deriv_grid, green_fft, green_dx, green_dy, eletype)
+end
+
+function DRIFT_SC2P5D(;name::String = "DRIFT_SC2P5D", len = 0.0, T1 = zeros(6),
+    T2 = zeros(6), R1 = zeros(6, 6), R2 = zeros(6, 6),
+    RApertures = zeros(6), EApertures = zeros(6),
+    xsize::Int64 = 64, ysize::Int64 = 64, zsize::Int64 = 32,
+    pipe_radius = 1.0, xy_ratio = 1.0, long_avg_n::Int64 = 3, Nsteps::Int64 = 1)
+    if xsize < 3 || ysize < 3
+        error("DRIFT_SC2P5D requires xsize >= 3 and ysize >= 3.")
+    end
+    if zsize < 1
+        error("DRIFT_SC2P5D requires zsize >= 1.")
+    end
+    if long_avg_n < 1
+        error("DRIFT_SC2P5D requires long_avg_n >= 1.")
+    end
+    rho_grid = zeros(Float64, xsize, ysize)
+    phi_grid = zeros(Float64, xsize, ysize)
+    z_grid = zeros(Float64, zsize)
+    z_deriv_grid = zeros(Float64, zsize)
+    green_fft = zeros(ComplexF64, 2 * xsize, 2 * ysize)
+    if len isa DTPSAD || T1[1] isa DTPSAD || T2[1] isa DTPSAD || R1[1,1] isa DTPSAD ||
+       R2[1,1] isa DTPSAD || pipe_radius isa DTPSAD || xy_ratio isa DTPSAD
+        return DRIFT_SC2P5D(name, DTPSAD(len), DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1),
+            DTPSAD.(R2), RApertures, EApertures, xsize, ysize, zsize, DTPSAD(pipe_radius),
+            DTPSAD(xy_ratio), long_avg_n, Nsteps, rho_grid, phi_grid, z_grid,
+            z_deriv_grid, green_fft, 0.0, 0.0, "DRIFT_SC2P5D")
+    end
+    return DRIFT_SC2P5D(name, len, T1, T2, R1, R2, RApertures, EApertures, xsize, ysize,
+        zsize, pipe_radius, xy_ratio, long_avg_n, Nsteps, rho_grid, phi_grid, z_grid,
+        z_deriv_grid, green_fft, 0.0, 0.0, "DRIFT_SC2P5D")
+end
+
 
 """
     KQUAD(;name::String = "Quad", len::Float64 = 0.0, k1::Float64 = 0.0, 
@@ -280,6 +361,107 @@ function KQUAD_SC(;name::String = "Quad", len = 0.0, k0 = 0.0, k1 = 0.0, k2 = 0.
 end
 
 """
+    KQUAD_SC2P5D(;name::String = "Quad", len::Float64 = 0.0, k1::Float64 = 0.0,
+        NumIntSteps::Int64 = 10, xsize::Int64 = 64, ysize::Int64 = 64,
+        zsize::Int64 = 32, pipe_radius::Float64 = 1.0, xy_ratio::Float64 = 1.0,
+        long_avg_n::Int64 = 3, Nsteps::Int64 = 1, ...)
+
+A canonical quadrupole with JuTrack-native 2.5-D space charge. Each SC step
+tracks half of the symplectic quadrupole slice, applies one 2.5-D RB kick over
+the step length, and tracks the second half of the slice.
+"""
+mutable struct KQUAD_SC2P5D{T} <: AbstractElement{T}
+    name::String
+    len::T
+    k0::T
+    k1::T
+    k2::T
+    k3::T
+    PolynomA::Array{T,1}
+    MaxOrder::Int64
+    NumIntSteps::Int64
+    rad::Int64
+    FringeQuadEntrance::Int64
+    FringeQuadExit::Int64
+    T1::Array{T,1}
+    T2::Array{T,1}
+    R1::Array{T,2}
+    R2::Array{T,2}
+    RApertures::Array{Float64,1}
+    EApertures::Array{Float64,1}
+    KickAngle::Array{T,1}
+    xsize::Int64
+    ysize::Int64
+    zsize::Int64
+    pipe_radius::T
+    xy_ratio::T
+    long_avg_n::Int64
+    Nsteps::Int64
+    rho_grid::Matrix{Float64}
+    phi_grid::Matrix{Float64}
+    z_grid::Vector{Float64}
+    z_deriv_grid::Vector{Float64}
+    green_fft::Matrix{ComplexF64}
+    green_dx::Float64
+    green_dy::Float64
+    eletype::String
+
+    KQUAD_SC2P5D(name::String, len::T, k0::T, k1::T, k2::T, k3::T, PolynomA::Array{T,1},
+        MaxOrder::Int64, NumIntSteps::Int64, rad::Int64, FringeQuadEntrance::Int64,
+        FringeQuadExit::Int64, T1::Array{T,1}, T2::Array{T,1}, R1::Array{T,2},
+        R2::Array{T,2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1},
+        KickAngle::Array{T,1}, xsize::Int64, ysize::Int64, zsize::Int64, pipe_radius::T,
+        xy_ratio::T, long_avg_n::Int64, Nsteps::Int64, rho_grid::Matrix{Float64},
+        phi_grid::Matrix{Float64}, z_grid::Vector{Float64}, z_deriv_grid::Vector{Float64},
+        green_fft::Matrix{ComplexF64}, green_dx::Float64, green_dy::Float64,
+        eletype::String) where {T} =
+        new{T}(name, len, k0, k1, k2, k3, PolynomA, MaxOrder, NumIntSteps, rad,
+            FringeQuadEntrance, FringeQuadExit, T1, T2, R1, R2, RApertures, EApertures,
+            KickAngle, xsize, ysize, zsize, pipe_radius, xy_ratio, long_avg_n, Nsteps,
+            rho_grid, phi_grid, z_grid, z_deriv_grid, green_fft, green_dx, green_dy, eletype)
+end
+
+function KQUAD_SC2P5D(;name::String = "Quad", len = 0.0, k0 = 0.0, k1 = 0.0,
+    k2 = 0.0, k3 = 0.0, PolynomA = zeros(4), MaxOrder::Int64 = 1,
+    NumIntSteps::Int64 = 10, rad::Int64 = 0, FringeQuadEntrance::Int64 = 0,
+    FringeQuadExit::Int64 = 0, T1 = zeros(6), T2 = zeros(6), R1 = zeros(6, 6),
+    R2 = zeros(6, 6), RApertures = zeros(6), EApertures = zeros(6),
+    KickAngle = zeros(2), xsize::Int64 = 64, ysize::Int64 = 64, zsize::Int64 = 32,
+    pipe_radius = 1.0, xy_ratio = 1.0, long_avg_n::Int64 = 3, Nsteps::Int64 = 1)
+    if xsize < 3 || ysize < 3
+        error("KQUAD_SC2P5D requires xsize >= 3 and ysize >= 3.")
+    end
+    if zsize < 1
+        error("KQUAD_SC2P5D requires zsize >= 1.")
+    end
+    if long_avg_n < 1
+        error("KQUAD_SC2P5D requires long_avg_n >= 1.")
+    end
+    rho_grid = zeros(Float64, xsize, ysize)
+    phi_grid = zeros(Float64, xsize, ysize)
+    z_grid = zeros(Float64, zsize)
+    z_deriv_grid = zeros(Float64, zsize)
+    green_fft = zeros(ComplexF64, 2 * xsize, 2 * ysize)
+    if len isa DTPSAD || PolynomA[1] isa DTPSAD || k0 isa DTPSAD || k1 isa DTPSAD ||
+       k2 isa DTPSAD || k3 isa DTPSAD || T1[1] isa DTPSAD || T2[1] isa DTPSAD ||
+       R1[1,1] isa DTPSAD || R2[1,1] isa DTPSAD || KickAngle[1] isa DTPSAD ||
+       pipe_radius isa DTPSAD || xy_ratio isa DTPSAD
+        return KQUAD_SC2P5D(name, DTPSAD(len), DTPSAD(k0), DTPSAD(k1), DTPSAD(k2),
+            DTPSAD(k3), DTPSAD.(PolynomA), MaxOrder, NumIntSteps, rad,
+            FringeQuadEntrance, FringeQuadExit, DTPSAD.(T1), DTPSAD.(T2),
+            DTPSAD.(R1), DTPSAD.(R2), RApertures, EApertures, DTPSAD.(KickAngle),
+            xsize, ysize, zsize, DTPSAD(pipe_radius), DTPSAD(xy_ratio), long_avg_n,
+            Nsteps, rho_grid, phi_grid, z_grid, z_deriv_grid, green_fft, 0.0, 0.0,
+            "KQUAD_SC2P5D")
+    end
+    return KQUAD_SC2P5D(name, len, k0, k1, k2, k3, PolynomA, MaxOrder, NumIntSteps,
+        rad, FringeQuadEntrance, FringeQuadExit, T1, T2, R1, R2, RApertures,
+        EApertures, KickAngle, xsize, ysize, zsize, pipe_radius, xy_ratio,
+        long_avg_n, Nsteps, rho_grid, phi_grid, z_grid, z_deriv_grid, green_fft,
+        0.0, 0.0, "KQUAD_SC2P5D")
+end
+
+"""
     KSEXT(;name::String = "Sext", len::Float64 = 0.0, k0::Float64 = 0.0, k1::Float64 = 0.0, k2::Float64 = 0.0, k3::Float64 = 0.0, 
         PolynomA::Array{Float64,1} = zeros(Float64, 4), 
         MaxOrder::Int64=2, NumIntSteps::Int64 = 10, rad::Int64=0, FringeQuadEntrance::Int64 = 0, 
@@ -419,6 +601,105 @@ function KSEXT_SC(;name::String = "Sext", len = 0.0, k0 = 0.0, k1 = 0.0, k2 = 0.
     return KSEXT_SC(name, len, k0, k1, k2, k3,
         PolynomA, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
         T1, T2, R1, R2, RApertures, EApertures, KickAngle, a, b, Nl, Nm, Nsteps, "KSEXT_SC")
+end
+
+"""
+    KSEXT_SC2P5D(;name::String = "Sext", len::Float64 = 0.0, k2::Float64 = 0.0,
+        NumIntSteps::Int64 = 10, xsize::Int64 = 64, ysize::Int64 = 64,
+        zsize::Int64 = 32, pipe_radius::Float64 = 1.0, xy_ratio::Float64 = 1.0,
+        long_avg_n::Int64 = 3, Nsteps::Int64 = 1, ...)
+
+A canonical sextupole with JuTrack-native 2.5-D space charge.
+"""
+mutable struct KSEXT_SC2P5D{T} <: AbstractElement{T}
+    name::String
+    len::T
+    k0::T
+    k1::T
+    k2::T
+    k3::T
+    PolynomA::Array{T,1}
+    MaxOrder::Int64
+    NumIntSteps::Int64
+    rad::Int64
+    FringeQuadEntrance::Int64
+    FringeQuadExit::Int64
+    T1::Array{T,1}
+    T2::Array{T,1}
+    R1::Array{T,2}
+    R2::Array{T,2}
+    RApertures::Array{Float64,1}
+    EApertures::Array{Float64,1}
+    KickAngle::Array{T,1}
+    xsize::Int64
+    ysize::Int64
+    zsize::Int64
+    pipe_radius::T
+    xy_ratio::T
+    long_avg_n::Int64
+    Nsteps::Int64
+    rho_grid::Matrix{Float64}
+    phi_grid::Matrix{Float64}
+    z_grid::Vector{Float64}
+    z_deriv_grid::Vector{Float64}
+    green_fft::Matrix{ComplexF64}
+    green_dx::Float64
+    green_dy::Float64
+    eletype::String
+
+    KSEXT_SC2P5D(name::String, len::T, k0::T, k1::T, k2::T, k3::T, PolynomA::Array{T,1},
+        MaxOrder::Int64, NumIntSteps::Int64, rad::Int64, FringeQuadEntrance::Int64,
+        FringeQuadExit::Int64, T1::Array{T,1}, T2::Array{T,1}, R1::Array{T,2},
+        R2::Array{T,2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1},
+        KickAngle::Array{T,1}, xsize::Int64, ysize::Int64, zsize::Int64, pipe_radius::T,
+        xy_ratio::T, long_avg_n::Int64, Nsteps::Int64, rho_grid::Matrix{Float64},
+        phi_grid::Matrix{Float64}, z_grid::Vector{Float64}, z_deriv_grid::Vector{Float64},
+        green_fft::Matrix{ComplexF64}, green_dx::Float64, green_dy::Float64,
+        eletype::String) where {T} =
+        new{T}(name, len, k0, k1, k2, k3, PolynomA, MaxOrder, NumIntSteps, rad,
+            FringeQuadEntrance, FringeQuadExit, T1, T2, R1, R2, RApertures, EApertures,
+            KickAngle, xsize, ysize, zsize, pipe_radius, xy_ratio, long_avg_n, Nsteps,
+            rho_grid, phi_grid, z_grid, z_deriv_grid, green_fft, green_dx, green_dy, eletype)
+end
+
+function KSEXT_SC2P5D(;name::String = "Sext", len = 0.0, k0 = 0.0, k1 = 0.0,
+    k2 = 0.0, k3 = 0.0, PolynomA = zeros(4), MaxOrder::Int64 = 2,
+    NumIntSteps::Int64 = 10, rad::Int64 = 0, FringeQuadEntrance::Int64 = 0,
+    FringeQuadExit::Int64 = 0, T1 = zeros(6), T2 = zeros(6), R1 = zeros(6, 6),
+    R2 = zeros(6, 6), RApertures = zeros(6), EApertures = zeros(6),
+    KickAngle = zeros(2), xsize::Int64 = 64, ysize::Int64 = 64, zsize::Int64 = 32,
+    pipe_radius = 1.0, xy_ratio = 1.0, long_avg_n::Int64 = 3, Nsteps::Int64 = 1)
+    if xsize < 3 || ysize < 3
+        error("KSEXT_SC2P5D requires xsize >= 3 and ysize >= 3.")
+    end
+    if zsize < 1
+        error("KSEXT_SC2P5D requires zsize >= 1.")
+    end
+    if long_avg_n < 1
+        error("KSEXT_SC2P5D requires long_avg_n >= 1.")
+    end
+    rho_grid = zeros(Float64, xsize, ysize)
+    phi_grid = zeros(Float64, xsize, ysize)
+    z_grid = zeros(Float64, zsize)
+    z_deriv_grid = zeros(Float64, zsize)
+    green_fft = zeros(ComplexF64, 2 * xsize, 2 * ysize)
+    if len isa DTPSAD || PolynomA[1] isa DTPSAD || k0 isa DTPSAD || k1 isa DTPSAD ||
+       k2 isa DTPSAD || k3 isa DTPSAD || T1[1] isa DTPSAD || T2[1] isa DTPSAD ||
+       R1[1,1] isa DTPSAD || R2[1,1] isa DTPSAD || KickAngle[1] isa DTPSAD ||
+       pipe_radius isa DTPSAD || xy_ratio isa DTPSAD
+        return KSEXT_SC2P5D(name, DTPSAD(len), DTPSAD(k0), DTPSAD(k1), DTPSAD(k2),
+            DTPSAD(k3), DTPSAD.(PolynomA), MaxOrder, NumIntSteps, rad,
+            FringeQuadEntrance, FringeQuadExit, DTPSAD.(T1), DTPSAD.(T2),
+            DTPSAD.(R1), DTPSAD.(R2), RApertures, EApertures, DTPSAD.(KickAngle),
+            xsize, ysize, zsize, DTPSAD(pipe_radius), DTPSAD(xy_ratio), long_avg_n,
+            Nsteps, rho_grid, phi_grid, z_grid, z_deriv_grid, green_fft, 0.0, 0.0,
+            "KSEXT_SC2P5D")
+    end
+    return KSEXT_SC2P5D(name, len, k0, k1, k2, k3, PolynomA, MaxOrder, NumIntSteps,
+        rad, FringeQuadEntrance, FringeQuadExit, T1, T2, R1, R2, RApertures,
+        EApertures, KickAngle, xsize, ysize, zsize, pipe_radius, xy_ratio,
+        long_avg_n, Nsteps, rho_grid, phi_grid, z_grid, z_deriv_grid, green_fft,
+        0.0, 0.0, "KSEXT_SC2P5D")
 end
 """
     KOCT(;name::String = "OCT", len::Float64 = 0.0, k0::Float64 = 0.0, k1::Float64 = 0.0, k2::Float64 = 0.0, k3::Float64 = 0.0, 
@@ -561,6 +842,105 @@ function KOCT_SC(;name::String = "OCT", len = 0.0, k0 = 0.0, k1 = 0.0, k2 = 0.0,
     return KOCT_SC(name, len, k0, k1, k2, k3, 
         PolynomA, MaxOrder, NumIntSteps, rad, FringeQuadEntrance, FringeQuadExit,
         T1, T2, R1, R2, RApertures, EApertures, KickAngle, a, b, Nl, Nm, Nsteps, "KOCT_SC")
+end
+
+"""
+    KOCT_SC2P5D(;name::String = "OCT", len::Float64 = 0.0, k3::Float64 = 0.0,
+        NumIntSteps::Int64 = 10, xsize::Int64 = 64, ysize::Int64 = 64,
+        zsize::Int64 = 32, pipe_radius::Float64 = 1.0, xy_ratio::Float64 = 1.0,
+        long_avg_n::Int64 = 3, Nsteps::Int64 = 1, ...)
+
+A canonical octupole with JuTrack-native 2.5-D space charge.
+"""
+mutable struct KOCT_SC2P5D{T} <: AbstractElement{T}
+    name::String
+    len::T
+    k0::T
+    k1::T
+    k2::T
+    k3::T
+    PolynomA::Array{T,1}
+    MaxOrder::Int64
+    NumIntSteps::Int64
+    rad::Int64
+    FringeQuadEntrance::Int64
+    FringeQuadExit::Int64
+    T1::Array{T,1}
+    T2::Array{T,1}
+    R1::Array{T,2}
+    R2::Array{T,2}
+    RApertures::Array{Float64,1}
+    EApertures::Array{Float64,1}
+    KickAngle::Array{T,1}
+    xsize::Int64
+    ysize::Int64
+    zsize::Int64
+    pipe_radius::T
+    xy_ratio::T
+    long_avg_n::Int64
+    Nsteps::Int64
+    rho_grid::Matrix{Float64}
+    phi_grid::Matrix{Float64}
+    z_grid::Vector{Float64}
+    z_deriv_grid::Vector{Float64}
+    green_fft::Matrix{ComplexF64}
+    green_dx::Float64
+    green_dy::Float64
+    eletype::String
+
+    KOCT_SC2P5D(name::String, len::T, k0::T, k1::T, k2::T, k3::T, PolynomA::Array{T,1},
+        MaxOrder::Int64, NumIntSteps::Int64, rad::Int64, FringeQuadEntrance::Int64,
+        FringeQuadExit::Int64, T1::Array{T,1}, T2::Array{T,1}, R1::Array{T,2},
+        R2::Array{T,2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1},
+        KickAngle::Array{T,1}, xsize::Int64, ysize::Int64, zsize::Int64, pipe_radius::T,
+        xy_ratio::T, long_avg_n::Int64, Nsteps::Int64, rho_grid::Matrix{Float64},
+        phi_grid::Matrix{Float64}, z_grid::Vector{Float64}, z_deriv_grid::Vector{Float64},
+        green_fft::Matrix{ComplexF64}, green_dx::Float64, green_dy::Float64,
+        eletype::String) where {T} =
+        new{T}(name, len, k0, k1, k2, k3, PolynomA, MaxOrder, NumIntSteps, rad,
+            FringeQuadEntrance, FringeQuadExit, T1, T2, R1, R2, RApertures, EApertures,
+            KickAngle, xsize, ysize, zsize, pipe_radius, xy_ratio, long_avg_n, Nsteps,
+            rho_grid, phi_grid, z_grid, z_deriv_grid, green_fft, green_dx, green_dy, eletype)
+end
+
+function KOCT_SC2P5D(;name::String = "OCT", len = 0.0, k0 = 0.0, k1 = 0.0,
+    k2 = 0.0, k3 = 0.0, PolynomA = zeros(4), MaxOrder::Int64 = 3,
+    NumIntSteps::Int64 = 10, rad::Int64 = 0, FringeQuadEntrance::Int64 = 0,
+    FringeQuadExit::Int64 = 0, T1 = zeros(6), T2 = zeros(6), R1 = zeros(6, 6),
+    R2 = zeros(6, 6), RApertures = zeros(6), EApertures = zeros(6),
+    KickAngle = zeros(2), xsize::Int64 = 64, ysize::Int64 = 64, zsize::Int64 = 32,
+    pipe_radius = 1.0, xy_ratio = 1.0, long_avg_n::Int64 = 3, Nsteps::Int64 = 1)
+    if xsize < 3 || ysize < 3
+        error("KOCT_SC2P5D requires xsize >= 3 and ysize >= 3.")
+    end
+    if zsize < 1
+        error("KOCT_SC2P5D requires zsize >= 1.")
+    end
+    if long_avg_n < 1
+        error("KOCT_SC2P5D requires long_avg_n >= 1.")
+    end
+    rho_grid = zeros(Float64, xsize, ysize)
+    phi_grid = zeros(Float64, xsize, ysize)
+    z_grid = zeros(Float64, zsize)
+    z_deriv_grid = zeros(Float64, zsize)
+    green_fft = zeros(ComplexF64, 2 * xsize, 2 * ysize)
+    if len isa DTPSAD || PolynomA[1] isa DTPSAD || k0 isa DTPSAD || k1 isa DTPSAD ||
+       k2 isa DTPSAD || k3 isa DTPSAD || T1[1] isa DTPSAD || T2[1] isa DTPSAD ||
+       R1[1,1] isa DTPSAD || R2[1,1] isa DTPSAD || KickAngle[1] isa DTPSAD ||
+       pipe_radius isa DTPSAD || xy_ratio isa DTPSAD
+        return KOCT_SC2P5D(name, DTPSAD(len), DTPSAD(k0), DTPSAD(k1), DTPSAD(k2),
+            DTPSAD(k3), DTPSAD.(PolynomA), MaxOrder, NumIntSteps, rad,
+            FringeQuadEntrance, FringeQuadExit, DTPSAD.(T1), DTPSAD.(T2),
+            DTPSAD.(R1), DTPSAD.(R2), RApertures, EApertures, DTPSAD.(KickAngle),
+            xsize, ysize, zsize, DTPSAD(pipe_radius), DTPSAD(xy_ratio), long_avg_n,
+            Nsteps, rho_grid, phi_grid, z_grid, z_deriv_grid, green_fft, 0.0, 0.0,
+            "KOCT_SC2P5D")
+    end
+    return KOCT_SC2P5D(name, len, k0, k1, k2, k3, PolynomA, MaxOrder, NumIntSteps,
+        rad, FringeQuadEntrance, FringeQuadExit, T1, T2, R1, R2, RApertures,
+        EApertures, KickAngle, xsize, ysize, zsize, pipe_radius, xy_ratio,
+        long_avg_n, Nsteps, rho_grid, phi_grid, z_grid, z_deriv_grid, green_fft,
+        0.0, 0.0, "KOCT_SC2P5D")
 end
 
 """
@@ -831,6 +1211,130 @@ function SBEND_SC(;name::String = "SBend", len = 0.0, angle = 0.0, e1 = 0.0, e2 
 end
 
 """
+    SBEND_SC2P5D(;name::String = "SBend", len::Float64 = 0.0, angle::Float64 = 0.0,
+        NumIntSteps::Int64 = 10, xsize::Int64 = 64, ysize::Int64 = 64,
+        zsize::Int64 = 32, pipe_radius::Float64 = 1.0, xy_ratio::Float64 = 1.0,
+        long_avg_n::Int64 = 3, Nsteps::Int64 = 1, ...)
+
+A sector bending magnet with JuTrack-native 2.5-D space charge.
+"""
+mutable struct SBEND_SC2P5D{T} <: AbstractElement{T}
+    name::String
+    len::T
+    angle::T
+    e1::T
+    e2::T
+    PolynomA::Array{T,1}
+    PolynomB::Array{T,1}
+    MaxOrder::Int64
+    NumIntSteps::Int64
+    rad::Int64
+    fint1::T
+    fint2::T
+    gap::T
+    FringeBendEntrance::Int64
+    FringeBendExit::Int64
+    FringeQuadEntrance::Int64
+    FringeQuadExit::Int64
+    FringeIntM0::Array{T,1}
+    FringeIntP0::Array{T,1}
+    T1::Array{T,1}
+    T2::Array{T,1}
+    R1::Array{T,2}
+    R2::Array{T,2}
+    RApertures::Array{Float64,1}
+    EApertures::Array{Float64,1}
+    KickAngle::Array{T,1}
+    xsize::Int64
+    ysize::Int64
+    zsize::Int64
+    pipe_radius::T
+    xy_ratio::T
+    long_avg_n::Int64
+    Nsteps::Int64
+    rho_grid::Matrix{Float64}
+    phi_grid::Matrix{Float64}
+    z_grid::Vector{Float64}
+    z_deriv_grid::Vector{Float64}
+    green_fft::Matrix{ComplexF64}
+    green_dx::Float64
+    green_dy::Float64
+    eletype::String
+
+    SBEND_SC2P5D(name::String, len::T, angle::T, e1::T, e2::T, PolynomA::Array{T,1},
+        PolynomB::Array{T,1}, MaxOrder::Int64, NumIntSteps::Int64, rad::Int64, fint1::T,
+        fint2::T, gap::T, FringeBendEntrance::Int64, FringeBendExit::Int64,
+        FringeQuadEntrance::Int64, FringeQuadExit::Int64, FringeIntM0::Array{T,1},
+        FringeIntP0::Array{T,1}, T1::Array{T,1}, T2::Array{T,1}, R1::Array{T,2},
+        R2::Array{T,2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1},
+        KickAngle::Array{T,1}, xsize::Int64, ysize::Int64, zsize::Int64, pipe_radius::T,
+        xy_ratio::T, long_avg_n::Int64, Nsteps::Int64, rho_grid::Matrix{Float64},
+        phi_grid::Matrix{Float64}, z_grid::Vector{Float64}, z_deriv_grid::Vector{Float64},
+        green_fft::Matrix{ComplexF64}, green_dx::Float64, green_dy::Float64,
+        eletype::String) where {T} =
+        new{T}(name, len, angle, e1, e2, PolynomA, PolynomB, MaxOrder, NumIntSteps, rad,
+            fint1, fint2, gap, FringeBendEntrance, FringeBendExit, FringeQuadEntrance,
+            FringeQuadExit, FringeIntM0, FringeIntP0, T1, T2, R1, R2, RApertures,
+            EApertures, KickAngle, xsize, ysize, zsize, pipe_radius, xy_ratio,
+            long_avg_n, Nsteps, rho_grid, phi_grid, z_grid, z_deriv_grid, green_fft,
+            green_dx, green_dy, eletype)
+end
+
+function SBEND_SC2P5D(;name::String = "SBend", len = 0.0, angle = 0.0, e1 = 0.0, e2 = 0.0,
+    PolynomA = zeros(4), PolynomB = zeros(4), MaxOrder::Int64 = 0, NumIntSteps::Int64 = 10,
+    rad::Int64 = 0, fint1 = 0.0, fint2 = 0.0, gap = 0.0, FringeBendEntrance::Int64 = 1,
+    FringeBendExit::Int64 = 1, FringeQuadEntrance::Int64 = 0, FringeQuadExit::Int64 = 0,
+    FringeIntM0 = zeros(5), FringeIntP0 = zeros(5), T1 = zeros(6), T2 = zeros(6),
+    R1 = zeros(6, 6), R2 = zeros(6, 6), RApertures = zeros(6), EApertures = zeros(6),
+    KickAngle = zeros(2), xsize::Int64 = 64, ysize::Int64 = 64, zsize::Int64 = 32,
+    pipe_radius = 1.0, xy_ratio = 1.0, long_avg_n::Int64 = 3, Nsteps::Int64 = 1)
+    if PolynomB[2] != 0.0
+        MaxOrder = 1
+    end
+    if PolynomB[3] != 0.0
+        MaxOrder = 2
+    end
+    if PolynomB[4] != 0.0
+        MaxOrder = 3
+    end
+    if xsize < 3 || ysize < 3
+        error("SBEND_SC2P5D requires xsize >= 3 and ysize >= 3.")
+    end
+    if zsize < 1
+        error("SBEND_SC2P5D requires zsize >= 1.")
+    end
+    if long_avg_n < 1
+        error("SBEND_SC2P5D requires long_avg_n >= 1.")
+    end
+    rho_grid = zeros(Float64, xsize, ysize)
+    phi_grid = zeros(Float64, xsize, ysize)
+    z_grid = zeros(Float64, zsize)
+    z_deriv_grid = zeros(Float64, zsize)
+    green_fft = zeros(ComplexF64, 2 * xsize, 2 * ysize)
+    if len isa DTPSAD || angle isa DTPSAD || e1 isa DTPSAD || e2 isa DTPSAD ||
+       PolynomA[1] isa DTPSAD || PolynomB[1] isa DTPSAD || fint1 isa DTPSAD ||
+       fint2 isa DTPSAD || gap isa DTPSAD || FringeIntM0[1] isa DTPSAD ||
+       FringeIntP0[1] isa DTPSAD || T1[1] isa DTPSAD || T2[1] isa DTPSAD ||
+       R1[1,1] isa DTPSAD || R2[1,1] isa DTPSAD || KickAngle[1] isa DTPSAD ||
+       pipe_radius isa DTPSAD || xy_ratio isa DTPSAD
+        return SBEND_SC2P5D(name, DTPSAD(len), DTPSAD(angle), DTPSAD(e1), DTPSAD(e2),
+            DTPSAD.(PolynomA), DTPSAD.(PolynomB), MaxOrder, NumIntSteps, rad,
+            DTPSAD(fint1), DTPSAD(fint2), DTPSAD(gap), FringeBendEntrance,
+            FringeBendExit, FringeQuadEntrance, FringeQuadExit, DTPSAD.(FringeIntM0),
+            DTPSAD.(FringeIntP0), DTPSAD.(T1), DTPSAD.(T2), DTPSAD.(R1), DTPSAD.(R2),
+            RApertures, EApertures, DTPSAD.(KickAngle), xsize, ysize, zsize,
+            DTPSAD(pipe_radius), DTPSAD(xy_ratio), long_avg_n, Nsteps, rho_grid,
+            phi_grid, z_grid, z_deriv_grid, green_fft, 0.0, 0.0, "SBEND_SC2P5D")
+    end
+    return SBEND_SC2P5D(name, len, angle, e1, e2, PolynomA, PolynomB, MaxOrder,
+        NumIntSteps, rad, fint1, fint2, gap, FringeBendEntrance, FringeBendExit,
+        FringeQuadEntrance, FringeQuadExit, FringeIntM0, FringeIntP0, T1, T2, R1, R2,
+        RApertures, EApertures, KickAngle, xsize, ysize, zsize, pipe_radius, xy_ratio,
+        long_avg_n, Nsteps, rho_grid, phi_grid, z_grid, z_deriv_grid, green_fft, 0.0,
+        0.0, "SBEND_SC2P5D")
+end
+
+"""
     RBEND(;name::String = "RBend", len::Float64 = 0.0, angle::Float64 = 0.0, PolynomA::Array{Float64,1} = zeros(Float64, 4), 
         PolynomB::Array{Float64,1} = zeros(Float64, 4), MaxOrder::Int64=0, NumIntSteps::Int64 = 10, rad::Int64=0, 
         fint1::Float64 = 0.0, fint2::Float64 = 0.0, gap::Float64 = 0.0, FringeBendEntrance::Int64 = 1, 
@@ -896,6 +1400,39 @@ function RBEND_SC(;name::String = "RBend", len::Float64 = 0.0, angle::Float64 = 
                 FringeBendExit=FringeBendExit, FringeQuadEntrance=FringeQuadEntrance, FringeQuadExit=FringeQuadExit, 
                 FringeIntM0=FringeIntM0, FringeIntP0=FringeIntP0, T1=T1, T2=T2, R1=R1, R2=R2, RApertures=RApertures, 
                 EApertures=EApertures, KickAngle=KickAngle, a=a, b=b, Nl=Nl, Nm=Nm, Nsteps=Nsteps)
+end
+
+function RBEND_SC2P5D(;name::String = "RBend", len::Float64 = 0.0, angle::Float64 = 0.0,
+    PolynomA::Array{Float64,1} = zeros(4), PolynomB::Array{Float64,1} = zeros(4),
+    MaxOrder::Int64 = 0, NumIntSteps::Int64 = 10, rad::Int64 = 0, fint1::Float64 = 0.0,
+    fint2::Float64 = 0.0, gap::Float64 = 0.0, FringeBendEntrance::Int64 = 1,
+    FringeBendExit::Int64 = 1, FringeQuadEntrance::Int64 = 0, FringeQuadExit::Int64 = 0,
+    FringeIntM0::Array{Float64,1} = zeros(5), FringeIntP0::Array{Float64,1} = zeros(5),
+    T1::Array{Float64,1} = zeros(6), T2::Array{Float64,1} = zeros(6),
+    R1::Array{Float64,2} = zeros(6,6), R2::Array{Float64,2} = zeros(6,6),
+    RApertures::Array{Float64,1} = zeros(6), EApertures::Array{Float64,1} = zeros(6),
+    KickAngle::Array{Float64,1} = zeros(2), xsize::Int64 = 64, ysize::Int64 = 64,
+    zsize::Int64 = 32, pipe_radius::Float64 = 1.0, xy_ratio::Float64 = 1.0,
+    long_avg_n::Int64 = 3, Nsteps::Int64 = 1)
+    e1 = angle / 2.0
+    e2 = angle / 2.0
+    if PolynomB[2] != 0.0
+        MaxOrder = 1
+    end
+    if PolynomB[3] != 0.0
+        MaxOrder = 2
+    end
+    if PolynomB[4] != 0.0
+        MaxOrder = 3
+    end
+    return SBEND_SC2P5D(name=name, len=len, angle=angle, e1=e1, e2=e2, PolynomA=PolynomA,
+        PolynomB=PolynomB, MaxOrder=MaxOrder, NumIntSteps=NumIntSteps, rad=rad,
+        fint1=fint1, fint2=fint2, gap=gap, FringeBendEntrance=FringeBendEntrance,
+        FringeBendExit=FringeBendExit, FringeQuadEntrance=FringeQuadEntrance,
+        FringeQuadExit=FringeQuadExit, FringeIntM0=FringeIntM0, FringeIntP0=FringeIntP0,
+        T1=T1, T2=T2, R1=R1, R2=R2, RApertures=RApertures, EApertures=EApertures,
+        KickAngle=KickAngle, xsize=xsize, ysize=ysize, zsize=zsize,
+        pipe_radius=pipe_radius, xy_ratio=xy_ratio, long_avg_n=long_avg_n, Nsteps=Nsteps)
 end
 
 """
@@ -1378,6 +1915,85 @@ function QUAD_SC(;name::String = "Quad", len = 0.0, k1 = 0.0, rad::Int64 = 0,
     end
     return QUAD_SC(name, len, k1, rad, T1, T2, R1, R2, RApertures, EApertures, a, b,
                     Nl, Nm, Nsteps, "QUAD_SC")
+end
+
+"""
+    QUAD_SC2P5D(;name::String = "Quad", len::Float64 = 0.0, k1::Float64 = 0.0,
+        xsize::Int64 = 64, ysize::Int64 = 64, zsize::Int64 = 32,
+        pipe_radius::Float64 = 1.0, xy_ratio::Float64 = 1.0,
+        long_avg_n::Int64 = 3, Nsteps::Int64 = 1, ...)
+
+A linear quadrupole element with JuTrack-native 2.5-D space charge.
+"""
+mutable struct QUAD_SC2P5D{T} <: AbstractElement{T}
+    name::String
+    len::T
+    k1::T
+    rad::Int64
+    T1::Array{T,1}
+    T2::Array{T,1}
+    R1::Array{T,2}
+    R2::Array{T,2}
+    RApertures::Array{Float64,1}
+    EApertures::Array{Float64,1}
+    xsize::Int64
+    ysize::Int64
+    zsize::Int64
+    pipe_radius::T
+    xy_ratio::T
+    long_avg_n::Int64
+    Nsteps::Int64
+    rho_grid::Matrix{Float64}
+    phi_grid::Matrix{Float64}
+    z_grid::Vector{Float64}
+    z_deriv_grid::Vector{Float64}
+    green_fft::Matrix{ComplexF64}
+    green_dx::Float64
+    green_dy::Float64
+    eletype::String
+
+    QUAD_SC2P5D(name::String, len::T, k1::T, rad::Int64, T1::Array{T,1}, T2::Array{T,1},
+        R1::Array{T,2}, R2::Array{T,2}, RApertures::Array{Float64,1},
+        EApertures::Array{Float64,1}, xsize::Int64, ysize::Int64, zsize::Int64,
+        pipe_radius::T, xy_ratio::T, long_avg_n::Int64, Nsteps::Int64,
+        rho_grid::Matrix{Float64}, phi_grid::Matrix{Float64}, z_grid::Vector{Float64},
+        z_deriv_grid::Vector{Float64}, green_fft::Matrix{ComplexF64},
+        green_dx::Float64, green_dy::Float64, eletype::String) where {T} =
+        new{T}(name, len, k1, rad, T1, T2, R1, R2, RApertures, EApertures, xsize, ysize,
+            zsize, pipe_radius, xy_ratio, long_avg_n, Nsteps, rho_grid, phi_grid,
+            z_grid, z_deriv_grid, green_fft, green_dx, green_dy, eletype)
+end
+
+function QUAD_SC2P5D(;name::String = "Quad", len = 0.0, k1 = 0.0, rad::Int64 = 0,
+    T1 = zeros(6), T2 = zeros(6), R1 = zeros(6,6), R2 = zeros(6,6),
+    RApertures = zeros(6), EApertures = zeros(6), xsize::Int64 = 64, ysize::Int64 = 64,
+    zsize::Int64 = 32, pipe_radius = 1.0, xy_ratio = 1.0, long_avg_n::Int64 = 3,
+    Nsteps::Int64 = 1)
+    if xsize < 3 || ysize < 3
+        error("QUAD_SC2P5D requires xsize >= 3 and ysize >= 3.")
+    end
+    if zsize < 1
+        error("QUAD_SC2P5D requires zsize >= 1.")
+    end
+    if long_avg_n < 1
+        error("QUAD_SC2P5D requires long_avg_n >= 1.")
+    end
+    rho_grid = zeros(Float64, xsize, ysize)
+    phi_grid = zeros(Float64, xsize, ysize)
+    z_grid = zeros(Float64, zsize)
+    z_deriv_grid = zeros(Float64, zsize)
+    green_fft = zeros(ComplexF64, 2 * xsize, 2 * ysize)
+    if len isa DTPSAD || k1 isa DTPSAD || T1[1] isa DTPSAD || T2[1] isa DTPSAD ||
+       R1[1,1] isa DTPSAD || R2[1,1] isa DTPSAD || pipe_radius isa DTPSAD ||
+       xy_ratio isa DTPSAD
+        return QUAD_SC2P5D(name, DTPSAD(len), DTPSAD(k1), rad, DTPSAD.(T1), DTPSAD.(T2),
+            DTPSAD.(R1), DTPSAD.(R2), RApertures, EApertures, xsize, ysize, zsize,
+            DTPSAD(pipe_radius), DTPSAD(xy_ratio), long_avg_n, Nsteps, rho_grid,
+            phi_grid, z_grid, z_deriv_grid, green_fft, 0.0, 0.0, "QUAD_SC2P5D")
+    end
+    return QUAD_SC2P5D(name, len, k1, rad, T1, T2, R1, R2, RApertures, EApertures,
+        xsize, ysize, zsize, pipe_radius, xy_ratio, long_avg_n, Nsteps, rho_grid,
+        phi_grid, z_grid, z_deriv_grid, green_fft, 0.0, 0.0, "QUAD_SC2P5D")
 end
 
 

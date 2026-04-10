@@ -903,35 +903,70 @@ def SPACECHARGE2P5D(name: str = "SPACECHARGE2P5D", length: float = 0.0,
     kwargs = _convert_kwargs_to_julia(kwargs)
     return _jl.SPACECHARGE2P5D(name=name, **kwargs)
 
+def QUAD_SC2P5D(name: str, length: float, k1: float, **kwargs):
+    """Create a linear quadrupole with JuTrack-native 2.5-D space charge"""
+    kwargs = _convert_kwargs_to_julia(kwargs)
+    return _jl.QUAD_SC2P5D(name=name, len=length, k1=k1, **kwargs)
+
 def QUAD_SC(name: str, length: float, k1: float, **kwargs):
     """Create a quadrupole with space charge"""
     kwargs = _convert_kwargs_to_julia(kwargs)
     return _jl.QUAD_SC(name=name, len=length, k1=k1, **kwargs)
+
+def DRIFT_SC2P5D(name: str, length: float, **kwargs):
+    """Create a drift with JuTrack-native 2.5-D space charge"""
+    kwargs = _convert_kwargs_to_julia(kwargs)
+    return _jl.DRIFT_SC2P5D(name=name, len=length, **kwargs)
 
 def DRIFT_SC(name: str, length: float, **kwargs):
     """Create a drift with space charge"""
     kwargs = _convert_kwargs_to_julia(kwargs)
     return _jl.DRIFT_SC(name=name, len=length, **kwargs)
 
+def KQUAD_SC2P5D(name: str, length: float, k1: float, **kwargs):
+    """Create a KQUAD with JuTrack-native 2.5-D space charge"""
+    kwargs = _convert_kwargs_to_julia(kwargs)
+    return _jl.KQUAD_SC2P5D(name=name, len=length, k1=k1, **kwargs)
+
 def KQUAD_SC(name: str, length: float, k1: float, **kwargs):
     """Create a KQUAD with space charge"""
     kwargs = _convert_kwargs_to_julia(kwargs)
     return _jl.KQUAD_SC(name=name, len=length, k1=k1, **kwargs)
+
+def KSEXT_SC2P5D(name: str, length: float, k2: float, **kwargs):
+    """Create a sextupole with JuTrack-native 2.5-D space charge"""
+    kwargs = _convert_kwargs_to_julia(kwargs)
+    return _jl.KSEXT_SC2P5D(name=name, len=length, k2=k2, **kwargs)
 
 def KSEXT_SC(name: str, length: float, k2: float, **kwargs):
     """Create a sextupole with space charge"""
     kwargs = _convert_kwargs_to_julia(kwargs)
     return _jl.KSEXT_SC(name=name, len=length, k2=k2, **kwargs)
 
+def KOCT_SC2P5D(name: str, length: float, k3: float, **kwargs):
+    """Create an octupole with JuTrack-native 2.5-D space charge"""
+    kwargs = _convert_kwargs_to_julia(kwargs)
+    return _jl.KOCT_SC2P5D(name=name, len=length, k3=k3, **kwargs)
+
 def KOCT_SC(name: str, length: float, k3: float, **kwargs):
     """Create an octupole with space charge"""
     kwargs = _convert_kwargs_to_julia(kwargs)
     return _jl.KOCT_SC(name=name, len=length, k3=k3, **kwargs)
 
+def SBEND_SC2P5D(name: str, length: float, angle: float, **kwargs):
+    """Create a sector bend with JuTrack-native 2.5-D space charge"""
+    kwargs = _convert_kwargs_to_julia(kwargs)
+    return _jl.SBEND_SC2P5D(name=name, len=length, angle=angle, **kwargs)
+
 def SBEND_SC(name: str, length: float, angle: float, **kwargs):
     """Create a sector bend with space charge"""
     kwargs = _convert_kwargs_to_julia(kwargs)
     return _jl.SBEND_SC(name=name, len=length, angle=angle, **kwargs)
+
+def RBEND_SC2P5D(name: str, length: float, angle: float, **kwargs):
+    """Create a rectangular bend with JuTrack-native 2.5-D space charge"""
+    kwargs = _convert_kwargs_to_julia(kwargs)
+    return _jl.RBEND_SC2P5D(name=name, len=length, angle=angle, **kwargs)
 
 def RBEND_SC(name: str, length: float, angle: float, **kwargs):
     """Create a rectangular bend with space charge"""
@@ -1035,6 +1070,20 @@ class ElementTypes:
     thinMULTIPOLE = _jl.thinMULTIPOLE
     SPACECHARGE = _jl.SPACECHARGE
     SPACECHARGE2P5D = _jl.SPACECHARGE2P5D
+    QUAD_SC = _jl.QUAD_SC
+    QUAD_SC2P5D = _jl.QUAD_SC2P5D
+    DRIFT_SC = _jl.DRIFT_SC
+    DRIFT_SC2P5D = _jl.DRIFT_SC2P5D
+    KQUAD_SC = _jl.KQUAD_SC
+    KQUAD_SC2P5D = _jl.KQUAD_SC2P5D
+    KSEXT_SC = _jl.KSEXT_SC
+    KSEXT_SC2P5D = _jl.KSEXT_SC2P5D
+    KOCT_SC = _jl.KOCT_SC
+    KOCT_SC2P5D = _jl.KOCT_SC2P5D
+    SBEND_SC = _jl.SBEND_SC
+    SBEND_SC2P5D = _jl.SBEND_SC2P5D
+    RBEND_SC = _jl.RBEND_SC
+    RBEND_SC2P5D = _jl.RBEND_SC2P5D
 
 element_types = ElementTypes()
 
@@ -3131,8 +3180,10 @@ __all__ = [
     
     # Space charge
     'SPACECHARGE', 'SPACECHARGE2P5D', 'insert_space_charge_2p5d',
-    'QUAD_SC', 'DRIFT_SC', 'KQUAD_SC', 'KSEXT_SC',
-    'KOCT_SC', 'SBEND_SC', 'RBEND_SC',
+    'QUAD_SC', 'QUAD_SC2P5D', 'DRIFT_SC', 'DRIFT_SC2P5D',
+    'KQUAD_SC', 'KQUAD_SC2P5D', 'KSEXT_SC', 'KSEXT_SC2P5D',
+    'KOCT_SC', 'KOCT_SC2P5D', 'SBEND_SC', 'SBEND_SC2P5D',
+    'RBEND_SC', 'RBEND_SC2P5D',
     
     # Transformations
     'TRANSLATION', 'YROTATION',

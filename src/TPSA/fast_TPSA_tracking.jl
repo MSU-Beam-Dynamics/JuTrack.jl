@@ -539,18 +539,27 @@ function ExactSectorBend_rad!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, rad_con
 end
 
 function multmv!(r::SubArray, A::Matrix{DTPSAD{N, T}}) where {N, T <: Number}
-    temp = zeros(DTPSAD{N, T}, 6)
-    for i in 1:6
-        for j in 1:6
-            temp[i] += A[i, j] * r[j]
-        end
+    @inbounds begin
+        r1 = A[1, 1] * r[1] + A[1, 2] * r[2] + A[1, 3] * r[3] + A[1, 4] * r[4] + A[1, 5] * r[5] + A[1, 6] * r[6]
+        r2 = A[2, 1] * r[1] + A[2, 2] * r[2] + A[2, 3] * r[3] + A[2, 4] * r[4] + A[2, 5] * r[5] + A[2, 6] * r[6]
+        r3 = A[3, 1] * r[1] + A[3, 2] * r[2] + A[3, 3] * r[3] + A[3, 4] * r[4] + A[3, 5] * r[5] + A[3, 6] * r[6]
+        r4 = A[4, 1] * r[1] + A[4, 2] * r[2] + A[4, 3] * r[3] + A[4, 4] * r[4] + A[4, 5] * r[5] + A[4, 6] * r[6]
+        r5 = A[5, 1] * r[1] + A[5, 2] * r[2] + A[5, 3] * r[3] + A[5, 4] * r[4] + A[5, 5] * r[5] + A[5, 6] * r[6]
+        r6 = A[6, 1] * r[1] + A[6, 2] * r[2] + A[6, 3] * r[3] + A[6, 4] * r[4] + A[6, 5] * r[5] + A[6, 6] * r[6]
+        r[1] = r1
+        r[2] = r2
+        r[3] = r3
+        r[4] = r4
+        r[5] = r5
+        r[6] = r6
     end
-    r .= temp
     return nothing
 end
 
 function addvv!(r::SubArray, dr::Array{DTPSAD{N, T},1}) where {N, T <: Number}
-    r .= r .+ dr
+    @inbounds for i in 1:6
+        r[i] += dr[i]
+    end
     return nothing
 end
 
@@ -558,7 +567,7 @@ function check_lost_GTPSA(r6)
     if isnan(r6[1]) || isinf(r6[1])
         return true
     end
-    if maximum(abs.(r6[1:4])) > CoordLimit || abs(r6[6]) > CoordLimit
+    if max(abs(r6[1]), abs(r6[2]), abs(r6[3]), abs(r6[4])) > CoordLimit || abs(r6[6]) > CoordLimit
         return true
     end
     # sqrt(1.0 + 2.0*r[6]*beti + r[6]^2 - r[2]^2 - r[4]^2) must be real
@@ -568,8 +577,8 @@ function check_lost_GTPSA(r6)
     return false
 end
 
-function drift6!(r::SubArray, le::DTPSAD{N, T}) where {N, T <: Number}
-    if isone(use_exact_Hamiltonian)
+function drift6!(r::SubArray, le::DTPSAD{N, T}, gamma2i::Float64 = 0.0) where {N, T <: Number}
+    if use_exact_Hamiltonian == 1
         # check if sqrt(1.0 + 2.0*r[6] + r[6]^2 - r[2]^2 - r[4]^2) is real
         if 1.0 + 2.0*r[6] + r[6]^2 - r[2]^2 - r[4]^2 < 0
             r .= NaN
@@ -579,7 +588,7 @@ function drift6!(r::SubArray, le::DTPSAD{N, T}) where {N, T <: Number}
         r[5] += NormL * (1.0 + r[6]) - le
     else
         NormL = le / (1.0 + r[6])
-        r[5] += NormL * (r[2]^2 + r[4]^2) / (2.0*(1.0+r[6])) # for linearized approximation
+        r[5] += le * _linearized_drift_phifac(r[2], r[4], r[6], gamma2i)
     end
     r[1] += NormL * r[2]
     r[3] += NormL * r[4]
@@ -587,6 +596,7 @@ function drift6!(r::SubArray, le::DTPSAD{N, T}) where {N, T <: Number}
 end 
 
 function pass!(ele::DRIFT{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::Int, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
+    gamma2i = use_exact_Hamiltonian == 2 ? 1.0 / particles.gamma.val^2 : 0.0
     @inbounds for c in 1:npart
         lost_flag = particles.lost_flag[c]
         if lost_flag == 1
@@ -599,7 +609,7 @@ function pass!(ele::DRIFT{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::Int, 
         if !all(iszero, ele.R1)
             multmv!(r6, ele.R1)
         end
-        drift6!(r6, ele.len)
+        drift6!(r6, ele.len, gamma2i)
         if !all(iszero, ele.R2)
             multmv!(r6, ele.R2)
         end
@@ -613,6 +623,7 @@ function pass!(ele::DRIFT{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::Int, 
 end
 
 function pass!(ele::QUAD{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::Int, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
+    gamma2i = use_exact_Hamiltonian == 2 ? 1.0 / particles.gamma.val^2 : 0.0
     @inbounds for c in 1:npart
         lost_flag = particles.lost_flag[c]
         if lost_flag == 1
@@ -629,7 +640,7 @@ function pass!(ele::QUAD{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::Int, p
         end
         
         if iszero(ele.k1)
-            drift6!(r6, ele.len)
+            drift6!(r6, ele.len, gamma2i)
         else
             x   = r6[1]
             xpr = r6[2] * p_norm
@@ -720,6 +731,7 @@ function pass!(ele::MARKER{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::Int,
 end
 
 function pass!(ele::SOLENOID{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::Int, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
+    gamma2i = use_exact_Hamiltonian == 2 ? 1.0 / particles.gamma.val^2 : 0.0
     @inbounds for c in 1:npart
         lost_flag = particles.lost_flag[c]
         if lost_flag == 1
@@ -750,7 +762,7 @@ function pass!(ele::SOLENOID{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::In
             r6[4] = (x*H*S*S - xpr*C*S - y*C*S*H + ypr*C*C) / p_norm
             r6[5] += ele.len*(H*H*(x*x+y*y) + 2.0*H*(xpr*y-ypr*x) +xpr*xpr+ypr*ypr)/2.0
         else
-            drift6!(r6, ele.len)
+            drift6!(r6, ele.len, gamma2i)
         end
         if !all(iszero, ele.R2)
             multmv!(r6, ele.R2)
@@ -892,7 +904,7 @@ function StrMPoleSymplectic4Pass!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, bet
     FringeQuadEntrance::Int, FringeQuadExit::Int, # (no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like)
     T1::Array{DTPSAD{N, T},1}, T2::Array{DTPSAD{N, T},1}, R1::Array{DTPSAD{N, T},2}, R2::Array{DTPSAD{N, T},2},
     RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{DTPSAD{N, T},1},
-    num_particles::Int, lost_flags::Array{Int64,1}) where {N, T <: Number}
+    num_particles::Int, lost_flags::Array{Int64,1}, gamma2i::Float64 = 0.0) where {N, T <: Number}
     # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
 
     DRIFT1  =  0.6756035959798286638
@@ -933,25 +945,25 @@ function StrMPoleSymplectic4Pass!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, bet
                 lost_flags[c] = 1
                 break
             end
-            drift6!(r6, L1)
+            drift6!(r6, L1, gamma2i)
             strthinkick!(r6, A, B, K1, max_order)
             if check_lost_GTPSA(r6)
                 lost_flags[c] = 1
                 break
             end
-            drift6!(r6, L2)
+            drift6!(r6, L2, gamma2i)
             strthinkick!(r6, A, B, K2, max_order)
             if check_lost_GTPSA(r6)
                 lost_flags[c] = 1
                 break
             end
-            drift6!(r6, L2)
+            drift6!(r6, L2, gamma2i)
             strthinkick!(r6, A, B, K1, max_order)
             if check_lost_GTPSA(r6)
                 lost_flags[c] = 1
                 break
             end
-            drift6!(r6, L1)
+            drift6!(r6, L1, gamma2i)
         end
 
         if FringeQuadExit != 0
@@ -981,7 +993,7 @@ function StrMPoleSymplectic4RadPass!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, 
     FringeQuadEntrance::Int, FringeQuadExit::Int, # (no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like)
     T1::Array{DTPSAD{N, T},1}, T2::Array{DTPSAD{N, T},1}, R1::Array{DTPSAD{N, T},2}, R2::Array{DTPSAD{N, T},2},
     RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{DTPSAD{N, T},1}, E0::DTPSAD{N, T},
-    num_particles::Int, lost_flags::Array{Int64,1}) where {N, T <: Number}
+    num_particles::Int, lost_flags::Array{Int64,1}, gamma2i::Float64 = 0.0) where {N, T <: Number}
     # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
 
     DRIFT1  =  0.6756035959798286638
@@ -1022,25 +1034,25 @@ function StrMPoleSymplectic4RadPass!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, 
                 lost_flags[c] = 1
                 break
             end
-            drift6!(r6, L1)
+            drift6!(r6, L1, gamma2i)
             strthinkickrad!(r6, A, B, K1, E0, max_order, rad_const)
             if check_lost_GTPSA(r6)
                 lost_flags[c] = 1
                 break
             end
-            drift6!(r6, L2)
+            drift6!(r6, L2, gamma2i)
             strthinkickrad!(r6, A, B, K2, E0, max_order, rad_const)
             if check_lost_GTPSA(r6)
                 lost_flags[c] = 1
                 break
             end
-            drift6!(r6, L2)
+            drift6!(r6, L2, gamma2i)
             strthinkickrad!(r6, A, B, K1, E0, max_order, rad_const)
             if check_lost_GTPSA(r6)
                 lost_flags[c] = 1
                 break
             end
-            drift6!(r6, L1)
+            drift6!(r6, L1, gamma2i)
         end
 
         if FringeQuadExit != 0
@@ -1071,6 +1083,7 @@ function pass!(ele::KQUAD{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_particl
     PolynomB = zeros(DTPSAD{N, T}, 4)
     E0 = particles.energy
     rad_const = DTPSAD(0.0)
+    gamma2i = use_exact_Hamiltonian == 2 ? 1.0 / particles.gamma.val^2 : 0.0
 
     PolynomB[1] = ele.k0
     PolynomB[2] = ele.k1
@@ -1079,7 +1092,7 @@ function pass!(ele::KQUAD{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_particl
     if ele.rad == 0
         StrMPoleSymplectic4Pass!(r_in, ele.len, 1.0, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
             ele.FringeQuadEntrance, ele.FringeQuadExit, 
-            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags, gamma2i)
     else
         if particles.mass == m_e
             rad_const = RAD_CONST_E * particles.gamma^3
@@ -1091,7 +1104,7 @@ function pass!(ele::KQUAD{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_particl
         end
         StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, 1.0, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
             ele.FringeQuadEntrance, ele.FringeQuadExit, 
-            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags, gamma2i)
     end
     return nothing
 end
@@ -1101,6 +1114,7 @@ function pass!(ele::KSEXT{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_particl
     lost_flags = particles.lost_flag
     PolynomB = zeros(DTPSAD{N, T}, 4)
     E0 = particles.energy
+    gamma2i = use_exact_Hamiltonian == 2 ? 1.0 / particles.gamma.val^2 : 0.0
 
     PolynomB[1] = ele.k0
     PolynomB[2] = ele.k1 
@@ -1108,7 +1122,7 @@ function pass!(ele::KSEXT{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_particl
     PolynomB[4] = ele.k3 / 6.0
     if ele.rad == 0
         StrMPoleSymplectic4Pass!(r_in, ele.len, 1.0, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags, gamma2i)
     else
         if particles.mass == m_e
             rad_const = RAD_CONST_E * particles.gamma^3
@@ -1119,7 +1133,7 @@ function pass!(ele::KSEXT{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_particl
             println("SR is not implemented for this particle mass.")
         end
         StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, 1.0, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
+            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags, gamma2i)
     end
     return nothing
 end
@@ -1130,6 +1144,7 @@ function pass!(ele::KOCT{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_particle
     lost_flags = particles.lost_flag
     PolynomB = zeros(DTPSAD{N, T}, 4)
     E0 = particles.energy
+    gamma2i = use_exact_Hamiltonian == 2 ? 1.0 / particles.gamma.val^2 : 0.0
 
     PolynomB[1] = ele.k0
     PolynomB[2] = ele.k1 
@@ -1137,7 +1152,7 @@ function pass!(ele::KOCT{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_particle
     PolynomB[4] = ele.k3 / 6.0
     if ele.rad == 0
         StrMPoleSymplectic4Pass!(r_in, ele.len, 1.0, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags, gamma2i)
     else
         if particles.mass == m_e
             rad_const = RAD_CONST_E * particles.gamma^3
@@ -1148,7 +1163,7 @@ function pass!(ele::KOCT{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_particle
             println("SR is not implemented for this particle mass.")
         end
         StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, 1.0, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
+            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags, gamma2i)
     end
     return nothing
 end
@@ -1412,6 +1427,7 @@ function pass!(ele::RFCA{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::Int64,
         println("Energy is not defined for RFCA ", ele.name)
     end
     nv = ele.volt / ele.energy
+    gamma2i = use_exact_Hamiltonian == 2 ? 1.0 / particles.gamma.val^2 : 0.0
     if ele.len == 0
         @inbounds for c in 1:npart
             if particles.lost_flag[c] == 1
@@ -1431,10 +1447,10 @@ function pass!(ele::RFCA{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::Int64,
                 continue
             end
             r6 = @view rin[c, :]
-            drift6!(r6, halflength)
+            drift6!(r6, halflength, gamma2i)
             r6[6] += -nv * sin(2 * pi * ele.freq * ((r6[5] - ele.lag) / speed_of_light - 
                 (ele.h / ele.freq - particles.T0) * 0.0) - ele.philag) / particles.beta^2
-            drift6!(r6, halflength)
+            drift6!(r6, halflength, gamma2i)
             if check_lost_GTPSA(r6)
                 particles.lost_flag[c] = 1
             end
@@ -1445,6 +1461,7 @@ end
 
 function pass!(cavity::CRABCAVITY{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     beta = particles.beta
+    gamma2i = use_exact_Hamiltonian == 2 ? 1.0 / particles.gamma.val^2 : 0.0
     @inbounds for c in 1:npart
         if isone(particles.lost_flag[c])
             continue
@@ -1458,13 +1475,13 @@ function pass!(cavity::CRABCAVITY{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npar
             r6[2] += (cavity.volt/particles.energy) * sin(ang/beta)
             r6[6] += (-cavity.k * cavity.volt/particles.energy/beta) * r6[1] * cos(ang/beta)
         else
-            drift6!(r6, cavity.len / 2.0)
+            drift6!(r6, cavity.len / 2.0, gamma2i)
             # r6[2] += (cavity.volt/beta2E) * sin(ang)
             # r6[6] += (-cavity.k * cavity.volt/beta2E) * r6[1] * cos(ang)
             # this is symplectic form
             r6[2] += (cavity.volt/particles.energy) * sin(ang/beta)
             r6[6] += (-cavity.k * cavity.volt/particles.energy/beta) * r6[1] * cos(ang/beta)
-            drift6!(r6, cavity.len / 2.0)
+            drift6!(r6, cavity.len / 2.0, gamma2i)
         end
     end
     return nothing
@@ -1472,6 +1489,7 @@ end
 
 function pass!(cavity::CRABCAVITY_K2{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     beta = particles.beta
+    gamma2i = use_exact_Hamiltonian == 2 ? 1.0 / particles.gamma.val^2 : 0.0
     @inbounds for c in 1:npart
         if isone(particles.lost_flag[c])
             continue
@@ -1489,7 +1507,7 @@ function pass!(cavity::CRABCAVITY_K2{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, n
             r6[4] += 2.0 * cavity.k2 * r6[1] * r6[3] * sin(ang)
             r6[6] -= (cavity.k2 * cavity.k / 3.0) * (r6[1]^3 - 3.0 * r6[1] * r6[3]^2) * cos(ang)
         else
-            drift6!(r6, cavity.len / 2.0)
+            drift6!(r6, cavity.len / 2.0, gamma2i)
             # r6[2] += (cavity.volt/beta2E) * sin(ang)
             # r6[6] += (-cavity.k * cavity.volt/beta2E) * r6[1] * cos(ang)            
             # this is symplectic form
@@ -1499,7 +1517,7 @@ function pass!(cavity::CRABCAVITY_K2{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, n
             r6[2] -= cavity.k2 * (r6[1]^2 - r6[3]^2) * sin(ang)
             r6[4] += 2.0 * cavity.k2 * r6[1] * r6[3] * sin(ang)
             r6[6] -= (cavity.k2 * cavity.k / 3.0) * (r6[1]^3 - 3.0 * r6[1] * r6[3]^2) * cos(ang)
-            drift6!(r6, cavity.len / 2.0)
+            drift6!(r6, cavity.len / 2.0, gamma2i)
         end
     end
     return nothing

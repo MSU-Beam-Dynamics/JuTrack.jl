@@ -22,6 +22,24 @@ function strthinkick1!(r::AbstractVector{Float64}, A, B, L, max_order)
     r[4] += L * ImSum
     return nothing
 end
+
+@inline function strthinkick1_row!(r::Matrix{Float64}, c::Int, A, B, L, max_order)
+    @inbounds begin
+        ReSum = B[max_order + 1]
+        ImSum = A[max_order + 1]
+        ReSumTemp = 0.0
+
+        for i in reverse(1:max_order)
+            ReSumTemp = ReSum * r[c, 1] - ImSum * r[c, 3] + B[i]
+            ImSum = ImSum * r[c, 1] + ReSum * r[c, 3] + A[i]
+            ReSum = ReSumTemp
+        end
+
+        r[c, 2] -= L * ReSum
+        r[c, 4] += L * ImSum
+    end
+    return nothing
+end
 function ThinMPolePass!(r::Matrix{Float64}, le::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     # bax::Float64, bay::Float64,
     max_order::Int, 
@@ -42,29 +60,28 @@ function ThinMPolePass!(r::Matrix{Float64}, le::Float64, A::Array{Float64,1}, B:
         if lost_flags[c] == 1
             continue
         end
-        r6 = @view r[c, :]
-        if !isnan(r6[1])
+        if !isnan(r[c, 1])
             # Misalignment at entrance
             if !iszero(T1)
-                addvv!(r6, T1)
+                addvv_row!(r, c, T1)
             end
             if !iszero(R1)
-                multmv!(r6, R1)
+                multmv_row!(r, c, R1)
             end
 
-            strthinkick1!(r6, A, B, 1.0, max_order)
-            r6[2] += bax * r6[6]
-            r6[4] -= bay * r6[6]
-            r6[6] -= bax * r6[1] - bay * r6[3]  # Path lenghtening
+            strthinkick1_row!(r, c, A, B, 1.0, max_order)
+            r[c, 2] += bax * r[c, 6]
+            r[c, 4] -= bay * r[c, 6]
+            r[c, 6] -= bax * r[c, 1] - bay * r[c, 3]  # Path lenghtening
 
             # Misalignment at exit
             if !iszero(R2)
-                multmv!(r6, R2)
+                multmv_row!(r, c, R2)
             end
             if !iszero(T2)
-                addvv!(r6, T2)
+                addvv_row!(r, c, T2)
             end
-            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
+            if _check_lost_row(r, c) || _check_lost_aperture_row(r, c, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -102,30 +119,29 @@ function ThinMPolePass_P!(r::Matrix{Float64}, le::Float64, A::Array{Float64,1}, 
         if lost_flags[c] == 1
             continue
         end
-        r6 = @view r[c, :]
-        if !isnan(r6[1])
+        if !isnan(r[c, 1])
             # Misalignment at entrance
             if !iszero(T1)
-                addvv!(r6, T1)
+                addvv_row!(r, c, T1)
             end
             if !iszero(R1)
-                multmv!(r6, R1)
+                multmv_row!(r, c, R1)
             end
             
-            strthinkick1!(r6, A, B, 1.0, max_order)
-            r6[2] += bax * r6[6]
-            r6[4] -= bay * r6[6]
-            r6[6] -= bax * r6[1] - bay * r6[3]  # Path lenghtening
+            strthinkick1_row!(r, c, A, B, 1.0, max_order)
+            r[c, 2] += bax * r[c, 6]
+            r[c, 4] -= bay * r[c, 6]
+            r[c, 6] -= bax * r[c, 1] - bay * r[c, 3]  # Path lenghtening
 
 
             # Misalignment at exit
             if !iszero(R2)
-                multmv!(r6, R2)
+                multmv_row!(r, c, R2)
             end
             if !iszero(T2)
-                addvv!(r6, T2)
+                addvv_row!(r, c, T2)
             end
-            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
+            if _check_lost_row(r, c) || _check_lost_aperture_row(r, c, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end

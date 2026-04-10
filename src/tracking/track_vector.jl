@@ -62,11 +62,10 @@ function ADlinepass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{F
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     np = particles.nmacro
-    count = 1
     for i in eachindex(line)
-        if i in changed_idx
-            pass!(changed_ele[count], particles.r, np, particles)
-            count += 1
+        idx_in_changed = findfirst(==(i), changed_idx)
+        if idx_in_changed !== nothing
+            pass!(changed_ele[idx_in_changed], particles.r, np, particles)
         else
             pass!(line[i], particles.r, np, particles)        
         end
@@ -79,12 +78,11 @@ function ADlinepass!(line::Vector{<:AbstractElement{Float64}}, id_list::Vector{I
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     np = particles.nmacro
-    count = 1
     for i in eachindex(line)
         if i in id_list
-            if i in changed_idx
-                pass!(changed_ele[count], particles.r, np, particles)
-                count += 1
+            idx_in_changed = findfirst(==(i), changed_idx)
+            if idx_in_changed !== nothing
+                pass!(changed_ele[idx_in_changed], particles.r, np, particles)
             else
                 pass!(line[i], particles.r, np, particles)        
             end
@@ -97,12 +95,11 @@ function ADlinepass!(line::Vector, particles::Beam{Float64}, refpts::Vector, cha
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
     # Check if the particle is lost by checking the lost_flag
     np = particles.nmacro
-    count = 1
     saved_particles = []
     for i in eachindex(line)
-        if i in changed_idx
-            pass!(changed_ele[count], particles.r, np, particles)
-            count += 1
+        idx_in_changed = findfirst(==(i), changed_idx)
+        if idx_in_changed !== nothing
+            pass!(changed_ele[idx_in_changed], particles.r, np, particles)
         else
             pass!(line[i], particles.r, np, particles)        
         end
@@ -235,12 +232,11 @@ function ADlinepass_TPSA!(line::Vector{<:AbstractElement{Float64}}, rin::Vector{
     if length(rin) != 6
         error("The length of TPSA must be 6")
     end
-    count = 1
     for i in eachindex(line)
         # ele = line[i]
-        if i in changed_idx
-            pass_TPSA!(changed_ele[count], rin, E0=E0, m0=m0)
-            count += 1
+        idx_in_changed = findfirst(==(i), changed_idx)
+        if idx_in_changed !== nothing
+            pass_TPSA!(changed_ele[idx_in_changed], rin, E0=E0, m0=m0)
         else
             pass_TPSA!(line[i], rin, E0=E0, m0=m0)        
         end
@@ -276,7 +272,7 @@ function check_lost(r6)
     if isnan(r6[1]) || isinf(r6[1])
         return true
     end
-    if maximum(abs.(r6[1:4])) > CoordLimit || abs(r6[6]) > CoordLimit
+    if max(abs(r6[1]), abs(r6[2]), abs(r6[3]), abs(r6[4])) > CoordLimit || abs(r6[6]) > CoordLimit
         return true
     end
     # sqrt(1.0 + 2.0*r[6]*beti + r[6]^2 - r[2]^2 - r[4]^2) must be real

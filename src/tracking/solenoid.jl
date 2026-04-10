@@ -9,57 +9,62 @@ function pass!(ele::SOLENOID, r_in::Matrix{Float64}, num_particles::Int64, parti
     else
         beti = 1.0 
     end
-    # Threads.@threads for c in 1:num_particles
     if ele.ks != 0.0
         for c in 1:num_particles
-            if lost_flags[c] == 1
+            if isone(lost_flags[c]) || isnan(r_in[c, 1])
                 continue
             end
-            r6 = @view r_in[c, :]
-            if !isnan(r6[1]) 
-                p_norm = 1.0 / (1.0 + r6[6]) # use linearized p_norm
-    
-                # Misalignment at entrance
-                if !iszero(T1)
-                    addvv!(r6, T1)
-                end
-                if !iszero(R1)
-                    multmv!(r6, R1)
-                end
-    
-                x = r6[1]
-                xpr = r6[2]*p_norm
-                y = r6[3]
-                ypr = r6[4]*p_norm
-                H = ele.ks * p_norm / 2.0
-                S = sin(ele.len * H)
-                C = cos(ele.len * H)
-                r6[1] = x*C*C + xpr*C*S/H + y*C*S + ypr*S*S/H
-                r6[2] = (-x*H*C*S + xpr*C*C - y*H*S*S + ypr*C*S) / p_norm
-                r6[3] = -x*C*S - xpr*S*S/H + y*C*C + ypr*C*S/H
-                r6[4] = (x*H*S*S - xpr*C*S - y*C*S*H + ypr*C*C) / p_norm
-                r6[5] += ele.len*(H*H*(x*x+y*y) + 2.0*H*(xpr*y-ypr*x) +xpr*xpr+ypr*ypr)/2.0
-    
-                if !iszero(R2)
-                    multmv!(r6, R2)
-                end
-                if !iszero(T2)
-                    addvv!(r6, T2)
-                end
+            if !iszero(T1)
+                addvv_row!(r_in, c, T1)
+            end
+            if !iszero(R1)
+                multmv_row!(r_in, c, R1)
+            end
 
-                if check_lost(r6) || check_lost_aperture(r6, ele.RApertures, ele.EApertures)
-                    lost_flags[c] = 1
-                end
+            p_norm = 1.0 / (1.0 + r_in[c, 6]) # use linearized p_norm
+            x = r_in[c, 1]
+            xpr = r_in[c, 2] * p_norm
+            y = r_in[c, 3]
+            ypr = r_in[c, 4] * p_norm
+            H = ele.ks * p_norm / 2.0
+            S = sin(ele.len * H)
+            C = cos(ele.len * H)
+            r_in[c, 1] = x*C*C + xpr*C*S/H + y*C*S + ypr*S*S/H
+            r_in[c, 2] = (-x*H*C*S + xpr*C*C - y*H*S*S + ypr*C*S) / p_norm
+            r_in[c, 3] = -x*C*S - xpr*S*S/H + y*C*C + ypr*C*S/H
+            r_in[c, 4] = (x*H*S*S - xpr*C*S - y*C*S*H + ypr*C*C) / p_norm
+            r_in[c, 5] += ele.len * (H*H * (x*x + y*y) + 2.0 * H * (xpr*y - ypr*x) + xpr*xpr + ypr*ypr) / 2.0
+
+            if !iszero(R2)
+                multmv_row!(r_in, c, R2)
+            end
+            if !iszero(T2)
+                addvv_row!(r_in, c, T2)
+            end
+
+            if _check_lost_row(r_in, c) || _check_lost_aperture_row(r_in, c, ele.RApertures, ele.EApertures)
+                lost_flags[c] = 1
             end
         end
     else
         for c in 1:num_particles
-            if lost_flags[c] == 1
+            if isone(lost_flags[c]) || isnan(r_in[c, 1])
                 continue
             end
-            r6 = @view r_in[c, :]
-            drift6!(r6, ele.len, beti)
-            if check_lost(r6) || check_lost_aperture(r6, ele.RApertures, ele.EApertures)
+            if !iszero(T1)
+                addvv_row!(r_in, c, T1)
+            end
+            if !iszero(R1)
+                multmv_row!(r_in, c, R1)
+            end
+            drift6_row!(r_in, c, ele.len, beti)
+            if !iszero(R2)
+                multmv_row!(r_in, c, R2)
+            end
+            if !iszero(T2)
+                addvv_row!(r_in, c, T2)
+            end
+            if _check_lost_row(r_in, c) || _check_lost_aperture_row(r_in, c, ele.RApertures, ele.EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -77,69 +82,67 @@ function pass_P!(ele::SOLENOID, r_in::Matrix{Float64}, num_particles::Int64, par
     R1 = ele.R1
     T2 = ele.T2
     R2 = ele.R2
-    beti = 1.0 / particles.beta
+    if use_exact_beti == 1
+        beti = 1.0 / particles.beta
+    else
+        beti = 1.0
+    end
     if ele.ks != 0.0
         Threads.@threads for c in 1:num_particles
-            if lost_flags[c] == 1
+            if isone(lost_flags[c]) || isnan(r_in[c, 1])
                 continue
             end
-            r6 = @view r_in[c, :]
-            if !isnan(r6[1]) 
-                p_norm = 1.0 / (1.0 + r6[6])
-    
-                # Misalignment at entrance
-                if !iszero(T1)
-                    addvv!(r6, T1)
-                end
-                if !iszero(R1)
-                    multmv!(r6, R1)
-                end
-    
-                x = r6[1]
-                xpr = r6[2]*p_norm
-                y = r6[3]
-                ypr = r6[4]*p_norm
-                H = ele.ks * p_norm / 2.0
-                S = sin(ele.len * H)
-                C = cos(ele.len * H)
-                r6[1] = x*C*C + xpr*C*S/H + y*C*S + ypr*S*S/H
-                r6[2] = (-x*H*C*S + xpr*C*C - y*H*S*S + ypr*C*S) / p_norm
-                r6[3] = -x*C*S - xpr*S*S/H + y*C*C + ypr*C*S/H
-                r6[4] = (x*H*S*S - xpr*C*S - y*C*S*H + ypr*C*C) / p_norm
-                r6[5] += ele.len*(H*H*(x*x+y*y) + 2.0*H*(xpr*y-ypr*x) +xpr*xpr+ypr*ypr)/2.0
-    
-                if !iszero(R2)
-                    multmv!(r6, R2)
-                end
-                if !iszero(T2)
-                    addvv!(r6, T2)
-                end
+            if !iszero(T1)
+                addvv_row!(r_in, c, T1)
+            end
+            if !iszero(R1)
+                multmv_row!(r_in, c, R1)
+            end
 
-                if check_lost(r6) || check_lost_aperture(r6, ele.RApertures, ele.EApertures)
-                    lost_flags[c] = 1
-                end
+            p_norm = 1.0 / (1.0 + r_in[c, 6])
+            x = r_in[c, 1]
+            xpr = r_in[c, 2]*p_norm
+            y = r_in[c, 3]
+            ypr = r_in[c, 4]*p_norm
+            H = ele.ks * p_norm / 2.0
+            S = sin(ele.len * H)
+            C = cos(ele.len * H)
+            r_in[c, 1] = x*C*C + xpr*C*S/H + y*C*S + ypr*S*S/H
+            r_in[c, 2] = (-x*H*C*S + xpr*C*C - y*H*S*S + ypr*C*S) / p_norm
+            r_in[c, 3] = -x*C*S - xpr*S*S/H + y*C*C + ypr*C*S/H
+            r_in[c, 4] = (x*H*S*S - xpr*C*S - y*C*S*H + ypr*C*C) / p_norm
+            r_in[c, 5] += ele.len*(H*H*(x*x+y*y) + 2.0*H*(xpr*y-ypr*x) +xpr*xpr+ypr*ypr)/2.0
+
+            if !iszero(R2)
+                multmv_row!(r_in, c, R2)
+            end
+            if !iszero(T2)
+                addvv_row!(r_in, c, T2)
+            end
+
+            if _check_lost_row(r_in, c) || _check_lost_aperture_row(r_in, c, ele.RApertures, ele.EApertures)
+                lost_flags[c] = 1
             end
         end
     else
         Threads.@threads for c in 1:num_particles
-            if lost_flags[c] == 1
+            if isone(lost_flags[c]) || isnan(r_in[c, 1])
                 continue
             end
-            r6 = @view r_in[c, :]
             if !iszero(T1)
-                addvv!(r_in, T1)
+                addvv_row!(r_in, c, T1)
             end
             if !iszero(R1)
-                multmv!(r_in, R1)
+                multmv_row!(r_in, c, R1)
             end
-            drift6!(r6, ele.len, beti)
+            drift6_row!(r_in, c, ele.len, beti)
             if !iszero(R2)
-                multmv!(r6, R2)
+                multmv_row!(r_in, c, R2)
             end
             if !iszero(T2)
-                addvv!(r6, T2)
+                addvv_row!(r_in, c, T2)
             end
-            if check_lost(r6) || check_lost_aperture(r6, ele.RApertures, ele.EApertures)
+            if _check_lost_row(r_in, c) || _check_lost_aperture_row(r_in, c, ele.RApertures, ele.EApertures)
                 lost_flags[c] = 1
             end
         end

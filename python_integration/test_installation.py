@@ -126,6 +126,39 @@ def test_space_charge_2p5d():
         print(f"2.5-D space-charge test failed: {e}")
         return False
 
+def test_thick_space_charge_2p5d_elements():
+    """Test thick 2.5-D space-charge element constructors"""
+    try:
+        import pyJuTrack as jt
+
+        elems = [
+            jt.DRIFT_SC2P5D("D_SC", 0.2, xsize=8, ysize=8, zsize=4, pipe_radius=13e-3),
+            jt.QUAD_SC2P5D("Q_SC", 0.1, k1=1.2, xsize=8, ysize=8, zsize=4, pipe_radius=13e-3),
+            jt.KQUAD_SC2P5D("KQ_SC", 0.1, k1=1.2, xsize=8, ysize=8, zsize=4, pipe_radius=13e-3),
+            jt.KSEXT_SC2P5D("S_SC", 0.1, k2=4.5, xsize=8, ysize=8, zsize=4, pipe_radius=13e-3),
+            jt.KOCT_SC2P5D("O_SC", 0.1, k3=12.0, xsize=8, ysize=8, zsize=4, pipe_radius=13e-3),
+            jt.SBEND_SC2P5D("B_SC", 0.2, angle=0.01, xsize=8, ysize=8, zsize=4, pipe_radius=13e-3),
+            jt.RBEND_SC2P5D("RB_SC", 0.2, angle=0.01, xsize=8, ysize=8, zsize=4, pipe_radius=13e-3),
+        ]
+
+        expected = [
+            "DRIFT_SC2P5D",
+            "QUAD_SC2P5D",
+            "KQUAD_SC2P5D",
+            "KSEXT_SC2P5D",
+            "KOCT_SC2P5D",
+            "SBEND_SC2P5D",
+            "SBEND_SC2P5D",
+        ]
+        for elem, eletype in zip(elems, expected):
+            assert str(elem.eletype) == eletype
+
+        print("Thick 2.5-D space-charge wrappers working")
+        return True
+    except Exception as e:
+        print(f"Thick 2.5-D space-charge wrapper test failed: {e}")
+        return False
+
 def test_tpsa():
     """Test TPSA functionality"""
     try:
@@ -179,6 +212,7 @@ def run_all_tests():
         ("Import", test_import),
         ("Basic Elements", test_basic_elements),
         ("2.5-D Space Charge", test_space_charge_2p5d),
+        ("Thick 2.5-D Space Charge", test_thick_space_charge_2p5d_elements),
         ("Lattice Creation", test_lattice),
         ("Beam Creation", test_beam),
         ("Particle Tracking", test_tracking),

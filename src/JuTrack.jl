@@ -16,7 +16,7 @@ const charge_e = 1.602176634e-19  # C (elementary charge)
 const __E0 = 0.51099895069e-3  # GeV (electron rest mass energy in GeV)
 const __HBAR_C = 1.97326980400e2  
 const Cq = 55.0/(32.0*sqrt(3.0)) * __HBAR_C / m_e * 1.0e-9  # m (quantum constant)
-use_exact_Hamiltonian = 1 # use exact pz
+use_exact_Hamiltonian = 1 # drift mode: 0 = legacy linearized, 1 = exact pz, 2 = corrected linearized off-momentum slip
 use_exact_beti = 0 # use delta p/p0 as the sixth coordinate. Change it to 1 to use delta E/p0 
 # const _jlplotlib_available = let ok
 #     try
@@ -98,7 +98,9 @@ export CTPS, cst, findindex, PolyMap, getindexmap, reassign!, assign!
 export AbstractElement, DRIFT, KQUAD, KSEXT, KOCT, SBEND, RBEND, RFCA, SOLENOID, MARKER, CORRECTOR, HKICKER, VKICKER, thinMULTIPOLE
 export QUAD, LBEND, ESBEND, ERBEND, WIGGLER, buildlatt
 export TRANSLATION, YROTATION
-export SPACECHARGE, QUAD_SC, DRIFT_SC, KQUAD_SC, KSEXT_SC, KOCT_SC, SBEND_SC, RBEND_SC, calculate_K
+export SPACECHARGE, QUAD_SC, QUAD_SC2P5D, DRIFT_SC, DRIFT_SC2P5D, KQUAD_SC, KQUAD_SC2P5D,
+    KSEXT_SC, KSEXT_SC2P5D, KOCT_SC, KOCT_SC2P5D, SBEND_SC, SBEND_SC2P5D, RBEND_SC,
+    RBEND_SC2P5D, calculate_K
 export SPACECHARGE2P5D, insert_space_charge_2p5d
 export EdwardsTengTwiss, AbstractTwiss, twissPropagate, findm66, periodicEdwardsTengTwiss, twissline, ADtwissline, twissring, ADfindm66, ADtwissring, ADperiodicEdwardsTengTwiss
 export find_closed_orbit, fastfindm66, fastfindm66_refpts, ADfastfindm66_refpts, findm66_refpts

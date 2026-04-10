@@ -80,8 +80,13 @@ print(f"Tunes: νx={nux:.4f}, νy={nuy:.4f}")
 - `SPACECHARGE`
 - `SPACECHARGE2P5D`
 - `insert_space_charge_2p5d(lattice, sc_path_length_min, ...)`
-- `QUAD_SC`, `DRIFT_SC`, `KQUAD_SC`, `KSEXT_SC`, `KOCT_SC`
-- `SBEND_SC`, `RBEND_SC`
+- `QUAD_SC`, `QUAD_SC2P5D`
+- `DRIFT_SC`, `DRIFT_SC2P5D`
+- `KQUAD_SC`, `KQUAD_SC2P5D`
+- `KSEXT_SC`, `KSEXT_SC2P5D`
+- `KOCT_SC`, `KOCT_SC2P5D`
+- `SBEND_SC`, `SBEND_SC2P5D`
+- `RBEND_SC`, `RBEND_SC2P5D`
 
 **Transformations:**
 - `TRANSLATION(name, dx, dy, dz)`
@@ -151,6 +156,7 @@ jt.linepass(cell_sc, beam)
 
 Notes:
 - `effective_length` is the path length represented by each thin kick.
+- For thick native 2.5-D elements, use `DRIFT_SC2P5D`, `QUAD_SC2P5D`, `KQUAD_SC2P5D`, `KSEXT_SC2P5D`, `KOCT_SC2P5D`, `SBEND_SC2P5D`, or `RBEND_SC2P5D`.
 - `insert_space_charge_2p5d(...)` currently inserts nodes into numeric lattices. If you need DTPSAD/AD, insert the nodes first and then call `jt.Number2TPSAD(...)`.
 - The 2.5-D model is inactive if the bunch has zero longitudinal extent, so `z` must not be identical for every particle.
 

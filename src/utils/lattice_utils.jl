@@ -3,7 +3,7 @@ function get_len(ele::AbstractElement)
     return get_len_value(ele.len)
 end
 function get_len_value(L::Float64)
-    return L[1]
+    return L
 end
 function get_len_value(L::DTPSAD{N, T}) where {N, T}
     return L
@@ -176,11 +176,23 @@ function findelem(ring::Vector, type::Type)
     return ele_index
 end
 
+"""
+    use_exact_drift(flag)
+
+Select the longitudinal drift model:
+- `0`: legacy JuTrack linearized drift
+- `1`: exact Hamiltonian drift
+- `2`: corrected linearized drift with off-momentum slip
+"""
 function use_exact_drift(flag)
-    if flag == 1
-        global use_exact_Hamiltonian = 1
-    else
+    if flag == 0
         global use_exact_Hamiltonian = 0
+    elseif flag == 1
+        global use_exact_Hamiltonian = 1
+    elseif flag == 2
+        global use_exact_Hamiltonian = 2
+    else
+        error("use_exact_drift(flag) only accepts 0 (legacy linearized), 1 (exact), or 2 (corrected linearized).")
     end
 end
 

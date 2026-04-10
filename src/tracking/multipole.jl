@@ -61,13 +61,63 @@ function strthinkick!(r::AbstractVector{Float64}, A::AbstractVector{Float64}, B:
     return nothing
 end
 
+function strthinkickrad_row!(r::Matrix{Float64}, c::Int, A::AbstractVector{Float64}, B::AbstractVector{Float64},
+    L::Float64, E0::Float64, max_order::Int, rad_const::Float64)
+    ReSum = B[max_order + 1]
+    ImSum = A[max_order + 1]
+    ReSumTemp = 0.0
+    x = r[c, 1]
+    y = r[c, 3]
+
+    for i in reverse(1:max_order)
+        ReSumTemp = ReSum * x - ImSum * y + B[i]
+        ImSum = ImSum * x + ReSum * y + A[i]
+        ReSum = ReSumTemp
+    end
+
+    p_norm = 1.0 / (1.0 + r[c, 6])
+    xpr = r[c, 2] * p_norm
+    ypr = r[c, 4] * p_norm
+    b2p = StrB2perp(ImSum, ReSum, x, xpr, y, ypr)
+    factor = L / (p_norm)^2 / sqrt(1.0 - xpr^2 - ypr^2)
+
+    r[c, 6] -= rad_const * b2p * factor
+
+    p_norm = 1.0 / (1.0 + r[c, 6])
+    r[c, 2] = xpr / p_norm
+    r[c, 4] = ypr / p_norm
+
+    r[c, 2] -= L * ReSum
+    r[c, 4] += L * ImSum
+    return nothing
+end
+
+function strthinkick_row!(r::Matrix{Float64}, c::Int, A::AbstractVector{Float64}, B::AbstractVector{Float64},
+    L::Float64, max_order::Int)
+    ReSum = B[max_order + 1]
+    ImSum = A[max_order + 1]
+    ReSumTemp = 0.0
+    x = r[c, 1]
+    y = r[c, 3]
+
+    for i in max_order-1:-1:0
+        ReSumTemp = ReSum * x - ImSum * y + B[i + 1]
+        ImSum = ImSum * x + ReSum * y + A[i + 1]
+        ReSum = ReSumTemp
+    end
+
+    r[c, 2] -= L * ReSum
+    r[c, 4] += L * ImSum
+    return nothing
+end
+
 
 function StrMPoleSymplectic4Pass!(r::Matrix{Float64}, le::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_step::Int, 
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
     RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{Float64,1}, 
-    num_particles::Int, lost_flags::Array{Int64,1})
+    num_particles::Int, lost_flags::Array{Int64,1}, gamma2i::Float64 = 0.0)
     # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
 
     DRIFT1  =  0.6756035959798286638
@@ -86,48 +136,42 @@ function StrMPoleSymplectic4Pass!(r::Matrix{Float64}, le::Float64, beti::Float64
         A[1] += sin(KickAngle[2])/le
     end
     for c in 1:num_particles
-        if lost_flags[c] == 1
+        if isone(lost_flags[c]) || isnan(r[c, 1])
             continue
         end
-        r6 = @view r[c, :]
-        if !isnan(r6[1])
-            # Misalignment at entrance
-            if !iszero(T1)
-                addvv!(r6, T1)
-            end
-            if !iszero(R1)
-                multmv!(r6, R1)
-            end
+        if !iszero(T1)
+            addvv_row!(r, c, T1)
+        end
+        if !iszero(R1)
+            multmv_row!(r, c, R1)
+        end
 
-            if FringeQuadEntrance != 0 
-                multipole_fringe!(r6, le, A, B, max_order, 1.0, 1, beti)
-            end
+        if FringeQuadEntrance != 0
+            multipole_fringe!(@view(r[c, :]), le, A, B, max_order, 1.0, 1, beti)
+        end
 
-            # Integrator
-            for m in 1:num_int_step
-                drift6!(r6, L1, beti)
-                strthinkick!(r6, A, B, K1, max_order)
-                drift6!(r6, L2, beti)
-                strthinkick!(r6, A, B, K2, max_order)
-                drift6!(r6, L2, beti)
-                strthinkick!(r6, A, B, K1, max_order)
-                drift6!(r6, L1, beti)
-            end
+        for _ in 1:num_int_step
+            drift6_row!(r, c, L1, beti, gamma2i)
+            strthinkick_row!(r, c, A, B, K1, max_order)
+            drift6_row!(r, c, L2, beti, gamma2i)
+            strthinkick_row!(r, c, A, B, K2, max_order)
+            drift6_row!(r, c, L2, beti, gamma2i)
+            strthinkick_row!(r, c, A, B, K1, max_order)
+            drift6_row!(r, c, L1, beti, gamma2i)
+        end
 
-            if FringeQuadExit != 0
-                multipole_fringe!(r6, le, A, B, max_order, -1.0, 1, beti)
-            end
+        if FringeQuadExit != 0
+            multipole_fringe!(@view(r[c, :]), le, A, B, max_order, -1.0, 1, beti)
+        end
 
-            # Misalignment at exit
-            if !iszero(R2)
-                multmv!(r6, R2)
-            end
-            if !iszero(T2)
-                addvv!(r6, T2)
-            end
-            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
-                lost_flags[c] = 1
-            end
+        if !iszero(R2)
+            multmv_row!(r, c, R2)
+        end
+        if !iszero(T2)
+            addvv_row!(r, c, T2)
+        end
+        if _check_lost_row(r, c) || _check_lost_aperture_row(r, c, RApertures, EApertures)
+            lost_flags[c] = 1
         end
     end
     if le > 0
@@ -143,7 +187,7 @@ function StrMPoleSymplectic4RadPass!(r::Matrix{Float64}, le::Float64, rad_const:
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
     RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{Float64,1}, E0::Float64,
-    num_particles::Int, lost_flags::Array{Int64,1})
+    num_particles::Int, lost_flags::Array{Int64,1}, gamma2i::Float64 = 0.0)
     # Modified based on AT function. Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
 
     DRIFT1  =  0.6756035959798286638
@@ -181,13 +225,13 @@ function StrMPoleSymplectic4RadPass!(r::Matrix{Float64}, le::Float64, rad_const:
 
             # Integrator
             for m in 1:num_int_step
-                drift6!(r6, L1, beti)
+                drift6!(r6, L1, beti, gamma2i)
                 strthinkickrad!(r6, A, B, K1, E0, max_order, rad_const)
-                drift6!(r6, L2, beti)
+                drift6!(r6, L2, beti, gamma2i)
                 strthinkickrad!(r6, A, B, K2, E0, max_order, rad_const)
-                drift6!(r6, L2, beti)
+                drift6!(r6, L2, beti, gamma2i)
                 strthinkickrad!(r6, A, B, K1, E0, max_order, rad_const)
-                drift6!(r6, L1, beti)
+                drift6!(r6, L1, beti, gamma2i)
             end
 
             if FringeQuadExit != 0
@@ -228,6 +272,7 @@ function pass!(ele::KQUAD, r_in::Matrix{Float64}, num_particles::Int64, particle
     else
         beti = 1.0 
     end
+    gamma2i = use_exact_Hamiltonian == 2 ? 1.0 / particles.gamma^2 : 0.0
 
     PolynomB[1] = ele.k0
     PolynomB[2] = ele.k1 
@@ -236,7 +281,7 @@ function pass!(ele::KQUAD, r_in::Matrix{Float64}, num_particles::Int64, particle
     if ele.rad == 0
         StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
             ele.FringeQuadEntrance, ele.FringeQuadExit, 
-            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags, gamma2i)
     else
         if particles.mass == m_e
             rad_const = RAD_CONST_E * particles.gamma^3
@@ -248,7 +293,7 @@ function pass!(ele::KQUAD, r_in::Matrix{Float64}, num_particles::Int64, particle
         end
         StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
             ele.FringeQuadEntrance, ele.FringeQuadExit, 
-            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags, gamma2i)
     end
     return nothing
 end
@@ -267,6 +312,7 @@ function pass!(ele::KSEXT, r_in::Matrix{Float64}, num_particles::Int64, particle
     else
         beti = 1.0 
     end
+    gamma2i = use_exact_Hamiltonian == 2 ? 1.0 / particles.gamma^2 : 0.0
 
     PolynomB[1] = ele.k0
     PolynomB[2] = ele.k1 
@@ -274,7 +320,7 @@ function pass!(ele::KSEXT, r_in::Matrix{Float64}, num_particles::Int64, particle
     PolynomB[4] = ele.k3 / 6.0
     if ele.rad == 0
         StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags, gamma2i)
     else
         if particles.mass == m_e
             rad_const = RAD_CONST_E * particles.gamma^3
@@ -285,7 +331,7 @@ function pass!(ele::KSEXT, r_in::Matrix{Float64}, num_particles::Int64, particle
             println("SR is not implemented for this particle mass.")
         end
         StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
+            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags, gamma2i)
     end
     return nothing
 end
@@ -304,6 +350,7 @@ function pass!(ele::KOCT, r_in::Matrix{Float64}, num_particles::Int64, particles
     else
         beti = 1.0 
     end
+    gamma2i = use_exact_Hamiltonian == 2 ? 1.0 / particles.gamma^2 : 0.0
 
     PolynomB[1] = ele.k0
     PolynomB[2] = ele.k1 
@@ -311,7 +358,7 @@ function pass!(ele::KOCT, r_in::Matrix{Float64}, num_particles::Int64, particles
     PolynomB[4] = ele.k3 / 6.0
     if ele.rad == 0
         StrMPoleSymplectic4Pass!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags, gamma2i)
     else
         if particles.mass == m_e
             rad_const = RAD_CONST_E * particles.gamma^3
@@ -322,7 +369,7 @@ function pass!(ele::KOCT, r_in::Matrix{Float64}, num_particles::Int64, particles
             println("SR is not implemented for this particle mass.")
         end
         StrMPoleSymplectic4RadPass!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
+            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags, gamma2i)
     end
     return nothing
 end
@@ -335,7 +382,7 @@ function StrMPoleSymplectic4Pass_P!(r::Matrix{Float64}, le::Float64, beti::Float
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
     RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{Float64,1}, 
-    num_particles::Int, lost_flags::Array{Int64,1})
+    num_particles::Int, lost_flags::Array{Int64,1}, gamma2i::Float64 = 0.0)
 
     DRIFT1  =  0.6756035959798286638
     DRIFT2 = -0.1756035959798286639
@@ -352,50 +399,42 @@ function StrMPoleSymplectic4Pass_P!(r::Matrix{Float64}, le::Float64, beti::Float
     A[1] += sin(KickAngle[2])/le
 
     Threads.@threads for c in 1:num_particles
-        if lost_flags[c] == 1
+        if isone(lost_flags[c]) || isnan(r[c, 1])
             continue
         end
-        r6 = @view r[c, :]
-        if !isnan(r6[1])
-            # Misalignment at entrance
-            if !iszero(T1)
-                addvv!(r6, T1)
-            end
-            if !iszero(R1)
-                multmv!(r6, R1)
-            end
+        if !iszero(T1)
+            addvv_row!(r, c, T1)
+        end
+        if !iszero(R1)
+            multmv_row!(r, c, R1)
+        end
 
+        if FringeQuadEntrance != 0
+            multipole_fringe!(@view(r[c, :]), le, A, B, max_order, 1.0, 1, beti)
+        end
 
-            if FringeQuadEntrance != 0 
-                multipole_fringe!(r6, le, A, B, max_order, 1.0, 1, beti)
-            end
+        for _ in 1:num_int_step
+            drift6_row!(r, c, L1, beti, gamma2i)
+            strthinkick_row!(r, c, A, B, K1, max_order)
+            drift6_row!(r, c, L2, beti, gamma2i)
+            strthinkick_row!(r, c, A, B, K2, max_order)
+            drift6_row!(r, c, L2, beti, gamma2i)
+            strthinkick_row!(r, c, A, B, K1, max_order)
+            drift6_row!(r, c, L1, beti, gamma2i)
+        end
 
+        if FringeQuadExit != 0
+            multipole_fringe!(@view(r[c, :]), le, A, B, max_order, -1.0, 1, beti)
+        end
 
-            # Integrator
-            for m in 1:num_int_step
-                drift6!(r6, L1, beti)
-                strthinkick!(r6, A, B, K1, max_order)
-                drift6!(r6, L2, beti)
-                strthinkick!(r6, A, B, K2, max_order)
-                drift6!(r6, L2, beti)
-                strthinkick!(r6, A, B, K1, max_order)
-                drift6!(r6, L1, beti)
-            end
-
-            if FringeQuadExit != 0
-                multipole_fringe!(r6, le, A, B, max_order, -1.0, 1, beti)
-            end
-
-            # Misalignment at exit
-            if !iszero(R2)
-                multmv!(r6, R2)
-            end
-            if !iszero(T2)
-                addvv!(r6, T2)
-            end
-            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
-                lost_flags[c] = 1
-            end
+        if !iszero(R2)
+            multmv_row!(r, c, R2)
+        end
+        if !iszero(T2)
+            addvv_row!(r, c, T2)
+        end
+        if _check_lost_row(r, c) || _check_lost_aperture_row(r, c, RApertures, EApertures)
+            lost_flags[c] = 1
         end
     end
 
@@ -409,7 +448,7 @@ function StrMPoleSymplectic4RadPass_P!(r::Matrix{Float64}, le::Float64, rad_cons
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
     RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{Float64,1}, E0::Float64,
-    num_particles::Int, lost_flags::Array{Int64,1})
+    num_particles::Int, lost_flags::Array{Int64,1}, gamma2i::Float64 = 0.0)
 
     DRIFT1  =  0.6756035959798286638
     DRIFT2 = -0.1756035959798286639
@@ -456,14 +495,14 @@ function StrMPoleSymplectic4RadPass_P!(r::Matrix{Float64}, le::Float64, rad_cons
             end
 
             # Integrator
-            for m in 1:num_int_step
-                drift6!(r6, L1, beti)
+            for _ in 1:num_int_step
+                drift6!(r6, L1, beti, gamma2i)
                 strthinkickrad!(r6, A, B, K1, E0, max_order, rad_const)
-                drift6!(r6, L2, beti)
+                drift6!(r6, L2, beti, gamma2i)
                 strthinkickrad!(r6, A, B, K2, E0, max_order, rad_const)
-                drift6!(r6, L2, beti)
+                drift6!(r6, L2, beti, gamma2i)
                 strthinkickrad!(r6, A, B, K1, E0, max_order, rad_const)
-                drift6!(r6, L1, beti)
+                drift6!(r6, L1, beti, gamma2i)
             end
 
             if FringeQuadExit != 0
@@ -512,6 +551,7 @@ function pass_P!(ele::KQUAD, r_in::Matrix{Float64}, num_particles::Int64, partic
     else
         beti = 1.0 
     end
+    gamma2i = use_exact_Hamiltonian == 2 ? 1.0 / particles.gamma^2 : 0.0
 
     PolynomB[1] = ele.k0
     PolynomB[2] = ele.k1
@@ -520,7 +560,7 @@ function pass_P!(ele::KQUAD, r_in::Matrix{Float64}, num_particles::Int64, partic
     if ele.rad == 0
         StrMPoleSymplectic4Pass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
             ele.FringeQuadEntrance, ele.FringeQuadExit, 
-            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags, gamma2i)
     else
         if particles.mass == m_e
             rad_const = RAD_CONST_E * particles.gamma^3
@@ -532,7 +572,7 @@ function pass_P!(ele::KQUAD, r_in::Matrix{Float64}, num_particles::Int64, partic
         end
         StrMPoleSymplectic4RadPass_P!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
             ele.FringeQuadEntrance, ele.FringeQuadExit, 
-            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags, gamma2i)
     end
     return nothing
 end
@@ -551,6 +591,7 @@ function pass_P!(ele::KSEXT, r_in::Matrix{Float64}, num_particles::Int64, partic
     else
         beti = 1.0 
     end
+    gamma2i = use_exact_Hamiltonian == 2 ? 1.0 / particles.gamma^2 : 0.0
 
     PolynomB[1] = ele.k0
     PolynomB[2] = ele.k1
@@ -559,7 +600,7 @@ function pass_P!(ele::KSEXT, r_in::Matrix{Float64}, num_particles::Int64, partic
     if ele.rad == 0
         StrMPoleSymplectic4Pass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
             ele.FringeQuadEntrance, ele.FringeQuadExit, 
-            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags, gamma2i)
     else
         if particles.mass == m_e
             rad_const = RAD_CONST_E * particles.gamma^3
@@ -571,7 +612,7 @@ function pass_P!(ele::KSEXT, r_in::Matrix{Float64}, num_particles::Int64, partic
         end
         StrMPoleSymplectic4RadPass_P!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
             ele.FringeQuadEntrance, ele.FringeQuadExit, 
-            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
+            ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags, gamma2i)
     end
     return nothing
 end
@@ -590,6 +631,7 @@ function pass_P!(ele::KOCT, r_in::Matrix{Float64}, num_particles::Int64, particl
     else
         beti = 1.0 
     end
+    gamma2i = use_exact_Hamiltonian == 2 ? 1.0 / particles.gamma^2 : 0.0
 
     PolynomB[1] = ele.k0
     PolynomB[2] = ele.k1 
@@ -597,7 +639,7 @@ function pass_P!(ele::KOCT, r_in::Matrix{Float64}, num_particles::Int64, particl
     PolynomB[4] = ele.k3 / 6.0
     if ele.rad == 0
         StrMPoleSymplectic4Pass_P!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags)
+            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags, gamma2i)
     else
         if particles.mass == m_e
             rad_const = RAD_CONST_E * particles.gamma^3
@@ -608,7 +650,7 @@ function pass_P!(ele::KOCT, r_in::Matrix{Float64}, num_particles::Int64, particl
             println("SR is not implemented for this particle mass.")
         end
         StrMPoleSymplectic4RadPass_P!(r_in, ele.len, rad_const, beti,ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
-            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags)
+            ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags, gamma2i)
     end
     return nothing
 end
@@ -621,7 +663,8 @@ function StrMPoleSymplectic4Pass_SC!(r::Matrix{Float64}, le::Float64, beti::Floa
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
     RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{Float64,1}, 
-    num_particles::Int, lost_flags::Array{Int64,1}, a::Float64, b::Float64, Nl::Int, Nm::Int, K::Float64, Nsteps::Int)
+    num_particles::Int, lost_flags::Array{Int64,1}, a::Float64, b::Float64, Nl::Int, Nm::Int, K::Float64, Nsteps::Int,
+    gamma2i::Float64 = 0.0)
     # Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
     # and [Qiang, Ji. "Differentiable self-consistent space-charge simulation for accelerator design." Physical Review Accelerators and Beams 26.2 (2023): 024601.]
 
@@ -647,34 +690,36 @@ function StrMPoleSymplectic4Pass_SC!(r::Matrix{Float64}, le::Float64, beti::Floa
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r[c, :]
-            
+            if isnan(r[c, 1])
+                continue
+            end
             if step == 1
                 # Misalignment at entrance
                 if !iszero(T1)
-                    addvv!(r6, T1)
+                    addvv_row!(r, c, T1)
                 end
                 if !iszero(R1)
-                    multmv!(r6, R1)
+                    multmv_row!(r, c, R1)
                 end
 
                 if FringeQuadEntrance != 0 
+                    r6 = @view r[c, :]
                     multipole_fringe!(r6, le, A, B, max_order, 1.0, 1, beti)
                 end    
             end
 
             # Integrator
             for m in 1:num_int_step
-                drift6!(r6, L1, beti)
-                strthinkick!(r6, A, B, K1, max_order)
-                drift6!(r6, L2, beti)
-                strthinkick!(r6, A, B, K2, max_order)
-                drift6!(r6, L2, beti)
-                strthinkick!(r6, A, B, K1, max_order)
-                drift6!(r6, L1, beti)
+                drift6_row!(r, c, L1, beti, gamma2i)
+                strthinkick_row!(r, c, A, B, K1, max_order)
+                drift6_row!(r, c, L2, beti, gamma2i)
+                strthinkick_row!(r, c, A, B, K2, max_order)
+                drift6_row!(r, c, L2, beti, gamma2i)
+                strthinkick_row!(r, c, A, B, K1, max_order)
+                drift6_row!(r, c, L1, beti, gamma2i)
             end
 
-            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
+            if _check_lost_row(r, c) || _check_lost_aperture_row(r, c, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -685,36 +730,36 @@ function StrMPoleSymplectic4Pass_SC!(r::Matrix{Float64}, le::Float64, beti::Floa
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r[c, :]
-
-            NormL1 = L1 / (1.0 + r6[6])
-            NormL2 = L2 / (1.0 + r6[6])
+            if isnan(r[c, 1])
+                continue
+            end
     
             # Integrator
             for m in 1:num_int_step
-                drift6!(r6, L1,beti)
-                strthinkick!(r6, A, B, K1, max_order)
-                drift6!(r6, L2, beti)
-                strthinkick!(r6, A, B, K2, max_order)
-                drift6!(r6, L2, beti)
-                strthinkick!(r6, A, B, K1, max_order)
-                drift6!(r6, L1, beti)
+                drift6_row!(r, c, L1, beti, gamma2i)
+                strthinkick_row!(r, c, A, B, K1, max_order)
+                drift6_row!(r, c, L2, beti, gamma2i)
+                strthinkick_row!(r, c, A, B, K2, max_order)
+                drift6_row!(r, c, L2, beti, gamma2i)
+                strthinkick_row!(r, c, A, B, K1, max_order)
+                drift6_row!(r, c, L1, beti, gamma2i)
             end
             
             if step == Nsteps
                 if FringeQuadExit != 0 
+                    r6 = @view r[c, :]
                     multipole_fringe!(r6, le, A, B, max_order, -1.0, 1, beti)
                 end
     
                 # Misalignment at exit
                 if !iszero(R2)
-                    multmv!(r6, R2)
+                    multmv_row!(r, c, R2)
                 end
                 if !iszero(T2)
-                    addvv!(r6, T2)
+                    addvv_row!(r, c, T2)
                 end
             end
-            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
+            if _check_lost_row(r, c) || _check_lost_aperture_row(r, c, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -732,7 +777,8 @@ function StrMPoleSymplectic4RadPass_SC!(r::Matrix{Float64}, le::Float64, rad_con
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
     T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, 
     RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{Float64,1}, E0::Float64,
-    num_particles::Int, lost_flags::Array{Int64,1}, a::Float64, b::Float64, Nl::Int, Nm::Int, K::Float64, Nsteps::Int)
+    num_particles::Int, lost_flags::Array{Int64,1}, a::Float64, b::Float64, Nl::Int, Nm::Int, K::Float64, Nsteps::Int,
+    gamma2i::Float64 = 0.0)
     # Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
     # and [Qiang, Ji. "Differentiable self-consistent space-charge simulation for accelerator design." Physical Review Accelerators and Beams 26.2 (2023): 024601.]
 
@@ -758,31 +804,34 @@ function StrMPoleSymplectic4RadPass_SC!(r::Matrix{Float64}, le::Float64, rad_con
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r[c, :]
+            if isnan(r[c, 1])
+                continue
+            end
             if step == 1
                 # Misalignment at entrance
                 if !iszero(T1)
-                    addvv!(r6, T1)
+                    addvv_row!(r, c, T1)
                 end
                 if !iszero(R1)
-                    multmv!(r6, R1)
+                    multmv_row!(r, c, R1)
                 end
     
                 if FringeQuadEntrance != 0 
+                    r6 = @view r[c, :]
                     multipole_fringe!(r6, le, A, B, max_order, 1.0, 1, beti)
                 end    
             end
             # Integrator
             for m in 1:num_int_step
-                drift6!(r6, L1, beti)
-                strthinkickrad!(r6, A, B, K1, E0, max_order, rad_const)
-                drift6!(r6, L2, beti)
-                strthinkickrad!(r6, A, B, K2, E0, max_order, rad_const)
-                drift6!(r6, L2, beti)
-                strthinkickrad!(r6, A, B, K1, E0, max_order, rad_const)
-                drift6!(r6, L1, beti)
+                drift6_row!(r, c, L1, beti, gamma2i)
+                strthinkickrad_row!(r, c, A, B, K1, E0, max_order, rad_const)
+                drift6_row!(r, c, L2, beti, gamma2i)
+                strthinkickrad_row!(r, c, A, B, K2, E0, max_order, rad_const)
+                drift6_row!(r, c, L2, beti, gamma2i)
+                strthinkickrad_row!(r, c, A, B, K1, E0, max_order, rad_const)
+                drift6_row!(r, c, L1, beti, gamma2i)
             end
-            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
+            if _check_lost_row(r, c) || _check_lost_aperture_row(r, c, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -793,33 +842,36 @@ function StrMPoleSymplectic4RadPass_SC!(r::Matrix{Float64}, le::Float64, rad_con
             if lost_flags[c] == 1
                 continue
             end
-            r6 = @view r[c, :]
+            if isnan(r[c, 1])
+                continue
+            end
     
             # Integrator
             for m in 1:num_int_step
-                drift6!(r6, L1, beti)
-                strthinkickrad!(r6, A, B, K1, E0, max_order, rad_const)
-                drift6!(r6, L2, beti)
-                strthinkickrad!(r6, A, B, K2, E0, max_order, rad_const)
-                drift6!(r6, L2, beti)
-                strthinkickrad!(r6, A, B, K1, E0, max_order, rad_const)
-                drift6!(r6, L1, beti)
+                drift6_row!(r, c, L1, beti, gamma2i)
+                strthinkickrad_row!(r, c, A, B, K1, E0, max_order, rad_const)
+                drift6_row!(r, c, L2, beti, gamma2i)
+                strthinkickrad_row!(r, c, A, B, K2, E0, max_order, rad_const)
+                drift6_row!(r, c, L2, beti, gamma2i)
+                strthinkickrad_row!(r, c, A, B, K1, E0, max_order, rad_const)
+                drift6_row!(r, c, L1, beti, gamma2i)
             end
             
             if step == Nsteps
                 if FringeQuadExit != 0 
+                    r6 = @view r[c, :]
                     multipole_fringe!(r6, le, A, B, max_order, -1.0, 1, beti)
                 end
     
                 # Misalignment at exit
                 if !iszero(R2)
-                    multmv!(r6, R2)
+                    multmv_row!(r, c, R2)
                 end
                 if !iszero(T2)
-                    addvv!(r6, T2)
+                    addvv_row!(r, c, T2)
                 end
             end
-            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
+            if _check_lost_row(r, c) || _check_lost_aperture_row(r, c, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -828,6 +880,190 @@ function StrMPoleSymplectic4RadPass_SC!(r::Matrix{Float64}, le::Float64, rad_con
     if le > 0
         B[1] += sin(KickAngle[1]) / le 
         A[1] -= sin(KickAngle[2]) / le 
+    end
+    return nothing
+end
+
+function StrMPoleSymplectic4Pass_SC2P5D!(ele, r::Matrix{Float64}, le::Float64,
+    beti::Float64, A::Array{Float64,1}, B::Array{Float64,1}, max_order::Int,
+    num_int_step::Int, FringeQuadEntrance::Int, FringeQuadExit::Int,
+    T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2},
+    RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{Float64,1},
+    num_particles::Int, lost_flags::Array{Int64,1}, particles::Beam{Float64}, gamma2i::Float64 = 0.0)
+
+    DRIFT1 = 0.6756035959798286638
+    DRIFT2 = -0.1756035959798286639
+    KICK1 = 1.351207191959657328
+    KICK2 = -1.702414383919314656
+
+    lstep = le / ele.Nsteps
+    SL = lstep / num_int_step
+    L1 = SL * DRIFT1
+    L2 = SL * DRIFT2
+    K1 = SL * KICK1
+    K2 = SL * KICK2
+
+    if le > 0
+        B[1] -= sin(KickAngle[1]) / le
+        A[1] += sin(KickAngle[2]) / le
+    end
+
+    for c in 1:num_particles
+        if lost_flags[c] == 1
+            continue
+        end
+        if !isnan(r[c, 1])
+            if !iszero(T1)
+                addvv_row!(r, c, T1)
+            end
+            if !iszero(R1)
+                multmv_row!(r, c, R1)
+            end
+            if FringeQuadEntrance != 0
+                r6 = @view r[c, :]
+                multipole_fringe!(r6, le, A, B, max_order, 1.0, 1, beti)
+            end
+            if _check_lost_row(r, c) || _check_lost_aperture_row(r, c, RApertures, EApertures)
+                lost_flags[c] = 1
+            end
+        else
+            lost_flags[c] = 1
+        end
+    end
+
+    for step in 1:ele.Nsteps
+        _sc2p5d_track_step!(ele, lstep, r, particles)
+        for c in 1:num_particles
+            if lost_flags[c] == 1
+                continue
+            end
+            if !isnan(r[c, 1])
+                for _ in 1:num_int_step
+                    drift6_row!(r, c, L1, beti, gamma2i)
+                    strthinkick_row!(r, c, A, B, K1, max_order)
+                    drift6_row!(r, c, L2, beti, gamma2i)
+                    strthinkick_row!(r, c, A, B, K2, max_order)
+                    drift6_row!(r, c, L2, beti, gamma2i)
+                    strthinkick_row!(r, c, A, B, K1, max_order)
+                    drift6_row!(r, c, L1, beti, gamma2i)
+                end
+
+                if step == ele.Nsteps
+                    if FringeQuadExit != 0
+                        r6 = @view r[c, :]
+                        multipole_fringe!(r6, le, A, B, max_order, -1.0, 1, beti)
+                    end
+                    if !iszero(R2)
+                        multmv_row!(r, c, R2)
+                    end
+                    if !iszero(T2)
+                        addvv_row!(r, c, T2)
+                    end
+                end
+                if _check_lost_row(r, c) || _check_lost_aperture_row(r, c, RApertures, EApertures)
+                    lost_flags[c] = 1
+                end
+            else
+                lost_flags[c] = 1
+            end
+        end
+    end
+
+    if le > 0
+        B[1] += sin(KickAngle[1]) / le
+        A[1] -= sin(KickAngle[2]) / le
+    end
+    return nothing
+end
+
+function StrMPoleSymplectic4RadPass_SC2P5D!(ele, r::Matrix{Float64}, le::Float64,
+    rad_const::Float64, beti::Float64, A::Array{Float64,1}, B::Array{Float64,1},
+    max_order::Int, num_int_step::Int, FringeQuadEntrance::Int, FringeQuadExit::Int,
+    T1::Array{Float64,1}, T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2},
+    RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{Float64,1},
+    E0::Float64, num_particles::Int, lost_flags::Array{Int64,1}, particles::Beam{Float64}, gamma2i::Float64 = 0.0)
+
+    DRIFT1 = 0.6756035959798286638
+    DRIFT2 = -0.1756035959798286639
+    KICK1 = 1.351207191959657328
+    KICK2 = -1.702414383919314656
+
+    lstep = le / ele.Nsteps
+    SL = lstep / num_int_step
+    L1 = SL * DRIFT1
+    L2 = SL * DRIFT2
+    K1 = SL * KICK1
+    K2 = SL * KICK2
+
+    if le > 0
+        B[1] -= sin(KickAngle[1]) / le
+        A[1] += sin(KickAngle[2]) / le
+    end
+
+    for c in 1:num_particles
+        if lost_flags[c] == 1
+            continue
+        end
+        if !isnan(r[c, 1])
+            if !iszero(T1)
+                addvv_row!(r, c, T1)
+            end
+            if !iszero(R1)
+                multmv_row!(r, c, R1)
+            end
+            if FringeQuadEntrance != 0
+                r6 = @view r[c, :]
+                multipole_fringe!(r6, le, A, B, max_order, 1.0, 1, beti)
+            end
+            if _check_lost_row(r, c) || _check_lost_aperture_row(r, c, RApertures, EApertures)
+                lost_flags[c] = 1
+            end
+        else
+            lost_flags[c] = 1
+        end
+    end
+
+    for step in 1:ele.Nsteps
+        _sc2p5d_track_step!(ele, lstep, r, particles)
+        for c in 1:num_particles
+            if lost_flags[c] == 1
+                continue
+            end
+            if !isnan(r[c, 1])
+                for _ in 1:num_int_step
+                    drift6_row!(r, c, L1, beti, gamma2i)
+                    strthinkickrad_row!(r, c, A, B, K1, E0, max_order, rad_const)
+                    drift6_row!(r, c, L2, beti, gamma2i)
+                    strthinkickrad_row!(r, c, A, B, K2, E0, max_order, rad_const)
+                    drift6_row!(r, c, L2, beti, gamma2i)
+                    strthinkickrad_row!(r, c, A, B, K1, E0, max_order, rad_const)
+                    drift6_row!(r, c, L1, beti, gamma2i)
+                end
+
+                if step == ele.Nsteps
+                    if FringeQuadExit != 0
+                        r6 = @view r[c, :]
+                        multipole_fringe!(r6, le, A, B, max_order, -1.0, 1, beti)
+                    end
+                    if !iszero(R2)
+                        multmv_row!(r, c, R2)
+                    end
+                    if !iszero(T2)
+                        addvv_row!(r, c, T2)
+                    end
+                end
+                if _check_lost_row(r, c) || _check_lost_aperture_row(r, c, RApertures, EApertures)
+                    lost_flags[c] = 1
+                end
+            else
+                lost_flags[c] = 1
+            end
+        end
+    end
+
+    if le > 0
+        B[1] += sin(KickAngle[1]) / le
+        A[1] -= sin(KickAngle[2]) / le
     end
     return nothing
 end
@@ -845,6 +1081,7 @@ function pass!(ele::KQUAD_SC, r_in::Matrix{Float64}, num_particles::Int64, parti
     else
         beti = 1.0 
     end
+    gamma2i = use_exact_Hamiltonian == 2 ? 1.0 / particles.gamma^2 : 0.0
 
     PolynomB[1] = ele.k0
     PolynomB[2] = ele.k1 
@@ -854,7 +1091,7 @@ function pass!(ele::KQUAD_SC, r_in::Matrix{Float64}, num_particles::Int64, parti
         StrMPoleSymplectic4Pass_SC!(r_in,  ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
-                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
+                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps, gamma2i)
     else
         if particles.mass == m_e
             rad_const = RAD_CONST_E * particles.gamma^3
@@ -867,8 +1104,59 @@ function pass!(ele::KQUAD_SC, r_in::Matrix{Float64}, num_particles::Int64, parti
         StrMPoleSymplectic4RadPass_SC!(r_in,  ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
-                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
+                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps, gamma2i)
     end
+    return nothing
+end
+
+function _pass_sc2p5d_multipole!(ele, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
+    lost_flags = particles.lost_flag
+    PolynomB = zeros(4)
+    E0 = particles.energy
+    if use_exact_beti == 1
+        beti = 1.0 / particles.beta
+    else
+        beti = 1.0
+    end
+    gamma2i = use_exact_Hamiltonian == 2 ? 1.0 / particles.gamma^2 : 0.0
+
+    PolynomB[1] = ele.k0
+    PolynomB[2] = ele.k1
+    PolynomB[3] = ele.k2 / 2.0
+    PolynomB[4] = ele.k3 / 6.0
+    if ele.rad == 0
+        StrMPoleSymplectic4Pass_SC2P5D!(ele, r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder,
+            ele.NumIntSteps, ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1,
+            ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags, particles, gamma2i)
+    else
+        if particles.mass == m_e
+            rad_const = RAD_CONST_E * particles.gamma^3
+        elseif particles.mass == m_p
+            rad_const = RAD_CONST_P * particles.gamma^3
+        else
+            rad_const = 0.0
+            println("SR is not implemented for this particle mass.")
+        end
+        StrMPoleSymplectic4RadPass_SC2P5D!(ele, r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB,
+            ele.MaxOrder, ele.NumIntSteps, ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1,
+            ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0,
+            num_particles, lost_flags, particles, gamma2i)
+    end
+    return nothing
+end
+
+function pass!(ele::KQUAD_SC2P5D{Float64}, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
+    _pass_sc2p5d_multipole!(ele, r_in, num_particles, particles)
+    return nothing
+end
+
+function pass!(ele::KSEXT_SC2P5D{Float64}, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
+    _pass_sc2p5d_multipole!(ele, r_in, num_particles, particles)
+    return nothing
+end
+
+function pass!(ele::KOCT_SC2P5D{Float64}, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
+    _pass_sc2p5d_multipole!(ele, r_in, num_particles, particles)
     return nothing
 end
 
@@ -885,6 +1173,7 @@ function pass!(ele::KSEXT_SC, r_in::Matrix{Float64}, num_particles::Int64, parti
     else
         beti = 1.0 
     end
+    gamma2i = use_exact_Hamiltonian == 2 ? 1.0 / particles.gamma^2 : 0.0
 
     PolynomB[1] = ele.k0
     PolynomB[2] = ele.k1 
@@ -894,7 +1183,7 @@ function pass!(ele::KSEXT_SC, r_in::Matrix{Float64}, num_particles::Int64, parti
         StrMPoleSymplectic4Pass_SC!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
-                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
+                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps, gamma2i)
     else
         if particles.mass == m_e
             rad_const = RAD_CONST_E * particles.gamma^3
@@ -907,7 +1196,7 @@ function pass!(ele::KSEXT_SC, r_in::Matrix{Float64}, num_particles::Int64, parti
         StrMPoleSymplectic4RadPass_SC!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
-                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
+                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps, gamma2i)
     end
     
     return nothing
@@ -926,6 +1215,7 @@ function pass!(ele::KOCT_SC, r_in::Matrix{Float64}, num_particles::Int64, partic
     else
         beti = 1.0 
     end
+    gamma2i = use_exact_Hamiltonian == 2 ? 1.0 / particles.gamma^2 : 0.0
 
     PolynomB[1] = ele.k0
     PolynomB[2] = ele.k1 
@@ -935,7 +1225,7 @@ function pass!(ele::KOCT_SC, r_in::Matrix{Float64}, num_particles::Int64, partic
         StrMPoleSymplectic4Pass_SC!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
-                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
+                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps, gamma2i)
     else
         if particles.mass == m_e
             rad_const = RAD_CONST_E * particles.gamma^3
@@ -948,7 +1238,7 @@ function pass!(ele::KOCT_SC, r_in::Matrix{Float64}, num_particles::Int64, partic
         StrMPoleSymplectic4RadPass_SC!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit,
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
-                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
+                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps, gamma2i)
     end
     return nothing
 end
@@ -959,7 +1249,8 @@ function StrMPoleSymplectic4Pass_SC!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, 
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
     T1::Array{DTPSAD{N, T},1}, T2::Array{DTPSAD{N, T},1}, R1::Array{DTPSAD{N, T},2}, R2::Array{DTPSAD{N, T},2}, 
     RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{DTPSAD{N, T},1}, 
-    num_particles::Int, lost_flags::Array{Int64,1}, a::DTPSAD{N, T}, b::DTPSAD{N, T}, Nl::Int, Nm::Int, K::DTPSAD{N, T}, Nsteps::Int) where {N, T}
+    num_particles::Int, lost_flags::Array{Int64,1}, a::DTPSAD{N, T}, b::DTPSAD{N, T}, Nl::Int, Nm::Int, K::DTPSAD{N, T}, Nsteps::Int,
+    gamma2i::Float64 = 0.0) where {N, T}
     # Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
     # and [Qiang, Ji. "Differentiable self-consistent space-charge simulation for accelerator design." Physical Review Accelerators and Beams 26.2 (2023): 024601.]
 
@@ -1003,13 +1294,13 @@ function StrMPoleSymplectic4Pass_SC!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, 
 
             # Integrator
             for m in 1:num_int_step
-                drift6!(r6, L1)
+                drift6!(r6, L1, gamma2i)
                 strthinkick!(r6, A, B, K1, max_order)
-                drift6!(r6, L2)
+                drift6!(r6, L2, gamma2i)
                 strthinkick!(r6, A, B, K2, max_order)
-                drift6!(r6, L2)
+                drift6!(r6, L2, gamma2i)
                 strthinkick!(r6, A, B, K1, max_order)
-                drift6!(r6, L1)
+                drift6!(r6, L1, gamma2i)
             end
 
             if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
@@ -1030,13 +1321,13 @@ function StrMPoleSymplectic4Pass_SC!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, 
     
             # Integrator
             for m in 1:num_int_step
-                drift6!(r6, L1)
+                drift6!(r6, L1, gamma2i)
                 strthinkick!(r6, A, B, K1, max_order)
-                drift6!(r6, L2)
+                drift6!(r6, L2, gamma2i)
                 strthinkick!(r6, A, B, K2, max_order)
-                drift6!(r6, L2)
+                drift6!(r6, L2, gamma2i)
                 strthinkick!(r6, A, B, K1, max_order)
-                drift6!(r6, L1)
+                drift6!(r6, L1, gamma2i)
             end
             
             if step == Nsteps
@@ -1070,7 +1361,8 @@ function StrMPoleSymplectic4RadPass_SC!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T
     FringeQuadEntrance::Int, FringeQuadExit::Int, #(no fringe), 1 (lee-whiting) or 2 (lee-whiting+elegant-like) 
     T1::Array{DTPSAD{N, T},1}, T2::Array{DTPSAD{N, T},1}, R1::Array{DTPSAD{N, T},2}, R2::Array{DTPSAD{N, T},2}, 
     RApertures::Array{Float64,1}, EApertures::Array{Float64,1}, KickAngle::Array{DTPSAD{N, T},1}, E0::DTPSAD{N, T},
-    num_particles::Int, lost_flags::Array{Int64,1}, a::DTPSAD{N, T}, b::DTPSAD{N, T}, Nl::Int, Nm::Int, K::DTPSAD{N, T}, Nsteps::Int) where {N, T}
+    num_particles::Int, lost_flags::Array{Int64,1}, a::DTPSAD{N, T}, b::DTPSAD{N, T}, Nl::Int, Nm::Int, K::DTPSAD{N, T}, Nsteps::Int,
+    gamma2i::Float64 = 0.0) where {N, T}
     # Ref[Terebilo, Andrei. "Accelerator modeling with MATLAB accelerator toolbox." PACS2001 (2001)].
     # and [Qiang, Ji. "Differentiable self-consistent space-charge simulation for accelerator design." Physical Review Accelerators and Beams 26.2 (2023): 024601.]
 
@@ -1112,13 +1404,13 @@ function StrMPoleSymplectic4RadPass_SC!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T
             end
             # Integrator
             for m in 1:num_int_step
-                drift6!(r6, L1)
+                drift6!(r6, L1, gamma2i)
                 strthinkickrad!(r6, A, B, K1, E0, max_order, rad_const)
-                drift6!(r6, L2)
+                drift6!(r6, L2, gamma2i)
                 strthinkickrad!(r6, A, B, K2, E0, max_order, rad_const)
-                drift6!(r6, L2)
+                drift6!(r6, L2, gamma2i)
                 strthinkickrad!(r6, A, B, K1, E0, max_order, rad_const)
-                drift6!(r6, L1)
+                drift6!(r6, L1, gamma2i)
             end
             if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
                 lost_flags[c] = 1
@@ -1135,13 +1427,13 @@ function StrMPoleSymplectic4RadPass_SC!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T
     
             # Integrator
             for m in 1:num_int_step
-                drift6!(r6, L1)
+                drift6!(r6, L1, gamma2i)
                 strthinkickrad!(r6, A, B, K1, E0, max_order, rad_const)
-                drift6!(r6, L2)
+                drift6!(r6, L2, gamma2i)
                 strthinkickrad!(r6, A, B, K2, E0, max_order, rad_const)
-                drift6!(r6, L2)
+                drift6!(r6, L2, gamma2i)
                 strthinkickrad!(r6, A, B, K1, E0, max_order, rad_const)
-                drift6!(r6, L1)
+                drift6!(r6, L1, gamma2i)
             end
             
             if step == Nsteps
@@ -1170,6 +1462,193 @@ function StrMPoleSymplectic4RadPass_SC!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T
     return nothing
 end
 
+function StrMPoleSymplectic4Pass_SC2P5D!(ele, r::Matrix{DTPSAD{N, T}},
+    le::DTPSAD{N, T}, beti::Float64, A::Array{DTPSAD{N, T},1}, B::Array{DTPSAD{N, T},1},
+    max_order::Int, num_int_step::Int, FringeQuadEntrance::Int, FringeQuadExit::Int,
+    T1::Array{DTPSAD{N, T},1}, T2::Array{DTPSAD{N, T},1}, R1::Array{DTPSAD{N, T},2},
+    R2::Array{DTPSAD{N, T},2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1},
+    KickAngle::Array{DTPSAD{N, T},1}, num_particles::Int, lost_flags::Array{Int64,1},
+    particles::Beam{DTPSAD{N, T}}, gamma2i::Float64 = 0.0) where {N, T}
+
+    DRIFT1 = 0.6756035959798286638
+    DRIFT2 = -0.1756035959798286639
+    KICK1 = 1.351207191959657328
+    KICK2 = -1.702414383919314656
+
+    lstep = le / ele.Nsteps
+    SL = lstep / num_int_step
+    L1 = SL * DRIFT1
+    L2 = SL * DRIFT2
+    K1 = SL * KICK1
+    K2 = SL * KICK2
+
+    if le > 0
+        B[1] -= sin(KickAngle[1]) / le
+        A[1] += sin(KickAngle[2]) / le
+    end
+
+    @inbounds for c in 1:num_particles
+        if lost_flags[c] == 1
+            continue
+        end
+        r6 = @view r[c, :]
+        if !isnan(r6[1])
+            if !iszero(T1)
+                addvv!(r6, T1)
+            end
+            if !iszero(R1)
+                multmv!(r6, R1)
+            end
+            if FringeQuadEntrance != 0
+                multipole_fringe!(r6, le, A, B, max_order, 1.0, 1, beti)
+            end
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
+                lost_flags[c] = 1
+            end
+        else
+            lost_flags[c] = 1
+        end
+    end
+
+    for step in 1:ele.Nsteps
+        _sc2p5d_track_step!(ele, lstep, r, particles)
+        for c in 1:num_particles
+            if lost_flags[c] == 1
+                continue
+            end
+            r6 = @view r[c, :]
+
+            if !isnan(r6[1])
+                for _ in 1:num_int_step
+                    drift6!(r6, L1, gamma2i)
+                    strthinkick!(r6, A, B, K1, max_order)
+                    drift6!(r6, L2, gamma2i)
+                    strthinkick!(r6, A, B, K2, max_order)
+                    drift6!(r6, L2, gamma2i)
+                    strthinkick!(r6, A, B, K1, max_order)
+                    drift6!(r6, L1, gamma2i)
+                end
+
+                if step == ele.Nsteps
+                    if FringeQuadExit != 0
+                        multipole_fringe!(r6, le, A, B, max_order, -1.0, 1, beti)
+                    end
+                    if !iszero(R2)
+                        multmv!(r6, R2)
+                    end
+                    if !iszero(T2)
+                        addvv!(r6, T2)
+                    end
+                end
+                if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
+                    lost_flags[c] = 1
+                end
+            else
+                lost_flags[c] = 1
+            end
+        end
+    end
+
+    if le > 0
+        B[1] += sin(KickAngle[1]) / le
+        A[1] -= sin(KickAngle[2]) / le
+    end
+    return nothing
+end
+
+function StrMPoleSymplectic4RadPass_SC2P5D!(ele, r::Matrix{DTPSAD{N, T}},
+    le::DTPSAD{N, T}, rad_const::DTPSAD{N, T}, beti::Float64, A::Array{DTPSAD{N, T},1},
+    B::Array{DTPSAD{N, T},1}, max_order::Int, num_int_step::Int, FringeQuadEntrance::Int,
+    FringeQuadExit::Int, T1::Array{DTPSAD{N, T},1}, T2::Array{DTPSAD{N, T},1},
+    R1::Array{DTPSAD{N, T},2}, R2::Array{DTPSAD{N, T},2}, RApertures::Array{Float64,1},
+    EApertures::Array{Float64,1}, KickAngle::Array{DTPSAD{N, T},1}, E0::DTPSAD{N, T},
+    num_particles::Int, lost_flags::Array{Int64,1}, particles::Beam{DTPSAD{N, T}}, gamma2i::Float64 = 0.0) where {N, T}
+
+    DRIFT1 = 0.6756035959798286638
+    DRIFT2 = -0.1756035959798286639
+    KICK1 = 1.351207191959657328
+    KICK2 = -1.702414383919314656
+
+    lstep = le / ele.Nsteps
+    SL = lstep / num_int_step
+    L1 = SL * DRIFT1
+    L2 = SL * DRIFT2
+    K1 = SL * KICK1
+    K2 = SL * KICK2
+
+    if le > 0
+        B[1] -= sin(KickAngle[1]) / le
+        A[1] += sin(KickAngle[2]) / le
+    end
+
+    @inbounds for c in 1:num_particles
+        if lost_flags[c] == 1
+            continue
+        end
+        r6 = @view r[c, :]
+        if !isnan(r6[1])
+            if !iszero(T1)
+                addvv!(r6, T1)
+            end
+            if !iszero(R1)
+                multmv!(r6, R1)
+            end
+            if FringeQuadEntrance != 0
+                multipole_fringe!(r6, le, A, B, max_order, 1.0, 1, beti)
+            end
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
+                lost_flags[c] = 1
+            end
+        else
+            lost_flags[c] = 1
+        end
+    end
+
+    for step in 1:ele.Nsteps
+        _sc2p5d_track_step!(ele, lstep, r, particles)
+        for c in 1:num_particles
+            if lost_flags[c] == 1
+                continue
+            end
+            r6 = @view r[c, :]
+            if !isnan(r6[1])
+                for _ in 1:num_int_step
+                    drift6!(r6, L1, gamma2i)
+                    strthinkickrad!(r6, A, B, K1, E0, max_order, rad_const)
+                    drift6!(r6, L2, gamma2i)
+                    strthinkickrad!(r6, A, B, K2, E0, max_order, rad_const)
+                    drift6!(r6, L2, gamma2i)
+                    strthinkickrad!(r6, A, B, K1, E0, max_order, rad_const)
+                    drift6!(r6, L1, gamma2i)
+                end
+
+                if step == ele.Nsteps
+                    if FringeQuadExit != 0
+                        multipole_fringe!(r6, le, A, B, max_order, -1.0, 1, beti)
+                    end
+                    if !iszero(R2)
+                        multmv!(r6, R2)
+                    end
+                    if !iszero(T2)
+                        addvv!(r6, T2)
+                    end
+                end
+                if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
+                    lost_flags[c] = 1
+                end
+            else
+                lost_flags[c] = 1
+            end
+        end
+    end
+
+    if le > 0
+        B[1] += sin(KickAngle[1]) / le
+        A[1] -= sin(KickAngle[2]) / le
+    end
+    return nothing
+end
+
 function pass!(ele::KQUAD_SC{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_particles::Int64, particles::Beam{DTPSAD{N, T}}) where {N, T}
     # ele: KQUAD_SC
     # r_in: 6-by-num_particles array
@@ -1183,6 +1662,7 @@ function pass!(ele::KQUAD_SC{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_part
     else
         beti = 1.0 
     end
+    gamma2i = use_exact_Hamiltonian == 2 ? 1.0 / particles.gamma.val^2 : 0.0
 
     PolynomB[1] = ele.k0
     PolynomB[2] = ele.k1 
@@ -1192,7 +1672,7 @@ function pass!(ele::KQUAD_SC{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_part
         StrMPoleSymplectic4Pass_SC!(r_in,  ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
-                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
+                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps, gamma2i)
     else
         if particles.mass == m_e
             rad_const = RAD_CONST_E * particles.gamma^3
@@ -1205,8 +1685,63 @@ function pass!(ele::KQUAD_SC{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_part
         StrMPoleSymplectic4RadPass_SC!(r_in,  ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
-                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
+                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps, gamma2i)
     end
+    return nothing
+end
+
+function _pass_sc2p5d_multipole!(ele, r_in::Matrix{DTPSAD{N, T}}, num_particles::Int64,
+    particles::Beam{DTPSAD{N, T}}) where {N, T}
+    lost_flags = particles.lost_flag
+    PolynomB = zeros(DTPSAD{N, T}, 4)
+    E0 = particles.energy
+    if use_exact_beti == 1
+        beti = 1.0 / particles.beta.val
+    else
+        beti = 1.0
+    end
+    gamma2i = use_exact_Hamiltonian == 2 ? 1.0 / particles.gamma.val^2 : 0.0
+
+    PolynomB[1] = ele.k0
+    PolynomB[2] = ele.k1
+    PolynomB[3] = ele.k2 / 2.0
+    PolynomB[4] = ele.k3 / 6.0
+    if ele.rad == 0
+        StrMPoleSymplectic4Pass_SC2P5D!(ele, r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder,
+            ele.NumIntSteps, ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1, ele.T2, ele.R1,
+            ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags, particles, gamma2i)
+    else
+        if particles.mass == m_e
+            rad_const = RAD_CONST_E * particles.gamma^3
+        elseif particles.mass == m_p
+            rad_const = RAD_CONST_P * particles.gamma^3
+        else
+            rad_const = zero(DTPSAD{N, T})
+            println("SR is not implemented for this particle mass.")
+        end
+        StrMPoleSymplectic4RadPass_SC2P5D!(ele, r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB,
+            ele.MaxOrder, ele.NumIntSteps, ele.FringeQuadEntrance, ele.FringeQuadExit, ele.T1,
+            ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0,
+            num_particles, lost_flags, particles, gamma2i)
+    end
+    return nothing
+end
+
+function pass!(ele::KQUAD_SC2P5D{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_particles::Int64,
+    particles::Beam{DTPSAD{N, T}}) where {N, T}
+    _pass_sc2p5d_multipole!(ele, r_in, num_particles, particles)
+    return nothing
+end
+
+function pass!(ele::KSEXT_SC2P5D{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_particles::Int64,
+    particles::Beam{DTPSAD{N, T}}) where {N, T}
+    _pass_sc2p5d_multipole!(ele, r_in, num_particles, particles)
+    return nothing
+end
+
+function pass!(ele::KOCT_SC2P5D{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_particles::Int64,
+    particles::Beam{DTPSAD{N, T}}) where {N, T}
+    _pass_sc2p5d_multipole!(ele, r_in, num_particles, particles)
     return nothing
 end
 
@@ -1223,6 +1758,7 @@ function pass!(ele::KSEXT_SC{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_part
     else
         beti = 1.0 
     end
+    gamma2i = use_exact_Hamiltonian == 2 ? 1.0 / particles.gamma.val^2 : 0.0
 
     PolynomB[1] = ele.k0
     PolynomB[2] = ele.k1 
@@ -1232,7 +1768,7 @@ function pass!(ele::KSEXT_SC{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_part
         StrMPoleSymplectic4Pass_SC!(r_in, ele.len, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
-                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
+                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps, gamma2i)
     else
         if particles.mass == m_e
             rad_const = RAD_CONST_E * particles.gamma^3
@@ -1245,7 +1781,7 @@ function pass!(ele::KSEXT_SC{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_part
         StrMPoleSymplectic4RadPass_SC!(r_in, ele.len, rad_const, beti, ele.PolynomA, PolynomB, ele.MaxOrder, ele.NumIntSteps, 
                 ele.FringeQuadEntrance, ele.FringeQuadExit, 
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
-                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
+                ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps, gamma2i)
     end
     return nothing
 end
@@ -1541,6 +2077,21 @@ function pass_P!(ele::KQUAD_SC, r_in::Matrix{Float64}, num_particles::Int64, par
                 ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles, lost_flags,
                 ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
     end
+    return nothing
+end
+
+function pass_P!(ele::KQUAD_SC2P5D, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
+    pass!(ele, r_in, num_particles, particles)
+    return nothing
+end
+
+function pass_P!(ele::KSEXT_SC2P5D, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
+    pass!(ele, r_in, num_particles, particles)
+    return nothing
+end
+
+function pass_P!(ele::KOCT_SC2P5D, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
+    pass!(ele, r_in, num_particles, particles)
     return nothing
 end
 

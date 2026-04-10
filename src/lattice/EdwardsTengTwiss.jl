@@ -1,6 +1,13 @@
 using LinearAlgebra # LinearAlgebra is not fully supported by Enzyme. E.g., det, eigen, inv, etc. are not supported.
 abstract type AbstractTwiss end
 
+@noinline function _checked_sqrt(x::Float64, label::AbstractString)
+    if x < 0.0
+        throw(DomainError(x, "negative sqrt argument in " * String(label)))
+    end
+    return sqrt(x)
+end
+
 """
     lu_decomposition(A)
 
@@ -530,18 +537,18 @@ function twissPropagate(tin::EdwardsTengTwiss{Float64},M::Matrix{Float64}; elem_
 			if t>0.1
 				R=(D*R1-C)*symplectic_conjugate_2by2(X)
 				R/=t
-				X/=sqrt(t)
+				X/=_checked_sqrt(t, "twissPropagate(mode=1): sqrt(det(X)) with stable branch")
 				Y=D+C*_R1
-				Y/=sqrt(det_small_matrix(Y))
+				Y/=_checked_sqrt(det_small_matrix(Y), "twissPropagate(mode=1): sqrt(det(Y)) with stable branch")
 				mode=1
 			else
 				X=C-D*R1
-				X/=sqrt(det_small_matrix(X))
+				X/=_checked_sqrt(det_small_matrix(X), "twissPropagate(mode=1): sqrt(det(X)) with unstable branch")
 				Y=B+A*_R1
 				t=det_small_matrix(Y)
 				R=-(D+C*_R1)*symplectic_conjugate_2by2(Y)
 				R/=t
-				Y/=sqrt(t)
+				Y/=_checked_sqrt(t, "twissPropagate(mode=1): sqrt(det(Y)) with unstable branch")
 				mode=2
 			end
 	elseif tin.mode == Int(2) 
@@ -550,18 +557,18 @@ function twissPropagate(tin::EdwardsTengTwiss{Float64},M::Matrix{Float64}; elem_
 			if t>0.1
 				R=-(D+C*_R1)*symplectic_conjugate_2by2(X)
 				R/=t
-				X/=sqrt(t)
+				X/=_checked_sqrt(t, "twissPropagate(mode=2): sqrt(det(X)) with stable branch")
 				Y=C-D*R1
-				Y/=sqrt(det_small_matrix(Y))
+				Y/=_checked_sqrt(det_small_matrix(Y), "twissPropagate(mode=2): sqrt(det(Y)) with stable branch")
 				mode=1
 			else
 				X=D+C*_R1
-				X/=sqrt(det_small_matrix(X))
+				X/=_checked_sqrt(det_small_matrix(X), "twissPropagate(mode=2): sqrt(det(X)) with unstable branch")
 				Y=A-B*R1
 				t=det_small_matrix(Y)
 				R=(D*R1-C)*symplectic_conjugate_2by2(Y)
 				R/=t
-				Y/=sqrt(t)
+				Y/=_checked_sqrt(t, "twissPropagate(mode=2): sqrt(det(Y)) with unstable branch")
 				mode=2
 			end
 	else
@@ -580,10 +587,10 @@ function twissPropagate(tin::EdwardsTengTwiss{Float64},M::Matrix{Float64}; elem_
 	v1=Nx*[tin.betax;tin.alphax;tin.gammax]
 	v2=Ny*[tin.betay;tin.alphay;tin.gammay]
 	eta=( M[1:4,1:4])*[tin.dx,tin.dpx,tin.dy,tin.dpy]+( M[1:4,6])
-	sin_dmux=X[1,2]/sqrt(v1[1]*tin.betax)
-	cos_dmux=X[1,1]*sqrt(tin.betax/v1[1])-tin.alphax*sin_dmux
-	sin_dmuy=Y[1,2]/sqrt(v2[1]*tin.betay)
-	cos_dmuy=Y[1,1]*sqrt(tin.betay/v2[1])-tin.alphay*sin_dmuy
+	sin_dmux=X[1,2]/_checked_sqrt(v1[1]*tin.betax, "twissPropagate: sqrt(v1[1] * tin.betax)")
+	cos_dmux=X[1,1]*_checked_sqrt(tin.betax/v1[1], "twissPropagate: sqrt(tin.betax / v1[1])")-tin.alphax*sin_dmux
+	sin_dmuy=Y[1,2]/_checked_sqrt(v2[1]*tin.betay, "twissPropagate: sqrt(v2[1] * tin.betay)")
+	cos_dmuy=Y[1,1]*_checked_sqrt(tin.betay/v2[1], "twissPropagate: sqrt(tin.betay / v2[1])")-tin.alphay*sin_dmuy
 
 	smux0,cmux0,smuy0,cmuy0=tin.sinmux,tin.cosmux,tin.sinmuy,tin.cosmuy
 	smux=sin_dmux*cmux0+cos_dmux*smux0
@@ -1170,7 +1177,7 @@ function ADfastfindm66_refpts(LATTICE, dp::Float64, refpts::Vector{Int}, changed
     RIN[13, :] = orbitin
     M66_refpts = zeros(6, 6, length(refpts))
     for i in 1:length(refpts)
-		beam = Beam(RIN, energy=E0, mass=m0)
+		beam = Beam(copy(RIN), energy=E0, mass=m0)
 		if i == 1
             id_list = [j for j in 1:refpts[1]]
 			ADlinepass!(LATTICE, id_list, beam, changed_idx, changed_ele)
@@ -1367,6 +1374,18 @@ This function is used for automatic differentiation with Enzyme to avoid access 
 # Returns
 - `Vector{EdwardsTengTwiss}`: Output Twiss parameters at specified locations.
 """
+function _ad_effective_lengths(seq::Vector{<:AbstractElement{Float64}},
+	changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractElement{Float64}})
+	lengths = Vector{Float64}(undef, length(seq))
+	@inbounds for i in eachindex(seq)
+		lengths[i] = get_len(seq[i])
+	end
+	@inbounds for i in eachindex(changed_idx)
+		lengths[changed_idx[i]] = get_len(changed_ele[i])
+	end
+	return lengths
+end
+
 function ADtwissline(tin::EdwardsTengTwiss{Float64},seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractElement{Float64}}; 
 	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
 	if dp == 0.0 && orb[6] != 0.0
@@ -1381,6 +1400,7 @@ function ADtwissline(tin::EdwardsTengTwiss{Float64},seq::Vector{<:AbstractElemen
 	else
 		M_list = ADfindm66_refpts(seq, dp, order, refpts, changed_idx, changed_ele, E0=E0, m0=m0, orb=orb)
 	end
+	effective_lengths = _ad_effective_lengths(seq, changed_idx, changed_ele)
 	
 	# Compute cumulative lengths for each segment
 	for i in 1:length(refpts)
@@ -1388,13 +1408,7 @@ function ADtwissline(tin::EdwardsTengTwiss{Float64},seq::Vector{<:AbstractElemen
 		end_idx = refpts[i]
 		segment_length = 0.0
 		for j in start_idx:end_idx
-			# Check if element index is in changed_idx and use changed_ele length
-			idx_in_changed = findfirst(x -> x == j, changed_idx)
-			if idx_in_changed !== nothing
-				segment_length += changed_ele[idx_in_changed].len
-			else
-				segment_length += seq[j].len
-			end
+			segment_length += effective_lengths[j]
 		end
 		ret = twissPropagate(ret, M_list[:, :, i], elem_length=segment_length)
 		ret_vector[i] = ret

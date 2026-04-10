@@ -1,3 +1,4 @@
+# must activate use_exact_drift(2) before use the 2.5-D space charge model
 using FFTW
 using StaticArrays: SVector
 
@@ -13,6 +14,46 @@ end
 @inline _sc2p5d_gridz(zmin, dz, iz::Int) = zmin + (iz - 0.5) * dz
 @inline _sc2p5d_primal(x::Float64) = x
 @inline _sc2p5d_primal(x::DTPSAD{N, T}) where {N, T <: Number} = Float64(x.val)
+@inline _sc2p5d_zero_like(x::T) where {T} = zero(x)
+@inline _sc2p5d_like(x::T, v::Real) where {T} = zero(x) + v
+
+@inline function _sc2p5d_apply_rb_longitudinal_kick!(r6::AbstractVector{Float64}, d_e::Float64,
+    ref_momentum::Float64, beta_ref::Float64, total_energy::Float64)
+    if isone(use_exact_beti)
+        # In deltaE/p0 mode the sixth coordinate is already the normalized
+        # energy deviation, so the RB energy kick maps directly.
+        r6[6] += d_e / ref_momentum
+        return nothing
+    end
+
+    delta_scale = beta_ref^2 * total_energy
+    r6[6] += d_e / delta_scale
+    return nothing
+end
+
+@inline function _sc2p5d_apply_rb_longitudinal_kick_row!(r_in::Matrix{Float64}, c::Int, d_e::Float64,
+    ref_momentum::Float64, beta_ref::Float64, total_energy::Float64)
+    if isone(use_exact_beti)
+        r_in[c, 6] += d_e / ref_momentum
+        return nothing
+    end
+
+    delta_scale = beta_ref^2 * total_energy
+    r_in[c, 6] += d_e / delta_scale
+    return nothing
+end
+
+@inline function _sc2p5d_apply_rb_longitudinal_kick!(r6::AbstractVector{DTPSAD{N, T}}, d_e::DTPSAD{N, T},
+    ref_momentum::DTPSAD{N, T}, beta_ref::DTPSAD{N, T}, total_energy::DTPSAD{N, T}) where {N, T <: Number}
+    if isone(use_exact_beti)
+        r6[6] += d_e / ref_momentum
+        return nothing
+    end
+
+    delta_scale = beta_ref^2 * total_energy
+    r6[6] += d_e / delta_scale
+    return nothing
+end
 
 function _sc2p5d_extrema(r_in::Matrix{Float64}, lost_flags::Vector{Int})
     x_min = Inf
@@ -211,7 +252,7 @@ function _sc2p5d_grid1d_value(grid::Vector{Float64}, z::Float64, z_min::Float64,
     @inbounds return wz0 * grid[iz0] + wzp * grid[izp]
 end
 
-function _sc2p5d_build_green_fft!(ele::SPACECHARGE2P5D, dx::Float64, dy::Float64)
+function _sc2p5d_build_green_fft!(ele, dx::Float64, dy::Float64)
     if isapprox(ele.green_dx, dx; atol=1e-15, rtol=1e-12) &&
        isapprox(ele.green_dy, dy; atol=1e-15, rtol=1e-12)
         return nothing
@@ -244,7 +285,7 @@ function _sc2p5d_build_green_fft!(ele::SPACECHARGE2P5D, dx::Float64, dy::Float64
     return nothing
 end
 
-function _sc2p5d_find_potential!(ele::SPACECHARGE2P5D, dx::Float64, dy::Float64)
+function _sc2p5d_find_potential!(ele, dx::Float64, dy::Float64)
     _sc2p5d_build_green_fft!(ele, dx, dy)
     nx = ele.xsize
     ny = ele.ysize
@@ -255,7 +296,7 @@ function _sc2p5d_find_potential!(ele::SPACECHARGE2P5D, dx::Float64, dy::Float64)
     return nothing
 end
 
-function _sc2p5d_calculate_long_derivative!(ele::SPACECHARGE2P5D, z_min::Float64, z_max::Float64)
+function _sc2p5d_calculate_long_derivative!(ele, z_min::Float64, z_max::Float64)
     nz = ele.zsize
     dz = (z_max - z_min) / nz
     fill!(ele.z_deriv_grid, 0.0)
@@ -313,7 +354,7 @@ function _sc2p5d_calculate_long_derivative!(ele::SPACECHARGE2P5D, z_min::Float64
     return nothing
 end
 
-function _sc2p5d_bunch_analysis!(ele::SPACECHARGE2P5D, r_in::Matrix{Float64}, lost_flags::Vector{Int}, macro_size::Float64)
+function _sc2p5d_bunch_analysis!(ele, r_in::Matrix{Float64}, lost_flags::Vector{Int}, macro_size::Float64)
     x_min, x_max, y_min, y_max, z_min, z_max, n_active = _sc2p5d_extrema(r_in, lost_flags)
     if n_active < 2
         return nothing
@@ -374,8 +415,8 @@ function _sc2p5d_bunch_analysis!(ele::SPACECHARGE2P5D, r_in::Matrix{Float64}, lo
     return x_min, x_max, y_min, y_max, z_min, z_max, total_macrosize, x_avg, y_avg, a_bunch
 end
 
-function _sc2p5d_track!(ele::SPACECHARGE2P5D, r_in::Matrix{Float64}, particles::Beam{Float64})
-    if ele.effective_len == 0.0 || size(r_in, 1) < 2 || particles.beta <= 0.0
+function _sc2p5d_track_step!(ele, effective_len::Float64, r_in::Matrix{Float64}, particles::Beam{Float64})
+    if effective_len == 0.0 || size(r_in, 1) < 2 || particles.beta <= 0.0
         return nothing
     end
     if Float64(ele.pipe_radius) <= 0.0
@@ -391,19 +432,18 @@ function _sc2p5d_track!(ele::SPACECHARGE2P5D, r_in::Matrix{Float64}, particles::
     _sc2p5d_find_potential!(ele, (x_max - x_min) / (ele.xsize - 1), (y_max - y_min) / (ele.ysize - 1))
     z_step = (z_max - z_min) / ele.zsize
 
-    factor = 2.0 * ele.effective_len * particles.classrad0 / (particles.beta^2 * particles.gamma^3)
+    factor = 2.0 * effective_len * particles.classrad0 / (particles.beta^2 * particles.gamma^3)
     factor /= (z_step * total_macrosize)
 
     long_sc_factor_in = a_bunch > 0.0 ? 1.0 + 2.0 * log(Float64(ele.pipe_radius) / a_bunch) : 0.0
     long_sc_factor_out = 2.0 * log(Float64(ele.pipe_radius))
     a_bunch_2 = a_bunch * a_bunch
-    long_sc_factor = -ele.effective_len * particles.classrad0 * particles.mass / (particles.gamma^2)
+    long_sc_factor = -effective_len * particles.classrad0 * particles.mass / (particles.gamma^2)
     total_energy = particles.energy + particles.mass
-    delta_scale = particles.beta^2 * total_energy
-    if delta_scale == 0.0
+    ref_momentum = particles.beta * total_energy
+    if ref_momentum == 0.0
         return nothing
     end
-
     @inbounds for c in 1:size(r_in, 1)
         if isone(particles.lost_flag[c]) || isnan(r_in[c, 1])
             continue
@@ -415,6 +455,8 @@ function _sc2p5d_track!(ele::SPACECHARGE2P5D, r_in::Matrix{Float64}, particles::
         ez = _sc2p5d_grid1d_value(ele.z_deriv_grid, z, z_min, z_max)
         lfactor = -_sc2p5d_grid1d_value(ele.z_grid, z, z_min, z_max) * factor
 
+        # PyORBIT stores xp/yp in the same slots as its transverse canonical
+        # momenta, so the copied 2.5-D kick maps directly onto JuTrack px/py.
         r_in[c, 2] += ex * lfactor
         r_in[c, 4] += ey * lfactor
 
@@ -425,15 +467,22 @@ function _sc2p5d_track!(ele::SPACECHARGE2P5D, r_in::Matrix{Float64}, particles::
             else
                 long_sc_coeff = long_sc_factor_out - log(r2)
             end
-            d_e = ez * long_sc_factor * long_sc_coeff
-            r_in[c, 6] += d_e / delta_scale
+            # JuTrack transports the longitudinal coordinate with the opposite
+            # sign convention from PyORBIT, so d lambda / dz in JuTrack's
+            # internal coordinate is the negative of the PyORBIT/physical
+            # derivative used by the RB longitudinal kick.
+            d_e = -ez * long_sc_factor * long_sc_coeff
+            _sc2p5d_apply_rb_longitudinal_kick_row!(r_in, c, d_e, ref_momentum, particles.beta, total_energy)
         end
-
-        r6 = @view r_in[c, :]
-        if check_lost(r6)
+        if _check_lost_row(r_in, c)
             particles.lost_flag[c] = 1
         end
     end
+    return nothing
+end
+
+function _sc2p5d_track!(ele::SPACECHARGE2P5D, r_in::Matrix{Float64}, particles::Beam{Float64})
+    _sc2p5d_track_step!(ele, ele.effective_len, r_in, particles)
     return nothing
 end
 
@@ -751,7 +800,7 @@ function _sc2p5d_calculate_long_derivative!(z_grid::Vector{DTPSAD{N, T}}, z_deri
     return nothing
 end
 
-function _sc2p5d_bunch_analysis_dtpsa(ele::SPACECHARGE2P5D{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}},
+function _sc2p5d_bunch_analysis_dtpsa(ele, r_in::Matrix{DTPSAD{N, T}},
     lost_flags::Vector{Int}, macro_size::DTPSAD{N, T}) where {N, T <: Number}
     x_min, x_max, y_min, y_max, z_min, z_max, n_active = _sc2p5d_extrema(r_in, lost_flags)
     if n_active < 2
@@ -810,8 +859,8 @@ function _sc2p5d_bunch_analysis_dtpsa(ele::SPACECHARGE2P5D{DTPSAD{N, T}}, r_in::
     return x_min, x_max, y_min, y_max, z_min, z_max, total_macrosize, x_avg, y_avg, a_bunch, rho_grid, z_grid, z_deriv_grid
 end
 
-function _sc2p5d_track!(ele::SPACECHARGE2P5D{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
-    if _sc2p5d_primal(ele.effective_len) == 0.0 || size(r_in, 1) < 2 || particles.beta <= 0.0
+function _sc2p5d_track_step!(ele, effective_len::DTPSAD{N, T}, r_in::Matrix{DTPSAD{N, T}}, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
+    if _sc2p5d_primal(effective_len) == 0.0 || size(r_in, 1) < 2 || particles.beta <= 0.0
         return nothing
     end
     if _sc2p5d_primal(ele.pipe_radius) <= 0.0
@@ -827,32 +876,32 @@ function _sc2p5d_track!(ele::SPACECHARGE2P5D{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{
     phi_grid = _sc2p5d_find_potential_dtpsa(rho_grid, (x_max - x_min) / (ele.xsize - 1), (y_max - y_min) / (ele.ysize - 1))
     z_step = (z_max - z_min) / ele.zsize
 
-    factor = 2.0 * ele.effective_len * particles.classrad0 / (particles.beta^2 * particles.gamma^3)
+    factor = 2.0 * effective_len * particles.classrad0 / (particles.beta^2 * particles.gamma^3)
     factor /= (z_step * total_macrosize)
 
     long_sc_factor_in = a_bunch > 0.0 ? 1.0 + 2.0 * log(ele.pipe_radius / a_bunch) : zero(DTPSAD{N, T})
     long_sc_factor_out = 2.0 * log(ele.pipe_radius)
     a_bunch_2 = a_bunch * a_bunch
-    long_sc_factor = -ele.effective_len * particles.classrad0 * particles.mass / (particles.gamma^2)
+    long_sc_factor = -effective_len * particles.classrad0 * particles.mass / (particles.gamma^2)
     total_energy = particles.energy + particles.mass
-    delta_scale = particles.beta^2 * total_energy
-    if delta_scale == 0.0
+    ref_momentum = particles.beta * total_energy
+    if _sc2p5d_primal(ref_momentum) == 0.0
         return nothing
     end
-
     @inbounds for c in 1:size(r_in, 1)
         if isone(particles.lost_flag[c]) || isnan(r_in[c, 1])
             continue
         end
-        x = r_in[c, 1]
-        y = r_in[c, 3]
-        z = r_in[c, 5]
+        r6 = @view r_in[c, :]
+        x = r6[1]
+        y = r6[3]
+        z = r6[5]
         ex, ey = _sc2p5d_grid2d_gradient(phi_grid, x, y, x_min, x_max, y_min, y_max)
         ez = _sc2p5d_grid1d_value(z_deriv_grid, z, z_min, z_max)
         lfactor = -_sc2p5d_grid1d_value(z_grid, z, z_min, z_max) * factor
 
-        r_in[c, 2] += ex * lfactor
-        r_in[c, 4] += ey * lfactor
+        r6[2] += ex * lfactor
+        r6[4] += ey * lfactor
 
         if a_bunch_2 > 0.0
             r2 = (x - x_center)^2 + (y - y_center)^2
@@ -861,15 +910,18 @@ function _sc2p5d_track!(ele::SPACECHARGE2P5D{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{
             else
                 long_sc_coeff = long_sc_factor_out - log(r2)
             end
-            d_e = ez * long_sc_factor * long_sc_coeff
-            r_in[c, 6] += d_e / delta_scale
+            d_e = -ez * long_sc_factor * long_sc_coeff
+            _sc2p5d_apply_rb_longitudinal_kick!(r6, d_e, ref_momentum, particles.beta, total_energy)
         end
-
-        r6 = @view r_in[c, :]
         if check_lost(r6)
             particles.lost_flag[c] = 1
         end
     end
+    return nothing
+end
+
+function _sc2p5d_track!(ele::SPACECHARGE2P5D{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
+    _sc2p5d_track_step!(ele, ele.effective_len, r_in, particles)
     return nothing
 end
 
@@ -894,7 +946,7 @@ function pass_TPSA!(ele::SPACECHARGE2P5D, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_
     return nothing
 end
 
-function _insert_space_charge_2p5d_periodic(line::Vector{<:AbstractElement{Float64}}, sc_path_length_min::Float64; kwargs...)
+function _insert_space_charge_2p5d_periodic(line::Vector{<:AbstractElement{T}}, sc_path_length_min::Float64; kwargs...) where {T}
     markers = Tuple{Int, Float64, Float64}[]
     length_total = 0.0
     running_path = 0.0
@@ -903,8 +955,9 @@ function _insert_space_charge_2p5d_periodic(line::Vector{<:AbstractElement{Float
             push!(markers, (i, length_total, running_path))
             running_path = 0.0
         end
-        running_path += line[i].len
-        length_total += line[i].len
+        ele_len = _sc2p5d_primal(line[i].len)
+        running_path += ele_len
+        length_total += ele_len
     end
     rest_length = isempty(markers) ? length_total : (length_total - markers[end][2])
     pushfirst!(markers, (1, 0.0, rest_length))
@@ -917,12 +970,13 @@ function _insert_space_charge_2p5d_periodic(line::Vector{<:AbstractElement{Float
     end
     push!(sc_specs, (markers[end][1], rest_length))
 
-    new_line = AbstractElement{Float64}[]
+    new_line = AbstractElement{T}[]
+    zero_len = _sc2p5d_zero_like(line[1].len)
     spec_index = 1
     for i in eachindex(line)
         while spec_index <= length(sc_specs) && sc_specs[spec_index][1] == i
-            sc = SPACECHARGE2P5D(name="SC2P5D_$(spec_index)", len=0.0,
-                effective_len=sc_specs[spec_index][2]; kwargs...)
+            sc = SPACECHARGE2P5D(name="SC2P5D_$(spec_index)", len=zero_len,
+                effective_len=_sc2p5d_like(line[1].len, sc_specs[spec_index][2]); kwargs...)
             push!(new_line, sc)
             spec_index += 1
         end
@@ -931,33 +985,36 @@ function _insert_space_charge_2p5d_periodic(line::Vector{<:AbstractElement{Float
     return new_line
 end
 
-function insert_space_charge_2p5d(line::Vector{<:AbstractElement{Float64}}, sc_path_length_min::Real;
-    periodic::Bool = false, kwargs...)
-    if isempty(line)
-        return AbstractElement{Float64}[]
-    end
+function insert_space_charge_2p5d(line::Vector{<:AbstractElement{T}}, sc_path_length_min::Real;
+    periodic::Bool = false, kwargs...) where {T}
     path_min = Float64(sc_path_length_min)
     if path_min <= 0.0
         error("insert_space_charge_2p5d requires sc_path_length_min > 0.")
     end
+    if isempty(line)
+        return AbstractElement{T}[]
+    end
     if periodic
         return _insert_space_charge_2p5d_periodic(line, path_min; kwargs...)
     end
-    new_line = AbstractElement{Float64}[]
+    new_line = AbstractElement{T}[]
+    zero_len = _sc2p5d_zero_like(line[1].len)
     running_path = 0.0
     sc_index = 1
     for ele in line
         push!(new_line, ele)
-        running_path += ele.len
+        running_path += _sc2p5d_primal(ele.len)
         if running_path >= path_min
-            sc = SPACECHARGE2P5D(name="SC2P5D_$(sc_index)", len=0.0, effective_len=running_path; kwargs...)
+            sc = SPACECHARGE2P5D(name="SC2P5D_$(sc_index)", len=zero_len,
+                effective_len=_sc2p5d_like(line[1].len, running_path); kwargs...)
             push!(new_line, sc)
             running_path = 0.0
             sc_index += 1
         end
     end
     if running_path > 0.0
-        sc = SPACECHARGE2P5D(name="SC2P5D_$(sc_index)", len=0.0, effective_len=running_path; kwargs...)
+        sc = SPACECHARGE2P5D(name="SC2P5D_$(sc_index)", len=zero_len,
+            effective_len=_sc2p5d_like(line[1].len, running_path); kwargs...)
         push!(new_line, sc)
     end
     return new_line

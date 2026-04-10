@@ -321,7 +321,10 @@ function computeDrivingTerms(s::Vector{Float64}, betax::Vector{Float64}, betay::
         phiy1 = phiy[nE]
         etax1 = etax[nE]
         # Fill the element data
-        ed[nE] = ElementData(betax1, betay1, sqrt(betax1), sqrt(betay1), betax1^2, betay1^2,
+        ed[nE] = ElementData(betax1, betay1,
+                            _checked_rdt_sqrt(betax1, "computeDrivingTerms: sqrt(betax1) at element $(nE)"),
+                            _checked_rdt_sqrt(betay1, "computeDrivingTerms: sqrt(betay1) at element $(nE)"),
+                            betax1^2, betay1^2,
                             phix1, phiy1, [exp(ii * phix1 * j) for j in 1:5], [exp(ii * phiy1 * j) for j in 1:5],
                             b2L, b3L, s[nE])
 
@@ -913,19 +916,63 @@ function get_polynom_value(poly, n)
     return poly[n]
 end
 
+function _get_polynomA2_or_zero(ele::AbstractElement{T}) where T
+    if hasproperty(ele, :PolynomA)
+        return ele.PolynomA[2]
+    else
+        return zero(T)
+    end
+end
+
+function _ad_effective_rdt_element_data(ring::Vector{<:AbstractElement{Float64}},
+    changed_ids::Vector{Int}, changed_elems::Vector{<:AbstractElement{Float64}})
+    nele = length(ring)
+    len_list = Vector{Float64}(undef, nele)
+    polyA2 = zeros(Float64, nele)
+    polyB2 = zeros(Float64, nele)
+    polyB3 = zeros(Float64, nele)
+    polyB4 = zeros(Float64, nele)
+    @inbounds for i in eachindex(ring)
+        ele = ring[i]
+        len_list[i] = get_len(ele)
+        polyA2[i] = _get_polynomA2_or_zero(ele)
+        polyB2[i] = get_k1(ele)
+        polyB3[i] = get_k2(ele)
+        polyB4[i] = get_k3(ele)
+    end
+    @inbounds for i in eachindex(changed_ids)
+        idx = changed_ids[i]
+        ele = changed_elems[i]
+        len_list[idx] = get_len(ele)
+        polyA2[idx] = _get_polynomA2_or_zero(ele)
+        polyB2[idx] = get_k1(ele)
+        polyB3[idx] = get_k2(ele)
+        polyB4[idx] = get_k3(ele)
+    end
+    return len_list, polyA2, polyB2, polyB3, polyB4
+end
+
+@noinline function _checked_rdt_sqrt(x::Float64, label::AbstractString)
+    if x < 0.0
+        throw(DomainError(x, "negative sqrt argument in " * String(label)))
+    end
+    return sqrt(x)
+end
+
 function ADavedata(ring, dpp, changed_ids, changed_elems; E0=3e9, m0=m_e)
     refpts = [i for i in 1:length(ring)]
     twi = ADtwissring(ring, dpp, 0, refpts, changed_ids, changed_elems, E0=E0, m0=m0)
+    len_all, _, k1_all, _, _ = _ad_effective_rdt_element_data(ring, changed_ids, changed_elems)
     nlong = 0
     for i in eachindex(ring)
-        if get_len(ring[i]) > 0
+        if len_all[i] > 0
             nlong += 1
         end
     end
     long = zeros(Int, nlong)
     nlong = 0
     for i in eachindex(ring)
-        if get_len(ring[i]) > 0
+        if len_all[i] > 0
             nlong += 1
             long[nlong] = i
         end
@@ -955,20 +1002,7 @@ function ADavedata(ring, dpp, changed_ids, changed_elems; E0=3e9, m0=m_e)
     mu1 = mu[long, :]
     disp1 = avedisp[final, :]
 
-    L = zeros(length(long))
-    for i in eachindex(long)
-        if long[i] in changed_ids
-            for j in eachindex(changed_ids)
-                if long[i] == changed_ids[j]
-                    L[i] = changed_elems[j].len
-                end
-                break
-            end
-            # L[i] = changed_elems[findfirst(x -> x == long[i], changed_ids)].len
-        else
-            L[i] = get_len(ring[long[i]])
-        end
-    end
+    L = len_all[long]
     L2 = [L L]
     # println(size(beta0), size(beta1), size(alpha0), size(L2))
     avebeta[long, :] = betadrift(beta0, beta1, alpha0, L2)
@@ -1000,17 +1034,7 @@ function ADavedata(ring, dpp, changed_ids, changed_elems; E0=3e9, m0=m_e)
     K = zeros(length(long))
     if length(foc) > 0
         for i in eachindex(foc)
-            if long[foc[i]] in changed_ids
-                for j in eachindex(changed_ids)
-                    if long[foc[i]] == changed_ids[j]
-                        K[foc[i]] = get_k1(changed_elems[j])
-                    end
-                    break
-                end
-                ###### K[foc[i]] = changed_elems[findfirst(x -> x == long[foc[i]], changed_ids)].PolynomB[2]
-            else
-                K[foc[i]] = get_k1(ring[long[foc[i]]])
-            end
+            K[foc[i]] = k1_all[long[foc[i]]]
         end
         K2 = [K -K]
 
@@ -1082,6 +1106,7 @@ function ADcomputeRDT(ring, index, changed_ids, changed_elems; chromatic=true, c
     indS = findelem(ring, KSEXT)
     indO = findelem(ring, KOCT)
     indDQSO = sort(union(indB, indQ, indS, indO))
+    len_all, polyA2_all, polyB2_all, polyB3_all, polyB4_all = _ad_effective_rdt_element_data(ring, changed_ids, changed_elems)
 
     AVEBETA, AVEMU, AVEDISP, beta, alpha, mu, dp = ADavedata(ring, 0.0, changed_ids, changed_elems, E0=E0, m0=m0)  
     sIndex = spos(ring, indDQSO.-1)
@@ -1101,32 +1126,12 @@ function ADcomputeRDT(ring, index, changed_ids, changed_elems; chromatic=true, c
     b3L = zeros(length(indDQSO))
     b4L = zeros(length(indDQSO))
     for i in eachindex(indDQSO)
-        PolyA2 = 0.0
-        PolyB2 = 0.0
-        PolyB3 = 0.0
-        PolyB4 = 0.0
-        len_list = 0.0
-        if indDQSO[i] in changed_ids
-            for j in eachindex(changed_ids)
-                if indDQSO[i] == changed_ids[j]
-                    PolyA2 = get_polynom(changed_elems[j], 1, 2)
-                    PolyB2 = get_k1(changed_elems[j])
-                    PolyB3 = get_k2(changed_elems[j]) / 2.0
-                    PolyB4 = get_k3(changed_elems[j]) / 6.0
-                    len_list = changed_elems[j].len
-                end
-            end
-        else
-            PolyA2 = get_polynom(ring[indDQSO[i]], 1, 2)
-            PolyB2 = get_k1(ring[indDQSO[i]])
-            PolyB3 = get_k2(ring[indDQSO[i]]) / 2.0
-            PolyB4 = get_k3(ring[indDQSO[i]]) / 6.0
-            len_list = get_len(ring[indDQSO[i]])
-        end
-        a2L[i] = PolyA2 * len_list
-        b2L[i] = PolyB2 * len_list
-        b3L[i] = PolyB3 * len_list
-        b4L[i] = PolyB4 * len_list
+        idx = indDQSO[i]
+        len_ele = len_all[idx]
+        a2L[i] = polyA2_all[idx] * len_ele
+        b2L[i] = polyB2_all[idx] * len_ele
+        b3L[i] = (polyB3_all[idx] / 2.0) * len_ele
+        b4L[i] = (polyB4_all[idx] / 6.0) * len_ele
     end
     Mux = mu[end-1, 1]
     Muy = mu[end-1, 2]

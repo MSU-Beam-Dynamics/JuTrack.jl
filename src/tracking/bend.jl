@@ -58,6 +58,60 @@ function bndthinkickrad!(r::AbstractVector{Float64}, A::Array{Float64,1}, B::Arr
     return nothing
 end
 
+function bndthinkick_row!(r::Matrix{Float64}, c::Int, A::Array{Float64,1}, B::Array{Float64,1},
+    L::Float64, irho::Float64, max_order::Int, beti::Float64)
+    ReSum = B[max_order + 1]
+    ImSum = A[max_order + 1]
+    ReSumTemp = 0.0
+    x = r[c, 1]
+    y = r[c, 3]
+    dp_0 = r[c, 6]
+
+    for i in max_order-1:-1:0
+        ReSumTemp = ReSum * x - ImSum * y + B[i + 1]
+        ImSum = ImSum * x + ReSum * y + A[i + 1]
+        ReSum = ReSumTemp
+    end
+
+    r[c, 2] -= L * (ReSum - (dp_0 - x * irho) * irho)
+    r[c, 4] += L * ImSum
+    r[c, 5] += L * irho * x * beti
+    return nothing
+end
+
+function bndthinkickrad_row!(r::Matrix{Float64}, c::Int, A::Array{Float64,1}, B::Array{Float64,1},
+    L::Float64, irho::Float64, E0::Float64, max_order::Int, beti::Float64)
+    ReSum = B[max_order + 1]
+    ImSum = A[max_order + 1]
+    ReSumTemp = 0.0
+    x = r[c, 1]
+    y = r[c, 3]
+    crad = CGAMMA * E0^3 / (2.0 * pi * 1e27)
+
+    for i in max_order-1:-1:0
+        ReSumTemp = ReSum * x - ImSum * y + B[i + 1]
+        ImSum = ImSum * x + ReSum * y + A[i + 1]
+        ReSum = ReSumTemp
+    end
+
+    p_norm = 1.0 / (1.0 * beti + r[c, 6])
+    xpr = r[c, 2] * p_norm
+    ypr = r[c, 4] * p_norm
+    b2p = B2perp(ImSum, ReSum + irho, irho, x, xpr, y, ypr)
+
+    dp_0 = r[c, 6]
+    r[c, 6] -= crad * (1.0 * beti + r[c, 6])^2 * b2p * (1.0 + x * irho + (xpr^2 + ypr^2) / 2.0) * L
+
+    p_norm = 1.0 / (1.0 * beti + r[c, 6])
+    r[c, 2] = xpr / p_norm
+    r[c, 4] = ypr / p_norm
+
+    r[c, 2] -= L * (ReSum - (dp_0 - x * irho) * irho)
+    r[c, 4] += L * ImSum
+    r[c, 5] += L * irho * x * beti
+    return nothing
+end
+
 function BendSymplecticPassRad!(r::Matrix{Float64}, le::Float64, beti::Float64, irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, 
     max_order::Int, num_int_steps::Int, entrance_angle::Float64, exit_angle::Float64, FringeBendEntrance::Int, FringeBendExit::Int,
     fint1::Float64, fint2::Float64, gap::Float64, FringeQuadEntrance::Int, FringeQuadExit::Int,
@@ -190,61 +244,53 @@ function BendSymplecticPass!(r::Matrix{Float64}, le::Float64, beti::Float64, irh
 
 
     for c in 1:num_particles
-        if isone(lost_flags[c])
+        if isone(lost_flags[c]) || isnan(r[c, 1])
             continue
         end
-        r6 = @view r[c, :]
-        # Misalignment at entrance
         if !iszero(T1)
-            addvv!(r6, T1)
+            addvv_row!(r, c, T1)
         end
         if !iszero(R1)
-            multmv!(r6, R1)
+            multmv_row!(r, c, R1)
         end
 
-        # Edge focus at entrance
-        edge_fringe_entrance!(r6, irho, entrance_angle, fint1, gap, FringeBendEntrance)
+        edge_fringe_entrance!(@view(r[c, :]), irho, entrance_angle, fint1, gap, FringeBendEntrance)
 
-        # Quadrupole gradient fringe entrance
         if !iszero(FringeQuadEntrance) && !iszero(B[2])
             if isone(useLinFrEleEntrance)
-                linearQuadFringeElegantEntrance!(r6, B[2], fringeIntM0, fringeIntP0)
+                linearQuadFringeElegantEntrance!(@view(r[c, :]), B[2], fringeIntM0, fringeIntP0)
             else
-                QuadFringePassP!(r6, B[2])
+                QuadFringePassP!(@view(r[c, :]), B[2])
             end
         end
 
-        # Integrator
-        for m in 1:num_int_steps
-            drift6!(r6, L1, beti)
-            bndthinkick!(r6, A, B, K1, irho, max_order, beti)
-            drift6!(r6, L2, beti)
-            bndthinkick!(r6, A, B, K2, irho, max_order, beti)
-            drift6!(r6, L2, beti)
-            bndthinkick!(r6, A, B, K1, irho, max_order, beti)
-            drift6!(r6, L1, beti)
+        for _ in 1:num_int_steps
+            drift6_row!(r, c, L1, beti)
+            bndthinkick_row!(r, c, A, B, K1, irho, max_order, beti)
+            drift6_row!(r, c, L2, beti)
+            bndthinkick_row!(r, c, A, B, K2, irho, max_order, beti)
+            drift6_row!(r, c, L2, beti)
+            bndthinkick_row!(r, c, A, B, K1, irho, max_order, beti)
+            drift6_row!(r, c, L1, beti)
         end
 
-        # Quadrupole gradient fringe exit
         if !iszero(FringeQuadExit) && !iszero(B[2])
             if isone(useLinFrEleExit)
-                linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
+                linearQuadFringeElegantExit!(@view(r[c, :]), B[2], fringeIntM0, fringeIntP0)
             else
-                QuadFringePassN!(r6, B[2])
+                QuadFringePassN!(@view(r[c, :]), B[2])
             end
         end
 
-        # Edge focus at exit
-        edge_fringe_exit!(r6, irho, exit_angle, fint2, gap, FringeBendExit)
+        edge_fringe_exit!(@view(r[c, :]), irho, exit_angle, fint2, gap, FringeBendExit)
 
-        # Misalignment at exit
         if !iszero(R2)
-            multmv!(r6, R2)
+            multmv_row!(r, c, R2)
         end
         if !iszero(T2)
-            addvv!(r6, T2)
+            addvv_row!(r, c, T2)
         end
-        if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
+        if _check_lost_row(r, c) || _check_lost_aperture_row(r, c, RApertures, EApertures)
             lost_flags[c] = 1
         end
     end
@@ -422,61 +468,53 @@ function BendSymplecticPass_P!(r::Matrix{Float64}, le::Float64, beti::Float64, i
 
 
     Threads.@threads for c in 1:num_particles
-        if isone(lost_flags[c])
+        if isone(lost_flags[c]) || isnan(r[c, 1])
             continue
         end
-        r6 = @view r[c, :]
-        # Misalignment at entrance
         if !iszero(T1)
-            addvv!(r6, T1)
+            addvv_row!(r, c, T1)
         end
         if !iszero(R1)
-            multmv!(r6, R1)
+            multmv_row!(r, c, R1)
         end
 
-        # Edge focus at entrance
-        edge_fringe_entrance!(r6, irho, entrance_angle, fint1, gap, FringeBendEntrance)
+        edge_fringe_entrance!(@view(r[c, :]), irho, entrance_angle, fint1, gap, FringeBendEntrance)
 
-        # Quadrupole gradient fringe entrance
         if !iszero(FringeQuadEntrance) && !iszero(B[2])
             if isone(useLinFrEleEntrance)
-                linearQuadFringeElegantEntrance!(r6, B[2], fringeIntM0, fringeIntP0)
+                linearQuadFringeElegantEntrance!(@view(r[c, :]), B[2], fringeIntM0, fringeIntP0)
             else
-                QuadFringePassP!(r6, B[2])
+                QuadFringePassP!(@view(r[c, :]), B[2])
             end
         end
 
-        # Integrator
-        for m in 1:num_int_steps
-            drift6!(r6, L1, beti)
-            bndthinkick!(r6, A, B, K1, irho, max_order, beti)
-            drift6!(r6, L2, beti)
-            bndthinkick!(r6, A, B, K2, irho, max_order, beti)
-            drift6!(r6, L2, beti)
-            bndthinkick!(r6, A, B, K1, irho, max_order, beti)
-            drift6!(r6, L1, beti)
+        for _ in 1:num_int_steps
+            drift6_row!(r, c, L1, beti)
+            bndthinkick_row!(r, c, A, B, K1, irho, max_order, beti)
+            drift6_row!(r, c, L2, beti)
+            bndthinkick_row!(r, c, A, B, K2, irho, max_order, beti)
+            drift6_row!(r, c, L2, beti)
+            bndthinkick_row!(r, c, A, B, K1, irho, max_order, beti)
+            drift6_row!(r, c, L1, beti)
         end
 
-        # Quadrupole gradient fringe exit
         if !iszero(FringeQuadExit) && !iszero(B[2])
             if isone(useLinFrEleExit)
-                linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
+                linearQuadFringeElegantExit!(@view(r[c, :]), B[2], fringeIntM0, fringeIntP0)
             else
-                QuadFringePassN!(r6, B[2])
+                QuadFringePassN!(@view(r[c, :]), B[2])
             end
         end
 
-        # Edge focus at exit
-        edge_fringe_exit!(r6, irho, exit_angle, fint2, gap, FringeBendExit)
+        edge_fringe_exit!(@view(r[c, :]), irho, exit_angle, fint2, gap, FringeBendExit)
 
-        # Misalignment at exit
         if !iszero(R2)
-            multmv!(r6, R2)
+            multmv_row!(r, c, R2)
         end
         if !iszero(T2)
-            addvv!(r6, T2)
+            addvv_row!(r, c, T2)
         end
-        if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
+        if _check_lost_row(r, c) || _check_lost_aperture_row(r, c, RApertures, EApertures)
             lost_flags[c] = 1
         end
     end
@@ -1755,20 +1793,16 @@ function BendSymplecticPassRad_SC!(r::Matrix{Float64}, le::Float64, beti::Float6
             if isone(lost_flags[c])
                 continue
             end
-            r6 = @view r[c, :]
-            if !isnan(r6[1])
-                # Misalignment at entrance
+            if !isnan(r[c, 1])
                 if !iszero(T1)
-                    addvv!(r6, T1)
+                    addvv_row!(r, c, T1)
                 end
                 if !iszero(R1)
-                    multmv!(r6, R1)
+                    multmv_row!(r, c, R1)
                 end
-                if step == 1
-                    # Edge focus at entrance
+                if step == 1 && (FringeBendEntrance != 0 || (!iszero(FringeQuadEntrance) && !iszero(B[2])))
+                    r6 = @view r[c, :]
                     edge_fringe_entrance!(r6, irho, entrance_angle, fint1, gap, FringeBendEntrance)
-    
-                    # Quadrupole gradient fringe entrance
                     if !iszero(FringeQuadEntrance) && !iszero(B[2])
                         if isone(useLinFrEleEntrance)
                             linearQuadFringeElegantEntrance!(r6, B[2], fringeIntM0, fringeIntP0)
@@ -1778,18 +1812,17 @@ function BendSymplecticPassRad_SC!(r::Matrix{Float64}, le::Float64, beti::Float6
                     end
                 end
 
-                # Integrator
-                for m in 1:num_int_steps
-                    drift6!(r6, L1, beti)
-                    bndthinkickrad!(r6, A, B, K1, irho, E0, max_order, beti)
-                    drift6!(r6, L2, beti)
-                    bndthinkickrad!(r6, A, B, K2, irho, E0, max_order, beti)
-                    drift6!(r6, L2, beti)
-                    bndthinkickrad!(r6, A, B, K1, irho, E0, max_order, beti)
-                    drift6!(r6, L1, beti)
+                for _ in 1:num_int_steps
+                    drift6_row!(r, c, L1, beti)
+                    bndthinkickrad_row!(r, c, A, B, K1, irho, E0, max_order, beti)
+                    drift6_row!(r, c, L2, beti)
+                    bndthinkickrad_row!(r, c, A, B, K2, irho, E0, max_order, beti)
+                    drift6_row!(r, c, L2, beti)
+                    bndthinkickrad_row!(r, c, A, B, K1, irho, E0, max_order, beti)
+                    drift6_row!(r, c, L1, beti)
                 end
 
-                if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
+                if _check_lost_row(r, c) || _check_lost_aperture_row(r, c, RApertures, EApertures)
                     lost_flags[c] = 1
                 end
             end
@@ -1801,20 +1834,16 @@ function BendSymplecticPassRad_SC!(r::Matrix{Float64}, le::Float64, beti::Float6
             if isone(lost_flags[c])
                 continue
             end
-            r6 = @view r[c, :]
-            if !isnan(r6[1])
-                # Misalignment at entrance
+            if !isnan(r[c, 1])
                 if !iszero(T1)
-                    addvv!(r6, T1)
+                    addvv_row!(r, c, T1)
                 end
                 if !iszero(R1)
-                    multmv!(r6, R1)
+                    multmv_row!(r, c, R1)
                 end
-                if step == 1
-                    # Edge focus at entrance
+                if step == 1 && (FringeBendEntrance != 0 || (!iszero(FringeQuadEntrance) && !iszero(B[2])))
+                    r6 = @view r[c, :]
                     edge_fringe_entrance!(r6, irho, entrance_angle, fint1, gap, FringeBendEntrance)
-    
-                    # Quadrupole gradient fringe entrance
                     if !iszero(FringeQuadEntrance) && !iszero(B[2])
                         if isone(useLinFrEleEntrance)
                             linearQuadFringeElegantEntrance!(r6, B[2], fringeIntM0, fringeIntP0)
@@ -1824,40 +1853,38 @@ function BendSymplecticPassRad_SC!(r::Matrix{Float64}, le::Float64, beti::Float6
                     end
                 end
 
-                # Integrator
-                for m in 1:num_int_steps
-                    drift6!(r6, L1, beti)
-                    bndthinkickrad!(r6, A, B, K1, irho, E0, max_order, beti)
-                    drift6!(r6, L2, beti)
-                    bndthinkickrad!(r6, A, B, K2, irho, E0, max_order, beti)
-                    drift6!(r6, L2, beti)
-                    bndthinkickrad!(r6, A, B, K1, irho, E0, max_order, beti)
-                    drift6!(r6, L1, beti)
+                for _ in 1:num_int_steps
+                    drift6_row!(r, c, L1, beti)
+                    bndthinkickrad_row!(r, c, A, B, K1, irho, E0, max_order, beti)
+                    drift6_row!(r, c, L2, beti)
+                    bndthinkickrad_row!(r, c, A, B, K2, irho, E0, max_order, beti)
+                    drift6_row!(r, c, L2, beti)
+                    bndthinkickrad_row!(r, c, A, B, K1, irho, E0, max_order, beti)
+                    drift6_row!(r, c, L1, beti)
                 end
                 
                 if step == Nsteps
-                    # Quadrupole gradient fringe exit
-                    if !iszero(FringeQuadExit) && !iszero(B[2])
-                        if isone(useLinFrEleExit)
-                            linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
-                        else
-                            QuadFringePassN!(r6, B[2])
+                    if FringeBendExit != 0 || (!iszero(FringeQuadExit) && !iszero(B[2]))
+                        r6 = @view r[c, :]
+                        if !iszero(FringeQuadExit) && !iszero(B[2])
+                            if isone(useLinFrEleExit)
+                                linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
+                            else
+                                QuadFringePassN!(r6, B[2])
+                            end
                         end
+                        edge_fringe_exit!(r6, irho, exit_angle, fint2, gap, FringeBendExit)
                     end
-
-                    # Edge focus at exit
-                    edge_fringe_exit!(r6, irho, exit_angle, fint2, gap, FringeBendExit)
     
-                    # Misalignment at exit
                     if !iszero(R2)
-                        multmv!(r6, R2)
+                        multmv_row!(r, c, R2)
                     end
                     if !iszero(T2)
-                        addvv!(r6, T2)
+                        addvv_row!(r, c, T2)
                     end
                 end
 
-                if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
+                if _check_lost_row(r, c) || _check_lost_aperture_row(r, c, RApertures, EApertures)
                     lost_flags[c] = 1
                 end
             end
@@ -2067,43 +2094,38 @@ function BendSymplecticPass_SC!(r::Matrix{Float64}, le::Float64, beti::Float64, 
             if isone(lost_flags[c])
                 continue
             end
-            r6 = @view r[c, :]
-            if !isnan(r6[1])
-                
+            if !isnan(r[c, 1])
                 if step == 1
-                    # Misalignment at entrance
                     if !iszero(T1)
-                        addvv!(r6, T1)
+                        addvv_row!(r, c, T1)
                     end
                     if !iszero(R1)
-                        multmv!(r6, R1)
+                        multmv_row!(r, c, R1)
                     end
-    
-                    # Edge focus at entrance
-                    edge_fringe_entrance!(r6, irho, entrance_angle, fint1, gap, FringeBendEntrance)
-    
-                    # Quadrupole gradient fringe entrance
-                    if !iszero(FringeQuadEntrance) && !iszero(B[2])
-                        if isone(useLinFrEleEntrance)
-                            linearQuadFringeElegantEntrance!(r6, B[2], fringeIntM0, fringeIntP0)
-                        else
-                            QuadFringePassP!(r6, B[2])
+                    if FringeBendEntrance != 0 || (!iszero(FringeQuadEntrance) && !iszero(B[2]))
+                        r6 = @view r[c, :]
+                        edge_fringe_entrance!(r6, irho, entrance_angle, fint1, gap, FringeBendEntrance)
+                        if !iszero(FringeQuadEntrance) && !iszero(B[2])
+                            if isone(useLinFrEleEntrance)
+                                linearQuadFringeElegantEntrance!(r6, B[2], fringeIntM0, fringeIntP0)
+                            else
+                                QuadFringePassP!(r6, B[2])
+                            end
                         end
-                    end                    
+                    end
                 end
     
-                # Integrator
-                for m in 1:num_int_steps
-                    drift6!(r6, L1, beti)
-                    bndthinkick!(r6, A, B, K1, irho, max_order, beti)
-                    drift6!(r6, L2, beti)
-                    bndthinkick!(r6, A, B, K2, irho, max_order, beti)
-                    drift6!(r6, L2, beti)
-                    bndthinkick!(r6, A, B, K1, irho, max_order, beti)
-                    drift6!(r6, L1, beti)
+                for _ in 1:num_int_steps
+                    drift6_row!(r, c, L1, beti)
+                    bndthinkick_row!(r, c, A, B, K1, irho, max_order, beti)
+                    drift6_row!(r, c, L2, beti)
+                    bndthinkick_row!(r, c, A, B, K2, irho, max_order, beti)
+                    drift6_row!(r, c, L2, beti)
+                    bndthinkick_row!(r, c, A, B, K1, irho, max_order, beti)
+                    drift6_row!(r, c, L1, beti)
                 end
 
-                if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
+                if _check_lost_row(r, c) || _check_lost_aperture_row(r, c, RApertures, EApertures)
                     lost_flags[c] = 1
                 end
             end
@@ -2115,42 +2137,38 @@ function BendSymplecticPass_SC!(r::Matrix{Float64}, le::Float64, beti::Float64, 
             if isone(lost_flags[c])
                 continue
             end
-            r6 = @view r[c, :]
-
-            # Integrator
-            for m in 1:num_int_steps
-                drift6!(r6, L1, beti)
-                bndthinkick!(r6, A, B, K1, irho, max_order, beti)
-                drift6!(r6, L2, beti)
-                bndthinkick!(r6, A, B, K2, irho, max_order, beti)
-                drift6!(r6, L2, beti)
-                bndthinkick!(r6, A, B, K1, irho, max_order, beti)
-                drift6!(r6, L1, beti)
+            for _ in 1:num_int_steps
+                drift6_row!(r, c, L1, beti)
+                bndthinkick_row!(r, c, A, B, K1, irho, max_order, beti)
+                drift6_row!(r, c, L2, beti)
+                bndthinkick_row!(r, c, A, B, K2, irho, max_order, beti)
+                drift6_row!(r, c, L2, beti)
+                bndthinkick_row!(r, c, A, B, K1, irho, max_order, beti)
+                drift6_row!(r, c, L1, beti)
             end
 
             if step == Nsteps
-                # Quadrupole gradient fringe exit
-                if !iszero(FringeQuadExit) && !iszero(B[2])
-                    if isone(useLinFrEleExit)
-                        linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
-                    else
-                        QuadFringePassN!(r6, B[2])
+                if FringeBendExit != 0 || (!iszero(FringeQuadExit) && !iszero(B[2]))
+                    r6 = @view r[c, :]
+                    if !iszero(FringeQuadExit) && !iszero(B[2])
+                        if isone(useLinFrEleExit)
+                            linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
+                        else
+                            QuadFringePassN!(r6, B[2])
+                        end
                     end
+                    edge_fringe_exit!(r6, irho, exit_angle, fint2, gap, FringeBendExit)
                 end
 
-                # Edge focus at exit
-                edge_fringe_exit!(r6, irho, exit_angle, fint2, gap, FringeBendExit)
-
-                # Misalignment at exit
                 if !iszero(R2)
-                    multmv!(r6, R2)
+                    multmv_row!(r, c, R2)
                 end
                 if !iszero(T2)
-                    addvv!(r6, T2)
+                    addvv_row!(r, c, T2)
                 end
             end
 
-            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
+            if _check_lost_row(r, c) || _check_lost_aperture_row(r, c, RApertures, EApertures)
                 lost_flags[c] = 1
             end
         end
@@ -2366,6 +2384,488 @@ function pass!(ele::SBEND_SC{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_part
             ele.FringeIntM0, ele.FringeIntP0,
             ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures,
             ele.KickAngle, E0, num_particles, lost_flags, ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
+    end
+    return nothing
+end
+
+function BendSymplecticPass_SC2P5D!(ele, r::Matrix{Float64}, le::Float64, beti::Float64, irho::Float64,
+    A::Array{Float64,1}, B::Array{Float64,1}, max_order::Int, num_int_steps::Int,
+    entrance_angle::Float64, exit_angle::Float64, FringeBendEntrance::Int, FringeBendExit::Int,
+    fint1::Float64, fint2::Float64, gap::Float64, FringeQuadEntrance::Int, FringeQuadExit::Int,
+    fringeIntM0::Array{Float64,1}, fringeIntP0::Array{Float64,1}, T1::Array{Float64,1},
+    T2::Array{Float64,1}, R1::Array{Float64,2}, R2::Array{Float64,2}, RApertures::Array{Float64,1},
+    EApertures::Array{Float64,1}, KickAngle::Array{Float64,1}, num_particles::Int,
+    lost_flags::Array{Int64,1}, particles::Beam{Float64}, gamma2i::Float64 = 0.0)
+
+    DRIFT1 = 0.6756035959798286638
+    DRIFT2 = -0.1756035959798286639
+    KICK1 = 1.351207191959657328
+    KICK2 = -1.702414383919314656
+
+    lstep = le / ele.Nsteps
+    SL = lstep / num_int_steps
+    L1 = SL * DRIFT1
+    L2 = SL * DRIFT2
+    K1 = SL * KICK1
+    K2 = SL * KICK2
+
+    useLinFrEleEntrance = FringeQuadEntrance == 2 ? 1 : 0
+    useLinFrEleExit = FringeQuadExit == 2 ? 1 : 0
+
+    B[1] -= sin(KickAngle[1]) / le
+    A[1] += sin(KickAngle[2]) / le
+
+    for c in 1:num_particles
+        if isone(lost_flags[c])
+            continue
+        end
+        if !isnan(r[c, 1])
+            if !iszero(T1)
+                addvv_row!(r, c, T1)
+            end
+            if !iszero(R1)
+                multmv_row!(r, c, R1)
+            end
+            if FringeBendEntrance != 0 || (!iszero(FringeQuadEntrance) && !iszero(B[2]))
+                r6 = @view r[c, :]
+                edge_fringe_entrance!(r6, irho, entrance_angle, fint1, gap, FringeBendEntrance)
+                if !iszero(FringeQuadEntrance) && !iszero(B[2])
+                    if isone(useLinFrEleEntrance)
+                        linearQuadFringeElegantEntrance!(r6, B[2], fringeIntM0, fringeIntP0)
+                    else
+                        QuadFringePassP!(r6, B[2])
+                    end
+                end
+            end
+            if _check_lost_row(r, c) || _check_lost_aperture_row(r, c, RApertures, EApertures)
+                lost_flags[c] = 1
+            end
+        else
+            lost_flags[c] = 1
+        end
+    end
+
+    for step in 1:ele.Nsteps
+        _sc2p5d_track_step!(ele, lstep, r, particles)
+
+        for c in 1:num_particles
+            if isone(lost_flags[c])
+                continue
+            end
+            if !isnan(r[c, 1])
+                for _ in 1:num_int_steps
+                    drift6_row!(r, c, L1, beti, gamma2i)
+                    bndthinkick_row!(r, c, A, B, K1, irho, max_order, beti)
+                    drift6_row!(r, c, L2, beti, gamma2i)
+                    bndthinkick_row!(r, c, A, B, K2, irho, max_order, beti)
+                    drift6_row!(r, c, L2, beti, gamma2i)
+                    bndthinkick_row!(r, c, A, B, K1, irho, max_order, beti)
+                    drift6_row!(r, c, L1, beti, gamma2i)
+                end
+                if step == ele.Nsteps
+                    if FringeBendExit != 0 || (!iszero(FringeQuadExit) && !iszero(B[2]))
+                        r6 = @view r[c, :]
+                        if !iszero(FringeQuadExit) && !iszero(B[2])
+                            if isone(useLinFrEleExit)
+                                linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
+                            else
+                                QuadFringePassN!(r6, B[2])
+                            end
+                        end
+                        edge_fringe_exit!(r6, irho, exit_angle, fint2, gap, FringeBendExit)
+                    end
+                    if !iszero(R2)
+                        multmv_row!(r, c, R2)
+                    end
+                    if !iszero(T2)
+                        addvv_row!(r, c, T2)
+                    end
+                end
+                if _check_lost_row(r, c) || _check_lost_aperture_row(r, c, RApertures, EApertures)
+                    lost_flags[c] = 1
+                end
+            else
+                lost_flags[c] = 1
+            end
+        end
+    end
+
+    B[1] += sin(KickAngle[1]) / le
+    A[1] -= sin(KickAngle[2]) / le
+    return nothing
+end
+
+function BendSymplecticPassRad_SC2P5D!(ele, r::Matrix{Float64}, le::Float64, beti::Float64,
+    irho::Float64, A::Array{Float64,1}, B::Array{Float64,1}, max_order::Int,
+    num_int_steps::Int, entrance_angle::Float64, exit_angle::Float64, FringeBendEntrance::Int,
+    FringeBendExit::Int, fint1::Float64, fint2::Float64, gap::Float64,
+    FringeQuadEntrance::Int, FringeQuadExit::Int, fringeIntM0::Array{Float64,1},
+    fringeIntP0::Array{Float64,1}, T1::Array{Float64,1}, T2::Array{Float64,1},
+    R1::Array{Float64,2}, R2::Array{Float64,2}, RApertures::Array{Float64,1},
+    EApertures::Array{Float64,1}, KickAngle::Array{Float64,1}, E0::Float64,
+    num_particles::Int, lost_flags::Array{Int64,1}, particles::Beam{Float64}, gamma2i::Float64 = 0.0)
+
+    DRIFT1 = 0.6756035959798286638
+    DRIFT2 = -0.1756035959798286639
+    KICK1 = 1.351207191959657328
+    KICK2 = -1.702414383919314656
+
+    lstep = le / ele.Nsteps
+    SL = lstep / num_int_steps
+    L1 = SL * DRIFT1
+    L2 = SL * DRIFT2
+    K1 = SL * KICK1
+    K2 = SL * KICK2
+
+    useLinFrEleEntrance = FringeQuadEntrance == 2 ? 1 : 0
+    useLinFrEleExit = FringeQuadExit == 2 ? 1 : 0
+
+    B[1] -= sin(KickAngle[1]) / le
+    A[1] += sin(KickAngle[2]) / le
+
+    for c in 1:num_particles
+        if isone(lost_flags[c])
+            continue
+        end
+        if !isnan(r[c, 1])
+            if !iszero(T1)
+                addvv_row!(r, c, T1)
+            end
+            if !iszero(R1)
+                multmv_row!(r, c, R1)
+            end
+            if FringeBendEntrance != 0 || (!iszero(FringeQuadEntrance) && !iszero(B[2]))
+                r6 = @view r[c, :]
+                edge_fringe_entrance!(r6, irho, entrance_angle, fint1, gap, FringeBendEntrance)
+                if !iszero(FringeQuadEntrance) && !iszero(B[2])
+                    if isone(useLinFrEleEntrance)
+                        linearQuadFringeElegantEntrance!(r6, B[2], fringeIntM0, fringeIntP0)
+                    else
+                        QuadFringePassP!(r6, B[2])
+                    end
+                end
+            end
+            if _check_lost_row(r, c) || _check_lost_aperture_row(r, c, RApertures, EApertures)
+                lost_flags[c] = 1
+            end
+        else
+            lost_flags[c] = 1
+        end
+    end
+
+    for step in 1:ele.Nsteps
+        _sc2p5d_track_step!(ele, lstep, r, particles)
+
+        for c in 1:num_particles
+            if isone(lost_flags[c])
+                continue
+            end
+            if !isnan(r[c, 1])
+                for _ in 1:num_int_steps
+                    drift6_row!(r, c, L1, beti, gamma2i)
+                    bndthinkickrad_row!(r, c, A, B, K1, irho, E0, max_order, beti)
+                    drift6_row!(r, c, L2, beti, gamma2i)
+                    bndthinkickrad_row!(r, c, A, B, K2, irho, E0, max_order, beti)
+                    drift6_row!(r, c, L2, beti, gamma2i)
+                    bndthinkickrad_row!(r, c, A, B, K1, irho, E0, max_order, beti)
+                    drift6_row!(r, c, L1, beti, gamma2i)
+                end
+                if step == ele.Nsteps
+                    if FringeBendExit != 0 || (!iszero(FringeQuadExit) && !iszero(B[2]))
+                        r6 = @view r[c, :]
+                        if !iszero(FringeQuadExit) && !iszero(B[2])
+                            if isone(useLinFrEleExit)
+                                linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
+                            else
+                                QuadFringePassN!(r6, B[2])
+                            end
+                        end
+                        edge_fringe_exit!(r6, irho, exit_angle, fint2, gap, FringeBendExit)
+                    end
+                    if !iszero(R2)
+                        multmv_row!(r, c, R2)
+                    end
+                    if !iszero(T2)
+                        addvv_row!(r, c, T2)
+                    end
+                end
+                if _check_lost_row(r, c) || _check_lost_aperture_row(r, c, RApertures, EApertures)
+                    lost_flags[c] = 1
+                end
+            else
+                lost_flags[c] = 1
+            end
+        end
+    end
+
+    B[1] += sin(KickAngle[1]) / le
+    A[1] -= sin(KickAngle[2]) / le
+    return nothing
+end
+
+function BendSymplecticPass_SC2P5D!(ele, r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti::Float64,
+    irho::DTPSAD{N, T}, A::Array{DTPSAD{N, T},1}, B::Array{DTPSAD{N, T},1}, max_order::Int,
+    num_int_steps::Int, entrance_angle::DTPSAD{N, T}, exit_angle::DTPSAD{N, T},
+    FringeBendEntrance::Int, FringeBendExit::Int, fint1::DTPSAD{N, T}, fint2::DTPSAD{N, T},
+    gap::DTPSAD{N, T}, FringeQuadEntrance::Int, FringeQuadExit::Int,
+    fringeIntM0::Array{DTPSAD{N, T},1}, fringeIntP0::Array{DTPSAD{N, T},1},
+    T1::Array{DTPSAD{N, T},1}, T2::Array{DTPSAD{N, T},1}, R1::Array{DTPSAD{N, T},2},
+    R2::Array{DTPSAD{N, T},2}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1},
+    KickAngle::Array{DTPSAD{N, T},1}, num_particles::Int, lost_flags::Array{Int64,1},
+    particles::Beam{DTPSAD{N, T}}, gamma2i::Float64 = 0.0) where {N, T}
+
+    DRIFT1 = 0.6756035959798286638
+    DRIFT2 = -0.1756035959798286639
+    KICK1 = 1.351207191959657328
+    KICK2 = -1.702414383919314656
+
+    lstep = le / ele.Nsteps
+    SL = lstep / num_int_steps
+    L1 = SL * DRIFT1
+    L2 = SL * DRIFT2
+    K1 = SL * KICK1
+    K2 = SL * KICK2
+
+    useLinFrEleEntrance = FringeQuadEntrance == 2 ? 1 : 0
+    useLinFrEleExit = FringeQuadExit == 2 ? 1 : 0
+
+    B[1] -= sin(KickAngle[1]) / le
+    A[1] += sin(KickAngle[2]) / le
+
+    @inbounds for c in 1:num_particles
+        if isone(lost_flags[c])
+            continue
+        end
+        r6 = @view r[c, :]
+        if !isnan(r6[1])
+            if !iszero(T1)
+                addvv!(r6, T1)
+            end
+            if !iszero(R1)
+                multmv!(r6, R1)
+            end
+            edge_fringe_entrance!(r6, irho, entrance_angle, fint1, gap, FringeBendEntrance)
+            if !iszero(FringeQuadEntrance) && !iszero(B[2])
+                if isone(useLinFrEleEntrance)
+                    linearQuadFringeElegantEntrance!(r6, B[2], fringeIntM0, fringeIntP0)
+                else
+                    QuadFringePassP!(r6, B[2])
+                end
+            end
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
+                lost_flags[c] = 1
+            end
+        else
+            lost_flags[c] = 1
+        end
+    end
+
+    for step in 1:ele.Nsteps
+        _sc2p5d_track_step!(ele, lstep, r, particles)
+
+        @inbounds for c in 1:num_particles
+            if isone(lost_flags[c])
+                continue
+            end
+            r6 = @view r[c, :]
+            if !isnan(r6[1])
+                for _ in 1:num_int_steps
+                    drift6!(r6, L1, gamma2i)
+                    bndthinkick!(r6, A, B, K1, irho, max_order, beti)
+                    drift6!(r6, L2, gamma2i)
+                    bndthinkick!(r6, A, B, K2, irho, max_order, beti)
+                    drift6!(r6, L2, gamma2i)
+                    bndthinkick!(r6, A, B, K1, irho, max_order, beti)
+                    drift6!(r6, L1, gamma2i)
+                end
+                if step == ele.Nsteps
+                    if !iszero(FringeQuadExit) && !iszero(B[2])
+                        if isone(useLinFrEleExit)
+                            linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
+                        else
+                            QuadFringePassN!(r6, B[2])
+                        end
+                    end
+                    edge_fringe_exit!(r6, irho, exit_angle, fint2, gap, FringeBendExit)
+                    if !iszero(R2)
+                        multmv!(r6, R2)
+                    end
+                    if !iszero(T2)
+                        addvv!(r6, T2)
+                    end
+                end
+                if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
+                    lost_flags[c] = 1
+                end
+            else
+                lost_flags[c] = 1
+            end
+        end
+    end
+
+    B[1] += sin(KickAngle[1]) / le
+    A[1] -= sin(KickAngle[2]) / le
+    return nothing
+end
+
+function BendSymplecticPassRad_SC2P5D!(ele, r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti::Float64,
+    irho::DTPSAD{N, T}, A::Vector{DTPSAD{N, T}}, B::Vector{DTPSAD{N, T}}, max_order::Int,
+    num_int_steps::Int, entrance_angle::DTPSAD{N, T}, exit_angle::DTPSAD{N, T},
+    FringeBendEntrance::Int, FringeBendExit::Int, fint1::DTPSAD{N, T}, fint2::DTPSAD{N, T},
+    gap::DTPSAD{N, T}, FringeQuadEntrance::Int, FringeQuadExit::Int,
+    fringeIntM0::Vector{DTPSAD{N, T}}, fringeIntP0::Vector{DTPSAD{N, T}},
+    T1::Vector{DTPSAD{N, T}}, T2::Vector{DTPSAD{N, T}}, R1::Matrix{DTPSAD{N, T}},
+    R2::Matrix{DTPSAD{N, T}}, RApertures::Array{Float64,1}, EApertures::Array{Float64,1},
+    KickAngle::Vector{DTPSAD{N, T}}, E0::DTPSAD{N, T}, num_particles::Int,
+    lost_flags::Array{Int64,1}, particles::Beam{DTPSAD{N, T}}, gamma2i::Float64 = 0.0) where {N, T}
+
+    DRIFT1 = 0.6756035959798286638
+    DRIFT2 = -0.1756035959798286639
+    KICK1 = 1.351207191959657328
+    KICK2 = -1.702414383919314656
+
+    lstep = le / ele.Nsteps
+    SL = lstep / num_int_steps
+    L1 = SL * DRIFT1
+    L2 = SL * DRIFT2
+    K1 = SL * KICK1
+    K2 = SL * KICK2
+
+    useLinFrEleEntrance = FringeQuadEntrance == 2 ? 1 : 0
+    useLinFrEleExit = FringeQuadExit == 2 ? 1 : 0
+
+    B[1] -= sin(KickAngle[1]) / le
+    A[1] += sin(KickAngle[2]) / le
+
+    @inbounds for c in 1:num_particles
+        if isone(lost_flags[c])
+            continue
+        end
+        r6 = @view r[c, :]
+        if !isnan(r6[1])
+            if !iszero(T1)
+                addvv!(r6, T1)
+            end
+            if !iszero(R1)
+                multmv!(r6, R1)
+            end
+            edge_fringe_entrance!(r6, irho, entrance_angle, fint1, gap, FringeBendEntrance)
+            if !iszero(FringeQuadEntrance) && !iszero(B[2])
+                if isone(useLinFrEleEntrance)
+                    linearQuadFringeElegantEntrance!(r6, B[2], fringeIntM0, fringeIntP0)
+                else
+                    QuadFringePassP!(r6, B[2])
+                end
+            end
+            if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
+                lost_flags[c] = 1
+            end
+        else
+            lost_flags[c] = 1
+        end
+    end
+
+    for step in 1:ele.Nsteps
+        _sc2p5d_track_step!(ele, lstep, r, particles)
+
+        @inbounds for c in 1:num_particles
+            if isone(lost_flags[c])
+                continue
+            end
+            r6 = @view r[c, :]
+            if !isnan(r6[1])
+                for _ in 1:num_int_steps
+                    drift6!(r6, L1, gamma2i)
+                    bndthinkickrad!(r6, A, B, K1, irho, E0, max_order, beti)
+                    drift6!(r6, L2, gamma2i)
+                    bndthinkickrad!(r6, A, B, K2, irho, E0, max_order, beti)
+                    drift6!(r6, L2, gamma2i)
+                    bndthinkickrad!(r6, A, B, K1, irho, E0, max_order, beti)
+                    drift6!(r6, L1, gamma2i)
+                end
+                if step == ele.Nsteps
+                    if !iszero(FringeQuadExit) && !iszero(B[2])
+                        if isone(useLinFrEleExit)
+                            linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
+                        else
+                            QuadFringePassN!(r6, B[2])
+                        end
+                    end
+                    edge_fringe_exit!(r6, irho, exit_angle, fint2, gap, FringeBendExit)
+                    if !iszero(R2)
+                        multmv!(r6, R2)
+                    end
+                    if !iszero(T2)
+                        addvv!(r6, T2)
+                    end
+                end
+                if check_lost(r6) || check_lost_aperture(r6, RApertures, EApertures)
+                    lost_flags[c] = 1
+                end
+            else
+                lost_flags[c] = 1
+            end
+        end
+    end
+
+    B[1] += sin(KickAngle[1]) / le
+    A[1] -= sin(KickAngle[2]) / le
+    return nothing
+end
+
+function pass!(ele::SBEND_SC2P5D{Float64}, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
+    lost_flags = particles.lost_flag
+    irho = ele.angle / ele.len
+    E0 = particles.energy
+    if use_exact_beti == 1
+        beti = 1.0 / particles.beta
+    else
+        beti = 1.0
+    end
+    gamma2i = use_exact_Hamiltonian == 2 ? 1.0 / (particles.gamma^2) : 0.0
+    if ele.rad == 0
+        BendSymplecticPass_SC2P5D!(ele, r_in, ele.len, beti, irho, ele.PolynomA, ele.PolynomB,
+            ele.MaxOrder, ele.NumIntSteps, ele.e1, ele.e2, ele.FringeBendEntrance,
+            ele.FringeBendExit, ele.fint1, ele.fint2, ele.gap, ele.FringeQuadEntrance,
+            ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, ele.T1, ele.T2, ele.R1,
+            ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
+            particles, gamma2i)
+    else
+        BendSymplecticPassRad_SC2P5D!(ele, r_in, ele.len, beti, irho, ele.PolynomA, ele.PolynomB,
+            ele.MaxOrder, ele.NumIntSteps, ele.e1, ele.e2, ele.FringeBendEntrance,
+            ele.FringeBendExit, ele.fint1, ele.fint2, ele.gap, ele.FringeQuadEntrance,
+            ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, ele.T1, ele.T2, ele.R1,
+            ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles,
+            lost_flags, particles, gamma2i)
+    end
+    return nothing
+end
+
+function pass!(ele::SBEND_SC2P5D{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_particles::Int64,
+    particles::Beam{DTPSAD{N, T}}) where {N, T}
+    lost_flags = particles.lost_flag
+    irho = ele.angle / ele.len
+    E0 = particles.energy
+    if use_exact_beti == 1
+        beti = 1.0 / particles.beta.val
+    else
+        beti = 1.0
+    end
+    gamma2i = use_exact_Hamiltonian == 2 ? 1.0 / (particles.gamma.val^2) : 0.0
+    if ele.rad == 0
+        BendSymplecticPass_SC2P5D!(ele, r_in, ele.len, beti, irho, ele.PolynomA, ele.PolynomB,
+            ele.MaxOrder, ele.NumIntSteps, ele.e1, ele.e2, ele.FringeBendEntrance,
+            ele.FringeBendExit, ele.fint1, ele.fint2, ele.gap, ele.FringeQuadEntrance,
+            ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, ele.T1, ele.T2, ele.R1,
+            ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, num_particles, lost_flags,
+            particles, gamma2i)
+    else
+        BendSymplecticPassRad_SC2P5D!(ele, r_in, ele.len, beti, irho, ele.PolynomA, ele.PolynomB,
+            ele.MaxOrder, ele.NumIntSteps, ele.e1, ele.e2, ele.FringeBendEntrance,
+            ele.FringeBendExit, ele.fint1, ele.fint2, ele.gap, ele.FringeQuadEntrance,
+            ele.FringeQuadExit, ele.FringeIntM0, ele.FringeIntP0, ele.T1, ele.T2, ele.R1,
+            ele.R2, ele.RApertures, ele.EApertures, ele.KickAngle, E0, num_particles,
+            lost_flags, particles, gamma2i)
     end
     return nothing
 end
@@ -2695,6 +3195,11 @@ function pass_P!(ele::SBEND_SC, r_in::Matrix{Float64}, num_particles::Int64, par
             ele.T1, ele.T2, ele.R1, ele.R2, ele.RApertures, ele.EApertures,
             ele.KickAngle, E0, num_particles, lost_flags, ele.a, ele.b, ele.Nl, ele.Nm, K, ele.Nsteps)
     end
+    return nothing
+end
+
+function pass_P!(ele::SBEND_SC2P5D, r_in::Matrix{Float64}, num_particles::Int64, particles::Beam{Float64})
+    pass!(ele, r_in, num_particles, particles)
     return nothing
 end
 
