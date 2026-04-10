@@ -312,6 +312,36 @@ function exactbndthinkick_rad!(r::SubArray, A::Array{DTPSAD{N, T},1}, B::Array{D
     return nothing
 end
 
+@inline function exactbndthinkick_rad_row!(r::Matrix{DTPSAD{N, T}}, c::Int, A::Array{DTPSAD{N, T},1}, B::Array{DTPSAD{N, T},1},
+    L::DTPSAD{N, T}, irho::DTPSAD{N, T}, max_order::Int, beti::Float64, rad_const::DTPSAD{N, T}) where {N, T <: Number}
+    ReSum = B[max_order + 1]
+    ImSum = A[max_order + 1]
+    ReSumTemp = 0.0
+    x = r[c, 1]
+    y = r[c, 3]
+
+    for i in max_order-1:-1:0
+        ReSumTemp = ReSum * x - ImSum * y + B[i+1]
+        ImSum = ImSum * x + ReSum * y + A[i+1]
+        ReSum = ReSumTemp
+    end
+
+    p_norm = 1.0 / (1.0 + r[c, 6])
+    xpr = r[c, 2] * p_norm
+    ypr = r[c, 4] * p_norm
+    B2P = B2perp_exact_bnd(ImSum, ReSum + irho, irho, x, xpr, y, ypr)
+
+    r[c, 6] -= rad_const * (1.0 + r[c, 6])^2 * B2P * (1.0 + x*irho) * L / sqrt(1.0 - xpr*xpr - ypr*ypr)
+
+    p_norm = 1.0 / (1.0 + r[c, 6])
+    r[c, 2] = xpr / p_norm
+    r[c, 4] = ypr / p_norm
+
+    r[c, 2] -= L * ReSum
+    r[c, 4] += L * ImSum
+    return nothing
+end
+
 function bend_edge!(r6::SubArray, rhoinv::DTPSAD{N, T}, theta::DTPSAD{N, T}, beti::Float64) where {N, T <: Number}
     # Forest 12.41, ideal wedge, map U(theta, rhoinv)
 
@@ -365,66 +395,65 @@ function ExactSectorBend!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti::Float
         A[1] += sin(KickAngle[2]) / le
     end
 
+    hasT1 = !all(iszero, T1)
+    hasR1 = !all(iszero, R1)
+    hasR2 = !all(iszero, R2)
+    hasT2 = !all(iszero, T2)
+
     @inbounds for c in 1:num_particles
         if isone(lost_flags[c])
             continue
         end
-        r6 = @view r[c, :]
         # Misalignment at entrance
-        # Use `all(iszero, ...)` to test if arrays are all zero.
-        if !all(iszero, T1)
-            addvv!(r6, T1)
-        end
-        if !all(iszero, R1)
-            multmv!(r6, R1)
-        end
+        hasT1 && addvv_row!(r, c, T1)
+        hasR1 && multmv_row!(r, c, R1)
 
-        Yrot!(r6, entrance_angle, beti)
+        Yrot_row!(r, c, entrance_angle, beti)
 
         if FringeBendEntrance != 0
+            r6 = @view r[c, :]
             bend_fringe!(r6, irho, gk, beti)
         end
 
         if FringeQuadEntrance != 0
+            r6 = @view r[c, :]
             multipole_fringe!(r6, le, A, B, max_order, 1.0, 1, beti)
         end
 
-        bend_edge!(r6, irho, -entrance_angle, beti)
+        bend_edge_row!(r, c, irho, -entrance_angle, beti)
 
         # Integrator
         if num_int_steps == 0
-            exact_bend!(r6, irho, le, beti)
+            exact_bend_row!(r, c, irho, le, beti)
         else
             for m in 1:num_int_steps
-                exact_bend!(r6, irho, L1, beti)
-                strthinkick!(r6, A, B, K1, max_order)
-                exact_bend!(r6, irho, L2, beti)
-                strthinkick!(r6, A, B, K2, max_order)
-                exact_bend!(r6, irho, L2, beti)
-                strthinkick!(r6, A, B, K1, max_order)
-                exact_bend!(r6, irho, L1, beti)
+                exact_bend_row!(r, c, irho, L1, beti)
+                strthinkick_row!(r, c, A, B, K1, max_order)
+                exact_bend_row!(r, c, irho, L2, beti)
+                strthinkick_row!(r, c, A, B, K2, max_order)
+                exact_bend_row!(r, c, irho, L2, beti)
+                strthinkick_row!(r, c, A, B, K1, max_order)
+                exact_bend_row!(r, c, irho, L1, beti)
             end
         end
 
-        r6[5] -= le*beti  # r6[ct_], absolute path length
+        r[c, 5] -= le*beti
 
-        bend_edge!(r6, irho, -exit_angle, beti)
+        bend_edge_row!(r, c, irho, -exit_angle, beti)
         if FringeQuadExit != 0
+            r6 = @view r[c, :]
             multipole_fringe!(r6, le, A, B, max_order, -1.0, 1, beti)
         end
         if FringeBendExit != 0
+            r6 = @view r[c, :]
             bend_fringe!(r6, -irho, gk, beti)
         end
-        Yrot!(r6, exit_angle, beti)
+        Yrot_row!(r, c, exit_angle, beti)
 
         # Misalignment at exit
-        if !all(iszero, R2)
-            multmv!(r6, R2)
-        end
-        if !all(iszero, T2)
-            addvv!(r6, T2)
-        end
-        if check_lost_GTPSA(r6)
+        hasR2 && multmv_row!(r, c, R2)
+        hasT2 && addvv_row!(r, c, T2)
+        if check_lost_GTPSA_row(r, c)
             lost_flags[c] = 1
         end
     end
@@ -466,65 +495,65 @@ function ExactSectorBend_rad!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, rad_con
         A[1] += sin(KickAngle[2]) / le
     end
 
+    hasT1 = !all(iszero, T1)
+    hasR1 = !all(iszero, R1)
+    hasR2 = !all(iszero, R2)
+    hasT2 = !all(iszero, T2)
+
     @inbounds for c in 1:num_particles
         if isone(lost_flags[c])
             continue
         end
-        r6 = @view r[c, :]
         # Misalignment at entrance
-        if !all(iszero, T1)
-            addvv!(r6, T1)
-        end
-        if !all(iszero, R1)
-            multmv!(r6, R1)
-        end
+        hasT1 && addvv_row!(r, c, T1)
+        hasR1 && multmv_row!(r, c, R1)
 
-        Yrot!(r6, entrance_angle, beti)
+        Yrot_row!(r, c, entrance_angle, beti)
 
         if FringeBendEntrance != 0
+            r6 = @view r[c, :]
             bend_fringe!(r6, irho, gk, beti)
         end
 
         if FringeQuadEntrance != 0
+            r6 = @view r[c, :]
             multipole_fringe!(r6, le, A, B, max_order, 1.0, 1, beti)
         end
 
-        bend_edge!(r6, irho, -entrance_angle, beti)
+        bend_edge_row!(r, c, irho, -entrance_angle, beti)
 
         # Integrator
         if num_int_steps == 0
-            exact_bend!(r6, irho, le, beti)
+            exact_bend_row!(r, c, irho, le, beti)
         else
             for m in 1:num_int_steps
-                exact_bend!(r6, irho, L1, beti)
-                exactbndthinkick_rad!(r6, A, B, K1, irho, max_order, beti, rad_const)
-                exact_bend!(r6, irho, L2, beti)
-                exactbndthinkick_rad!(r6, A, B, K2, irho, max_order, beti, rad_const)
-                exact_bend!(r6, irho, L2, beti)
-                exactbndthinkick_rad!(r6, A, B, K1, irho, max_order, beti, rad_const)
-                exact_bend!(r6, irho, L1, beti)
+                exact_bend_row!(r, c, irho, L1, beti)
+                exactbndthinkick_rad_row!(r, c, A, B, K1, irho, max_order, beti, rad_const)
+                exact_bend_row!(r, c, irho, L2, beti)
+                exactbndthinkick_rad_row!(r, c, A, B, K2, irho, max_order, beti, rad_const)
+                exact_bend_row!(r, c, irho, L2, beti)
+                exactbndthinkick_rad_row!(r, c, A, B, K1, irho, max_order, beti, rad_const)
+                exact_bend_row!(r, c, irho, L1, beti)
             end
         end
 
-        r6[5] -= le*beti  # r6[ct_], absolute path length
+        r[c, 5] -= le*beti
 
-        bend_edge!(r6, irho, -exit_angle, beti)
+        bend_edge_row!(r, c, irho, -exit_angle, beti)
         if FringeQuadExit != 0
+            r6 = @view r[c, :]
             multipole_fringe!(r6, le, A, B, max_order, -1.0, 1, beti)
         end
         if FringeBendExit != 0
+            r6 = @view r[c, :]
             bend_fringe!(r6, -irho, gk, beti)
         end
-        Yrot!(r6, exit_angle, beti)
+        Yrot_row!(r, c, exit_angle, beti)
 
         # Misalignment at exit
-        if !all(iszero, R2)
-            multmv!(r6, R2)
-        end
-        if !all(iszero, T2)
-            addvv!(r6, T2)
-        end
-        if check_lost_GTPSA(r6)
+        hasR2 && multmv_row!(r, c, R2)
+        hasT2 && addvv_row!(r, c, T2)
+        if check_lost_GTPSA_row(r, c)
             lost_flags[c] = 1
         end
     end
@@ -556,11 +585,110 @@ function multmv!(r::SubArray, A::Matrix{DTPSAD{N, T}}) where {N, T <: Number}
     return nothing
 end
 
+@inline function bend_edge_row!(r::Matrix{DTPSAD{N, T}}, c::Int, rhoinv::DTPSAD{N, T}, theta::DTPSAD{N, T}, beti::Float64) where {N, T <: Number}
+    if abs(rhoinv) >= 1e-6
+        dp1 = 1.0*beti + r[c, 6]
+        ctheta = cos(theta)
+        stheta = sin(theta)
+        pz = pxyz(dp1, r[c, 2], r[c, 4])
+        d2 = pxyz(dp1, 0.0, r[c, 4])
+        px = r[c, 2] * ctheta + (pz - rhoinv * r[c, 1]) * stheta
+        dasin = asin(r[c, 2] / d2) - asin(px / d2)
+        num = r[c, 1] * (r[c, 2] * sin(2.0 * theta) + stheta * stheta * (2.0 * pz - rhoinv * r[c, 1]))
+        den = pxyz(dp1, px, r[c, 4]) + pxyz(dp1, r[c, 2], r[c, 4]) * ctheta - r[c, 2] * stheta
+        x = r[c, 1] * ctheta + num / den
+        dy = r[c, 4] * theta / rhoinv + r[c, 4] / rhoinv * dasin
+        dct = dp1 / rhoinv * (theta + dasin)
+
+        r[c, 1] = x
+        r[c, 2] = px
+        r[c, 3] += dy
+        r[c, 5] += dct
+    end
+    return nothing
+end
+
+@inline function exact_bend_row!(r::Matrix{DTPSAD{N, T}}, c::Int, irho::DTPSAD{N, T}, L::DTPSAD{N, T}, beti::Float64) where {N, T <: Number}
+    dp1 = 1.0*beti + r[c, 6]
+    pz = pxyz(dp1, r[c, 2], r[c, 4])
+
+    if abs(irho) < 1e-6
+        NormL = L / pz
+        r[c, 1] += r[c, 2] * NormL
+        r[c, 3] += r[c, 4] * NormL
+        r[c, 5] += NormL * dp1
+    else
+        pzmx = pz - (1.0 + r[c, 1] * irho)
+        cs = cos(irho * L)
+        sn = sin(irho * L)
+        px = r[c, 2] * cs + pzmx * sn
+        d2 = pxyz(dp1, 0.0, r[c, 4])
+        dasin = L + (asin(r[c, 2] / d2) - asin(px / d2)) / irho
+        x = (pxyz(dp1, px, r[c, 4]) - pzmx * cs + r[c, 2] * sn - 1.0) / irho
+        dy = r[c, 4] * dasin
+        dct = dp1 * dasin
+
+        r[c, 1] = x
+        r[c, 2] = px
+        r[c, 3] += dy
+        r[c, 5] += dct
+    end
+    return nothing
+end
+
+@inline function Yrot_row!(r::Matrix{DTPSAD{N, T}}, c::Int, phi::DTPSAD{N, T}, beti::Float64) where {N, T <: Number}
+    if phi != 0.0
+        dp1 = 1.0*beti + r[c, 6]
+        cphi = cos(phi)
+        sphi = sin(phi)
+        pz = pxyz(dp1, r[c, 2], r[c, 4])
+        p = cphi * pz - sphi * r[c, 2]
+        px = sphi * pz + cphi * r[c, 2]
+        x = r[c, 1] * pz / p
+        dy = r[c, 1] * r[c, 4] * sphi / p
+        dct = dp1 * r[c, 1] * sphi / p
+        r[c, 1] = x
+        r[c, 2] = px
+        r[c, 3] += dy
+        r[c, 5] += dct
+    end
+    return nothing
+end
+
 function addvv!(r::SubArray, dr::Array{DTPSAD{N, T},1}) where {N, T <: Number}
     @inbounds for i in 1:6
         r[i] += dr[i]
     end
     return nothing
+end
+
+@inline function addvv_row!(r::Matrix{DTPSAD{N, T}}, c::Int, dr::AbstractVector{DTPSAD{N, T}}) where {N, T <: Number}
+    @inbounds for i in 1:6
+        r[c, i] += dr[i]
+    end
+    return nothing
+end
+
+@inline function multmv_row!(r::Matrix{DTPSAD{N, T}}, c::Int, A::AbstractMatrix{DTPSAD{N, T}}) where {N, T <: Number}
+    @inbounds begin
+        r1 = A[1, 1] * r[c, 1] + A[1, 2] * r[c, 2] + A[1, 3] * r[c, 3] + A[1, 4] * r[c, 4] + A[1, 5] * r[c, 5] + A[1, 6] * r[c, 6]
+        r2 = A[2, 1] * r[c, 1] + A[2, 2] * r[c, 2] + A[2, 3] * r[c, 3] + A[2, 4] * r[c, 4] + A[2, 5] * r[c, 5] + A[2, 6] * r[c, 6]
+        r3 = A[3, 1] * r[c, 1] + A[3, 2] * r[c, 2] + A[3, 3] * r[c, 3] + A[3, 4] * r[c, 4] + A[3, 5] * r[c, 5] + A[3, 6] * r[c, 6]
+        r4 = A[4, 1] * r[c, 1] + A[4, 2] * r[c, 2] + A[4, 3] * r[c, 3] + A[4, 4] * r[c, 4] + A[4, 5] * r[c, 5] + A[4, 6] * r[c, 6]
+        r5 = A[5, 1] * r[c, 1] + A[5, 2] * r[c, 2] + A[5, 3] * r[c, 3] + A[5, 4] * r[c, 4] + A[5, 5] * r[c, 5] + A[5, 6] * r[c, 6]
+        r6 = A[6, 1] * r[c, 1] + A[6, 2] * r[c, 2] + A[6, 3] * r[c, 3] + A[6, 4] * r[c, 4] + A[6, 5] * r[c, 5] + A[6, 6] * r[c, 6]
+        r[c, 1] = r1
+        r[c, 2] = r2
+        r[c, 3] = r3
+        r[c, 4] = r4
+        r[c, 5] = r5
+        r[c, 6] = r6
+    end
+    return nothing
+end
+
+@inline function _nan_like_dtpsa(x::DTPSAD{N, T}) where {N, T <: Number}
+    return DTPSAD{N, T}(T(NaN), x.deriv * T(NaN))
 end
 
 function check_lost_GTPSA(r6)
@@ -573,6 +701,26 @@ function check_lost_GTPSA(r6)
     # sqrt(1.0 + 2.0*r[6]*beti + r[6]^2 - r[2]^2 - r[4]^2) must be real
     if r6[2]^2 + r6[4]^2 > 1.0  + r6[6]^2
         return true
+    end
+    return false
+end
+
+@inline function check_lost_GTPSA_row(r::Matrix{DTPSAD{N, T}}, c::Int) where {N, T <: Number}
+    @inbounds begin
+        x = r[c, 1]
+        px = r[c, 2]
+        y = r[c, 3]
+        py = r[c, 4]
+        dp_p = r[c, 6]
+        if isnan(x) || isinf(x)
+            return true
+        end
+        if max(abs(x), abs(px), abs(y), abs(py)) > CoordLimit || abs(dp_p) > CoordLimit
+            return true
+        end
+        if px^2 + py^2 > 1.0 + dp_p^2
+            return true
+        end
     end
     return false
 end
@@ -595,28 +743,135 @@ function drift6!(r::SubArray, le::DTPSAD{N, T}, gamma2i::Float64 = 0.0) where {N
     return nothing
 end 
 
+@inline function drift6_row!(r::Matrix{DTPSAD{N, T}}, c::Int, le::DTPSAD{N, T}, gamma2i::Float64 = 0.0) where {N, T <: Number}
+    @inbounds begin
+        px = r[c, 2]
+        py = r[c, 4]
+        dp_p = r[c, 6]
+        if use_exact_Hamiltonian == 1
+            discr = 1.0 + 2.0 * dp_p + dp_p^2 - px^2 - py^2
+            if discr < 0
+                nanv = _nan_like_dtpsa(r[c, 1])
+                for j in 1:6
+                    r[c, j] = nanv
+                end
+                return nothing
+            end
+            NormL = le / sqrt(discr)
+            r[c, 5] += NormL * (1.0 + dp_p) - le
+        else
+            NormL = le / (1.0 + dp_p)
+            r[c, 5] += le * _linearized_drift_phifac(px, py, dp_p, gamma2i)
+        end
+        r[c, 1] += NormL * px
+        r[c, 3] += NormL * py
+    end
+    return nothing
+end
+
+@inline function strthinkick_row!(r::Matrix{DTPSAD{N, T}}, c::Int, A::Vector{DTPSAD{N, T}}, B::Vector{DTPSAD{N, T}},
+    L::DTPSAD{N, T}, max_order::Int) where {N, T <: Number}
+    ReSum = B[max_order + 1]
+    ImSum = A[max_order + 1]
+    ReSumTemp = 0.0
+    x = r[c, 1]
+    y = r[c, 3]
+    for i in max_order-1:-1:0
+        ReSumTemp = ReSum * x - ImSum * y + B[i + 1]
+        ImSum = ImSum * x + ReSum * y + A[i + 1]
+        ReSum = ReSumTemp
+    end
+    r[c, 2] -= L * ReSum
+    r[c, 4] += L * ImSum
+    return nothing
+end
+
+@inline function strthinkick1_row!(r::Matrix{DTPSAD{N, T}}, c::Int, A::Vector{DTPSAD{N, T}}, B::Vector{DTPSAD{N, T}},
+    L::DTPSAD{N, T}, max_order::Int) where {N, T <: Number}
+    ReSum = B[max_order + 1]
+    ImSum = A[max_order + 1]
+    ReSumTemp = 0.0
+    x = r[c, 1]
+    y = r[c, 3]
+    for i in reverse(1:max_order)
+        ReSumTemp = ReSum * x - ImSum * y + B[i]
+        ImSum = ImSum * x + ReSum * y + A[i]
+        ReSum = ReSumTemp
+    end
+    r[c, 2] -= L * ReSum
+    r[c, 4] += L * ImSum
+    return nothing
+end
+
+@inline function bndthinkick_row!(r::Matrix{DTPSAD{N, T}}, c::Int, A::Array{DTPSAD{N, T}, 1}, B::Array{DTPSAD{N, T}, 1},
+    L::DTPSAD{N, T}, irho::DTPSAD{N, T}, max_order::Int, beti::Float64) where {N, T <: Number}
+    ReSum = B[max_order + 1]
+    ImSum = A[max_order + 1]
+    ReSumTemp = 0.0
+    x = r[c, 1]
+    y = r[c, 3]
+    dp_0 = r[c, 6]
+    for i in max_order-1:-1:0
+        ReSumTemp = ReSum * x - ImSum * y + B[i + 1]
+        ImSum = ImSum * x + ReSum * y + A[i + 1]
+        ReSum = ReSumTemp
+    end
+    r[c, 2] -= L * (ReSum - (dp_0 - x * irho) * irho)
+    r[c, 4] += L * ImSum
+    r[c, 5] += L * irho * x * beti
+    return nothing
+end
+
+@inline function bndthinkickrad_row!(r::Matrix{DTPSAD{N, T}}, c::Int, A::Array{DTPSAD{N, T}, 1}, B::Array{DTPSAD{N, T}, 1},
+    L::DTPSAD{N, T}, irho::DTPSAD{N, T}, E0::DTPSAD{N, T}, max_order::Int, beti::Float64) where {N, T <: Number}
+    ReSum = B[max_order + 1]
+    ImSum = A[max_order + 1]
+    ReSumTemp = 0.0
+    CRAD = CGAMMA * E0^3 / (2.0*pi*1e27)
+
+    x = r[c, 1]
+    y = r[c, 3]
+    for i in max_order-1:-1:0
+        ReSumTemp = ReSum * x - ImSum * y + B[i+1]
+        ImSum = ImSum * x + ReSum * y + A[i+1]
+        ReSum = ReSumTemp
+    end
+
+    p_norm = 1.0 / (1.0*beti + r[c, 6])
+    xpr = r[c, 2] * p_norm
+    ypr = r[c, 4] * p_norm
+    B2P = B2perp(ImSum, ReSum + irho, irho, x, xpr, y, ypr)
+
+    dp_0 = r[c, 6]
+    r[c, 6] = r[c, 6] - CRAD * (1.0*beti+r[c, 6])^2 * B2P * (1.0 + x*irho + (xpr^2 + ypr^2) / 2.0) * L
+
+    p_norm = 1.0 / (1.0*beti + r[c, 6])
+    r[c, 2] = xpr / p_norm
+    r[c, 4] = ypr / p_norm
+
+    r[c, 2] -= L * (ReSum - (dp_0 - x*irho)*irho)
+    r[c, 4] += L * ImSum
+    r[c, 5] += L * irho * x * beti
+    return nothing
+end
+
 function pass!(ele::DRIFT{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::Int, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     gamma2i = use_exact_Hamiltonian == 2 ? 1.0 / particles.gamma.val^2 : 0.0
+    hasT1 = !all(iszero, ele.T1)
+    hasR1 = !all(iszero, ele.R1)
+    hasR2 = !all(iszero, ele.R2)
+    hasT2 = !all(iszero, ele.T2)
     @inbounds for c in 1:npart
         lost_flag = particles.lost_flag[c]
         if lost_flag == 1
             continue
         end
-        r6 = @view rin[c, :]  
-        if !all(iszero, ele.T1)
-            addvv!(r6, ele.T1)
-        end
-        if !all(iszero, ele.R1)
-            multmv!(r6, ele.R1)
-        end
-        drift6!(r6, ele.len, gamma2i)
-        if !all(iszero, ele.R2)
-            multmv!(r6, ele.R2)
-        end
-        if !all(iszero, ele.T2)
-            addvv!(r6, ele.T2)
-        end
-        lost_flag = check_lost_GTPSA(r6) ? 1 : lost_flag
+        hasT1 && addvv_row!(rin, c, ele.T1)
+        hasR1 && multmv_row!(rin, c, ele.R1)
+        drift6_row!(rin, c, ele.len, gamma2i)
+        hasR2 && multmv_row!(rin, c, ele.R2)
+        hasT2 && addvv_row!(rin, c, ele.T2)
+        lost_flag = check_lost_GTPSA_row(rin, c) ? 1 : lost_flag
         particles.lost_flag[c] = lost_flag
     end
     return nothing
@@ -624,30 +879,29 @@ end
 
 function pass!(ele::QUAD{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::Int, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     gamma2i = use_exact_Hamiltonian == 2 ? 1.0 / particles.gamma.val^2 : 0.0
+    hasT1 = !all(iszero, ele.T1)
+    hasR1 = !all(iszero, ele.R1)
+    hasR2 = !all(iszero, ele.R2)
+    hasT2 = !all(iszero, ele.T2)
     @inbounds for c in 1:npart
         lost_flag = particles.lost_flag[c]
         if lost_flag == 1
             continue
         end
-        r6 = @view rin[c, :]  
-        p_norm = 1.0 / (1.0 + r6[6])
+        p_norm = 1.0 / (1.0 + rin[c, 6])
         
-        if !all(iszero, ele.T1)
-            addvv!(r6, ele.T1)
-        end
-        if !all(iszero, ele.R1)
-            multmv!(r6, ele.R1)
-        end
+        hasT1 && addvv_row!(rin, c, ele.T1)
+        hasR1 && multmv_row!(rin, c, ele.R1)
         
         if iszero(ele.k1)
-            drift6!(r6, ele.len, gamma2i)
+            drift6_row!(rin, c, ele.len, gamma2i)
         else
-            x   = r6[1]
-            xpr = r6[2] * p_norm
-            y   = r6[3]
-            ypr = r6[4] * p_norm
+            x   = rin[c, 1]
+            xpr = rin[c, 2] * p_norm
+            y   = rin[c, 3]
+            ypr = rin[c, 4] * p_norm
             
-            g  = abs(ele.k1) / (1.0 + r6[6])
+            g  = abs(ele.k1) / (1.0 + rin[c, 6])
             t  = sqrt(g)
             lt = ele.len * t
             
@@ -667,60 +921,51 @@ function pass!(ele::QUAD{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::Int, p
                 M43 = -M34*g
             end
             
-            r6[1] =  MHD*x + M12*xpr
-            r6[2] = (M21*x + MHD*xpr)/p_norm
-            r6[3] =  MVD*y + M34*ypr
-            r6[4] = (M43*y + MVD*ypr)/p_norm
+            rin[c, 1] =  MHD*x + M12*xpr
+            rin[c, 2] = (M21*x + MHD*xpr)/p_norm
+            rin[c, 3] =  MVD*y + M34*ypr
+            rin[c, 4] = (M43*y + MVD*ypr)/p_norm
 
-            r6[5]+= g*(x*x*(ele.len-MHD*M12)-y*y*(ele.len-MVD*M34))/4.0
-            r6[5]+= (xpr*xpr*(ele.len+MHD*M12)+ypr*ypr*(ele.len+MVD*M34))/4.0
-            r6[5]+= (x*xpr*M12*M21 + y*ypr*M34*M43)/2.0
+            rin[c, 5] += g*(x*x*(ele.len-MHD*M12)-y*y*(ele.len-MVD*M34))/4.0
+            rin[c, 5] += (xpr*xpr*(ele.len+MHD*M12)+ypr*ypr*(ele.len+MVD*M34))/4.0
+            rin[c, 5] += (x*xpr*M12*M21 + y*ypr*M34*M43)/2.0
         end
 
-        if !all(iszero, ele.R2)
-            multmv!(r6, ele.R2)
-        end
-        if !all(iszero, ele.T2)
-            addvv!(r6, ele.T2)
-        end
-        lost_flag = check_lost_GTPSA(r6) ? 1 : lost_flag
+        hasR2 && multmv_row!(rin, c, ele.R2)
+        hasT2 && addvv_row!(rin, c, ele.T2)
+        lost_flag = check_lost_GTPSA_row(rin, c) ? 1 : lost_flag
         particles.lost_flag[c] = lost_flag
     end
     return nothing
 end
 
 function pass!(ele::CORRECTOR{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::Int, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
+    hasT1 = !all(iszero, ele.T1)
+    hasR1 = !all(iszero, ele.R1)
+    hasR2 = !all(iszero, ele.R2)
+    hasT2 = !all(iszero, ele.T2)
     @inbounds for c in 1:npart
         lost_flag = particles.lost_flag[c]
         if lost_flag == 1
             continue
         end
-        r6 = @view rin[c, :]  
-        if !all(iszero, ele.T1)
-            addvv!(r6, ele.T1)
-        end
-        if !all(iszero, ele.R1)
-            multmv!(r6, ele.R1)
-        end
+        hasT1 && addvv_row!(rin, c, ele.T1)
+        hasR1 && multmv_row!(rin, c, ele.R1)
 
-        p_norm = 1.0 / (1.0 + r6[6])
+        p_norm = 1.0 / (1.0 + rin[c, 6])
         NormL = ele.len * p_norm
 
-        r6[5] += NormL*p_norm*(ele.xkick*ele.xkick/3.0 + ele.ykick*ele.ykick/3.0 +
-   		            r6[2]*r6[2] + r6[4]*r6[4] +
-   		            r6[2]*ele.xkick + r6[4]*ele.ykick)/2.0
-        r6[1] += NormL*(r6[2]+ele.xkick/2.0)
-        r6[2] += ele.xkick
-        r6[3] += NormL*(r6[4]+ele.ykick/2.0)
-        r6[4] += ele.ykick
+        rin[c, 5] += NormL*p_norm*(ele.xkick*ele.xkick/3.0 + ele.ykick*ele.ykick/3.0 +
+   		            rin[c, 2]*rin[c, 2] + rin[c, 4]*rin[c, 4] +
+   		            rin[c, 2]*ele.xkick + rin[c, 4]*ele.ykick)/2.0
+        rin[c, 1] += NormL*(rin[c, 2]+ele.xkick/2.0)
+        rin[c, 2] += ele.xkick
+        rin[c, 3] += NormL*(rin[c, 4]+ele.ykick/2.0)
+        rin[c, 4] += ele.ykick
 
-        if !all(iszero, ele.R2)
-            multmv!(r6, ele.R2)
-        end
-        if !all(iszero, ele.T2)
-            addvv!(r6, ele.T2)
-        end
-        lost_flag = check_lost_GTPSA(r6) ? 1 : lost_flag
+        hasR2 && multmv_row!(rin, c, ele.R2)
+        hasT2 && addvv_row!(rin, c, ele.T2)
+        lost_flag = check_lost_GTPSA_row(rin, c) ? 1 : lost_flag
         particles.lost_flag[c] = lost_flag
     end
     return nothing
@@ -732,45 +977,39 @@ end
 
 function pass!(ele::SOLENOID{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::Int, particles::Beam{DTPSAD{N, T}}) where {N, T <: Number}
     gamma2i = use_exact_Hamiltonian == 2 ? 1.0 / particles.gamma.val^2 : 0.0
+    hasT1 = !all(iszero, ele.T1)
+    hasR1 = !all(iszero, ele.R1)
+    hasR2 = !all(iszero, ele.R2)
+    hasT2 = !all(iszero, ele.T2)
     @inbounds for c in 1:npart
         lost_flag = particles.lost_flag[c]
         if lost_flag == 1
             continue
         end
-        r6 = @view rin[c, :]  
-
-        if !all(iszero, ele.T1)
-            addvv!(r6, ele.T1)
-        end
-        if !all(iszero, ele.R1)
-            multmv!(r6, ele.R1)
-        end
+        hasT1 && addvv_row!(rin, c, ele.T1)
+        hasR1 && multmv_row!(rin, c, ele.R1)
 
         if ele.ks != 0.0
-            p_norm = 1.0 / (1.0 + r6[6])
-            x = r6[1]
-            xpr = r6[2]*p_norm
-            y = r6[3]
-            ypr = r6[4]*p_norm
+            p_norm = 1.0 / (1.0 + rin[c, 6])
+            x = rin[c, 1]
+            xpr = rin[c, 2]*p_norm
+            y = rin[c, 3]
+            ypr = rin[c, 4]*p_norm
 
             H = ele.ks * p_norm / 2.0
             S = sin(ele.len * H)
             C = cos(ele.len * H)
-            r6[1] = x*C*C + xpr*C*S/H + y*C*S + ypr*S*S/H
-            r6[2] = (-x*H*C*S + xpr*C*C - y*H*S*S + ypr*C*S) / p_norm
-            r6[3] = -x*C*S - xpr*S*S/H + y*C*C + ypr*C*S/H
-            r6[4] = (x*H*S*S - xpr*C*S - y*C*S*H + ypr*C*C) / p_norm
-            r6[5] += ele.len*(H*H*(x*x+y*y) + 2.0*H*(xpr*y-ypr*x) +xpr*xpr+ypr*ypr)/2.0
+            rin[c, 1] = x*C*C + xpr*C*S/H + y*C*S + ypr*S*S/H
+            rin[c, 2] = (-x*H*C*S + xpr*C*C - y*H*S*S + ypr*C*S) / p_norm
+            rin[c, 3] = -x*C*S - xpr*S*S/H + y*C*C + ypr*C*S/H
+            rin[c, 4] = (x*H*S*S - xpr*C*S - y*C*S*H + ypr*C*C) / p_norm
+            rin[c, 5] += ele.len*(H*H*(x*x+y*y) + 2.0*H*(xpr*y-ypr*x) +xpr*xpr+ypr*ypr)/2.0
         else
-            drift6!(r6, ele.len, gamma2i)
+            drift6_row!(rin, c, ele.len, gamma2i)
         end
-        if !all(iszero, ele.R2)
-            multmv!(r6, ele.R2)
-        end
-        if !all(iszero, ele.T2)
-            addvv!(r6, ele.T2)
-        end
-        lost_flag = check_lost_GTPSA(r6) ? 1 : lost_flag
+        hasR2 && multmv_row!(rin, c, ele.R2)
+        hasT2 && addvv_row!(rin, c, ele.T2)
+        lost_flag = check_lost_GTPSA_row(rin, c) ? 1 : lost_flag
         particles.lost_flag[c] = lost_flag
     end
     return nothing
@@ -922,62 +1161,59 @@ function StrMPoleSymplectic4Pass!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, bet
         B[1] -= sin(KickAngle[1])/le
         A[1] += sin(KickAngle[2])/le
     end
+    hasT1 = !all(iszero, T1)
+    hasR1 = !all(iszero, R1)
+    hasR2 = !all(iszero, R2)
+    hasT2 = !all(iszero, T2)
     @inbounds for c in 1:num_particles
         if lost_flags[c] == 1
             continue
         end
-        r6 = @view r[c, :]
         # Misalignment at entrance
-        if !all(iszero, T1)
-            addvv!(r6, T1)
-        end
-        if !all(iszero, R1)
-            multmv!(r6, R1)
-        end
+        hasT1 && addvv_row!(r, c, T1)
+        hasR1 && multmv_row!(r, c, R1)
 
         if FringeQuadEntrance != 0 
+            r6 = @view r[c, :]
             multipole_fringe!(r6, le, A, B, max_order, 1.0, 1, beti)
         end
 
         # Integrator
         for m in 1:num_int_step
-            if check_lost_GTPSA(r6)
+            if check_lost_GTPSA_row(r, c)
                 lost_flags[c] = 1
                 break
             end
-            drift6!(r6, L1, gamma2i)
-            strthinkick!(r6, A, B, K1, max_order)
-            if check_lost_GTPSA(r6)
+            drift6_row!(r, c, L1, gamma2i)
+            strthinkick_row!(r, c, A, B, K1, max_order)
+            if check_lost_GTPSA_row(r, c)
                 lost_flags[c] = 1
                 break
             end
-            drift6!(r6, L2, gamma2i)
-            strthinkick!(r6, A, B, K2, max_order)
-            if check_lost_GTPSA(r6)
+            drift6_row!(r, c, L2, gamma2i)
+            strthinkick_row!(r, c, A, B, K2, max_order)
+            if check_lost_GTPSA_row(r, c)
                 lost_flags[c] = 1
                 break
             end
-            drift6!(r6, L2, gamma2i)
-            strthinkick!(r6, A, B, K1, max_order)
-            if check_lost_GTPSA(r6)
+            drift6_row!(r, c, L2, gamma2i)
+            strthinkick_row!(r, c, A, B, K1, max_order)
+            if check_lost_GTPSA_row(r, c)
                 lost_flags[c] = 1
                 break
             end
-            drift6!(r6, L1, gamma2i)
+            drift6_row!(r, c, L1, gamma2i)
         end
 
         if FringeQuadExit != 0
+            r6 = @view r[c, :]
             multipole_fringe!(r6, le, A, B, max_order, -1.0, 1, beti)
         end
 
         # Misalignment at exit
-        if !all(iszero, R2)
-            multmv!(r6, R2)
-        end
-        if !all(iszero, T2)
-            addvv!(r6, T2)
-        end
-        if check_lost_GTPSA(r6)
+        hasR2 && multmv_row!(r, c, R2)
+        hasT2 && addvv_row!(r, c, T2)
+        if check_lost_GTPSA_row(r, c)
             lost_flags[c] = 1
         end
     end
@@ -1011,62 +1247,62 @@ function StrMPoleSymplectic4RadPass!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, 
         B[1] -= sin(KickAngle[1])/le
         A[1] += sin(KickAngle[2])/le
     end
+    hasT1 = !all(iszero, T1)
+    hasR1 = !all(iszero, R1)
+    hasR2 = !all(iszero, R2)
+    hasT2 = !all(iszero, T2)
     @inbounds for c in 1:num_particles
         if lost_flags[c] == 1
             continue
         end
-        r6 = @view r[c, :]
         # Misalignment at entrance
-        if !all(iszero, T1)
-            addvv!(r6, T1)
-        end
-        if !all(iszero, R1)
-            multmv!(r6, R1)
-        end
+        hasT1 && addvv_row!(r, c, T1)
+        hasR1 && multmv_row!(r, c, R1)
 
         if FringeQuadEntrance != 0 
+            r6 = @view r[c, :]
             multipole_fringe!(r6, le, A, B, max_order, 1.0, 1, beti)
         end
 
         # Integrator
         for m in 1:num_int_step
-            if check_lost_GTPSA(r6)
+            if check_lost_GTPSA_row(r, c)
                 lost_flags[c] = 1
                 break
             end
-            drift6!(r6, L1, gamma2i)
+            r6 = @view r[c, :]
+            drift6_row!(r, c, L1, gamma2i)
             strthinkickrad!(r6, A, B, K1, E0, max_order, rad_const)
-            if check_lost_GTPSA(r6)
+            if check_lost_GTPSA_row(r, c)
                 lost_flags[c] = 1
                 break
             end
-            drift6!(r6, L2, gamma2i)
+            r6 = @view r[c, :]
+            drift6_row!(r, c, L2, gamma2i)
             strthinkickrad!(r6, A, B, K2, E0, max_order, rad_const)
-            if check_lost_GTPSA(r6)
+            if check_lost_GTPSA_row(r, c)
                 lost_flags[c] = 1
                 break
             end
-            drift6!(r6, L2, gamma2i)
+            r6 = @view r[c, :]
+            drift6_row!(r, c, L2, gamma2i)
             strthinkickrad!(r6, A, B, K1, E0, max_order, rad_const)
-            if check_lost_GTPSA(r6)
+            if check_lost_GTPSA_row(r, c)
                 lost_flags[c] = 1
                 break
             end
-            drift6!(r6, L1, gamma2i)
+            drift6_row!(r, c, L1, gamma2i)
         end
 
         if FringeQuadExit != 0
+            r6 = @view r[c, :]
             multipole_fringe!(r6, le, A, B, max_order, -1.0, 1, beti)
         end
 
         # Misalignment at exit
-        if !all(iszero, R2)
-            multmv!(r6, R2)
-        end
-        if !all(iszero, T2)
-            addvv!(r6, T2)
-        end
-        if check_lost_GTPSA(r6)
+        hasR2 && multmv_row!(r, c, R2)
+        hasT2 && addvv_row!(r, c, T2)
+        if check_lost_GTPSA_row(r, c)
             lost_flags[c] = 1
         end
     end
@@ -1200,21 +1436,21 @@ function BendSymplecticPass!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti::Fl
     B[1] -= sin(KickAngle[1]) / le
     A[1] += sin(KickAngle[2]) / le
 
+    hasT1 = !all(iszero, T1)
+    hasR1 = !all(iszero, R1)
+    hasR2 = !all(iszero, R2)
+    hasT2 = !all(iszero, T2)
 
     @inbounds for c in 1:num_particles
         if isone(lost_flags[c])
             continue
         end
-        r6 = @view r[c, :]
         # Misalignment at entrance
-        if !all(iszero, T1)
-            addvv!(r6, T1)
-        end
-        if !all(iszero, R1)
-            multmv!(r6, R1)
-        end
+        hasT1 && addvv_row!(r, c, T1)
+        hasR1 && multmv_row!(r, c, R1)
 
         # Edge focus at entrance
+        r6 = @view r[c, :]
         edge_fringe_entrance!(r6, irho, entrance_angle, fint1, gap, FringeBendEntrance)
 
         # Quadrupole gradient fringe entrance
@@ -1228,17 +1464,18 @@ function BendSymplecticPass!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti::Fl
 
         # Integrator
         for m in 1:num_int_steps
-            drift6!(r6, L1)
-            bndthinkick!(r6, A, B, K1, irho, max_order, beti)
-            drift6!(r6, L2)
-            bndthinkick!(r6, A, B, K2, irho, max_order, beti)
-            drift6!(r6, L2)
-            bndthinkick!(r6, A, B, K1, irho, max_order, beti)
-            drift6!(r6, L1)
+            drift6_row!(r, c, L1)
+            bndthinkick_row!(r, c, A, B, K1, irho, max_order, beti)
+            drift6_row!(r, c, L2)
+            bndthinkick_row!(r, c, A, B, K2, irho, max_order, beti)
+            drift6_row!(r, c, L2)
+            bndthinkick_row!(r, c, A, B, K1, irho, max_order, beti)
+            drift6_row!(r, c, L1)
         end
 
         # Quadrupole gradient fringe exit
         if !iszero(FringeQuadExit) && !iszero(B[2])
+            r6 = @view r[c, :]
             if isone(useLinFrEleExit)
                 linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
             else
@@ -1250,13 +1487,9 @@ function BendSymplecticPass!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti::Fl
         edge_fringe_exit!(r6, irho, exit_angle, fint2, gap, FringeBendExit)
 
         # Misalignment at exit
-        if !all(iszero, R2)
-            multmv!(r6, R2)
-        end
-        if !all(iszero, T2)
-            addvv!(r6, T2)
-        end
-        if check_lost_GTPSA(r6)
+        hasR2 && multmv_row!(r, c, R2)
+        hasT2 && addvv_row!(r, c, T2)
+        if check_lost_GTPSA_row(r, c)
             lost_flags[c] = 1
         end
     end
@@ -1298,20 +1531,20 @@ function BendSymplecticPassRad!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti:
     B[1] -= sin(KickAngle[1]) / le
     A[1] += sin(KickAngle[2]) / le
 
+    hasT1 = !all(iszero, T1)
+    hasR1 = !all(iszero, R1)
+    hasR2 = !all(iszero, R2)
+    hasT2 = !all(iszero, T2)
 
     @inbounds for c in 1:num_particles
         if isone(lost_flags[c])
             continue
         end
-        r6 = @view r[c, :]
         # Misalignment at entrance
-        if !all(iszero, T1)
-            addvv!(r6, T1)
-        end
-        if !all(iszero, R1)
-            multmv!(r6, R1)
-        end
+        hasT1 && addvv_row!(r, c, T1)
+        hasR1 && multmv_row!(r, c, R1)
         # Edge focus at entrance
+        r6 = @view r[c, :]
         edge_fringe_entrance!(r6, irho, entrance_angle, fint1, gap, FringeBendEntrance)
 
         # Quadrupole gradient fringe entrance
@@ -1325,17 +1558,18 @@ function BendSymplecticPassRad!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti:
 
         # Integrator
         for m in 1:num_int_steps
-            drift6!(r6, L1)
-            bndthinkickrad!(r6, A, B, K1, irho, E0, max_order, beti)
-            drift6!(r6, L2)
-            bndthinkickrad!(r6, A, B, K2, irho, E0, max_order, beti)
-            drift6!(r6, L2)
-            bndthinkickrad!(r6, A, B, K1, irho, E0, max_order, beti)
-            drift6!(r6, L1)
+            drift6_row!(r, c, L1)
+            bndthinkickrad_row!(r, c, A, B, K1, irho, E0, max_order, beti)
+            drift6_row!(r, c, L2)
+            bndthinkickrad_row!(r, c, A, B, K2, irho, E0, max_order, beti)
+            drift6_row!(r, c, L2)
+            bndthinkickrad_row!(r, c, A, B, K1, irho, E0, max_order, beti)
+            drift6_row!(r, c, L1)
         end
 
         # Quadrupole gradient fringe exit
         if !iszero(FringeQuadExit) && !iszero(B[2])
+            r6 = @view r[c, :]
             if useLinFrEleExit == 1
                 linearQuadFringeElegantExit!(r6, B[2], fringeIntM0, fringeIntP0)
             else
@@ -1347,13 +1581,9 @@ function BendSymplecticPassRad!(r::Matrix{DTPSAD{N, T}}, le::DTPSAD{N, T}, beti:
         edge_fringe_exit!(r6, irho, exit_angle, fint2, gap, FringeBendExit)
 
         # Misalignment at exit
-        if !all(iszero, R2)
-            multmv!(r6, R2)
-        end
-        if !all(iszero, T2)
-            addvv!(r6, T2)
-        end
-        if check_lost_GTPSA(r6)
+        hasR2 && multmv_row!(r, c, R2)
+        hasT2 && addvv_row!(r, c, T2)
+        if check_lost_GTPSA_row(r, c)
             lost_flags[c] = 1
         end
     end
@@ -1433,10 +1663,9 @@ function pass!(ele::RFCA{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::Int64,
             if particles.lost_flag[c] == 1
                 continue
             end
-            r6 = @view rin[c, :]
-            r6[6] += -nv * sin(2 * pi * ele.freq * ((r6[5] - ele.lag) / speed_of_light - 
+            rin[c, 6] += -nv * sin(2 * pi * ele.freq * ((rin[c, 5] - ele.lag) / speed_of_light - 
                 (ele.h / ele.freq - particles.T0) * 0.0) - ele.philag) / particles.beta^2
-            if check_lost_GTPSA(r6)
+            if check_lost_GTPSA_row(rin, c)
                 particles.lost_flag[c] = 1
             end
         end
@@ -1446,12 +1675,11 @@ function pass!(ele::RFCA{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npart::Int64,
             if particles.lost_flag[c] == 1
                 continue
             end
-            r6 = @view rin[c, :]
-            drift6!(r6, halflength, gamma2i)
-            r6[6] += -nv * sin(2 * pi * ele.freq * ((r6[5] - ele.lag) / speed_of_light - 
+            drift6_row!(rin, c, halflength, gamma2i)
+            rin[c, 6] += -nv * sin(2 * pi * ele.freq * ((rin[c, 5] - ele.lag) / speed_of_light - 
                 (ele.h / ele.freq - particles.T0) * 0.0) - ele.philag) / particles.beta^2
-            drift6!(r6, halflength, gamma2i)
-            if check_lost_GTPSA(r6)
+            drift6_row!(rin, c, halflength, gamma2i)
+            if check_lost_GTPSA_row(rin, c)
                 particles.lost_flag[c] = 1
             end
         end
@@ -1466,22 +1694,15 @@ function pass!(cavity::CRABCAVITY{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npar
         if isone(particles.lost_flag[c])
             continue
         end
-        r6 = @view rin[c, :]
-        ang = cavity.k * r6[5] + cavity.phi
+        ang = cavity.k * rin[c, 5] + cavity.phi
         if cavity.len == 0.0
-            # r6[2] += (cavity.volt/beta2E) * sin(ang)
-            # r6[6] += (-cavity.k * cavity.volt/beta2E) * r6[1] * cos(ang)
-            # this is symplectic form
-            r6[2] += (cavity.volt/particles.energy) * sin(ang/beta)
-            r6[6] += (-cavity.k * cavity.volt/particles.energy/beta) * r6[1] * cos(ang/beta)
+            rin[c, 2] += (cavity.volt/particles.energy) * sin(ang/beta)
+            rin[c, 6] += (-cavity.k * cavity.volt/particles.energy/beta) * rin[c, 1] * cos(ang/beta)
         else
-            drift6!(r6, cavity.len / 2.0, gamma2i)
-            # r6[2] += (cavity.volt/beta2E) * sin(ang)
-            # r6[6] += (-cavity.k * cavity.volt/beta2E) * r6[1] * cos(ang)
-            # this is symplectic form
-            r6[2] += (cavity.volt/particles.energy) * sin(ang/beta)
-            r6[6] += (-cavity.k * cavity.volt/particles.energy/beta) * r6[1] * cos(ang/beta)
-            drift6!(r6, cavity.len / 2.0, gamma2i)
+            drift6_row!(rin, c, cavity.len / 2.0, gamma2i)
+            rin[c, 2] += (cavity.volt/particles.energy) * sin(ang/beta)
+            rin[c, 6] += (-cavity.k * cavity.volt/particles.energy/beta) * rin[c, 1] * cos(ang/beta)
+            drift6_row!(rin, c, cavity.len / 2.0, gamma2i)
         end
     end
     return nothing
@@ -1494,30 +1715,21 @@ function pass!(cavity::CRABCAVITY_K2{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, n
         if isone(particles.lost_flag[c])
             continue
         end
-        r6 = @view rin[c, :]
-        ang = cavity.k * r6[5] + cavity.phi
+        ang = cavity.k * rin[c, 5] + cavity.phi
         if cavity.len == 0.0
-            # r6[2] += (cavity.volt/beta2E) * sin(ang)
-            # r6[6] += (-cavity.k * cavity.volt/beta2E) * r6[1] * cos(ang)
-            # this is symplectic form
-            r6[2] += (cavity.volt/particles.energy) * sin(ang/beta)
-            r6[6] += (-cavity.k * cavity.volt/particles.energy/beta) * r6[1] * cos(ang/beta)
-            # sextupole kick
-            r6[2] -= cavity.k2 * (r6[1]^2 - r6[3]^2) * sin(ang)
-            r6[4] += 2.0 * cavity.k2 * r6[1] * r6[3] * sin(ang)
-            r6[6] -= (cavity.k2 * cavity.k / 3.0) * (r6[1]^3 - 3.0 * r6[1] * r6[3]^2) * cos(ang)
+            rin[c, 2] += (cavity.volt/particles.energy) * sin(ang/beta)
+            rin[c, 6] += (-cavity.k * cavity.volt/particles.energy/beta) * rin[c, 1] * cos(ang/beta)
+            rin[c, 2] -= cavity.k2 * (rin[c, 1]^2 - rin[c, 3]^2) * sin(ang)
+            rin[c, 4] += 2.0 * cavity.k2 * rin[c, 1] * rin[c, 3] * sin(ang)
+            rin[c, 6] -= (cavity.k2 * cavity.k / 3.0) * (rin[c, 1]^3 - 3.0 * rin[c, 1] * rin[c, 3]^2) * cos(ang)
         else
-            drift6!(r6, cavity.len / 2.0, gamma2i)
-            # r6[2] += (cavity.volt/beta2E) * sin(ang)
-            # r6[6] += (-cavity.k * cavity.volt/beta2E) * r6[1] * cos(ang)            
-            # this is symplectic form
-            r6[2] += (cavity.volt/particles.energy) * sin(ang/beta)
-            r6[6] += (-cavity.k * cavity.volt/particles.energy/beta) * r6[1] * cos(ang/beta)
-            # sextupole kick
-            r6[2] -= cavity.k2 * (r6[1]^2 - r6[3]^2) * sin(ang)
-            r6[4] += 2.0 * cavity.k2 * r6[1] * r6[3] * sin(ang)
-            r6[6] -= (cavity.k2 * cavity.k / 3.0) * (r6[1]^3 - 3.0 * r6[1] * r6[3]^2) * cos(ang)
-            drift6!(r6, cavity.len / 2.0, gamma2i)
+            drift6_row!(rin, c, cavity.len / 2.0, gamma2i)
+            rin[c, 2] += (cavity.volt/particles.energy) * sin(ang/beta)
+            rin[c, 6] += (-cavity.k * cavity.volt/particles.energy/beta) * rin[c, 1] * cos(ang/beta)
+            rin[c, 2] -= cavity.k2 * (rin[c, 1]^2 - rin[c, 3]^2) * sin(ang)
+            rin[c, 4] += 2.0 * cavity.k2 * rin[c, 1] * rin[c, 3] * sin(ang)
+            rin[c, 6] -= (cavity.k2 * cavity.k / 3.0) * (rin[c, 1]^3 - 3.0 * rin[c, 1] * rin[c, 3]^2) * cos(ang)
+            drift6_row!(rin, c, cavity.len / 2.0, gamma2i)
         end
     end
     return nothing
@@ -1540,28 +1752,27 @@ function pass!(ele::thinMULTIPOLE{DTPSAD{N, T}}, rin::Matrix{DTPSAD{N, T}}, npar
         if particles.lost_flag[c] == 1
             continue
         end
-        r6 = @view rin[c, :]
         # Misalignment at entrance
         if !all(iszero, ele.T1)
-            addvv!(r6, ele.T1)
+            addvv_row!(rin, c, ele.T1)
         end
         if !all(iszero, ele.R1)
-            multmv!(r6, ele.R1)
+            multmv_row!(rin, c, ele.R1)
         end
 
-        strthinkick1!(r6, A, B, DTPSAD(1.0), ele.MaxOrder)
-        r6[2] += bax * r6[6]
-        r6[4] -= bay * r6[6]
-        r6[6] -= bax * r6[1] - bay * r6[3]  # Path lenghtening
+        strthinkick1_row!(rin, c, A, B, DTPSAD(1.0), ele.MaxOrder)
+        rin[c, 2] += bax * rin[c, 6]
+        rin[c, 4] -= bay * rin[c, 6]
+        rin[c, 6] -= bax * rin[c, 1] - bay * rin[c, 3]  # Path lenghtening
 
         # Misalignment at exit
         if !all(iszero, ele.R2)
-            multmv!(r6, ele.R2)
+            multmv_row!(rin, c, ele.R2)
         end
         if !all(iszero, ele.T2)
-            addvv!(r6, ele.T2)
+            addvv_row!(rin, c, ele.T2)
         end
-        if check_lost(r6)
+        if check_lost_GTPSA_row(rin, c)
             particles.lost_flag[c] = 1
         end
     end
@@ -1576,19 +1787,18 @@ function pass!(elem::TRANSLATION{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_
         if isone(particles.lost_flag[c])
             continue
         end
-        r6 = @view r_in[c, :]
         if use_exact_beti == 1
-            pz = sqrt(1.0 + 2.0 * r6[6] / particles.beta + r6[6]^2 - r6[2]^2 - r6[4]^2)
-            r6[1] -= elem.dx + elem.ds * r6[2] / pz
-            r6[3] -= elem.dy + elem.ds * r6[4] / pz
-            r6[5] += elem.ds * (1.0/particles.beta + r6[6]) / pz
+            pz = sqrt(1.0 + 2.0 * r_in[c, 6] / particles.beta + r_in[c, 6]^2 - r_in[c, 2]^2 - r_in[c, 4]^2)
+            r_in[c, 1] -= elem.dx + elem.ds * r_in[c, 2] / pz
+            r_in[c, 3] -= elem.dy + elem.ds * r_in[c, 4] / pz
+            r_in[c, 5] += elem.ds * (1.0/particles.beta + r_in[c, 6]) / pz
         else
-            pz = sqrt(1.0 + 2.0 * r6[6] + r6[6]^2 - r6[2]^2 - r6[4]^2)
-            r6[1] -= elem.dx + elem.ds * r6[2] / pz
-            r6[3] -= elem.dy + elem.ds * r6[4] / pz
-            r6[5] += elem.ds * (1.0 + r6[6]) / pz
+            pz = sqrt(1.0 + 2.0 * r_in[c, 6] + r_in[c, 6]^2 - r_in[c, 2]^2 - r_in[c, 4]^2)
+            r_in[c, 1] -= elem.dx + elem.ds * r_in[c, 2] / pz
+            r_in[c, 3] -= elem.dy + elem.ds * r_in[c, 4] / pz
+            r_in[c, 5] += elem.ds * (1.0 + r_in[c, 6]) / pz
         end
-        if check_lost_GTPSA(r6)
+        if check_lost_GTPSA_row(r_in, c)
             particles.lost_flag[c] = 1
         end
     end
@@ -1612,16 +1822,15 @@ function pass!(elem::YROTATION{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T}}, num_pa
         if isone(particles.lost_flag[c])
             continue
         end
-        r6 = @view r_in[c, :]
-        x, px, y, py, t, pt = r6[1], r6[2], r6[3], r6[4], r6[5], r6[6]
+        x, px, y, py, t, pt = r_in[c, 1], r_in[c, 2], r_in[c, 3], r_in[c, 4], r_in[c, 5], r_in[c, 6]
         pz = sqrt(1.0 + 2.0 * pt / beta + pt^2 - px^2 - py^2)
         ptt = 1.0 - ta*px/pz
-        r6[1] = x/(ca*ptt)
-        r6[2] = ca*px + sa*pz
-        r6[3] = y + ta*x*py/(pz*ptt)
-        r6[5] = t + ta*x*(1.0 / beta+pt)/(pz*ptt)
+        r_in[c, 1] = x/(ca*ptt)
+        r_in[c, 2] = ca*px + sa*pz
+        r_in[c, 3] = y + ta*x*py/(pz*ptt)
+        r_in[c, 5] = t + ta*x*(1.0 / beta+pt)/(pz*ptt)
 
-        if check_lost_GTPSA(r6)
+        if check_lost_GTPSA_row(r_in, c)
             particles.lost_flag[c] = 1
         end
     end
@@ -1659,15 +1868,14 @@ function pass!(elem::LongitudinalRLCWake{DTPSAD{N, T}}, r_in::Matrix{DTPSAD{N, T
         if isone(particles.lost_flag[c])
             continue
         end
-        r6 = @view r_in[c, :]
-        zloc=r6[5]
+        zloc = r_in[c, 5]
         zindex=particles.inzindex[c]
         wake1=wakeatedge[zindex]
         wake2=wakeatedge[zindex+1]
         wakezloc=wake1+(wake2-wake1)*(zloc-particles.zhist_edges[zindex])/zsep
-        r6[6]-=wakezloc*eN_b2E
+        r_in[c, 6] -= wakezloc*eN_b2E
 
-        if check_lost_GTPSA(r6)
+        if check_lost_GTPSA_row(r_in, c)
             particles.lost_flag[c] = 1
         end
     end
