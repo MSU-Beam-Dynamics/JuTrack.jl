@@ -1,4 +1,5 @@
 # Example of using JuTrack 2.5-D space charge in a periodic FODO cell
+# Must use use_exact_drift(2) before using any 2.5-D space charge element
 using Pkg
 Pkg.activate("."); Pkg.instantiate() # change "." to your path of JuTrack.jl
 using JuTrack

@@ -871,6 +871,7 @@ def SPACECHARGE2P5D(name: str = "SPACECHARGE2P5D", length: float = 0.0,
     ``[x, px, y, py, z, dp/p0]``. The element itself is a thin kick, while
     ``effective_length`` stores the transport path length associated with the
     kick strength.
+    must activate use_exact_drift(2) before using any 2.5-D elements.
 
     Args:
         name: Element name.
