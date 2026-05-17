@@ -523,7 +523,11 @@ Propagate the Twiss parameters through a matrix M.
 # Returns
 - `EdwardsTengTwiss{Float64}`: Output Twiss parameters.
 """
-function twissPropagate(tin::EdwardsTengTwiss{Float64},M::Matrix{Float64}; elem_length::Float64=0.0)
+function twissPropagate(tin::EdwardsTengTwiss{Float64}, M::Matrix{Float64}; elem_length::Float64=0.0)
+	return twissPropagate(tin, M, elem_length)
+end
+
+function twissPropagate(tin::EdwardsTengTwiss{Float64}, M::Matrix{Float64}, elem_length::Float64)
 	A= M[1:2,1:2]
 	B= M[1:2,3:4]
 	C= M[3:4,1:2]
@@ -771,11 +775,16 @@ function findm66(seq::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp::Float64, orde
 	end
 end
 
-function ADfindm66(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractElement{Float64}}; 
+function ADfindm66(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractElement{Float64}};
 	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
+	return ADfindm66(seq, dp, order, changed_idx, changed_ele, E0, m0, orb)
+end
+
+function ADfindm66(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractElement{Float64}},
+	E0::Float64, m0::Float64, orb::Vector{Float64})
 	map = zeros(Float64, 6, 6)
 	if order == 0
-		map .= ADfastfindm66(seq, dp, changed_idx, changed_ele, E0=E0, m0=m0)
+		map .= ADfastfindm66(seq, dp, changed_idx, changed_ele, E0, m0, orb)
 		return map
 	end
 	if dp == 0.0 && orb[6] != 0.0
@@ -1111,6 +1120,10 @@ function fastfindm66_refpts(LATTICE::Vector{<:AbstractElement{DTPSAD{N, T}}}, dp
 end
 
 function ADfastfindm66(LATTICE::Vector{<:AbstractElement{Float64}}, dp, changed_idx, changed_ele; E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
+	return ADfastfindm66(LATTICE, dp, changed_idx, changed_ele, E0, m0, orb)
+end
+
+function ADfastfindm66(LATTICE::Vector{<:AbstractElement{Float64}}, dp, changed_idx, changed_ele, E0::Float64, m0::Float64, orb::Vector{Float64})
 	if dp == 0.0 && orb[6] != 0.0
 		dp = orb[6]
 	end
@@ -1139,7 +1152,7 @@ function ADfastfindm66(LATTICE::Vector{<:AbstractElement{Float64}}, dp, changed_
     end
     RIN[13, :] = orbitin
 
-    beam = Beam(RIN, energy=E0, mass=m0)
+    beam = Beam(RIN, E0, m0)
     
     ADlinepass!(LATTICE, beam, changed_idx, changed_ele)
     TMAT3 = transpose(beam.r)
@@ -1149,6 +1162,10 @@ function ADfastfindm66(LATTICE::Vector{<:AbstractElement{Float64}}, dp, changed_
 end
 
 function ADfastfindm66_refpts(LATTICE, dp::Float64, refpts::Vector{Int}, changed_idx, changed_ele; E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
+	return ADfastfindm66_refpts(LATTICE, dp, refpts, changed_idx, changed_ele, E0, m0, orb)
+end
+
+function ADfastfindm66_refpts(LATTICE, dp::Float64, refpts::Vector{Int}, changed_idx, changed_ele, E0::Float64, m0::Float64, orb::Vector{Float64})
 	if dp == 0.0 && orb[6] != 0.0
 		dp = orb[6]
 	end
@@ -1177,7 +1194,7 @@ function ADfastfindm66_refpts(LATTICE, dp::Float64, refpts::Vector{Int}, changed
     RIN[13, :] = orbitin
     M66_refpts = zeros(6, 6, length(refpts))
     for i in 1:length(refpts)
-		beam = Beam(copy(RIN), energy=E0, mass=m0)
+		beam = Beam(copy(RIN), E0, m0)
 		if i == 1
             id_list = [j for j in 1:refpts[1]]
 			ADlinepass!(LATTICE, id_list, beam, changed_idx, changed_ele)
@@ -1386,8 +1403,13 @@ function _ad_effective_lengths(seq::Vector{<:AbstractElement{Float64}},
 	return lengths
 end
 
-function ADtwissline(tin::EdwardsTengTwiss{Float64},seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractElement{Float64}}; 
+function ADtwissline(tin::EdwardsTengTwiss{Float64},seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractElement{Float64}};
 	E0::Float64=3e9, m0::Float64=m_e, orb::Vector{Float64}=zeros(6))
+	return ADtwissline(tin, seq, dp, order, refpts, changed_idx, changed_ele, E0, m0, orb)
+end
+
+function ADtwissline(tin::EdwardsTengTwiss{Float64},seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractElement{Float64}},
+	E0::Float64, m0::Float64, orb::Vector{Float64})
 	if dp == 0.0 && orb[6] != 0.0
 		dp = orb[6]
 	end
@@ -1396,7 +1418,7 @@ function ADtwissline(tin::EdwardsTengTwiss{Float64},seq::Vector{<:AbstractElemen
 
 	# use ADfastfindm66_refpts instead of ADfindm66_refpts if order == 0
 	if order == 0
-		M_list = ADfastfindm66_refpts(seq, dp, refpts, changed_idx, changed_ele, E0=E0, m0=m0, orb=orb)
+		M_list = ADfastfindm66_refpts(seq, dp, refpts, changed_idx, changed_ele, E0, m0, orb)
 	else
 		M_list = ADfindm66_refpts(seq, dp, order, refpts, changed_idx, changed_ele, E0=E0, m0=m0, orb=orb)
 	end
@@ -1410,7 +1432,7 @@ function ADtwissline(tin::EdwardsTengTwiss{Float64},seq::Vector{<:AbstractElemen
 		for j in start_idx:end_idx
 			segment_length += effective_lengths[j]
 		end
-		ret = twissPropagate(ret, M_list[:, :, i], elem_length=segment_length)
+		ret = twissPropagate(ret, M_list[:, :, i], segment_length)
 		ret_vector[i] = ret
 	end
 	return ret_vector
@@ -1572,16 +1594,27 @@ function ADperiodicEdwardsTengTwiss(seq::Vector{<:AbstractElement{Float64}}, dp:
 	changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractElement{Float64}}; 
 	E0::Float64=3e9, m0::Float64=m_e)
 	orb, _ = find_closed_orbit(seq, dp, mass=m0, energy=E0)
+	return ADperiodicEdwardsTengTwiss(seq, dp, order, changed_idx, changed_ele, E0, m0, orb)
+end
+
+function _invalid_ad_edwards_teng_twiss()
+	return EdwardsTengTwiss{Float64}(1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0,
+		0.0, 0.0, 0.0, 1.0, 0.0, 1.0, zeros(Float64, 2, 2), 0, 0.0)
+end
+
+function ADperiodicEdwardsTengTwiss(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int,
+	changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractElement{Float64}},
+	E0::Float64, m0::Float64, orb::Vector{Float64})
 	if order == 0
-		M = ADfastfindm66(seq, dp, changed_idx, changed_ele, E0=E0, m0=m0, orb=orb)
+		M = ADfastfindm66(seq, dp, changed_idx, changed_ele, E0, m0, orb)
 	else
-		M = ADfindm66(seq, dp, order, changed_idx, changed_ele, E0=E0, m0=m0, orb=orb)
+		M = ADfindm66(seq, dp, order, changed_idx, changed_ele, E0, m0, orb)
 	end
 	A= M[1:2,1:2]
 	B= M[1:2,3:4]
 	C= M[3:4,1:2]
 	D= M[3:4,3:4]
-	invalid_ret=EdwardsTengTwiss(1.0,1.0,mode=0)
+	invalid_ret = _invalid_ad_edwards_teng_twiss()
 
 	Bbar_and_C=symplectic_conjugate_2by2(B)+C
 	t1=0.5*(tr(A)-tr(D))
@@ -1728,11 +1761,141 @@ end
 
 function ADtwissring(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractElement{Float64}}; 
 	E0::Float64=3e9, m0::Float64=m_e)
-	twi0 = ADperiodicEdwardsTengTwiss(seq, dp, order, changed_idx, changed_ele, E0=E0, m0=m0)
+	orb, _ = find_closed_orbit(seq, dp, mass=m0, energy=E0)
+	return ADtwissring(seq, dp, order, refpts, changed_idx, changed_ele, E0, m0, orb)
+end
+
+function ADtwissring(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int, refpts::Vector{Int}, changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractElement{Float64}},
+	E0::Float64, m0::Float64, orb::Vector{Float64})
+	twi0 = ADperiodicEdwardsTengTwiss(seq, dp, order, changed_idx, changed_ele, E0, m0, orb)
 	nele = length(seq)
 	# refpts = [i for i in 1:nele]
-	twi = ADtwissline(twi0, seq, dp, order, refpts, changed_idx, changed_ele, E0=E0, m0=m0)
+	twi = ADtwissline(twi0, seq, dp, order, refpts, changed_idx, changed_ele, E0, m0, orb)
 	return twi
+end
+
+function ADfindm66(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int,
+	params::AbstractVector{<:LatticeParameter{Field,N,E}}, values; kwargs...) where {Field,N,E<:AbstractElement{Float64}}
+	changed_idx, changed_ele = _materialize_lattice_parameters(params, values)
+	return ADfindm66(seq, dp, order, changed_idx, changed_ele; kwargs...)
+end
+
+function ADfindm66(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int,
+	param::LatticeParameter{Field,N,E}, value; kwargs...) where {Field,N,E<:AbstractElement{Float64}}
+	changed_idx, changed_ele = _materialize_lattice_parameter(param, value)
+	return ADfindm66(seq, dp, order, changed_idx, changed_ele; kwargs...)
+end
+
+function ADfindm66(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int,
+	params::LatticeParameterCollection, values; kwargs...)
+	changed_idx, changed_ele = changed_elements(seq, params, values)
+	return ADfindm66(seq, dp, order, changed_idx, changed_ele; kwargs...)
+end
+
+function ADfindm66(seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int,
+	param::LatticeParameter, value; kwargs...)
+	changed_idx, changed_ele = changed_elements(seq, param, value)
+	return ADfindm66(seq, dp, order, changed_idx, changed_ele; kwargs...)
+end
+
+function ADfindm66_refpts(seq::Vector{<:AbstractElement{Float64}}, dp::Float64,
+	order::Int, refpts::Vector{Int}, params::AbstractVector{<:LatticeParameter{Field,N,E}}, values; kwargs...) where {Field,N,E<:AbstractElement{Float64}}
+	changed_idx, changed_ele = _materialize_lattice_parameters(params, values)
+	return ADfindm66_refpts(seq, dp, order, refpts, changed_idx, changed_ele; kwargs...)
+end
+
+function ADfindm66_refpts(seq::Vector{<:AbstractElement{Float64}}, dp::Float64,
+	order::Int, refpts::Vector{Int}, param::LatticeParameter{Field,N,E}, value; kwargs...) where {Field,N,E<:AbstractElement{Float64}}
+	changed_idx, changed_ele = _materialize_lattice_parameter(param, value)
+	return ADfindm66_refpts(seq, dp, order, refpts, changed_idx, changed_ele; kwargs...)
+end
+
+function ADfindm66_refpts(seq::Vector{<:AbstractElement{Float64}}, dp::Float64,
+	order::Int, refpts::Vector{Int}, params::LatticeParameterCollection, values; kwargs...)
+	changed_idx, changed_ele = changed_elements(seq, params, values)
+	return ADfindm66_refpts(seq, dp, order, refpts, changed_idx, changed_ele; kwargs...)
+end
+
+function ADfindm66_refpts(seq::Vector{<:AbstractElement{Float64}}, dp::Float64,
+	order::Int, refpts::Vector{Int}, param::LatticeParameter, value; kwargs...)
+	changed_idx, changed_ele = changed_elements(seq, param, value)
+	return ADfindm66_refpts(seq, dp, order, refpts, changed_idx, changed_ele; kwargs...)
+end
+
+function ADperiodicEdwardsTengTwiss(seq::Vector{<:AbstractElement{Float64}},
+	dp::Float64, order::Int, params::AbstractVector{<:LatticeParameter{Field,N,E}}, values; kwargs...) where {Field,N,E<:AbstractElement{Float64}}
+	changed_idx, changed_ele = _materialize_lattice_parameters(params, values)
+	return ADperiodicEdwardsTengTwiss(seq, dp, order, changed_idx, changed_ele; kwargs...)
+end
+
+function ADperiodicEdwardsTengTwiss(seq::Vector{<:AbstractElement{Float64}},
+	dp::Float64, order::Int, param::LatticeParameter{Field,N,E}, value; kwargs...) where {Field,N,E<:AbstractElement{Float64}}
+	changed_idx, changed_ele = _materialize_lattice_parameter(param, value)
+	return ADperiodicEdwardsTengTwiss(seq, dp, order, changed_idx, changed_ele; kwargs...)
+end
+
+function ADperiodicEdwardsTengTwiss(seq::Vector{<:AbstractElement{Float64}},
+	dp::Float64, order::Int, params::LatticeParameterCollection, values; kwargs...)
+	changed_idx, changed_ele = changed_elements(seq, params, values)
+	return ADperiodicEdwardsTengTwiss(seq, dp, order, changed_idx, changed_ele; kwargs...)
+end
+
+function ADperiodicEdwardsTengTwiss(seq::Vector{<:AbstractElement{Float64}},
+	dp::Float64, order::Int, param::LatticeParameter, value; kwargs...)
+	changed_idx, changed_ele = changed_elements(seq, param, value)
+	return ADperiodicEdwardsTengTwiss(seq, dp, order, changed_idx, changed_ele; kwargs...)
+end
+
+function ADtwissline(tin::EdwardsTengTwiss{Float64},
+	seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int,
+	refpts::Vector{Int}, params::AbstractVector{<:LatticeParameter{Field,N,E}}, values; kwargs...) where {Field,N,E<:AbstractElement{Float64}}
+	changed_idx, changed_ele = _materialize_lattice_parameters(params, values)
+	return ADtwissline(tin, seq, dp, order, refpts, changed_idx, changed_ele; kwargs...)
+end
+
+function ADtwissline(tin::EdwardsTengTwiss{Float64},
+	seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int,
+	refpts::Vector{Int}, param::LatticeParameter{Field,N,E}, value; kwargs...) where {Field,N,E<:AbstractElement{Float64}}
+	changed_idx, changed_ele = _materialize_lattice_parameter(param, value)
+	return ADtwissline(tin, seq, dp, order, refpts, changed_idx, changed_ele; kwargs...)
+end
+
+function ADtwissline(tin::EdwardsTengTwiss{Float64},
+	seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int,
+	refpts::Vector{Int}, params::LatticeParameterCollection, values; kwargs...)
+	changed_idx, changed_ele = changed_elements(seq, params, values)
+	return ADtwissline(tin, seq, dp, order, refpts, changed_idx, changed_ele; kwargs...)
+end
+
+function ADtwissline(tin::EdwardsTengTwiss{Float64},
+	seq::Vector{<:AbstractElement{Float64}}, dp::Float64, order::Int,
+	refpts::Vector{Int}, param::LatticeParameter, value; kwargs...)
+	changed_idx, changed_ele = changed_elements(seq, param, value)
+	return ADtwissline(tin, seq, dp, order, refpts, changed_idx, changed_ele; kwargs...)
+end
+
+function ADtwissring(seq::Vector{<:AbstractElement{Float64}}, dp::Float64,
+	order::Int, refpts::Vector{Int}, params::AbstractVector{<:LatticeParameter{Field,N,E}}, values; kwargs...) where {Field,N,E<:AbstractElement{Float64}}
+	changed_idx, changed_ele = _materialize_lattice_parameters(params, values)
+	return ADtwissring(seq, dp, order, refpts, changed_idx, changed_ele; kwargs...)
+end
+
+function ADtwissring(seq::Vector{<:AbstractElement{Float64}}, dp::Float64,
+	order::Int, refpts::Vector{Int}, param::LatticeParameter{Field,N,E}, value; kwargs...) where {Field,N,E<:AbstractElement{Float64}}
+	changed_idx, changed_ele = _materialize_lattice_parameter(param, value)
+	return ADtwissring(seq, dp, order, refpts, changed_idx, changed_ele; kwargs...)
+end
+
+function ADtwissring(seq::Vector{<:AbstractElement{Float64}}, dp::Float64,
+	order::Int, refpts::Vector{Int}, params::LatticeParameterCollection, values; kwargs...)
+	changed_idx, changed_ele = changed_elements(seq, params, values)
+	return ADtwissring(seq, dp, order, refpts, changed_idx, changed_ele; kwargs...)
+end
+
+function ADtwissring(seq::Vector{<:AbstractElement{Float64}}, dp::Float64,
+	order::Int, refpts::Vector{Int}, param::LatticeParameter, value; kwargs...)
+	changed_idx, changed_ele = changed_elements(seq, param, value)
+	return ADtwissring(seq, dp, order, refpts, changed_idx, changed_ele; kwargs...)
 end
 
 function normalMatrix(tin::EdwardsTengTwiss{Float64})
