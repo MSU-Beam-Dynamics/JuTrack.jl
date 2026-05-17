@@ -168,7 +168,7 @@ function pass_TPSA!(ele::SOLENOID, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}
     end
     # Threads.@threads for c in 1:num_particles
     if ele.ks != 0.0
-        p_norm = 1.0 / sqrt(1.0 + r_in[6]) # use linearized p_norm
+        p_norm = 1.0 / (1.0 + r_in[6]) # use linearized p_norm
         # Misalignment at entrance
         if !iszero(T1)
             addvv!(r_in, T1)
@@ -205,10 +205,10 @@ function pass_TPSA!(ele::SOLENOID, r_in::Vector{CTPS{T, TPS_Dim, Max_TPS_Degree}
         end
         drift6!(r_in, ele.len, beti)
         if !iszero(R2)
-            multmv!(r6, R2)
+            multmv!(r_in, R2)
         end
         if !iszero(T2)
-            addvv!(r6, T2)
+            addvv!(r_in, T2)
         end
     end
 

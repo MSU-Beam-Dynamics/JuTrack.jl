@@ -30,16 +30,28 @@ use_exact_beti = 0 # use delta p/p0 as the sixth coordinate. Change it to 1 to u
 # include("TPSA/TPSA.jl")
 include("TPSA/fast_TPSA_module.jl")
 include("TPSA/TPSA.jl")
+include("Taylor/taylor_core.jl")
 using .HighOrderTPS
 using .TPSAadStatic
+using .TaylorCore
+include("TPSA/fast_HOTPSA_module.jl")
 export DTPSAD, NVAR, set_tps_dim, Gradient, Jacobian
 export Number2TPSAD, TPSAD2Number, to_TPSAD, to_Number
+export HOTPSA, hotpsa_type
+export AbstractTaylorBackend, DTPSADBackend, CTPSBackend, HOTPSABackend
+export MonomialTable, monomial_table, monomial_index, monomial_exponents, degree_range, monomial_product_index
+export jet_backend, jet_nvars, jet_order, jet_type, jet_primal, jet_constant, jet_seed
+export jet_coefficient, jet_gradient, jet_hessian, seeded_jets
+export TaylorGradient, TaylorJacobian
+export AbstractHOTPSA
 include("utils/erfc.jl")
 using .PureErrorFunctions
 export erfcx, erf, erfinv
 include("lattice/beam.jl")
-include("lattice/canonical_elements.jl")
+include("lattice/elements.jl")
+include("tracking/taylor_transport_core.jl")
 include("TPSA/fast_TPSA_tracking.jl")
+include("TPSA/fast_HOTPSA_tracking.jl")
 include("tracking/bend.jl")
 include("tracking/drift.jl")
 include("tracking/multipole.jl")
@@ -95,7 +107,9 @@ export initilize_6DGaussiandist!, get_emittance!, get_2nd_moment!, get_centroid!
 export initilize_zslice!, twiss_2d, twiss_beam, Gauss3_Dist
 
 export CTPS, cst, findindex, PolyMap, getindexmap, reassign!, assign!
-export AbstractElement, DRIFT, KQUAD, KSEXT, KOCT, SBEND, RBEND, RFCA, SOLENOID, MARKER, CORRECTOR, HKICKER, VKICKER, thinMULTIPOLE
+export AbstractElement, LatticeParameter, lattice_parameter, parameter_index, parameter_field,
+    parameter_subindices, with_parameter, changed_elements
+export DRIFT, KQUAD, KSEXT, KOCT, SBEND, RBEND, RFCA, SOLENOID, MARKER, CORRECTOR, HKICKER, VKICKER, thinMULTIPOLE
 export QUAD, LBEND, ESBEND, ERBEND, WIGGLER, buildlatt
 export TRANSLATION, YROTATION
 export SPACECHARGE, QUAD_SC, QUAD_SC2P5D, DRIFT_SC, DRIFT_SC2P5D, KQUAD_SC, KQUAD_SC2P5D,

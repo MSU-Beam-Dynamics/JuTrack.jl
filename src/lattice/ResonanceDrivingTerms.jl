@@ -1,4 +1,3 @@
-
 function avedata(ring::Vector{<:AbstractElement{Float64}}, dpp::Float64; E0::Float64=3e9, m0::Float64=m_e)
     twi = twissring(ring, dpp, 0, E0=E0, m0=m0)
     long = findall(x -> x.len > 0, ring)
@@ -960,8 +959,13 @@ end
 end
 
 function ADavedata(ring, dpp, changed_ids, changed_elems; E0=3e9, m0=m_e)
+    orb, _ = find_closed_orbit(ring, dpp, mass=m0, energy=E0)
+    return ADavedata(ring, dpp, changed_ids, changed_elems, E0, m0, orb)
+end
+
+function ADavedata(ring, dpp, changed_ids, changed_elems, E0::Float64, m0::Float64, orb::Vector{Float64})
     refpts = [i for i in 1:length(ring)]
-    twi = ADtwissring(ring, dpp, 0, refpts, changed_ids, changed_elems, E0=E0, m0=m0)
+    twi = ADtwissring(ring, dpp, 0, refpts, changed_ids, changed_elems, E0, m0, orb)
     len_all, _, k1_all, _, _ = _ad_effective_rdt_element_data(ring, changed_ids, changed_elems)
     nlong = 0
     for i in eachindex(ring)
@@ -1087,6 +1091,14 @@ This function is used for auto-differentiation with Enzyme to avoid issues with 
 """
 function ADcomputeRDT(ring, index, changed_ids, changed_elems; chromatic=true, coupling=true, geometric1=true, geometric2=true, tuneshifts=true,
     E0=3e9, m0=m_e)
+    orb, _ = find_closed_orbit(ring, 0.0, mass=m0, energy=E0)
+    return ADcomputeRDT(ring, index, changed_ids, changed_elems,
+        chromatic, coupling, geometric1, geometric2, tuneshifts, E0, m0, orb)
+end
+
+function ADcomputeRDT(ring, index, changed_ids, changed_elems,
+    chromatic::Bool, coupling::Bool, geometric1::Bool, geometric2::Bool, tuneshifts::Bool,
+    E0::Float64, m0::Float64, orb::Vector{Float64})
     # Compute Hamiltonian resonance driving terms (RDTs)
     # ring: lattice sequence
     # index: index of the element to compute the RDTs
@@ -1108,7 +1120,7 @@ function ADcomputeRDT(ring, index, changed_ids, changed_elems; chromatic=true, c
     indDQSO = sort(union(indB, indQ, indS, indO))
     len_all, polyA2_all, polyB2_all, polyB3_all, polyB4_all = _ad_effective_rdt_element_data(ring, changed_ids, changed_elems)
 
-    AVEBETA, AVEMU, AVEDISP, beta, alpha, mu, dp = ADavedata(ring, 0.0, changed_ids, changed_elems, E0=E0, m0=m0)  
+    AVEBETA, AVEMU, AVEDISP, beta, alpha, mu, dp = ADavedata(ring, 0.0, changed_ids, changed_elems, E0, m0, orb)
     sIndex = spos(ring, indDQSO.-1)
     s = spos(ring)
     # make the style consistent with AT
@@ -1162,6 +1174,66 @@ function ADcomputeRDT(ring, index, changed_ids, changed_elems; chromatic=true, c
     end
     s1 = spos(ring, index)
     return dlist, s1
+end
+
+function ADcomputeRDT(ring::Vector{<:AbstractElement{Float64}}, index,
+    params::AbstractVector{<:LatticeParameter{Field,N,E}}, values; kwargs...) where {Field,N,E<:AbstractElement{Float64}}
+    changed_ids, changed_elems = _materialize_lattice_parameters(params, values)
+    return ADcomputeRDT(ring, index, changed_ids, changed_elems; kwargs...)
+end
+
+function ADcomputeRDT(ring::Vector{<:AbstractElement{Float64}}, index,
+    params::AbstractVector{<:LatticeParameter{Field,N,E}}, values,
+    chromatic::Bool, coupling::Bool, geometric1::Bool, geometric2::Bool, tuneshifts::Bool,
+    E0::Float64, m0::Float64, orb::Vector{Float64}) where {Field,N,E<:AbstractElement{Float64}}
+    changed_ids, changed_elems = _materialize_lattice_parameters(params, values)
+    return ADcomputeRDT(ring, index, changed_ids, changed_elems,
+        chromatic, coupling, geometric1, geometric2, tuneshifts, E0, m0, orb)
+end
+
+function ADcomputeRDT(ring::Vector{<:AbstractElement{Float64}}, index,
+    param::LatticeParameter{Field,N,E}, value; kwargs...) where {Field,N,E<:AbstractElement{Float64}}
+    changed_ids, changed_elems = _materialize_lattice_parameter(param, value)
+    return ADcomputeRDT(ring, index, changed_ids, changed_elems; kwargs...)
+end
+
+function ADcomputeRDT(ring::Vector{<:AbstractElement{Float64}}, index,
+    param::LatticeParameter{Field,N,E}, value,
+    chromatic::Bool, coupling::Bool, geometric1::Bool, geometric2::Bool, tuneshifts::Bool,
+    E0::Float64, m0::Float64, orb::Vector{Float64}) where {Field,N,E<:AbstractElement{Float64}}
+    changed_ids, changed_elems = _materialize_lattice_parameter(param, value)
+    return ADcomputeRDT(ring, index, changed_ids, changed_elems,
+        chromatic, coupling, geometric1, geometric2, tuneshifts, E0, m0, orb)
+end
+
+function ADcomputeRDT(ring::Vector{<:AbstractElement{Float64}}, index,
+    params::LatticeParameterCollection, values; kwargs...)
+    changed_ids, changed_elems = changed_elements(ring, params, values)
+    return ADcomputeRDT(ring, index, changed_ids, changed_elems; kwargs...)
+end
+
+function ADcomputeRDT(ring::Vector{<:AbstractElement{Float64}}, index,
+    params::LatticeParameterCollection, values,
+    chromatic::Bool, coupling::Bool, geometric1::Bool, geometric2::Bool, tuneshifts::Bool,
+    E0::Float64, m0::Float64, orb::Vector{Float64})
+    changed_ids, changed_elems = changed_elements(ring, params, values)
+    return ADcomputeRDT(ring, index, changed_ids, changed_elems,
+        chromatic, coupling, geometric1, geometric2, tuneshifts, E0, m0, orb)
+end
+
+function ADcomputeRDT(ring::Vector{<:AbstractElement{Float64}}, index,
+    param::LatticeParameter, value; kwargs...)
+    changed_ids, changed_elems = changed_elements(ring, param, value)
+    return ADcomputeRDT(ring, index, changed_ids, changed_elems; kwargs...)
+end
+
+function ADcomputeRDT(ring::Vector{<:AbstractElement{Float64}}, index,
+    param::LatticeParameter, value,
+    chromatic::Bool, coupling::Bool, geometric1::Bool, geometric2::Bool, tuneshifts::Bool,
+    E0::Float64, m0::Float64, orb::Vector{Float64})
+    changed_ids, changed_elems = changed_elements(ring, param, value)
+    return ADcomputeRDT(ring, index, changed_ids, changed_elems,
+        chromatic, coupling, geometric1, geometric2, tuneshifts, E0, m0, orb)
 end
 
 function getRDTvalues(dlist, term::Symbol)

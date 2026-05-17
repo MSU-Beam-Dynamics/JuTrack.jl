@@ -88,6 +88,28 @@ function Beam(r::Matrix{Float64}, energy::Float64; np::Int=size(r, 1), charge::F
     T0, 1, znbin, inzindex, zhist, zhist_edges, zeros(Float64, nmacro), zeros(Float64, nmacro), zeros(Float64, nmacro), 
     zeros(Float64, nmacro), zeros(Float64, nmacro), emittance, centroid, zeros(Float64, 6, 6), zeros(Float64, 6), current)
 end
+
+function Beam(r::Matrix{Float64}, energy::Float64, mass::Float64)
+    nmacro = size(r, 1)
+    np = nmacro
+    charge = -1.0
+    atn = 1.0
+    T0 = 0.0
+    znbin = 99
+    current = 0.0
+    lost_flag = zeros(Int, nmacro)
+    gamma = (energy + mass) / mass
+    beta = sqrt(1.0 - 1.0 / gamma^2)
+    classrad0 = charge * charge / (atn * mass) / 4 / pi / 55.26349406 * 1e-6
+    radconst = 4 * pi / 3 * classrad0 / mass / mass / mass
+    inzindex = zeros(Int, nmacro)
+    zhist = zeros(Float64, znbin)
+    zhist_edges = zeros(Float64, znbin + 1)
+    return Beam{Float64}(r, np, nmacro, energy, lost_flag, charge, mass, gamma, beta, atn, classrad0, radconst,
+        T0, 1, znbin, inzindex, zhist, zhist_edges, zeros(Float64, nmacro), zeros(Float64, nmacro),
+        zeros(Float64, nmacro), zeros(Float64, nmacro), zeros(Float64, nmacro), zeros(Float64, 3),
+        zeros(Float64, 6), zeros(Float64, 6, 6), zeros(Float64, 6), current)
+end
 """
 Beam(r::Matrix{Float64}; energy::Float64=1e9,np::Int=size(r, 1), charge::Float64=-1.0, mass::Float64=m_e, atn::Float64=1.0,
         emittance::Vector{Float64}=zeros(Float64, 3), centroid::Vector{Float64}=zeros(Float64, 6), T0::Float64=0.0, znbin::Int=99, 
@@ -161,11 +183,16 @@ function Beam(beam::Beam{T}) where T
     inzindex = copy(beam.inzindex)
     zhist = copy(beam.zhist)
     zhist_edges = copy(beam.zhist_edges)
+    temp1 = copy(beam.temp1)
+    temp2 = copy(beam.temp2)
+    temp3 = copy(beam.temp3)
+    temp4 = copy(beam.temp4)
+    temp5 = copy(beam.temp5)
     emittance = copy(beam.emittance)
     centroid = copy(beam.centroid)
     moment2nd = copy(beam.moment2nd)
     beamsize = copy(beam.beamsize)
-    return Beam{T}(r, beam.np, beam.nmacro, beam.energy, lost_flag, beam.charge, beam.mass, beam.gamma, beam.beta, beam.atomnum, beam.classrad0, beam.radconst, beam.T0, beam.nturn, beam.znbin, inzindex, zhist, zhist_edges, beam.temp1, beam.temp2, beam.temp3, beam.temp4, beam.temp5, emittance, centroid, moment2nd, beamsize, beam.current)
+    return Beam{T}(r, beam.np, beam.nmacro, beam.energy, lost_flag, beam.charge, beam.mass, beam.gamma, beam.beta, beam.atomnum, beam.classrad0, beam.radconst, beam.T0, beam.nturn, beam.znbin, inzindex, zhist, zhist_edges, temp1, temp2, temp3, temp4, temp5, emittance, centroid, moment2nd, beamsize, beam.current)
 end
 """
     Beam(r_GTPS::Matrix{DTPSAD{N, T}}; energy::Float64=1e9, np::Int=size(r_GTPS, 1), charge::Float64=-1.0, mass::Float64=m_e, 
@@ -191,6 +218,34 @@ function Beam(r_GTPS::Matrix{DTPSAD{N, T}}; energy::Float64=1e9, np::Int=size(r_
                 zeros(DTPSAD{N, T}, nmacro), zeros(DTPSAD{N, T}, nmacro), zeros(DTPSAD{N, T}, nmacro),
                 zeros(DTPSAD{N, T}, nmacro), zeros(DTPSAD{N, T}, nmacro), emittance,
                 centroid, zeros(DTPSAD{N, T}, 6, 6), zeros(DTPSAD{N, T}, 6), DTPSAD(current))
+end
+
+"""
+    Beam(r_HOTPSA::Matrix{S}; energy::Float64=1e9, np::Int=size(r_HOTPSA, 1), charge::Float64=-1.0,
+        mass::Float64=m_e, atn::Float64=1.0, emittance::Vector{Float64}=zeros(Float64, 3),
+        centroid::Vector{Float64}=zeros(Float64, 6), T0::Float64=0.0, znbin::Int=99,
+        current::Float64=0.0) where {S<:AbstractHOTPSA}
+
+Construct a `Beam` object with coordinates of particles in the fast high-order Taylor scalar format.
+"""
+function Beam(r_HOTPSA::Matrix{S}; energy::Float64=1e9, np::Int=size(r_HOTPSA, 1), charge::Float64=-1.0,
+    mass::Float64=m_e, atn::Float64=1.0, emittance::Vector{Float64}=zeros(Float64, 3),
+    centroid::Vector{Float64}=zeros(Float64, 6), T0::Float64=0.0, znbin::Int=99,
+    current::Float64=0.0) where {S<:AbstractHOTPSA}
+
+    nmacro = size(r_HOTPSA, 1)
+    lost_flag = zeros(Int, nmacro)
+    gamma = (S(energy) + S(mass)) / S(mass)
+    beta = sqrt(1.0 - 1.0 / gamma^2)
+    classrad0 = S(charge) * S(charge) / (S(atn) * S(mass)) / 4.0 / Float64(pi) / 55.26349406 * 1e-6
+    radconst = 4 * Float64(pi) / 3 * classrad0 / S(mass)^3
+    inzindex = zeros(Int, nmacro)
+    zhist = zeros(S, znbin)
+    zhist_edges = zeros(S, znbin + 1)
+    return Beam{S}(r_HOTPSA, np, nmacro, S(energy), lost_flag, S(charge), S(mass), gamma, beta, S(atn), classrad0, radconst,
+        S(T0), 1, znbin, inzindex, zhist, zhist_edges,
+        zeros(S, nmacro), zeros(S, nmacro), zeros(S, nmacro), zeros(S, nmacro), zeros(S, nmacro),
+        S.(emittance), S.(centroid), zeros(S, 6, 6), zeros(S, 6), S(current))
 end
 
 """

@@ -4,7 +4,7 @@
 [![CI](https://github.com/MSU-Beam-Dynamics/JuTrack.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/MSU-Beam-Dynamics/JuTrack.jl/actions/workflows/CI.yml)
 
 A Julia-based package that enables advanced auto differentiation (AD) for symplectic 6-D particle tracking in particle accelerators.
-A manual can be found at [here](docs/JuTrack_manual.pdf). Docstring of the functions [here](https://msu-beam-dynamics.github.io/JuTrack.jl/dev/).
+A manual can be found at [here](docs/JuTrack_manual.pdf), and API reference can be found at [here](https://msu-beam-dynamics.github.io/JuTrack.jl/dev/).
 
 # Citation
 ```
@@ -130,6 +130,26 @@ k1 = -0.9
 k2 = 0.3
 derivatives, results = jacobian(ForwardWithPrimal, tracking_wrt_k1, [k1, k2])
 ```
+
+For large lattices, do not mutate a prebuilt `RING` inside the differentiated
+function (`RING[id].k1 = x`). Keep the baseline lattice constant and replace
+only the active elements:
+```
+RING = [D1, Q1, D2, Q2]
+params = [LatticeParameter(RING, 2, :k1), LatticeParameter(RING, 4, :k1)]
+
+function tracking_wrt_prebuilt_ring(X)
+    beam = Beam([0.1 0.0 0.0 0.0 0.0 0.0])
+    ADlinepass!(RING, beam, params, X)
+    return beam.r
+end
+
+derivatives, results = jacobian(set_runtime_activity(ForwardWithPrimal),
+                                Const(tracking_wrt_prebuilt_ring), [k1, k2])
+```
+`LatticeParameter(RING, i, :PolynomB, 2)` can be used for an array entry such as
+`RING[i].PolynomB[2]`. The same parameter overlay works with `ADringpass!`,
+`ADtwissring`, and `ADcomputeRDT`.
 
 # Parallel computation setting
 Multi-threading is available for multi-particle tracking. 

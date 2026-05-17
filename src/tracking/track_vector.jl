@@ -73,6 +73,30 @@ function ADlinepass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{F
     return nothing
 end
 
+function ADlinepass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Float64},
+    params::LatticeParameterCollection, values)
+    changed_idx, changed_ele = changed_elements(line, params, values)
+    return ADlinepass!(line, particles, changed_idx, changed_ele)
+end
+
+function ADlinepass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Float64},
+    params::AbstractVector{<:LatticeParameter{Field,N,E}}, values) where {Field,N,E<:AbstractElement{Float64}}
+    changed_idx, changed_ele = _materialize_lattice_parameters(params, values)
+    return ADlinepass!(line, particles, changed_idx, changed_ele)
+end
+
+function ADlinepass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Float64},
+    param::LatticeParameter, value)
+    changed_idx, changed_ele = changed_elements(line, param, value)
+    return ADlinepass!(line, particles, changed_idx, changed_ele)
+end
+
+function ADlinepass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Float64},
+    param::LatticeParameter{Field,N,E}, value) where {Field,N,E<:AbstractElement{Float64}}
+    changed_idx, changed_ele = _materialize_lattice_parameter(param, value)
+    return ADlinepass!(line, particles, changed_idx, changed_ele)
+end
+
 function ADlinepass!(line::Vector{<:AbstractElement{Float64}}, id_list::Vector{Int}, particles::Beam{Float64}, 
     changed_idx::Vector{Int}, changed_ele::Vector{<:AbstractElement{Float64}})
     # Note!!! A lost particle's coordinate will not be marked as NaN or Inf like other softwares 
@@ -173,6 +197,31 @@ function ADringpass!(line::Vector, particles::Beam{Float64}, nturn::Int, changed
     end
     return nothing
 end
+
+function ADringpass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Float64},
+    nturn::Int, params::LatticeParameterCollection, values)
+    changed_idx, changed_ele = changed_elements(line, params, values)
+    return ADringpass!(line, particles, nturn, changed_idx, changed_ele)
+end
+
+function ADringpass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Float64},
+    nturn::Int, params::AbstractVector{<:LatticeParameter{Field,N,E}}, values) where {Field,N,E<:AbstractElement{Float64}}
+    changed_idx, changed_ele = _materialize_lattice_parameters(params, values)
+    return ADringpass!(line, particles, nturn, changed_idx, changed_ele)
+end
+
+function ADringpass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Float64},
+    nturn::Int, param::LatticeParameter, value)
+    changed_idx, changed_ele = changed_elements(line, param, value)
+    return ADringpass!(line, particles, nturn, changed_idx, changed_ele)
+end
+
+function ADringpass!(line::Vector{<:AbstractElement{Float64}}, particles::Beam{Float64},
+    nturn::Int, param::LatticeParameter{Field,N,E}, value) where {Field,N,E<:AbstractElement{Float64}}
+    changed_idx, changed_ele = _materialize_lattice_parameter(param, value)
+    return ADringpass!(line, particles, nturn, changed_idx, changed_ele)
+end
+
 function ADringpass!(line::Vector, particles::Beam{Float64}, nturn::Int, changed_idx::Vector, changed_ele::Vector, save::Bool)
     save_beam = []
     for i in 1:nturn

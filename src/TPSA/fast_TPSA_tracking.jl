@@ -2049,7 +2049,7 @@ function _strip_inverse(param::Float64, fieldname::Symbol, ::Type{DTPSAD{N, T}})
     if fieldname === :green_dx || fieldname === :green_dy
         return param
     end
-    return DTPSAD(param)
+    return DTPSAD{N, T}(param)
 end
 
 function _strip_inverse(param::Vector{Float64}, fieldname::Symbol, ::Type{DTPSAD{N, T}}) where {N, T}
@@ -2057,7 +2057,7 @@ function _strip_inverse(param::Vector{Float64}, fieldname::Symbol, ::Type{DTPSAD
        fieldname == :z_grid || fieldname == :z_deriv_grid
         return param  # Keep apertures as Float64 vectors
     else
-        return [DTPSAD(p) for p in param]
+        return [DTPSAD{N, T}(p) for p in param]
     end
 end
 
@@ -2067,7 +2067,7 @@ function _strip_inverse(param::Matrix{Float64}, fieldname::Symbol, ::Type{DTPSAD
     end
     Mat = zeros(DTPSAD{N, T}, size(param)...)
     for i in eachindex(param)
-        Mat[i] = DTPSAD(param[i])
+        Mat[i] = DTPSAD{N, T}(param[i])
     end
     return Mat
 end
