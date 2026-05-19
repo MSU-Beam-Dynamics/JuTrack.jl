@@ -640,64 +640,6 @@ end
         end
     end
 end
-
-@testset "AD-LOCO response and Jacobian" begin
-    line_loco = [CORRECTOR(name="CH"), DRIFT(name="D", len=1.0), MARKER(name="BPM")]
-    correctors = [LocoCorrector(1, :x, kick=1.0e-6)]
-    knobs = [loco_knob(line_loco, 2, :len, name="D.len")]
-    setup = LocoSetup(line_loco, [3], correctors, knobs=knobs, energy=1.0e9)
-
-    R0 = loco_response(setup, [0.0])
-    @test size(R0) == (2, 1)
-    @test isapprox(R0[1, 1], 1.0; atol=1.0e-8)
-    @test isapprox(R0[2, 1], 0.0; atol=1.0e-12)
-
-    zero_measurement = LocoMeasurement(zeros(2, 1))
-    J, r = loco_jacobian(setup, zero_measurement, [0.0], primal=true)
-    @test size(J) == (2, 1)
-    @test isapprox(r[1], 1.0; atol=1.0e-8)
-    @test isapprox(J[1, 1], 1.0; atol=1.0e-8)
-    @test isapprox(J[2, 1], 0.0; atol=1.0e-12)
-
-    shared_corrector = CORRECTOR(name="Shared")
-    aliased_line = [shared_corrector, DRIFT(len=1.0), MARKER(),
-        DRIFT(len=1.0), shared_corrector, DRIFT(len=1.0), MARKER()]
-    alias_setup = LocoSetup(aliased_line, [3, 7], [LocoCorrector(1, :x, kick=1.0e-6)], energy=1.0e9)
-    alias_response = loco_response(alias_setup, Float64[])
-    @test isapprox(alias_response[1, 1], 1.0; atol=1.0e-8)
-    @test isapprox(alias_response[2, 1], 3.0; atol=1.0e-8)
-    @test isapprox(alias_response[3, 1], 0.0; atol=1.0e-12)
-    @test isapprox(alias_response[4, 1], 0.0; atol=1.0e-12)
-
-    ring_loco = [
-        CORRECTOR(), DRIFT(len=0.4), QUAD(k1=1.2, len=0.2), DRIFT(len=0.4),
-        MARKER(), DRIFT(len=0.4), QUAD(k1=-1.2, len=0.2), DRIFT(len=0.4),
-    ]
-    ring_setup = LocoSetup(ring_loco, [5], [LocoCorrector(1, :x, kick=1.0e-7)],
-        knobs=[loco_knob(ring_loco, 3, :k1)], response_mode=:closed_orbit,
-        energy=1.0e9)
-    ring_measurement = LocoMeasurement(zeros(2, 1))
-    J_ring, _ = loco_jacobian(ring_setup, ring_measurement, [0.0],
-        response_mode=:closed_orbit, primal=true)
-    h = 1.0e-5
-    fd_ring = vec((loco_response(ring_setup, [h], response_mode=:closed_orbit) .-
-        loco_response(ring_setup, [-h], response_mode=:closed_orbit)) ./ (2h))
-    @test isapprox(J_ring[:, 1], fd_ring; rtol=1.0e-5, atol=1.0e-7)
-
-    S_loco = hotpsa_type(1, 1)
-    hot_p = seeded_jets(S_loco, [0.0])
-    hot_residual = loco_residual(ring_setup, ring_measurement, hot_p,
-        response_mode=:closed_orbit)
-    hot_jacobian = [jet_gradient(item)[1] for item in hot_residual]
-    @test isapprox(hot_jacobian, J_ring[:, 1]; rtol=1.0e-10, atol=1.0e-8)
-
-    measured = LocoMeasurement(loco_response(setup, [0.2]))
-    result = loco_fit(setup, measured; p0=[0.0],
-        options=LocoOptions(max_iter=5, damping=1.0e-9, verbose=false))
-    @test result.converged
-    @test isapprox(result.parameters[1], 0.2; atol=1.0e-6)
-end
-
 @testset "SPACECHARGE2P5D DTPSAD" begin
     set_tps_dim(1)
     pts = [

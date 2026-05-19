@@ -147,8 +147,8 @@ end
 derivatives, results = jacobian(set_runtime_activity(ForwardWithPrimal),
                                 Const(tracking_wrt_prebuilt_ring), [k1, k2])
 ```
-`LatticeParameter(RING, i, :PolynomB, 2)` can be used for an array entry such as
-`RING[i].PolynomB[2]`. The same parameter overlay works with `ADringpass!`,
+`LatticeParameter(RING, i, :T1, 2)` can be used for an array entry such as
+`RING[i].T1[2]`. The same parameter overlay works with `ADringpass!`,
 `ADtwissring`, and `ADcomputeRDT`.
 
 # Parallel computation setting
