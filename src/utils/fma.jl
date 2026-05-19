@@ -1,480 +1,747 @@
-using FFTW
+# Frequency Map Analysis (FMA) for JuTrack.
+# This code uses JuTrack for tracking and PyCall to access the 
+# nafflib Python library for tune analysis.
+# To use, nafflib and matplotlib must be installed in the Python environment of PyCall.
+
 using PyCall
-using Statistics
+using LinearAlgebra
 
-function dominant_frequency_phase_complex(x::AbstractVector{<:Real}, p::AbstractVector{<:Real})
-    N = length(x)
-    @assert N == length(p) "x and p must have same length"
-    if any(!isfinite, x) || any(!isfinite, p)
-        return (NaN, NaN, NaN)
+const np = pyimport("numpy")
+const nafflib = pyimport("nafflib")
+
+# Particle generation
+function fma_grid(;
+    xmin=-5e-3,
+    xmax=5e-3,
+    ymin=0.0,
+    ymax=3e-3,
+    nx::Int=101,
+    ny::Int=31,
+    px0=0.0,
+    py0=0.0,
+    dp0=0.0,
+    ct0=0.0,
+)
+    particles = zeros(nx * ny, 6)
+
+    k = 0
+    for ix in 1:nx
+        x = nx == 1 ? 0.5 * (xmin + xmax) :
+            xmin + (xmax - xmin) * (ix - 1) / (nx - 1)
+
+        for iy in 1:ny
+            y = ny == 1 ? 0.5 * (ymin + ymax) :
+                ymin + (ymax - ymin) * (iy - 1) / (ny - 1)
+
+            k += 1
+            particles[k, 1] = x
+            particles[k, 2] = px0
+            particles[k, 3] = y
+            particles[k, 4] = py0
+            particles[k, 5] = ct0
+            particles[k, 6] = dp0
+        end
     end
-    # Remove means to suppress DC
-    xz = x .- mean(x)
-    pz = p .- mean(p)
-    z = ComplexF64.(xz, .-pz) # x - i p
 
-    w = @. 0.5 - 0.5*cos(2π*(0:(N-1))/(N-1))
-    zw = z .* w
-    L = 1 << (ceil(Int, log2(N)) + 3)
-    buf = (L == N) ? zw : vcat(zw, zeros(ComplexF64, L - N))
-    F = fft(buf)
-
-    mag = abs.(F)
-    upper = L >>> 1
-    kmax = argmax(@view mag[2:upper]) + 1
-
-    k = kmax
-    if 2 ≤ k ≤ (upper - 1)
-        ALPHA, BETA, GAMMA = mag[k-1], mag[k], mag[k+1]
-        denom = (ALPHA - 2BETA + GAMMA)
-        δ = iszero(denom) ? 0.0 : 0.5*(ALPHA - GAMMA)/denom
-        kHAT = k + δ
-    else
-        kHAT = k
-    end
-
-
-    nu = kHAT / L
-    ϕ = angle(F[k])
-    A = 2*mag[k]/sum(w)
-    return nu, A, ϕ
+    return particles
 end
 
-"""
-    compute_tunes_from_tracking(series; include_x=true, include_y=true)
 
-Compute tunes (nux, nuy) and amplitudes from time series. 
-Returns `(nux, nuy, Ax, Ay, φx, φxp, φy, φyp)` where phases come from
-x vs xp and y vs yp and are used to adjust to the correct half-plane.
-"""
-function compute_tunes_from_tracking(series; include_x::Bool=true, include_y::Bool=true, use_complex::Bool=true, fold_to_half::Bool=true)
-    x, xp, y, yp = series.x, series.xp, series.y, series.yp
-    N = length(x)
-    @assert N ≥ 16 "Need at least 16 turns for tune extraction"
+# Tracking function
+function tracking_output_to_arrays(rout, nturns::Int, npart::Int)
+    X  = fill(NaN, nturns, npart)
+    PX = fill(NaN, nturns, npart)
+    Y  = fill(NaN, nturns, npart)
+    PY = fill(NaN, nturns, npart)
 
-    nux = 0.0; nuy = 0.0; Ax = 0.0; Ay = 0.0
-    φx = 0.0; φxp = 0.0; φy = 0.0; φyp = 0.0
+    @inbounds for it in 1:nturns
+        r = rout[it]
 
-    if include_x
-        if use_complex
-            nux, Ax, φx = dominant_frequency_phase_complex(x, xp)
-        else
-            nux, Ax, φx = dominant_frequency_phase(x)
-            _,  _,  φxp = dominant_frequency_phase(xp)
-            nux = adjust_tune_half_plane(nux, φx, φxp)
-        end
-        if fold_to_half
-            nux = min(nux, 1 - nux)
+        for ip in 1:npart
+            X[it, ip]  = r[ip, 1]
+            PX[it, ip] = r[ip, 2]
+            Y[it, ip]  = r[ip, 3]
+            PY[it, ip] = r[ip, 4]
         end
     end
-    if include_y
-        if use_complex
-            nuy, Ay, φy = dominant_frequency_phase_complex(y, yp)
-        else
-            nuy, Ay, φy = dominant_frequency_phase(y)
-            _,  _,  φyp = dominant_frequency_phase(yp)
-            nuy = adjust_tune_half_plane(nuy, φy, φyp)
-        end
-        if fold_to_half
-            nuy = min(nuy, 1 - nuy)
-        end
-    end
-    return nux, nuy, Ax, Ay, φx, φxp, φy, φyp
+
+    return X, PX, Y, PY
 end
 
-function adjust_tune_half_plane(nu::Real, ϕ0::Real, ϕ1::Real)
-    Δ = ϕ0 - ϕ1
-    # unwrap across π
-    if abs(Δ) > π
-        if ϕ0 < ϕ1
-            ϕ0 += 2π
-        else
-            ϕ1 += 2π
-        end
-    end
-    return (ϕ0 < ϕ1) ? nu : (1 - nu)
+
+function track_fma(RING, particles::Matrix{Float64}, nturns::Int; energy=6e9)
+    particles0 = copy(particles)
+    npart = size(particles0, 1)
+
+    beam = Beam(copy(particles0), energy=energy)
+
+    # Expected output:
+    # rout[turn][particle, coordinate]
+    rout = pringpass!(RING, beam, nturns, true)
+
+    X, PX, Y, PY = tracking_output_to_arrays(rout, nturns, npart)
+
+    return (
+        particles = particles0,
+        X = X,
+        PX = PX,
+        Y = Y,
+        PY = PY,
+        nturns = nturns,
+        npart = npart,
+        energy = energy,
+    )
 end
 
-pack_segment(x, xp, y, yp) = (x=x, xp=xp, y=y, yp=yp)
 
-function dominant_frequency_phase(sig::AbstractVector{<:Real})
-    N = length(sig)
-    @assert N ≥ 16 "Need at least 16 samples"
-    if any(!isfinite, sig)
-        return (NaN, NaN, NaN)
-    end
-    # Hann window
-    w = @. 0.5 - 0.5*cos(2π*(0:(N-1))/(N-1))
-    sw = sig .* w
+# Optional Courant-Snyder normalization
+function cs_normalize_trajectory(traj, twi)
+    sx = sqrt(Float64(twi.betax))
+    sy = sqrt(Float64(twi.betay))
 
-    # Zero-pad by 8x
-    L = 1 << (ceil(Int, log2(N)) + 3)
-    buf = (L == N) ? sw : vcat(sw, zeros(Float64, L - N))
-    F = fft(buf)
+    X  = traj.X
+    PX = traj.PX
+    Y  = traj.Y
+    PY = traj.PY
 
-    mag = abs.(F)
-    # skip DC, search up to Nyquist
-    upper = L >>> 1
-    kmax = argmax(@view mag[2:upper]) + 1
+    Xn  = X ./ sx
+    PXn = Float64(twi.alphax) .* X ./ sx .+ sx .* PX
 
-    k = kmax
-    if 2 ≤ k ≤ (upper - 1)
-        ALF, BET, GAM = mag[k-1], mag[k], mag[k+1]
-        denom = (ALF - 2BET + GAM)
-        δ = iszero(denom) ? 0.0 : 0.5*(ALF - GAM)/denom
-        KHAT = k + δ
-    else
-        KHAT = k
-    end
+    Yn  = Y ./ sy
+    PYn = Float64(twi.alphay) .* Y ./ sy .+ sy .* PY
 
-    nu = KHAT / L
-    ϕ = angle(F[k])
-    A = 2*mag[k]/sum(w)
-    return nu, A, ϕ
+    return Xn, PXn, Yn, PYn
 end
 
-"""
-    fma_map_from_segments(seg1, seg2=nothing; include_x=true, include_y=true)
+# NAFF tune analysis
+function demean_columns!(A::Matrix{Float64})
+    T, N = size(A)
 
-Frequency-map analysis for *many particles* using user-supplied trajectories.
-
-`seg1` and `seg2` are NamedTuples of the form `(x, xp, y, yp)` where each field
-is a matrix of size `(turns, N)` — rows are turns, columns are particles.
-
-If `seg2` is provided, diffusion metrics are computed between the two segments
-(similar to the C code: Δnux, Δnuy, √(Δnux²+Δnuy²), ΔAx, ΔAy, and log10(Δnux²+Δnuy²)).
-
-Returns a Vector of NamedTuples with fields:
-  `:nux, :nuy, :Ax, :Ay, :dnu_x, :dnu_y, :dnu, :dA_x, :dA_y, :diffusion`.
-"""
-function fma_map_from_segments(seg1::NamedTuple{(:x,:xp,:y,:yp)},
-                               seg2::Union{Nothing,NamedTuple{(:x,:xp,:y,:yp)}}=nothing;
-                               include_x::Bool=true, include_y::Bool=true)
-    x1, xp1, y1, yp1 = seg1.x, seg1.xp, seg1.y, seg1.yp
-    @assert size(x1) == size(xp1) == size(y1) == size(yp1) "All seg1 arrays must have same size (turns, N)"
-    T, N = size(x1)
-
-    has2 = seg2 !== nothing
-    if has2
-        x2, xp2, y2, yp2 = seg2.x, seg2.xp, seg2.y, seg2.yp
-        @assert size(x2) == (T, N) && size(x2)==size(xp2)==size(y2)==size(yp2) "seg2 must match seg1 in size"
-    end
-
-    out = Vector{NamedTuple}(undef, N)
     @inbounds for j in 1:N
-        s1_ok = all(isfinite, view(x1, :, j)) && all(isfinite, view(xp1, :, j)) &&
-                all(isfinite, view(y1, :, j)) && all(isfinite, view(yp1, :, j))
+        μ = 0.0
 
-        nux1 = NaN; nuy1 = NaN; Ax1 = NaN; Ay1 = NaN
-        dnux = 0.0; dnuy = 0.0; dnu = 0.0; dAx = 0.0; dAy = 0.0; diffusion = 0.0
-
-        if s1_ok
-            nux1, nuy1, Ax1, Ay1, _, _, _, _ = compute_tunes_from_tracking((
-                x  = view(x1, :, j),
-                xp = view(xp1, :, j),
-                y  = view(y1, :, j),
-                yp = view(yp1, :, j),
-            ); include_x, include_y)
+        for i in 1:T
+            μ += A[i, j]
         end
 
-        if has2
-            x2, xp2, y2, yp2 = seg2.x, seg2.xp, seg2.y, seg2.yp
-            s2_ok = all(isfinite, view(x2, :, j)) && all(isfinite, view(xp2, :, j)) &&
-                    all(isfinite, view(y2, :, j)) && all(isfinite, view(yp2, :, j))
-            if s1_ok && s2_ok
-                nux2, nuy2, Ax2, Ay2, _, _, _, _ = compute_tunes_from_tracking((
-                    x  = view(x2, :, j),
-                    xp = view(xp2, :, j),
-                    y  = view(y2, :, j),
-                    yp = view(yp2, :, j),
-                ); include_x, include_y)
-                dnux = abs(nux2 - nux1)
-                dnuy = abs(nuy2 - nuy1)
-                dnu  = hypot(nux2 - nux1, nuy2 - nuy1)
-                dAx = abs(Ax1 - Ax2)
-                dAy = abs(Ay1 - Ay2)
-                val = (nux2 - nux1)^2 + (nuy2 - nuy1)^2
-                diffusion = val > 0 ? log10(val) : NaN
-            else
-                nux1 = NaN; nuy1 = NaN; Ax1 = NaN; Ay1 = NaN; dnux = NaN; dnuy = NaN; dnu = NaN; dAx = NaN; dAy = NaN; diffusion = NaN
+        μ /= T
+
+        for i in 1:T
+            A[i, j] -= μ
+        end
+    end
+
+    return A
+end
+
+
+function good_naff_columns(X::AbstractMatrix, P::AbstractMatrix; min_rms=1e-14)
+    @assert size(X) == size(P)
+
+    T, N = size(X)
+    good = trues(N)
+
+    @inbounds for j in 1:N
+        mx = 0.0
+        mp = 0.0
+
+        for i in 1:T
+            x = X[i, j]
+            p = P[i, j]
+
+            if !isfinite(x) || !isfinite(p)
+                good[j] = false
+                break
             end
+
+            mx += x
+            mp += p
         end
 
-        out[j] = (
-            nux = nux1, nuy = nuy1,
-            Ax = Ax1, Ay = Ay1,
-            dnu_x = dnux, dnu_y = dnuy, dnu = dnu,
-            dA_x = dAx, dA_y = dAy,
-            diffusion = diffusion,
+        if !good[j]
+            continue
+        end
+
+        mx /= T
+        mp /= T
+
+        s = 0.0
+        for i in 1:T
+            dx = X[i, j] - mx
+            dp = P[i, j] - mp
+            s += dx * dx + dp * dp
+        end
+
+        good[j] = sqrt(s / T) > min_rms
+    end
+
+    return good
+end
+
+
+function tune_mod(q; fold_to_half=false)
+    if !isfinite(q)
+        return NaN
+    end
+
+    ν = mod(Float64(q), 1.0)
+
+    if fold_to_half
+        ν = min(ν, 1.0 - ν)
+    end
+
+    return ν
+end
+
+
+function tune_distance(ν1, ν2; fold_to_half=false)
+    if !isfinite(ν1) || !isfinite(ν2)
+        return NaN
+    end
+
+    d = abs(Float64(ν2) - Float64(ν1))
+
+    if fold_to_half
+        return d
+    else
+        return min(d, 1.0 - d)
+    end
+end
+
+
+function to_py_particles_by_turns(A::Matrix{Float64})
+    # Julia: turns × particles
+    # nafflib.multiparticle_tunes: particles × turns
+    return np.array(permutedims(A); dtype=np.float64, order="C")
+end
+
+
+function naff_tunes(
+    X::AbstractMatrix,
+    P::AbstractMatrix;
+    window_order::Int=2,
+    window_type::String="hann",
+    fold_to_half::Bool=false,
+    subtract_mean::Bool=true,
+    min_rms::Float64=1e-14,
+    processes::Union{Nothing,Int}=nothing,
+)
+    @assert size(X) == size(P)
+
+    T, N = size(X)
+    @assert T >= 16 "Need at least 16 turns for NAFF."
+
+    tunes = fill(NaN, N)
+
+    good = good_naff_columns(X, P; min_rms=min_rms)
+    goodidx = findall(good)
+
+    if isempty(goodidx)
+        return tunes
+    end
+
+    Xg = Matrix{Float64}(X[:, goodidx])
+    Pg = Matrix{Float64}(P[:, goodidx])
+
+    if subtract_mean
+        demean_columns!(Xg)
+        demean_columns!(Pg)
+    end
+
+    x_py = to_py_particles_by_turns(Xg)
+    p_py = to_py_particles_by_turns(Pg)
+
+    q_py = if processes === nothing
+        nafflib.multiparticle_tunes(
+            x_py,
+            p_py;
+            window_order=window_order,
+            window_type=window_type,
+        )
+    else
+        nafflib.multiparticle_tunes(
+            x_py,
+            p_py;
+            window_order=window_order,
+            window_type=window_type,
+            processes=processes,
         )
     end
-    return out
+
+    q = Vector{Float64}(q_py)
+
+    for (ii, j) in enumerate(goodidx)
+        tunes[j] = tune_mod(q[ii]; fold_to_half=fold_to_half)
+    end
+
+    return tunes
 end
 
-"""
-    FMA(RING, nturns; 
-    xmin=-3e-3+1e-6, xmax=3e-3+1e-6, ymin=1e-6, ymax=3e-3+1e-6,
-    nx=61, ny=31,
-    na=21, ns=31, amax=3e-3+1e-6, 
-    energy=2e9, sampling_method="grid", normalize_coordinates=false)
-Perform Frequency Map Analysis (FMA) on a given ring lattice.
-# Arguments
-- RING::Vector{<:AbstractElement{Float64}}: a ring lattice
-- nturns::Int: number of turns to track
-- xmin, xmax, ymin, ymax::Float64: bounds for grid sampling
-- nx, ny::Int: number of points in x and y for grid sampling
-- na, ns::Int: number of angles and steps for radial sampling
-- amax::Float64: maximum amplitude for radial sampling
-- energy::Float64: beam energy [eV]
-- sampling_method::String: "grid" or "radial"
-- normalize_coordinates::Bool: whether to normalize coordinates using Twiss parameters
-# Returns
-- rows::Vector{NamedTuple}: FMA results for each particle
-"""
-function FMA(RING, nturns; 
-    xmin=-3e-3+1e-6, xmax=3e-3+1e-6, ymin=1e-6, ymax=3e-3+1e-6,
-    nx=61, ny=31,
-    na=21, ns=31, amax=3e-3+1e-6, 
-    energy=2e9, sampling_method="grid", normalize_coordinates=false)
 
-    if sampling_method == "grid"
-        # sample particles uniformly in x-y plane
-        particles = zeros(nx * ny, 6)
-        for i in 1:nx
-            for j in 1:ny
-                particle_idx = (i - 1) * ny + j
-                x = xmin + (xmax - xmin) * (i - 1) / (nx - 1)
-                y = ymin + (ymax - ymin) * (j - 1) / (ny - 1)
-                particles[particle_idx, 1] = x  # x position
-                particles[particle_idx, 3] = y  # y position
-            end
-        end
-    elseif sampling_method == "radial"
-        # sample particles in a radial pattern
-        particles = zeros(na * ns, 6)
-        particle_idx = 0
-        for i in 1:na
-            for j in 1:ns
-                particle_idx += 1
-                angle = π * (i - 1) / na
-                amplitude = amax * (j - 1) / (ns - 1)
-                x = amplitude * cos(angle)
-                y = amplitude * sin(angle)
-                particles[particle_idx, 1] = x  # x position
-                particles[particle_idx, 3] = y  # y position
-            end
-        end
+# FMA
+function compute_fma_from_tracking(
+    traj;
+    normalize::Bool=true,
+    twiss=nothing,
+    window_order::Int=2,
+    window_type::String="hann",
+    fold_to_half::Bool=false,
+    subtract_mean::Bool=true,
+    min_rms::Float64=1e-14,
+    diffusion_floor::Float64=-40.0,
+    processes::Union{Nothing,Int}=nothing,
+)
+    nturns = traj.nturns
+    npart = traj.npart
+
+    @assert iseven(nturns) "Use an even number of turns."
+    @assert nturns >= 32 "Use at least 32 turns."
+
+    if normalize
+        @assert twiss !== nothing "Pass twiss=periodicEdwardsTengTwiss(...) when normalize=true."
+        X, PX, Y, PY = cs_normalize_trajectory(traj, twiss)
     else
-        error("Unknown sampling method: $sampling_method")
+        X, PX, Y, PY = traj.X, traj.PX, traj.Y, traj.PY
     end
 
-    beam = Beam(particles, energy=energy)
-    rout = pringpass!(RING, beam, nturns, true)  # (turns, N) array
+    h = div(nturns, 2)
 
-    if normalize_coordinates
-        twi = periodicEdwardsTengTwiss(RING, 0.0, 0, E0=energy)
-        betax = twi.betax
-        betay = twi.betay
-        alphax = twi.alphax
-        alphay = twi.alphay
-        n_particles = size(particles, 1)
-        X = zeros(nturns, n_particles)
-        XP = zeros(nturns, n_particles)
-        Y = zeros(nturns, n_particles)
-        YP = zeros(nturns, n_particles)
-        for i in 1:nturns
-            for j in 1:n_particles
-                X[i, j] = rout[i][j, 1] *sqrt(betax) + rout[i][j, 2]*alphax/sqrt(betax)
-                XP[i, j] = rout[i][j, 2] /sqrt(betax)
-                Y[i, j] = rout[i][j, 3] *sqrt(betay) + rout[i][j, 4]*alphay/sqrt(betay)
-                YP[i, j] = rout[i][j, 4] /sqrt(betay)
-            end
+    X1  = @view X[1:h, :]
+    PX1 = @view PX[1:h, :]
+    Y1  = @view Y[1:h, :]
+    PY1 = @view PY[1:h, :]
+
+    X2  = @view X[h+1:end, :]
+    PX2 = @view PX[h+1:end, :]
+    Y2  = @view Y[h+1:end, :]
+    PY2 = @view PY[h+1:end, :]
+
+    nux1 = naff_tunes(
+        X1, PX1;
+        window_order=window_order,
+        window_type=window_type,
+        fold_to_half=fold_to_half,
+        subtract_mean=subtract_mean,
+        min_rms=min_rms,
+        processes=processes,
+    )
+
+    nuy1 = naff_tunes(
+        Y1, PY1;
+        window_order=window_order,
+        window_type=window_type,
+        fold_to_half=fold_to_half,
+        subtract_mean=subtract_mean,
+        min_rms=min_rms,
+        processes=processes,
+    )
+
+    nux2 = naff_tunes(
+        X2, PX2;
+        window_order=window_order,
+        window_type=window_type,
+        fold_to_half=fold_to_half,
+        subtract_mean=subtract_mean,
+        min_rms=min_rms,
+        processes=processes,
+    )
+
+    nuy2 = naff_tunes(
+        Y2, PY2;
+        window_order=window_order,
+        window_type=window_type,
+        fold_to_half=fold_to_half,
+        subtract_mean=subtract_mean,
+        min_rms=min_rms,
+        processes=processes,
+    )
+
+    dnu_x = fill(NaN, npart)
+    dnu_y = fill(NaN, npart)
+    dnu   = fill(NaN, npart)
+    diffusion = fill(NaN, npart)
+
+    @inbounds for j in 1:npart
+        dx = tune_distance(nux1[j], nux2[j]; fold_to_half=fold_to_half)
+        dy = tune_distance(nuy1[j], nuy2[j]; fold_to_half=fold_to_half)
+
+        if isfinite(dx) && isfinite(dy)
+            dnu_x[j] = dx
+            dnu_y[j] = dy
+            dnu[j] = hypot(dx, dy)
+
+            val = dx^2 + dy^2
+            diffusion[j] = log10(max(val, 10.0^diffusion_floor))
         end
+    end
+
+    rows = Vector{NamedTuple}(undef, npart)
+
+    @inbounds for j in 1:npart
+        rows[j] = (
+            x0 = traj.particles[j, 1],
+            px0 = traj.particles[j, 2],
+            y0 = traj.particles[j, 3],
+            py0 = traj.particles[j, 4],
+
+            nux1 = nux1[j],
+            nuy1 = nuy1[j],
+            nux2 = nux2[j],
+            nuy2 = nuy2[j],
+
+            # Use first-half tune as the plotted tune.
+            nux = nux1[j],
+            nuy = nuy1[j],
+
+            dnu_x = dnu_x[j],
+            dnu_y = dnu_y[j],
+            dnu = dnu[j],
+            diffusion = diffusion[j],
+        )
+    end
+
+    return (
+        rows = rows,
+        nux1 = nux1,
+        nuy1 = nuy1,
+        nux2 = nux2,
+        nuy2 = nuy2,
+        dnu_x = dnu_x,
+        dnu_y = dnu_y,
+        dnu = dnu,
+        diffusion = diffusion,
+    )
+end
+
+function rowfield(rows, name::Symbol)
+    v = fill(NaN, length(rows))
+
+    for i in eachindex(rows)
+        if name in propertynames(rows[i])
+            v[i] = Float64(getproperty(rows[i], name))
+        end
+    end
+
+    return v
+end
+
+
+function get_rows(obj)
+    if obj isa NamedTuple && (:rows in keys(obj))
+        return obj.rows
     else
-        n_particles = size(particles, 1)
-        X = zeros(nturns, n_particles)
-        XP = zeros(nturns, n_particles)
-        Y = zeros(nturns, n_particles)
-        YP = zeros(nturns, n_particles)
-        for i in 1:nturns
-            for j in 1:n_particles
-                X[i, j] = rout[i][j, 1]
-                XP[i, j] = rout[i][j, 2]
-                Y[i, j] = rout[i][j, 3]
-                YP[i, j] = rout[i][j, 4]
+        return obj
+    end
+end
+
+
+function finite_mask(vecs...)
+    n = length(vecs[1])
+    mask = trues(n)
+
+    for v in vecs
+        @assert length(v) == n
+        mask .&= isfinite.(v)
+    end
+
+    return mask
+end
+
+
+function resonance_style(order)
+    if order == 1
+        return ("black", "-", 0.8, 1.1)
+    elseif order == 2
+        return ("red", "--", 0.55, 0.9)
+    elseif order == 3
+        return ("blue", "-.", 0.45, 0.75)
+    elseif order == 4
+        return ("purple", ":", 0.4, 0.7)
+    else
+        return ("gray", ":", 0.25, 0.5)
+    end
+end
+
+
+function gcd3(a, b, c)
+    return gcd(gcd(abs(a), abs(b)), abs(c))
+end
+
+
+function plot_resonance_lines!(
+    ax;
+    xlim=(0.0, 1.0),
+    ylim=(0.0, 1.0),
+    orders=1:4,
+    primitive=true,
+)
+    plt = pyimport("matplotlib.pyplot")
+
+    max_order = maximum(collect(orders))
+    xmin, xmax = xlim
+    ymin, ymax = ylim
+
+    for n in -max_order:max_order
+        for m in -max_order:max_order
+            if n == 0 && m == 0
+                continue
+            end
+
+            order = abs(n) + abs(m)
+
+            if !(order in orders)
+                continue
+            end
+
+            # Avoid duplicate sign copies.
+            if n < 0 || (n == 0 && m < 0)
+                continue
+            end
+
+            vals = (
+                n * xmin + m * ymin,
+                n * xmin + m * ymax,
+                n * xmax + m * ymin,
+                n * xmax + m * ymax,
+            )
+
+            kmin = ceil(Int, minimum(vals) - 1e-12)
+            kmax = floor(Int, maximum(vals) + 1e-12)
+
+            for k in kmin:kmax
+                if primitive && gcd3(n, m, k) != 1
+                    continue
+                end
+
+                color, ls, alpha, lw = resonance_style(order)
+
+                if m == 0
+                    x = k / n
+                    if xmin <= x <= xmax
+                        ax.plot(
+                            [x, x],
+                            [ymin, ymax],
+                            color=color,
+                            linestyle=ls,
+                            alpha=alpha,
+                            linewidth=lw,
+                        )
+                    end
+
+                elseif n == 0
+                    y = k / m
+                    if ymin <= y <= ymax
+                        ax.plot(
+                            [xmin, xmax],
+                            [y, y],
+                            color=color,
+                            linestyle=ls,
+                            alpha=alpha,
+                            linewidth=lw,
+                        )
+                    end
+
+                else
+                    xs = collect(range(xmin, xmax, length=500))
+                    ys = (k .- n .* xs) ./ m
+                    good = (ys .>= ymin) .& (ys .<= ymax)
+
+                    if any(good)
+                        ax.plot(
+                            xs[good],
+                            ys[good],
+                            color=color,
+                            linestyle=ls,
+                            alpha=alpha,
+                            linewidth=lw,
+                        )
+                    end
+                end
             end
         end
     end
-    half_turns = div(nturns, 2)
-    seg1 = pack_segment(X[1:half_turns, :], XP[1:half_turns, :], Y[1:half_turns, :], YP[1:half_turns, :])
-    seg2 = pack_segment(X[half_turns+1:end, :], XP[half_turns+1:end, :], Y[half_turns+1:end, :], YP[half_turns+1:end, :])
-    rows = fma_map_from_segments(seg1, seg2; include_x=true, include_y=true)
-    # add initial conditions to each row
-    for j in 1:n_particles
-        rows[j] = merge(rows[j], (x0=particles[j, 1], px0=particles[j, 2], y0=particles[j, 3], py0=particles[j, 4]))
-    end
-    return rows
+
+    return nothing
 end
 
-function plot_resonance_line_extended(n, m, k, color, style, alpha, linewidth)
-    plt = try
-        pyimport("matplotlib.pyplot")
-    catch _
-        error("PyCall and Matplotlib are required for plotting. Please install them first.")
+function plot_fma(
+    obj;
+    figsize=(11, 5),
+    s=8,
+    cmap="jet",
+    initial_unit=:mm,
+    xlim_initial=nothing,
+    ylim_initial=nothing,
+    tune_xlim=(0.0, 1.0),
+    tune_ylim=(0.0, 1.0),
+    diffusion_clim=nothing,
+    resonance_lines=true,
+    resonance_orders=1:4,
+    show_all_initial_particles=true,
+    filepath=nothing,
+    dpi=300,
+    show=true,
+)
+    plt = pyimport("matplotlib.pyplot")
+
+    rows = get_rows(obj)
+
+    if initial_unit == :mm
+        scale = 1e3
+        unit = "mm"
+    elseif initial_unit == :m
+        scale = 1.0
+        unit = "m"
+    else
+        error("initial_unit must be :mm or :m")
     end
-    nu_range_extended = range(0.0, 1.0, length=100)
-    if m == 0 && n != 0  # Vertical lines: nux = k/n
-        if 0 <= k/n <= 1.0
-            plt.axvline(x=k/n, color=color, linestyle=style, alpha=alpha, linewidth=linewidth)
-        end
-    elseif n == 0 && m != 0  # Horizontal lines: nuy = k/m  
-        if 0 <= k/m <= 1.0
-            plt.axhline(y=k/m, color=color, linestyle=style, alpha=alpha, linewidth=linewidth)
-        end
-    else  # nuy = (k - n*nux)/m
-        nuy_line = (k .- n .* nu_range_extended) ./ m
-        valid_idx = (nuy_line .>= 0.0) .& (nuy_line .<= 1.0) .& 
-                   (nu_range_extended .>= 0.0) .& (nu_range_extended .<= 1.0)
-        if any(valid_idx)
-            plt.plot(nu_range_extended[valid_idx], nuy_line[valid_idx], color=color, 
-                    linestyle=style, alpha=alpha, linewidth=linewidth)
-        end
+
+    x0 = rowfield(rows, :x0) .* scale
+    y0 = rowfield(rows, :y0) .* scale
+    nux = rowfield(rows, :nux)
+    nuy = rowfield(rows, :nuy)
+    diffusion = rowfield(rows, :diffusion)
+
+    fig = plt.figure(figsize=figsize)
+
+    # --------------------------------------------------------
+    # Left: initial coordinate map
+    # --------------------------------------------------------
+    ax1 = plt.subplot(1, 2, 1)
+
+    mask_xy = finite_mask(x0, y0)
+    mask_diff = finite_mask(x0, y0, diffusion)
+
+    if show_all_initial_particles && any(mask_xy)
+        ax1.scatter(
+            x0[mask_xy],
+            y0[mask_xy];
+            s=max(1.0, 0.35 * s),
+            color="0.82",
+            marker="s",
+            label="tracked initial points",
+            zorder=1,
+        )
     end
-end
 
-"""
-    plot_fma(rows; 
-    figsize=(10,4), s=10, 
-    x_min=-0.003, x_max=0.003, y_min=0.0, y_max=0.003,
-    resonance_lines=true, resonance_orders=[1,2,3,4],
-    filepath="fma_plot.png")
-Plot Frequency Map Analysis (FMA) results. 
-The plot function requires PyCall and Matplotlib installed in the associated Python environment.
-# Arguments
-- rows::Vector{NamedTuple}: FMA results from `FMA` function
-- figsize::Tuple{Int,Int}: figure size
-- s::Int: marker size
-- x_min, x_max, y_min, y_max::Float64: axis limits
-- resonance_lines::Bool: whether to plot resonance lines
-- resonance_orders::Vector{Int}: resonance orders to plot
-- filepath::String: output file path for saving the plot
-"""
-function plot_fma(rows; 
-                    figsize=(10,4), s=10, 
-                    x_min=-0.003, x_max=0.003, y_min=0.0, y_max=0.003,
-                    resonance_lines=true, resonance_orders=[1,2,3,4],
-                    filepath="fma_plot.png")
-    nux = [r.nux for r in rows]
-    nuy = [r.nuy for r in rows]
-    diffusion = [r.diffusion for r in rows]
-    x = [r.x0 for r in rows]
-    y = [r.y0 for r in rows]
+    if any(mask_diff)
+        if diffusion_clim === nothing
+            sc1 = ax1.scatter(
+                x0[mask_diff],
+                y0[mask_diff];
+                c=diffusion[mask_diff],
+                s=s,
+                marker="s",
+                cmap=cmap,
+                zorder=2,
+            )
+        else
+            sc1 = ax1.scatter(
+                x0[mask_diff],
+                y0[mask_diff];
+                c=diffusion[mask_diff],
+                s=s,
+                cmap=cmap,
+                marker="s",
+                vmin=diffusion_clim[1],
+                vmax=diffusion_clim[2],
+                zorder=2,
+            )
+        end
 
-    # First order resonances 
-    resonances_1st = [
-        # n*nux + m*nuy = 0
-        (1, 0, 0),   # nux = 0
-        (0, 1, 0),   # nuy = 0
-        (1, 1, 0),   # nux + nuy = 0
-        (1, -1, 0),  # nux - nuy = 0
-        (-1, 1, 0),  # -nux + nuy = 0
-
-        # n*nux + m*nuy = 1
-        (1, 0, 1),   # nux = 1
-        (0, 1, 1),   # nuy = 1  
-        (1, 1, 1),   # nux + nuy = 1
-        (1, -1, 1),  # nux - nuy = 1
-        (-1, 1, 1),  # -nux + nuy = 1
-        (2, 0, 1),   # 2nux = 1 (half-integer)
-        (0, 2, 1),   # 2nuy = 1 (half-integer)
-    ]
-
-    # Second order resonances
-    resonances_2nd = [
-        # n*nux + m*nuy = 0
-        (2, 0, 0),   # 2nux = 0
-        (0, 2, 0),   # 2nuy = 0
-        (2, 1, 0),   # 2nux + nuy = 0
-        (1, 2, 0),   # nux + 2nuy = 0
-        (2, -1, 0),  # 2nux - nuy = 0
-        (-1, 2, 0),  # -nux + 2nuy = 0
-        
-        # n*nux + m*nuy = 1
-        (2, 1, 1),   # 2nux + nuy = 1
-        (1, 2, 1),   # nux + 2nuy = 1
-        (2, -1, 1),  # 2nux - nuy = 1
-        (-1, 2, 1),  # -nux + 2nuy = 1
-        
-        # n*nux + m*nuy = 2
-        (2, 0, 2),   # 2nux = 2 (integer)
-        (0, 2, 2),   # 2nuy = 2 (integer)
-        (1, 1, 2),   # nux + nuy = 2
-    ]
-
-    # Third order resonances  
-    resonances_3rd = [
-        # n*nux + m*nuy = 0
-        (3, 0, 0),   # 3nux = 0
-        (0, 3, 0),   # 3nuy = 0
-        (3, 1, 0), (1, 3, 0), (3, -1, 0), (-1, 3, 0),
-        (3, 2, 0), (2, 3, 0), (3, -2, 0), (-2, 3, 0),
-        
-        # n*nux + m*nuy = 1  
-        (3, 0, 1),   # 3nux = 1 (third-integer)
-        (0, 3, 1),   # 3nuy = 1 (third-integer)
-        (3, 1, 1), (1, 3, 1), (3, -1, 1), (-1, 3, 1),
-        (3, 2, 1), (2, 3, 1), (3, -2, 1), (-2, 3, 1),
-    ]
-
-    # Fourth order
-    resonances_4th = [
-        (4, 0, 1), (0, 4, 1),  # 4nux = 1, 4nuy = 1 (quarter-integer)
-        (2, 2, 1),             # 2nux + 2nuy = 1
-    ]
-
-    plt = try
-        pyimport("matplotlib.pyplot")
-    catch _
-        error("PyCall and Matplotlib are required for plotting. Please install them first.")
+        plt.colorbar(sc1, ax=ax1, label="log10(Δνx² + Δνy²)")
+    else
+        ax1.text(
+            0.5,
+            0.5,
+            "No finite diffusion data",
+            ha="center",
+            va="center",
+            transform=ax1.transAxes,
+        )
     end
-    plt.figure(figsize=figsize)
-    plt.subplot(1,2,1)
-    plt.scatter(x, y, c=diffusion, s=s, cmap="jet")
-    plt.colorbar(label="log10(Δnux² + Δnuy²)")
-    plt.xlabel("x [m]")
-    plt.ylabel("y [m]")
-    plt.xlim(x_min, x_max)
-    plt.ylim(y_min, y_max)
-    plt.subplot(1,2,2)
-    sc = plt.scatter(nux, nuy, c=diffusion, cmap="jet", s=s)
-    plt.colorbar(sc, label="log10(Δnux² + Δnuy²)")
-    plt.xlabel("nux")
-    plt.ylabel("nuy")
+
+    ax1.set_xlabel("x₀ [$unit]")
+    ax1.set_ylabel("y₀ [$unit]")
+    # ax1.set_title("Initial coordinate map")
+
+    if xlim_initial !== nothing
+        ax1.set_xlim(xlim_initial[1], xlim_initial[2])
+    end
+
+    if ylim_initial !== nothing
+        ax1.set_ylim(ylim_initial[1], ylim_initial[2])
+    end
+
+    # --------------------------------------------------------
+    # Right: frequency map
+    # --------------------------------------------------------
+    ax2 = plt.subplot(1, 2, 2)
+
+    mask_tune = finite_mask(nux, nuy, diffusion)
+
+    if any(mask_tune)
+        if diffusion_clim === nothing
+            sc2 = ax2.scatter(
+                nux[mask_tune],
+                nuy[mask_tune];
+                c=diffusion[mask_tune],
+                s=s,
+                marker="s",
+                cmap=cmap,
+                zorder=2,
+            )
+        else
+            sc2 = ax2.scatter(
+                nux[mask_tune],
+                nuy[mask_tune];
+                c=diffusion[mask_tune],
+                s=s,
+                marker="s",
+                cmap=cmap,
+                vmin=diffusion_clim[1],
+                vmax=diffusion_clim[2],
+                zorder=2,
+            )
+        end
+
+        plt.colorbar(sc2, ax=ax2, label="log10(Δνx² + Δνy²)")
+    else
+        ax2.text(
+            0.5,
+            0.5,
+            "No finite tune data",
+            ha="center",
+            va="center",
+            transform=ax2.transAxes,
+        )
+    end
+
     if resonance_lines
-        if 1 in resonance_orders
-            for (n, m, k) in resonances_1st
-                plot_resonance_line_extended(n, m, k, "black", "-", 0.8, 1.5)
-            end
-        end
-        if 2 in resonance_orders
-            for (n, m, k) in resonances_2nd
-                plot_resonance_line_extended(n, m, k, "red", "--", 0.5, 1.0)
-            end
-        end
-        if 3 in resonance_orders
-            for (n, m, k) in resonances_3rd
-                plot_resonance_line_extended(n, m, k, "blue", "-.", 0.4, 0.8)
-            end
-        end
-        if 4 in resonance_orders
-            for (n, m, k) in resonances_4th
-                plot_resonance_line_extended(n, m, k, "purple", ":", 0.3, 0.6)
-            end
-        end
+        plot_resonance_lines!(
+            ax2;
+            xlim=tune_xlim,
+            ylim=tune_ylim,
+            orders=resonance_orders,
+        )
     end
-    plt.xlim(0, 1)
-    plt.ylim(0, 1)
+
+    ax2.set_xlabel("νx")
+    ax2.set_ylabel("νy")
+    # ax2.set_title("Frequency map")
+    ax2.set_xlim(tune_xlim[1], tune_xlim[2])
+    ax2.set_ylim(tune_ylim[1], tune_ylim[2])
+    # ax2.set_aspect("equal", adjustable="box")
+
     plt.tight_layout()
-    plt.savefig(filepath, dpi=300)
-    plt.show()
+
+    if filepath !== nothing
+        plt.savefig(filepath, dpi=dpi, bbox_inches="tight")
+    end
+
+    if show
+        plt.show()
+    end
+
+    return fig
 end
