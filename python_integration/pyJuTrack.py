@@ -86,10 +86,12 @@ def _initialize_julia():
     # directory of this file (works when running from the source tree).
     project_path = os.environ.get('JULIA_PROJECT') or \
         os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    juliacall.Pkg.activate(project_path)
-    
-    # Import Julia Main module
+    # JuliaCall 0.9.35 no longer exports ``juliacall.Pkg`` as a Python
+    # convenience attribute. Import Pkg through Julia Main so this bridge works
+    # with both older and current JuliaCall releases.
     from juliacall import Main as jl
+    jl.seval("import Pkg")
+    jl.Pkg.activate(project_path)
     _jl = jl
 
     # Ensure Julia-side PyCall can see the same Python interpreter and has its
@@ -265,6 +267,25 @@ def _to_julia_int_vector(python_list):
     for val in python_list:
         _jl.push_b(jl_vec, int(val))
     return jl_vec
+
+def _normalize_refpts_vector(refpts, *, default=None):
+    """Return reference points as a Julia ``Vector{Int64}``.
+
+    Python ``range`` and tuple objects otherwise cross PythonCall as Julia
+    ranges/tuples, but JuTrack's multi-reference-point methods require a
+    concrete ``Vector{Int64}``.
+    """
+    if refpts is None:
+        refpts = default
+    if refpts is None:
+        raise TypeError("refpts cannot be None without a default")
+    if isinstance(refpts, (str, bytes)):
+        raise TypeError("refpts must be an integer or an iterable of integers")
+    try:
+        values = [int(value) for value in refpts]
+    except TypeError:
+        values = [int(refpts)]
+    return _to_julia_int_vector(values)
 
 def _to_julia_float_vector(python_list):
     """Convert Python list of floats to Julia Vector{Float64}"""
@@ -2069,13 +2090,9 @@ def twissring(lattice, dp=0.0, refpts=None, **kwargs):
     else:
         jl_lattice = lattice
     
-    if refpts is None:
-        refpts = list(range(1, len(jl_lattice) + 1))
-        julia_refpts = _to_julia_int_vector(refpts)
-    elif isinstance(refpts, (list, np.ndarray)):
-        julia_refpts = _to_julia_int_vector([int(r) for r in refpts])
-    else:
-        julia_refpts = refpts
+    julia_refpts = _normalize_refpts_vector(
+        refpts, default=range(1, len(jl_lattice) + 1)
+    )
     
     return _jl.twissring(jl_lattice, dp, 0, julia_refpts, **kwargs)
 
@@ -2127,9 +2144,9 @@ def twissline(tin, lattice, dp=0.0, order=0, refpts=None, **kwargs):
         # Propagate through entire lattice
         endindex = len(jl_lattice)
         return _jl.twissline(tin, jl_lattice, dp, order, endindex, **kwargs)
-    elif isinstance(refpts, (list, np.ndarray)):
+    elif not isinstance(refpts, (int, np.integer)):
         # Vector of reference points -> returns Vector{EdwardsTengTwiss}
-        julia_refpts = _to_julia_int_vector([int(r) for r in refpts])
+        julia_refpts = _normalize_refpts_vector(refpts)
         return _jl.twissline(tin, jl_lattice, dp, order, julia_refpts, **kwargs)
     else:
         # Single int endindex
@@ -2264,10 +2281,7 @@ def findm66_refpts(lattice, refpts, dp=0.0, order=0, **kwargs):
     else:
         jl_lattice = lattice
     
-    if isinstance(refpts, (list, np.ndarray)):
-        julia_refpts = _to_julia_int_vector([int(r) for r in refpts])
-    else:
-        julia_refpts = refpts
+    julia_refpts = _normalize_refpts_vector(refpts)
     
     return _jl.findm66_refpts(jl_lattice, dp, order, julia_refpts, **kwargs)
 
