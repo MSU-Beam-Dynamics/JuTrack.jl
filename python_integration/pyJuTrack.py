@@ -158,21 +158,19 @@ def _initialize_julia():
     
     _julia_initialized = True
 
-    # Try to import PyCall if available (optional - only needed for some plotting features)
-    # If it fails, pyJuTrack will still work for tracking and optimization
-    try:
-        jl.seval('import PyCall')
+    if _pycall_disabled():
         jl.seval('global _python_callbacks = Dict{String, Any}()')
-    except:
-        # PyCall not available - this is OK, core functionality will still work
-        # Users can still use pyJuTrack for tracking, optimization, etc.
-        warnings.warn(
-            "PyCall could not be loaded. Some advanced plotting features may not work. "
-            "Core pyJuTrack functionality (tracking, optimization, etc.) is unaffected.",
-            UserWarning
-        )
-        # Create empty callback dict anyway for compatibility
-        jl.seval('global _python_callbacks = Dict{String, Any}()')
+    else:
+        try:
+            jl.seval('import PyCall')
+            jl.seval('global _python_callbacks = Dict{String, Any}()')
+        except Exception:
+            warnings.warn(
+                "PyCall could not be loaded. Optional Julia-to-Python callbacks are unavailable. "
+                "Pure-Python Matplotlib plotting and core JuTrack functionality are unaffected.",
+                UserWarning,
+            )
+            jl.seval('global _python_callbacks = Dict{String, Any}()')
     
     return jl
 
