@@ -2455,16 +2455,39 @@ def get_2nd_moment(beam: Beam) -> np.ndarray:
     # Function modifies beam in place, return the moment2nd matrix
     return _to_numpy_array(beam.julia_object.moment2nd)
 
-def dynamic_aperture(lattice, **kwargs):
-    """Calculate dynamic aperture"""
+def dynamic_aperture(lattice, nturns, amp_max, amp_step, angle_steps, E=3.5e9, dp=0.0):
+    """Calculate the dynamic aperture of a given lattice.
+
+    Args:
+        lattice: Lattice object, list of elements, or Julia lattice.
+        nturns (int): number of turns to track.
+        amp_max (float): maximum amplitude [m].
+        amp_step (float): step size of amplitude scan [m].
+        angle_steps (int): number of lines (e.g. 11, 13, 19, 21, 37).
+        E (float): beam energy [eV].
+        dp (float): momentum spread (default 0.0).
+
+    Returns:
+        Tuple (DA, survived_particles):
+            - DA: boundary points of dynamic aperture (Nx2 array).
+            - survived_particles: survived particles in x and y [m].
+    """
     if isinstance(lattice, Lattice):
         jl_lattice = lattice.julia_object
     elif isinstance(lattice, list):
         jl_lattice = Lattice(lattice).julia_object
     else:
         jl_lattice = lattice
-    
-    return _jl.dynamic_aperture(jl_lattice, **kwargs)
+
+    return _jl.dynamic_aperture(
+        jl_lattice,
+        int(nturns),
+        float(amp_max),
+        float(amp_step),
+        int(angle_steps),
+        float(E),
+        float(dp),
+    )
 
 # def FMA(lattice, num_turns: int, **kwargs):
 #     """Frequency Map Analysis"""
@@ -2543,6 +2566,162 @@ def elem_to_dict(elem):
     return result
 
 
+def _plot_lattice_with_optics(
+    lattice,
+    twiss,
+    width=0.25,
+    axis=True,
+    savepath=None,
+    figsize=(10, 6),
+    show=True,
+    periodic=False,
+):
+    """
+    Plot optics (beta and dispersion) versus s with an s-based lattice strip
+    aligned underneath.
+
+    The lattice is laid out as a straight strip along s (arc length), regardless
+    of bending. Elements are drawn as coloured boxes using the same convention
+    as `plot_lattice` (blue-ish quads split by k1 sign, sextupoles, octupoles,
+    RF cavities, bends, etc.).
+
+    Parameters mirror `plot_lattice`. `twiss` must be a sequence of objects
+    exposing `betax`, `betay`, `dx`, and `s` attributes.
+
+    When ``periodic`` is True, the ring is assumed to satisfy
+    twiss(s=0) == twiss(s=L). The optics curves are wrapped so they span the
+    full lattice length: if the first refpt has s > 0, a point at s = 0 is
+    prepended using the values from s = L (the last refpt, brought back by
+    periodicity); if the last refpt has s < L, a point at s = L is appended
+    using the values from the first refpt.
+    """
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Rectangle
+    from matplotlib.gridspec import GridSpec
+
+    # Convert lattice elements to dictionaries if needed
+    lattice_dicts = [elem if isinstance(elem, dict) else elem_to_dict(elem) for elem in lattice]
+    L_total = float(sum((elem.get("length", 0.0) or 0.0) for elem in lattice_dicts))
+
+    # Extract twiss arrays
+    def _attr(o, name):
+        return float(getattr(o, name))
+
+    s_vals = np.array([_attr(t, "s") for t in twiss])
+    beta_x = np.array([_attr(t, "betax") for t in twiss])
+    beta_y = np.array([_attr(t, "betay") for t in twiss])
+    disp_x = np.array([_attr(t, "dx") for t in twiss])
+
+    if periodic and len(s_vals) > 0:
+        eps = 1e-9 * max(L_total, 1.0)
+        # Prepend s=0 point using the wrap-around value from the last refpt
+        if s_vals[0] > eps:
+            s_vals = np.concatenate(([0.0], s_vals))
+            beta_x = np.concatenate(([beta_x[-1]], beta_x))
+            beta_y = np.concatenate(([beta_y[-1]], beta_y))
+            disp_x = np.concatenate(([disp_x[-1]], disp_x))
+        # Append s=L point using the first refpt value
+        if s_vals[-1] < L_total - eps:
+            s_vals = np.concatenate((s_vals, [L_total]))
+            beta_x = np.concatenate((beta_x, [beta_x[0]]))
+            beta_y = np.concatenate((beta_y, [beta_y[0]]))
+            disp_x = np.concatenate((disp_x, [disp_x[0]]))
+
+    fig = plt.figure(figsize=figsize)
+    gs = GridSpec(2, 1, height_ratios=[6, 1], hspace=0.05, figure=fig)
+    ax_opt = fig.add_subplot(gs[0])
+    ax_lat = fig.add_subplot(gs[1], sharex=ax_opt)
+    ax_disp = ax_opt.twinx()
+
+    # --- Optics curves ---
+    line_bx, = ax_opt.plot(s_vals, beta_x, color="tab:blue",   label=r"$\beta_x$", linewidth=1.2)
+    line_by, = ax_opt.plot(s_vals, beta_y, color="tab:red",    label=r"$\beta_y$", linewidth=1.2)
+    line_dx, = ax_disp.plot(s_vals, disp_x, color="tab:green", label=r"$D_x$",     linewidth=1.2, linestyle="--")
+
+    ax_opt.set_ylabel(r"$\beta_{x,y}$ [m]")
+    ax_disp.set_ylabel(r"$D_x$ [m]")
+
+    handles_lines = [line_bx, line_by, line_dx]
+    labels_lines = [h.get_label() for h in handles_lines]
+    ax_opt.legend(handles_lines, labels_lines, loc="best", frameon=False)
+
+    ax_opt.grid(True, alpha=0.3)
+    ax_opt.spines["top"].set_visible(False)
+    ax_disp.spines["top"].set_visible(False)
+    plt.setp(ax_opt.get_xticklabels(), visible=False)
+    ax_opt.tick_params(axis="x", which="both", length=0)
+
+    # --- Lattice strip along s ---
+    ax_lat.axhline(0, color="black", linewidth=0.8, zorder=1)
+
+    handles = {"patches": [], "elements": []}
+    s = 0.0
+    for i, elem in enumerate(lattice_dicts):
+        L = float(elem.get("length", 0.0) or 0.0)
+        et = str(elem.get("type", "")).upper()
+        patch = None
+
+        if et in ("KQUAD", "QUAD"):
+            k1 = float(elem.get("k1", 0.0) or 0.0)
+            if k1 >= 0:
+                patch = Rectangle((s, 0), L, width, edgecolor="black", facecolor="lightblue")
+            else:
+                patch = Rectangle((s, -width), L, width, edgecolor="black", facecolor="lightblue")
+        elif et in ("KSEXT", "SEXT"):
+            patch = Rectangle((s, -width * 0.7 / 2), L, width * 0.7,
+                              edgecolor="black", facecolor="blue")
+        elif et in ("KOCT", "OCT"):
+            patch = Rectangle((s, -width * 0.4 / 2), L, width * 0.4,
+                              edgecolor="black", facecolor="green")
+        elif et in ("RFCA", "RFCAVITY", "CRABCAVITY"):
+            patch = Rectangle((s, -width / 4), L, width / 2,
+                              edgecolor="black", facecolor="red", hatch="//")
+        elif et == "SPECIAL":
+            patch = Rectangle((s, -width / 2), L, width,
+                              edgecolor="black", facecolor="purple")
+        elif et in ("RBEND", "SBEND", "ESBEND", "LBEND"):
+            patch = Rectangle((s, -width / 2), L, width,
+                              edgecolor="black", facecolor="orange")
+        # else: drifts / markers / unknown - drawn implicitly by the baseline axhline
+
+        if patch is not None:
+            ax_lat.add_patch(patch)
+            handles["patches"].append(patch)
+
+        handles["elements"].append({
+            "i": i, "type": et, "L": L,
+            "s_start": s, "s_end": s + L,
+            "patch": patch,
+        })
+        s += L
+
+    s_total = s if s > 0 else (s_vals[-1] if len(s_vals) else 1.0)
+    ax_lat.set_xlim(0.0, max(s_total, float(s_vals[-1]) if len(s_vals) else s_total))
+    ax_lat.set_ylim(-width, width)
+    ax_lat.set_yticks([])
+    ax_lat.spines["top"].set_visible(False)
+    ax_lat.spines["left"].set_visible(False)
+    ax_lat.spines["right"].set_visible(False)
+
+    if axis:
+        ax_lat.set_xlabel("s [m]")
+    else:
+        ax_lat.set_xticks([])
+        ax_lat.spines["bottom"].set_visible(False)
+
+    plt.tight_layout()
+
+    if savepath:
+        plt.savefig(savepath, dpi=300, bbox_inches="tight")
+
+    if show:
+        plt.show()
+
+    axes = {"optics": ax_opt, "optics_r": ax_disp, "lattice": ax_lat}
+    return fig, axes, handles
+
+
 def plot_lattice(
     lattice,
     width=0.25,
@@ -2551,6 +2730,8 @@ def plot_lattice(
     figsize=(8, 8),
     layout="curved",      # "curved" (default) or "straight"
     show=True,            # if False, do not call plt.show()
+    twiss=None,           # optional list of EdwardsTengTwiss objects to overlay optics
+    periodic=False,       # if True and twiss is given, wrap curves to span [0, L]
 ):
     """
     Plot a particle accelerator lattice using matplotlib.
@@ -2570,13 +2751,27 @@ def plot_lattice(
     layout : {"curved","straight"}
         - "curved": bending magnets bend the plot (original behavior)
         - "straight": treat bending magnets as straight elements (no bend in layout)
+        Ignored when `twiss` is provided (an s-based strip is used instead).
     show : bool
         If True, call plt.show().
+    twiss : sequence or None
+        If provided, a sequence of Twiss objects (e.g. output of `jt.twissring`)
+        exposing attributes `betax`, `betay`, `dx`, and `s`. When set, the figure
+        contains an optics panel on top (beta_x, beta_y on the left y-axis and
+        dispersion on the right y-axis) and an s-based lattice strip aligned
+        beneath it.
+    periodic : bool
+        Only used when `twiss` is given. When True, the ring is assumed
+        periodic (twiss at s=0 equals twiss at s=L) and the optics curves
+        are wrapped to span the full lattice length even if the first/last
+        refpts are not exactly at s=0 or s=L.
 
     Returns
     -------
     fig, ax, handles
-        fig/ax are matplotlib handles; handles is a registry of artists and geometry
+        fig/ax are matplotlib handles; handles is a registry of artists and geometry.
+        When `twiss` is given, `ax` is a dict with keys "optics", "optics_r",
+        "lattice" for the beta axis, dispersion (twin) axis, and lattice strip axis.
     """
     import numpy as np
     import matplotlib.pyplot as plt
@@ -2586,6 +2781,13 @@ def plot_lattice(
     layout = str(layout).lower().strip()
     if layout not in ("curved", "straight"):
         raise ValueError(f"layout must be 'curved' or 'straight', got: {layout!r}")
+
+    if twiss is not None:
+        return _plot_lattice_with_optics(
+            lattice, twiss,
+            width=width, axis=axis, savepath=savepath,
+            figsize=figsize, show=show, periodic=periodic,
+        )
 
     # Convert lattice elements to dictionaries if needed
     lattice_dicts = [elem if isinstance(elem, dict) else elem_to_dict(elem) for elem in lattice]
