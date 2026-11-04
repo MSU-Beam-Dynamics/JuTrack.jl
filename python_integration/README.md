@@ -51,6 +51,37 @@ print(f"Tunes: νx={nux:.4f}, νy={nuy:.4f}")
 
 ### Lattice Elements
 
+#### Measured-machine fringe models
+
+Two native compatibility elements are available for Float64 tracking and
+finite-difference optics/LOCO. No external LOCO application is required:
+
+```python
+q = jt.QuadLinearFintFudgePass("Q1", 0.3, k1=2.0, fudge=1.0,
+                              fin=np.eye(6), fout=np.eye(6))
+b = jt.BendLinearFriTrapPass("B1", 0.8, angle=0.02, k1=-0.1,
+                             kq=1.0, i1a=0.01, i1b=0.01)
+# For a saved AT-format record with one of those exact PassMethod names:
+element = jt.from_at_fringe_element(record)
+```
+
+The quadrupole applies entrance fringe matrix → body with `k1*fudge` → exit
+fringe matrix. The bend adds the named legacy linear/nonlinear quadrupole
+fringe sequence to the analytic bend and dipole edges; it is not an alias for
+an ordinary SBEND or for Elegant fringe maps. Fields remain directly mutable.
+
+Native constructors use `[x, px, y, py, z, delta]`. The AT-record importer
+explicitly permutes `[x, px, y, py, delta, ct]` translations and both axes of
+the 6×6 matrices. Empty AT T1/T2/R1/R2 arrays mean disabled transforms.
+`Fudge0` is metadata, not another strength multiplier. This helper imports
+only these two element types, not an entire arbitrary AT lattice.
+
+These maps preserve their legacy paraxial path-length convention independently
+of the global exact-drift switch. Serial and threaded tracking are supported.
+Radiation tracking/integrals and Taylor/parameter-AD tracking are not supported;
+use finite-difference optics, and do not silently replace the fringe model.
+Restart existing Python/Julia processes after updating JuTrack.
+
 **Basic:**
 - `DRIFT(name, length)`
 - `MARKER(name)`
@@ -180,6 +211,59 @@ twiss = jt.ADtwissring(ring, dp=0.0, changed_idx=[1,2], changed_ele=[q1, q2])
 periodic_twiss = jt.periodicEdwardsTengTwiss(ring, E0=1e9, m0=jt.m_e)
 ```
 
+### Conditional Touschek lifetime
+
+Install the optional numerical dependency with `pip install -e ".[touschek]"`.
+The adapter uses JuTrack 4D optics and the Piwinski kernel; it does not require AT.
+Use a stable, uncoupled, radiation-off optics copy. If it contains RF cavities,
+replace them by equal-length drifts in that copy; do not shorten the ring.
+Keep the operating RF configuration in the separately supplied acceptance model.
+
+```python
+result = jt.touschek_lifetime(
+    ring,
+    energy_eV=3.5e9,
+    emittances_m=(10e-12, 1e-12),  # prescribed geometric emittances
+    sigma_z_m=2e-3,
+    sigma_delta=8e-4,
+    momentum_acceptance=(-0.01, 0.012),  # relative dp/p, not percent
+    bunch_charge_C=0.25e-9,
+)
+print(result["lifetime_s"])
+```
+
+Supply either bunch charge or `bunch_current_A` (single-bunch average current,
+not total ring current). A complete periodic cell can use `repetitions=N`;
+the actual circumference is then `N` times the supplied length. Beam parameters
+and acceptance are explicit assumptions: no equilibrium, IBS, RF bucket or
+dynamic acceptance is inferred or tracked.
+
+`momentum_acceptance` may instead have one signed negative/positive pair for
+each original element entrance, including zero-length elements. Such elements
+remain in the optics calculation but receive no integration weight. Results
+include original zero-based `element_indices`, entrance `s_m`, local rates and
+the lifetime. The adapter deep-copies the input, never splits magnets, and
+uses element-entrance rates weighted by actual element lengths. This is a
+boundary-sampled estimate: check spatial convergence separately, or pass a
+validated dense optical profile to `jutrack_touschek.touschek_from_optics`.
+For dense samples at positions `s` including both ends of the integration
+interval, trapezoidal nodal weights are:
+
+```python
+ds = np.diff(s)
+weights_m = np.r_[ds[0] / 2, (ds[:-1] + ds[1:]) / 2, ds[-1] / 2]
+```
+
+The dense-profile function verifies that the weights cover the declared
+circumference (or one explicitly repeated period). Optical sample positions and
+acceptance must refer to the same lattice and locations.
+Coupled optics, active radiation, RF elements and collective-effect elements
+are rejected rather than silently reinterpreted.
+
+The numerical module adapts Accelerator Toolbox's Apache-2.0 Touschek code;
+its provenance is documented in the module and the upstream license is in
+`licenses/AT-Apache-2.0.txt`.
+
 ### Transfer Matrices
 
 ```python
@@ -280,4 +364,7 @@ To add new JuTrack.jl functionality:
 
 ## License
 
-Same as JuTrack.jl
+The JuTrack Python wrapper follows JuTrack.jl's MIT license. The adapted
+`jutrack_touschek.py` numerical module includes Accelerator Toolbox code under
+Apache-2.0; its upstream license and attribution are distributed in
+`licenses/AT-Apache-2.0.txt` and `licenses/AT-NOTICE.txt`.

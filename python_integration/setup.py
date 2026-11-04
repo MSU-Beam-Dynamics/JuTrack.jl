@@ -37,7 +37,8 @@ setup(
     long_description=read_readme(),
     long_description_content_type='text/markdown',
     url='https://github.com/MSU-Beam-Dynamics/JuTrack.jl',
-    py_modules=['pyJuTrack'],
+    py_modules=['pyJuTrack', 'jutrack_touschek'],
+    license_files=['licenses/*'],
     python_requires='>=3.8',
     install_requires=[
         'juliacall>=0.9.0',
@@ -45,9 +46,12 @@ setup(
     ],
     extras_require={
         'plotting': ['matplotlib>=3.3.0'],
+        'touschek': ['scipy>=1.7.0'],
+        'all': ['matplotlib>=3.3.0', 'scipy>=1.7.0'],
         'dev': [
             'pytest>=6.0',
             'matplotlib>=3.3.0',
+            'scipy>=1.7.0',
         ],
     },
     classifiers=[

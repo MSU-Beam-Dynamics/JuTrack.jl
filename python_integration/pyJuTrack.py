@@ -779,6 +779,84 @@ def KQUAD(name: str, length: float, k1: float, **kwargs):
     kwargs = _convert_kwargs_to_julia(kwargs)
     return _jl.KQUAD(name=name, len=length, k1=k1, **kwargs)
 
+def QuadLinearFintFudgePass(name: str, length: float, k1: float, **kwargs):
+    """Analytic quadrupole with k1*fudge and explicit fin/fout fringe matrices.
+
+    Matrices and translations use [x, px, y, py, z, delta]. fin/fout default
+    to identity. Supports Float64 tracking/finite-difference optics, not
+    radiation or Taylor tracking. Use from_at_fringe_element for AT records.
+    """
+    for key in ('fin', 'fout', 'R1', 'R2', 'T1', 'T2'):
+        if key in kwargs:
+            kwargs[key] = np.asarray(kwargs[key], dtype=float)
+    return _jl.QuadLinearFintFudgePass(name=name, len=float(length), k1=float(k1),
+                                      **_convert_kwargs_to_julia(kwargs))
+
+def BendLinearFriTrapPass(name: str, length: float, angle: float, **kwargs):
+    """Analytic bend with legacy trapezoidal linear/nonlinear fringe maps.
+
+    Optional fields: k1, kq, i1a, i1b, entrance_angle, exit_angle, fint1,
+    fint2, gap, byerror, T1/T2/R1/R2. Native coordinates [x,px,y,py,z,delta].
+    Supports Float64 tracking/finite-difference optics, not radiation or Taylor
+    tracking. This preserves the named legacy map, not an Elegant fringe model.
+    """
+    for key in ('R1', 'R2', 'T1', 'T2'):
+        if key in kwargs:
+            kwargs[key] = np.asarray(kwargs[key], dtype=float)
+    return _jl.BendLinearFriTrapPass(name=name, len=float(length), angle=float(angle),
+                                   **_convert_kwargs_to_julia(kwargs))
+
+def from_at_fringe_element(record: dict):
+    """Import ONE of the two custom AT fringe element records as a native element.
+
+    AT [x,px,y,py,delta,ct] transforms are explicitly permuted to JuTrack
+    [x,px,y,py,z,delta]. K is authoritative; Fudge0 is acquisition metadata,
+    NOT an additional strength multiplier. No machine settings are inferred.
+    This is not a general AT lattice importer and does not replace other types.
+    """
+    method = record['PassMethod']
+    if method not in ('QuadLinearFintFudgePass', 'BendLinearFriTrapPass'):
+        raise ValueError(f'Unsupported fringe pass method: {method}')
+    if record.get('rad', 0) != 0 or record.get('Radiation', False):
+        raise ValueError('Radiation-enabled fringe records are not supported')
+    # Do not discard imported aperture restrictions of an unverified convention.
+    for key in ('RApertures', 'EApertures', 'Limits'):
+        if key in record and np.any(np.asarray(record[key], dtype=float)):
+            raise ValueError(f'Convert {key} explicitly to native aperture conventions')
+    order = np.array([0, 1, 2, 3, 5, 4])
+    kwargs = {}
+    for key in ('T1', 'T2'):
+        value = np.asarray(record.get(key, np.zeros(6)), dtype=float)
+        if value.size == 0:
+            value = np.zeros(6)
+        if value.shape in ((1, 6), (6, 1)):
+            value = value.reshape(6)
+        if value.shape != (6,):
+            raise ValueError(f'{key} must contain six AT coordinates')
+        kwargs[key] = value[order].copy()
+    for key in ('R1', 'R2'):
+        value = np.asarray(record.get(key, np.eye(6)), dtype=float)
+        if value.size == 0:
+            value = np.eye(6)
+        if value.shape != (6, 6):
+            raise ValueError(f'{key} must be a 6x6 AT matrix')
+        kwargs[key] = value[np.ix_(order, order)].copy()
+    if method == 'QuadLinearFintFudgePass':
+        for source, target in [('quadFringeMatrix_in', 'fin'), ('quadFringeMatrix_out', 'fout')]:
+            value = np.asarray(record[source], dtype=float)
+            if value.shape != (6, 6):
+                raise ValueError(f'{source} must be a 6x6 AT matrix')
+            kwargs[target] = value[np.ix_(order, order)].copy()
+        return QuadLinearFintFudgePass(str(record['FamName']), float(record['Length']),
+                                      float(record['K']), fudge=float(record.get('Fudge', 1.)), **kwargs)
+    for source, target in [('K','k1'),('Kq','kq'),('I1a','i1a'),('I1b','i1b'),
+                           ('EntranceAngle','entrance_angle'),('ExitAngle','exit_angle'),
+                           ('FringeInt1','fint1'),('FringeInt2','fint2'),
+                           ('FullGap','gap'),('ByError','byerror')]:
+        kwargs[target] = float(record.get(source, 0.))
+    return BendLinearFriTrapPass(str(record['FamName']),float(record['Length']),
+                                float(record['BendingAngle']), **kwargs)
+
 def KSEXT(name: str, length: float, k2: float, **kwargs):
     """Create a sextupole"""
     kwargs = _convert_kwargs_to_julia(kwargs)
@@ -1073,6 +1151,8 @@ class ElementTypes:
     DRIFT = _jl.DRIFT
     MARKER = _jl.MARKER
     QUAD = _jl.QUAD
+    QuadLinearFintFudgePass = _jl.QuadLinearFintFudgePass
+    BendLinearFriTrapPass = _jl.BendLinearFriTrapPass
     KQUAD = _jl.KQUAD
     KSEXT = _jl.KSEXT
     KOCT = _jl.KOCT
@@ -3173,6 +3253,133 @@ def integral_U0(lattice, **kwargs) -> float:
     
     return float(_jl.integral_U0(jl_lattice, **kwargs))
 
+def touschek_lifetime(lattice, *, energy_eV, emittances_m, sigma_z_m,
+                     sigma_delta, momentum_acceptance, bunch_charge_C=None,
+                     bunch_current_A=None, repetitions=1, rtol=1e-7):
+    """Calculate a conditional Piwinski lifetime from JuTrack entrance optics.
+
+    All beam quantities are explicit SI inputs: total electron energy in eV,
+    horizontal/vertical geometric emittances in m rad, rms bunch length in m,
+    and relative rms momentum spread. Supply exactly one of bunch_charge_C
+    or single-bunch average bunch_current_A (not total stored-beam current).
+
+    momentum_acceptance is a signed (negative, positive) constant pair or an
+    (len(lattice), 2) array at element entrances. Zero-length elements are
+    tracked for optics but carry no integration weight and their acceptance
+    rows are discarded. Actual element lengths provide entrance quadrature.
+    repetitions counts identical copies of a complete periodic cell; the
+    circumference used to convert current to charge includes those copies.
+
+    This uncoupled, radiation-off, RF-free 4D optics adapter neither estimates
+    momentum acceptance nor infers radiation/IBS equilibrium. RF, radiation,
+    collective-effect elements and coupled optics are rejected. The input is
+    deep-copied before optical calculations; no element is split or modified.
+    Boundary-only quadrature is not a guarantee of spatial convergence.
+
+    Returns the numerical-kernel result plus element_indices (original
+    zero-based indices), element_names, s_m (entrance positions in one supplied
+    period), sampling and backend. Requires the optional ``touschek`` extra.
+    """
+    try:
+        from jutrack_touschek import touschek_from_optics
+    except ImportError as exc:
+        missing = getattr(exc, "name", "") or ""
+        if missing in ("jutrack_touschek", "scipy") or missing.startswith("scipy."):
+            raise ImportError(
+                "Touschek calculations require the optional numerical module; "
+                "install pyJuTrack[touschek]."
+            ) from exc
+        raise
+
+    energy_eV = float(energy_eV)
+    if not np.isfinite(energy_eV) or energy_eV <= float(m_e):
+        raise ValueError("energy_eV must be a finite total electron energy above its rest energy")
+    if (isinstance(repetitions, (bool, np.bool_))
+            or not isinstance(repetitions, (int, np.integer))
+            or repetitions < 1):
+        raise ValueError("repetitions must be a positive integer")
+    elements = list(lattice)
+    if not elements:
+        raise ValueError("Touschek optics require a nonempty periodic lattice")
+    lengths = np.asarray([float(element.len) for element in elements], dtype=float)
+    if not np.isfinite(lengths).all() or np.any(lengths < 0) or not np.any(lengths > 0):
+        raise ValueError("Element lengths must be finite and nonnegative, with positive total length")
+    for index, element in enumerate(elements):
+        kind = str(getattr(element, "eletype", "")).upper()
+        if not kind:
+            kind = str(_jl.typeof(element)).split("{", 1)[0].split(".")[-1].upper()
+        if ("CAVITY" in kind or kind.startswith("RF") or kind == "LONGITUDINALRFMAP"):
+            raise ValueError(
+                f"Element {index} ({kind}) is an RF element; supply a separate RF-free 4D lattice"
+            )
+        if float(getattr(element, "rad", 0)) != 0:
+            raise ValueError(
+                f"Element {index} has radiation enabled; supply a separate radiation-off 4D lattice"
+            )
+        if ("SPACECHARGE" in kind or "WAKE" in kind
+                or kind.endswith("_SC") or kind.endswith("_SC2P5D")):
+            raise ValueError(f"Element {index} ({kind}) is not an independent-particle 4D optics element")
+
+    keep = np.flatnonzero(lengths > 0)
+    acceptance = np.asarray(momentum_acceptance, dtype=float)
+    if acceptance.shape == (len(elements), 2):
+        acceptance = acceptance[keep]
+    elif acceptance.shape != (2,):
+        raise ValueError(
+            "momentum_acceptance must be a signed (negative, positive) pair "
+            "or an array with shape (len(lattice), 2)"
+        )
+
+    working = Lattice([deepcopy_element(element) for element in elements])
+    periodic = periodicEdwardsTengTwiss(working, 0.0, 0, E0=energy_eV)
+    if int(periodic.mode) == 0:
+        raise ValueError("JuTrack could not find stable periodic 4D optics")
+    # Preserve the reference orbit for nonlinear lattices with a nonzero orbit.
+    # The native result is (orbit, matrix), not a homogeneous NumPy array.
+    orbit, _ = _jl.find_closed_orbit(working.julia_object, 0.0, energy=energy_eV)
+    exits = list(twissline(
+        periodic, working, dp=0.0, order=0,
+        refpts=list(range(1, len(elements) + 1)), E0=energy_eV,
+        orb=np.asarray(orbit, dtype=float),
+    ))
+    if len(exits) != len(elements):
+        raise ValueError("JuTrack did not return one optical point per element exit")
+    points = [periodic] + exits
+    for point in points:
+        if int(point.mode) == 0:
+            raise ValueError("JuTrack could not find stable periodic 4D optics")
+        coupling = np.asarray(point.R, dtype=float)
+        if (coupling.shape != (2, 2) or not np.isfinite(coupling).all()
+                or np.max(np.abs(coupling)) > 1e-10):
+            raise ValueError(
+                "Coupled Edwards-Teng optics are unsupported: the Touschek kernel "
+                "requires uncoupled physical-plane optics, not mode beta functions"
+            )
+    entrances = [points[index] for index in keep]
+    beta = np.asarray([[float(point.betax), float(point.betay)] for point in entrances])
+    alpha = np.asarray([[float(point.alphax), float(point.alphay)] for point in entrances])
+    dispersion = np.asarray([
+        [float(point.dx), float(point.dpx), float(point.dy), float(point.dpy)]
+        for point in entrances
+    ])
+    positions = np.concatenate(([0.0], np.cumsum(lengths)))[:-1]
+    result = touschek_from_optics(
+        beta_m=beta, alpha=alpha, dispersion=dispersion, weights_m=lengths[keep],
+        circumference_m=float(lengths.sum()) * int(repetitions),
+        energy_eV=energy_eV, emittances_m=emittances_m,
+        sigma_z_m=sigma_z_m, sigma_delta=sigma_delta,
+        momentum_acceptance=acceptance, bunch_charge_C=bunch_charge_C,
+        bunch_current_A=bunch_current_A, repetitions=int(repetitions), rtol=rtol,
+    )
+    result.update(
+        element_indices=keep.tolist(),
+        element_names=[str(getattr(elements[index], "name", index)) for index in keep],
+        s_m=positions[keep].tolist(),
+        sampling="element_entrance", backend="JuTrack",
+    )
+    return result
+
+
 def ringpara(lattice, energy: float = 3e9, Vrf: float = 0.0, harm: int = 1,
              freq_rf: float = 0.0, dp: float = 0.0, print_summary: bool = False):
     """
@@ -3383,6 +3590,7 @@ __all__ = [
     
     # Magnets
     'QUAD', 'KQUAD', 'KSEXT', 'KOCT',
+    'QuadLinearFintFudgePass', 'BendLinearFriTrapPass', 'from_at_fringe_element',
     'SBEND', 'RBEND', 'LBEND', 'ESBEND', 'ERBEND',
     'SOLENOID', 'thinMULTIPOLE',
     
@@ -3446,6 +3654,7 @@ __all__ = [
     
     # Radiation
     'rad_on', 'rad_off', 'tracking_U0', 'integral_U0', 'ringpara',
+    'touschek_lifetime',
     
     # Constants
     'm_e', 'm_p', 'm_goldion', 'charge_e', 'speed_of_light',

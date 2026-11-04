@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+requires = ["setuptools>=61", "wheel", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -48,13 +48,18 @@ dependencies = [
 plotting = [
     "matplotlib>=3.3.0",
 ]
+touschek = [
+    "scipy>=1.7.0",
+]
 dev = [
     "pytest>=6.0",
     "matplotlib>=3.3.0",
     "ipython>=7.0",
+    "scipy>=1.7.0",
 ]
 all = [
     "matplotlib>=3.3.0",
+    "scipy>=1.7.0",
 ]
 
 [project.urls]
@@ -64,7 +69,8 @@ Repository = "https://github.com/MSU-Beam-Dynamics/JuTrack.jl"
 Issues = "https://github.com/MSU-Beam-Dynamics/JuTrack.jl/issues"
 
 [tool.setuptools]
-py-modules = ["pyJuTrack"]
+py-modules = ["pyJuTrack", "jutrack_touschek"]
+license-files = ["licenses/*"]
 
 [tool.setuptools.packages.find]
 where = ["."]
