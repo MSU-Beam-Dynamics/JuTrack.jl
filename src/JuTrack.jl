@@ -49,6 +49,7 @@ using .PureErrorFunctions
 export erfcx, erf, erfinv
 include("lattice/beam.jl")
 include("lattice/elements.jl")
+include("lattice/fringe_elements.jl")
 include("tracking/taylor_transport_core.jl")
 include("TPSA/fast_TPSA_tracking.jl")
 include("TPSA/fast_HOTPSA_tracking.jl")
@@ -73,6 +74,7 @@ include("lattice/ResonanceDrivingTerms.jl")
 include("lattice/ringparams.jl")
 
 include("tracking/fringe.jl")
+include("tracking/fringe_linear.jl")
 
 # multi-threading
 include("tracking/track_mthread.jl")
@@ -111,6 +113,7 @@ export AbstractElement, LatticeParameter, lattice_parameter, parameter_index, pa
     parameter_subindices, with_parameter, changed_elements
 export DRIFT, KQUAD, KSEXT, KOCT, SBEND, RBEND, RFCA, SOLENOID, MARKER, CORRECTOR, HKICKER, VKICKER, thinMULTIPOLE
 export QUAD, LBEND, ESBEND, ERBEND, WIGGLER, buildlatt
+export QuadLinearFintFudgePass, BendLinearFriTrapPass
 export TRANSLATION, YROTATION
 export SPACECHARGE, QUAD_SC, QUAD_SC2P5D, DRIFT_SC, DRIFT_SC2P5D, KQUAD_SC, KQUAD_SC2P5D,
     KSEXT_SC, KSEXT_SC2P5D, KOCT_SC, KOCT_SC2P5D, SBEND_SC, SBEND_SC2P5D, RBEND_SC,
