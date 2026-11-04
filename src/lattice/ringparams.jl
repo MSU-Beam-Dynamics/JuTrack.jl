@@ -254,221 +254,7 @@ function getfoc(elem::AbstractElement{T}) where T
     return K
 end
 
-"""
-    WigglerRadiation(ring::Vector{<:AbstractElement{T}}, lindata::Vector{<:EdwardsTengTwiss{T}}; 
-                     energy::Float64=3e9, nstep::Int=60) where T
-
-Compute the radiation integrals in wigglers.
-
-WigglerRadiation computes the radiation integrals for all wigglers with
-the following approximations:
-- The self-induced dispersion is neglected in I4 and I5, but is used as
-  a lower limit for the I5 contribution
-- I1, I2 are integrated analytically
-- I3 is integrated analytically for a single harmonic, numerically otherwise
-
-# Arguments
-- `ring::Vector{<:AbstractElement}`: Vector of lattice elements
-- `lindata::Vector{<:EdwardsTengTwiss}`: Vector of Twiss parameters at element exits
-- `energy::Float64=3e9`: Beam energy in eV
-- `nstep::Int=60`: Number of integration steps for numerical I3 calculation
-
-# Returns
-- `I1, I2, I3, I4, I5`: Five radiation integrals for wigglers
-
-# Note
-This function assumes wiggler elements have the following fields:
-- `Lw`: Wiggler period length
-- `Bmax`: Maximum magnetic field
-- `By`: Horizontal field harmonics (matrix where each column is [_, amplitude, _, _, harmonic, phase])
-- `Bx`: Vertical field harmonics (matrix where each column is [_, amplitude, _, _, harmonic, phase])
-
-# Example
-```julia
-twiss = twissring(ring, 0.0, 0)
-I1, I2, I3, I4, I5 = WigglerRadiation(ring, twiss, energy=3e9)
-```
-"""
-function WigglerRadiation(ring::Vector{<:AbstractElement{T}}, lindata::Vector{<:EdwardsTengTwiss{T}}; 
-                         energy::Float64=3e9, nstep::Int=60) where T
-    
-    # Verify that lindata has the correct length
-    if length(lindata) != length(ring)
-        error("lindata must have the same length as ring. Got length(lindata)=$(length(lindata)), length(ring)=$(length(ring))")
-    end
-    
-    # Identify wiggler elements
-    # Note: JuTrack may not have a standard Wiggler class yet
-    # This checks for elements with "WIGGLER" in eletype
-    iswiggler = falses(length(ring))
-    for i in eachindex(ring)
-        elem = ring[i]
-        if hasproperty(elem, :eletype) && occursin("WIGGLER", uppercase(elem.eletype))
-            # Additional check: must have wiggler-specific fields
-            if hasproperty(elem, :Lw) && hasproperty(elem, :Bmax)
-                iswiggler[i] = true
-            end
-        end
-    end
-    
-    if !any(iswiggler)
-        # No wigglers found, return zeros
-        return T(0.0), T(0.0), T(0.0), T(0.0), T(0.0)
-    end
-    
-    # Compute magnetic rigidity Brho = p/q = (E/c)/q for relativistic particles
-    # Brho [T⋅m] = γβmc / q = √(E² - (mc²)²) / (qc)
-    # For highly relativistic particles: Brho ≈ E / (qc) 
-    # E in eV, c in m/s, q = e (elementary charge)
-    # Brho [T⋅m] = E[eV] / (c[m/s] * e[C]) = E[eV] / (c[m/s] * 1.602e-19[C]) * 1.602e-19[C]
-    # Simplified: Brho [T⋅m] = E[eV] / (c[m/s])
-    Brho = energy / speed_of_light  # This gives Brho in T⋅m for E in eV
-    
-    # Get entrance Twiss for each wiggler
-    wiggler_indices = findall(iswiggler)
-    
-    di1_vec = T[]
-    di2_vec = T[]
-    di3_vec = T[]
-    di4_vec = T[]
-    di5_vec = T[]
-    
-    for elem_idx in wiggler_indices
-        # Get entrance Twiss (exit of previous element)
-        if elem_idx == 1
-            dini = lindata[end]
-        else
-            dini = lindata[elem_idx - 1]
-        end
-        
-        di1, di2, di3, di4, di5 = wigrad(ring[elem_idx], dini, Brho, nstep)
-        push!(di1_vec, di1)
-        push!(di2_vec, di2)
-        push!(di3_vec, di3)
-        push!(di4_vec, di4)
-        push!(di5_vec, di5)
-    end
-    
-    I1 = sum(di1_vec)
-    I2 = sum(di2_vec)
-    I3 = sum(di3_vec)
-    I4 = sum(di4_vec)
-    I5 = sum(di5_vec)
-    
-    return I1, I2, I3, I4, I5
-end
-
-"""
-    wigrad(elem::AbstractElement, dini::EdwardsTengTwiss, Brho::Float64, nstep::Int)
-
-Compute radiation integrals for a single wiggler element.
-
-# Arguments
-- `elem::AbstractElement`: Wiggler element
-- `dini::EdwardsTengTwiss`: Twiss parameters at wiggler entrance
-- `Brho::Float64`: Magnetic rigidity (T⋅m)
-- `nstep::Int`: Number of integration steps
-
-# Returns
-- Tuple of (di1, di2, di3, di4, di5): Radiation integral contributions
-"""
-function wigrad(elem::AbstractElement, dini::EdwardsTengTwiss, Brho::Float64, nstep::Int)
-    le = elem.len
-    alphax0 = dini.alphax
-    betax0 = dini.betax
-    gammax0 = (alphax0 * alphax0 + 1.0) / betax0
-    eta0 = dini.dx
-    etap0 = dini.dpx
-    H0 = gammax0 * eta0 * eta0 + 2.0 * alphax0 * eta0 * etap0 + betax0 * etap0 * etap0
-    avebetax = betax0 + alphax0 * le + gammax0 * le * le / 3.0
-    
-    kw = 2.0 * π / elem.Lw
-    rhoinv = elem.Bmax / Brho
-    
-    # Extract Fourier coefficients
-    # By and Bx are matrices where each column represents a harmonic
-    # Row 2 contains the amplitude coefficients
-    coefh = hasproperty(elem, :By) && size(elem.By, 2) > 0 ? elem.By[2, :] * rhoinv : Float64[]
-    coefv = hasproperty(elem, :Bx) && size(elem.Bx, 2) > 0 ? elem.Bx[2, :] * rhoinv : Float64[]
-    coef2 = vcat(coefh, coefv)
-    
-    # Compute I3
-    if length(coef2) == 1
-        # Analytical I3 for single harmonic
-        di3 = coef2[1]^3 * 4.0 * le / 3.0 / π
-    else
-        # Numerical I3 for multiple harmonics
-        s_vals = LinRange(0.0, elem.Lw, nstep + 1)
-        bx, bz = Baxis(elem, s_vals, kw, rhoinv)
-        B2 = bx .^ 2 .+ bz .^ 2
-        rinv = sqrt.(B2)
-        # Trapezoidal integration
-        di3 = trapz(s_vals, rinv .^ 3) * le / elem.Lw
-    end
-    
-    # Compute I2
-    di2 = le * (dot(coefh, coefh) + dot(coefv, coefv)) / 2.0
-    
-    # Compute I1
-    di1 = -di2 / kw / kw
-    
-    # I4 is zero (dispersion neglected)
-    di4 = 0.0
-    
-    # Compute I5 with lower limit
-    if !isempty(coefh)
-        d5lim = 4.0 * avebetax * le * coefh[1]^5 / 15.0 / π / kw / kw
-    else
-        d5lim = 0.0
-    end
-    di5 = max(H0 * di3, d5lim)
-    
-    return di1, di2, di3, di4, di5
-end
-
-"""
-    Baxis(elem::AbstractElement, s::AbstractVector, kw::Float64, rhoinv::Float64)
-
-Compute the magnetic field on the axis of a generic wiggler.
-
-# Arguments
-- `elem::AbstractElement`: Wiggler element
-- `s::AbstractVector`: Position along the wiggler
-- `kw::Float64`: Wiggler wave number (2π/Lw)
-- `rhoinv::Float64`: Inverse of magnetic rigidity scaled by Bmax
-
-# Returns
-- `bx, bz`: Horizontal and vertical field components (normalized by Bmax)
-"""
-function Baxis(elem::AbstractElement, s::AbstractVector, kw::Float64, rhoinv::Float64)
-    Bmax = elem.Bmax
-    kws = kw .* s
-    
-    # Initialize field arrays
-    bx = zeros(length(s))
-    bz = zeros(length(s))
-    
-    # Process horizontal wiggler harmonics (By field)
-    if hasproperty(elem, :By) && size(elem.By, 2) > 0
-        for i in 1:size(elem.By, 2)
-            pb = elem.By[:, i]
-            # By field: Bz/Bmax = -By2 * cos(By5*kw*s + By6)
-            # pb[2] = amplitude, pb[5] = harmonic number, pb[6] = phase
-            bz .-= Bmax * pb[2] * cos.(pb[5] * kws .+ pb[6])
-        end
-    end
-    
-    # Process vertical wiggler harmonics (Bx field)
-    if hasproperty(elem, :Bx) && size(elem.Bx, 2) > 0
-        for i in 1:size(elem.Bx, 2)
-            pb = elem.Bx[:, i]
-            # Bx field: Bx/Bmax = Bx2 * cos(Bx5*kw*s + Bx6)
-            bx .+= Bmax * pb[2] * cos.(pb[5] * kws .+ pb[6])
-        end
-    end
-    
-    return bx, bz
-end
+include("wiggler_radiation.jl")
 
 """
     trapz(x::AbstractVector, y::AbstractVector)
@@ -597,7 +383,9 @@ function ringpara(ring::Vector{<:AbstractElement};
     
     # Compute radiation integrals
     I1d, I2d, I3d, I4d, I5d, I6d, Iv = ElementRadiation(ring, twiss)
-    I1w, I2w, I3w, I4w, I5w = WigglerRadiation(ring, twiss, energy=energy)
+    wiggler_radiation = WigglerRadiation(ring, twiss, energy=energy, details=true)
+    I1w, I2w, I3w, I4w, I5w = (wiggler_radiation.I1, wiggler_radiation.I2,
+        wiggler_radiation.I3, wiggler_radiation.I4, wiggler_radiation.I5)
     I1e, I2e, I3e, I4e, I5e = ElossRadiation(ring, twiss)
     
     I1 = I1d + I1w + I1e
@@ -625,7 +413,9 @@ function ringpara(ring::Vector{<:AbstractElement};
     Je = 2.0 + I4 / I2
     
     # Natural emittance [m⋅rad]
-    emittx = Cq * gamma^2 * I5 / (I2 - I4)
+    emittx_dispersion = Cq * gamma^2 * I5 / (I2 - I4)
+    emittx_cone = 13.0 / 55.0 * Cq * wiggler_radiation.cone_x / (I2 - I4)
+    emittx = emittx_dispersion + emittx_cone
     
     # Natural energy spread (relative)
     sigma_E = gamma * sqrt(Cq * I3 / (2.0 * I2 + I4))
@@ -669,7 +459,9 @@ function ringpara(ring::Vector{<:AbstractElement};
     end
     
     # Vertical emittance limit from 1/gamma cone opening angle
-    emitty_lim = 13.0 / 55.0 * Cq / Jy / I2 * Iv
+    emitty_wiggler = Cq * gamma^2 * wiggler_radiation.I5y / (Jy * I2)
+    emitty_d += emitty_wiggler
+    emitty_lim = 13.0 / 55.0 * Cq / Jy / I2 * (Iv + wiggler_radiation.cone_y)
     
     # RF-dependent parameters
     if Vrf > 0.0 && U0 <= Vrf
@@ -719,8 +511,13 @@ function ringpara(ring::Vector{<:AbstractElement};
         U0 = U0,
         sigma_E = sigma_E,
         emittx = emittx,
+        emittx_dispersion = emittx_dispersion,
+        emittx_cone = emittx_cone,
+        emitty = emitty_d + emitty_lim,
         emitty_d = emitty_d,
         emitty_lim = emitty_lim,
+        emitty_wiggler = emitty_wiggler,
+        wiggler_radiation = wiggler_radiation,
         dampingtime_x = dampingtime_x,
         dampingtime_y = dampingtime_y,
         dampingtime_E = dampingtime_E,

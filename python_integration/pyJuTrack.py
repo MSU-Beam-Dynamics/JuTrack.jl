@@ -3475,6 +3475,19 @@ def ringpara(lattice, energy: float = 3e9, Vrf: float = 0.0, harm: int = 1,
         'freq_rf': jl_results.freq_rf,
     }
     
+    # Optional breakdown provided by the native-compatible wiggler helper.
+    # Keep compatibility with older Julia backends that lack these fields.
+    for key in ('emittx_dispersion', 'emittx_cone', 'emitty', 'emitty_wiggler'):
+        if hasattr(jl_results, key):
+            results[key] = float(getattr(jl_results, key))
+    if hasattr(jl_results, 'wiggler_radiation'):
+        wr = jl_results.wiggler_radiation
+        results['wiggler_radiation'] = {
+            key: float(getattr(wr, key))
+            for key in ('I1', 'I2', 'I3', 'I4', 'I5', 'I5y', 'cone_x', 'cone_y')
+        }
+        results['wiggler_radiation']['model'] = str(wr.model)
+
     # Add RF-dependent parameters (may be NaN)
     try:
         results['phi_s'] = jl_results.phi_s
