@@ -3255,7 +3255,8 @@ def integral_U0(lattice, **kwargs) -> float:
 
 def touschek_lifetime(lattice, *, energy_eV, emittances_m, sigma_z_m,
                      sigma_delta, momentum_acceptance, bunch_charge_C=None,
-                     bunch_current_A=None, repetitions=1, rtol=1e-7):
+                     bunch_current_A=None, repetitions=1, rtol=1e-7,
+                     coupling_tolerance=1e-10):
     """Calculate a conditional Piwinski lifetime from JuTrack entrance optics.
 
     All beam quantities are explicit SI inputs: total electron energy in eV,
@@ -3276,6 +3277,12 @@ def touschek_lifetime(lattice, *, energy_eV, emittances_m, sigma_z_m,
     deep-copied before optical calculations; no element is split or modified.
     Boundary-only quadrature is not a guarantee of spatial convergence.
 
+    coupling_tolerance bounds the maximum absolute entry of the Edwards-Teng
+    R matrices (default 1e-10). An explicit larger value may accommodate
+    verified finite-difference noise in an otherwise uncoupled lattice. It
+    does not enable a coupled-beam calculation. The maximum observed entry
+    and tolerance are returned for auditing; no coupling matrix is modified.
+
     Returns the numerical-kernel result plus element_indices (original
     zero-based indices), element_names, s_m (entrance positions in one supplied
     period), sampling and backend. Requires the optional ``touschek`` extra.
@@ -3294,6 +3301,9 @@ def touschek_lifetime(lattice, *, energy_eV, emittances_m, sigma_z_m,
     energy_eV = float(energy_eV)
     if not np.isfinite(energy_eV) or energy_eV <= float(m_e):
         raise ValueError("energy_eV must be a finite total electron energy above its rest energy")
+    coupling_tolerance = float(coupling_tolerance)
+    if not np.isfinite(coupling_tolerance) or coupling_tolerance < 0:
+        raise ValueError("coupling_tolerance must be finite and nonnegative")
     if (isinstance(repetitions, (bool, np.bool_))
             or not isinstance(repetitions, (int, np.integer))
             or repetitions < 1):
@@ -3345,16 +3355,18 @@ def touschek_lifetime(lattice, *, energy_eV, emittances_m, sigma_z_m,
     if len(exits) != len(elements):
         raise ValueError("JuTrack did not return one optical point per element exit")
     points = [periodic] + exits
+    max_abs_coupling_R = 0.0
     for point in points:
         if int(point.mode) == 0:
             raise ValueError("JuTrack could not find stable periodic 4D optics")
         coupling = np.asarray(point.R, dtype=float)
         if (coupling.shape != (2, 2) or not np.isfinite(coupling).all()
-                or np.max(np.abs(coupling)) > 1e-10):
+                or np.max(np.abs(coupling)) > coupling_tolerance):
             raise ValueError(
                 "Coupled Edwards-Teng optics are unsupported: the Touschek kernel "
                 "requires uncoupled physical-plane optics, not mode beta functions"
             )
+        max_abs_coupling_R = max(max_abs_coupling_R, float(np.max(np.abs(coupling))))
     entrances = [points[index] for index in keep]
     beta = np.asarray([[float(point.betax), float(point.betay)] for point in entrances])
     alpha = np.asarray([[float(point.alphax), float(point.alphay)] for point in entrances])
@@ -3376,6 +3388,8 @@ def touschek_lifetime(lattice, *, energy_eV, emittances_m, sigma_z_m,
         element_names=[str(getattr(elements[index], "name", index)) for index in keep],
         s_m=positions[keep].tolist(),
         sampling="element_entrance", backend="JuTrack",
+        max_abs_coupling_R=max_abs_coupling_R,
+        coupling_tolerance=coupling_tolerance,
     )
     return result
 
